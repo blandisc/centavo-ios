@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Pruebas y build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The runner image ships several Xcodes; take the newest so we always
+      # build against the latest iOS SDK available.
+      - name: Elegir el Xcode más nuevo
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          echo "Usando $xcode"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios
+
+      - name: Instalar xcodegen
+        run: brew install xcodegen
+
+      - name: Pruebas de CentavoCore
+        run: swift test
+        working-directory: Packages/CentavoCore
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Build de la app
+        run: |
+          xcodebuild -project Centavo.xcodeproj -scheme Centavo \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -jobs 4 build

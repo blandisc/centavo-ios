@@ -10,3 +10,8 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Tablero propio** en Multica: workspace «Centavo», prefijo `CEN`.
 - **Nombre de trabajo «Centavo»**, provisional.
 - **Stack:** SwiftUI + SwiftData + App Intents, iOS 18+, XcodeGen; lógica pura en el paquete `CentavoCore`.
+
+## 2026-10-11 — Verificación
+- **La CI de GitHub Actions es la única fuente de verdad del build de iOS.** Corre en un runner macOS con el Xcode más nuevo de la imagen; ningún PR que toque `Centavo/` se mergea sin ella en verde.
+- **El desarrollo también ocurre en Linux**, donde solo se puede correr `Tools/verify.sh package`. Por eso toda la lógica probable vive en `CentavoCore`.
+- **Sin plan de migraciones de SwiftData todavía:** cualquier cambio al esquema de `Expense` se consulta antes de hacerlo.
