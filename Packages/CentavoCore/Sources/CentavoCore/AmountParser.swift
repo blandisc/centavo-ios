@@ -23,7 +23,9 @@ public enum AmountParser {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.contains(where: \.isNumber) else { return nil }
 
-        let isNegative = text.hasPrefix("-") || text.contains("−")
+        // A minus can sit on either side of the symbol (`-$20`, `$-20`), and some
+        // locales wrap refunds in parentheses. Nothing else in an amount uses one.
+        let isNegative = text.contains("-") || text.contains("−")
             || (text.hasPrefix("(") && text.hasSuffix(")"))
 
         // Everything that isn't a digit, separator, sign or space is the currency marker.

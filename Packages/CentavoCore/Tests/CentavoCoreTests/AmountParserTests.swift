@@ -22,6 +22,14 @@ import Testing
     @Test func negativeAmountsAreRefunds() throws {
         #expect(try #require(AmountParser.parse("-$20.00")).value == -20)
         #expect(try #require(AmountParser.parse("($20.00)")).value == -20)
+        #expect(try #require(AmountParser.parse("$-20.00")).value == -20)
+        #expect(try #require(AmountParser.parse("−$20.00")).value == -20)
+        #expect(try #require(AmountParser.parse("-1.234,56 €")).value == Decimal(string: "-1234.56"))
+    }
+
+    @Test func aRefundKeepsItsCurrency() throws {
+        #expect(try #require(AmountParser.parse("-MX$20.00")).currencyMarker == "MX$")
+        #expect(try #require(AmountParser.parse("($20.00)")).currencyMarker == "$")
     }
 
     @Test func rejectsTextWithoutDigits() {
