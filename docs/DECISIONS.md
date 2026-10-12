@@ -26,3 +26,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **`$` a secas significa tu moneda.** Decenas de países usan ese signo; Wallet no dice cuál. `MX$`, `US$`, `€`, `USD` y compañía sí se resuelven.
 - **Marcador desconocido no se adivina:** se agrupa tal cual y se muestra con el símbolo que mandó Wallet.
 - **Los reembolsos son montos negativos** del mismo gasto, no un tipo aparte. Un mes puede quedar en negativo.
+
+## 2026-10-11 — Exportar
+- **CSV y nada más.** Un archivo que abre Numbers, Excel y cualquier hoja de cálculo. Sin PDF ni formatos de apps ajenas.
+- **Se exporta todo**, no solo el mes a la vista. Lo que filtres lo haces en la hoja de cálculo.
+- **Columnas:** Fecha, Comercio, Monto, Moneda, Tarjeta. Fechas en ISO 8601 con su huso y montos con punto decimal, para que cualquier hoja las lea igual.
+- **Sale por la hoja de compartir de iOS,** así tú decides dónde queda. La app no escribe en ningún lado ni manda nada por la red.
+- **La guía del atajo y la exportación viven en un menú «Más»** en la barra, para no llenarla de botones.
