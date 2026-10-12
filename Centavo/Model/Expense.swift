@@ -9,16 +9,21 @@ final class Expense {
     var merchant: String
     var card: String?
     var date: Date
+    /// Free text, remembered per merchant by `CategoryMemory`. Optional on purpose:
+    /// a payment Wallet just captured hasn't been filed anywhere yet.
+    var category: String?
     /// The amount text exactly as Wallet sent it, kept so a parsing bug is recoverable.
     var rawAmount: String?
 
     init(amount: Decimal, currencyMarker: String? = nil, merchant: String,
-         card: String? = nil, date: Date = .now, rawAmount: String? = nil) {
+         card: String? = nil, date: Date = .now, category: String? = nil,
+         rawAmount: String? = nil) {
         self.amount = amount
         self.currencyMarker = currencyMarker
         self.merchant = merchant
         self.card = card
         self.date = date
+        self.category = category
         self.rawAmount = rawAmount
     }
 }

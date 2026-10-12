@@ -33,3 +33,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Columnas:** Fecha, Comercio, Monto, Moneda, Tarjeta. Fechas en ISO 8601 con su huso y montos con punto decimal, para que cualquier hoja las lea igual.
 - **Sale por la hoja de compartir de iOS,** así tú decides dónde queda. La app no escribe en ningún lado ni manda nada por la red.
 - **La guía del atajo y la exportación viven en un menú «Más»** en la barra, para no llenarla de botones.
+
+## 2026-10-11 — Categorías
+- **La categoría vive en el gasto** (`Expense.category`, opcional). La «memoria» por comercio es la regla, no una tabla: la categoría que usaste la última vez para ese comercio. Agregar una propiedad opcional es migración ligera y SwiftData la hace sola.
+- **Texto libre, sin lista fija.** No sé cómo organizas tu dinero. Lo que evita que se fragmente en casi-duplicados es la memoria por comercio y un menú con las categorías que ya usas.
+- **Los comercios se comparan ignorando mayúsculas, acentos y espacios**, pero nada más. Adivinar que «OXXO 1234» y «OXXO 5678» son el mismo lugar sería adivinar, y se equivocaría lo suficiente para estorbar.
+- **El total por categoría es solo de la moneda principal**, por la misma razón que el total del mes: sumar monedas distintas sería mentir.
+- **Sin pantalla de categorías.** Se escribe en la hoja de edición que ya existe y se lee en una sección de la pantalla principal.

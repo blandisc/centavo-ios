@@ -5,11 +5,14 @@ public struct ExpenseAmount: Equatable, Sendable {
     public var value: Decimal
     public var currencyMarker: String?
     public var date: Date
+    public var category: String?
 
-    public init(value: Decimal, currencyMarker: String? = nil, date: Date) {
+    public init(value: Decimal, currencyMarker: String? = nil, date: Date,
+                category: String? = nil) {
         self.value = value
         self.currencyMarker = currencyMarker
         self.date = date
+        self.category = category
     }
 }
 
@@ -28,6 +31,18 @@ public struct MoneyTotal: Equatable, Sendable {
     }
 }
 
+/// What one category added up to in the primary currency.
+public struct CategoryTotal: Equatable, Sendable {
+    /// `nil` for expenses you haven't filed anywhere yet.
+    public let category: String?
+    public let amount: Decimal
+
+    public init(category: String?, amount: Decimal) {
+        self.category = category
+        self.amount = amount
+    }
+}
+
 /// One month, split so the headline number stays a single currency.
 public struct MonthSummary: Equatable, Sendable {
     /// The total in the person's own currency. Present even with no expenses, so the
@@ -35,10 +50,13 @@ public struct MonthSummary: Equatable, Sendable {
     public let primary: MoneyTotal
     /// Every other currency that showed up, by label.
     public let others: [MoneyTotal]
+    /// The primary-currency total broken down by category, biggest first.
+    public let categories: [CategoryTotal]
 
-    public init(primary: MoneyTotal, others: [MoneyTotal]) {
+    public init(primary: MoneyTotal, others: [MoneyTotal], categories: [CategoryTotal]) {
         self.primary = primary
         self.others = others
+        self.categories = categories
     }
 }
 
@@ -47,6 +65,7 @@ public enum MonthSummarizer {
     ///
     /// Mixing currencies in one total would be a lie, so only `primary` goes in the
     /// headline; the rest come back in `others`, sorted by label for a stable screen.
+    /// `categories` breaks down the headline number only, for the same reason.
     public static func summarize(
         _ amounts: [ExpenseAmount],
         inMonthOf reference: Date,
@@ -56,6 +75,10 @@ public enum MonthSummarizer {
         let primaryCode = CurrencyResolver.isoCode(for: primary, primary: primary) ?? primary
         var totals: [String: Decimal] = [:]
         var codes: [String: String?] = [:]
+        var byCategory: [String?: Decimal] = [:]
+        // Two spellings of one category are one category, but the screen shows the
+        // spelling you used most recently.
+        var categoryNames: [String?: String?] = [:]
 
         for amount in amounts
         where calendar.isDate(amount.date, equalTo: reference, toGranularity: .month) {
@@ -64,6 +87,14 @@ public enum MonthSummarizer {
             let label = iso ?? (marker.isEmpty ? primaryCode : marker)
             totals[label, default: 0] += amount.value
             codes[label] = iso
+
+            guard label == primaryCode else { continue }
+            let name = amount.category?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let named = (name?.isEmpty ?? true) ? nil : name
+            let key = named?.folding(options: [.caseInsensitive, .diacriticInsensitive],
+                                     locale: nil)
+            byCategory[key, default: 0] += amount.value
+            categoryNames[key] = named
         }
 
         let others = totals.keys
@@ -71,10 +102,27 @@ public enum MonthSummarizer {
             .sorted()
             .map { MoneyTotal(isoCode: codes[$0] ?? nil, label: $0, amount: totals[$0] ?? 0) }
 
+        let categories = byCategory
+            .map { CategoryTotal(category: categoryNames[$0.key] ?? nil, amount: $0.value) }
+            .sorted(by: biggestFirst)
+
         return MonthSummary(
             primary: MoneyTotal(isoCode: primaryCode, label: primaryCode,
                                 amount: totals[primaryCode] ?? 0),
-            others: others
+            others: others,
+            categories: categories
         )
+    }
+
+    /// Biggest spend first. Ties go to the named category, then alphabetically, so the
+    /// list never shuffles between redraws.
+    private static func biggestFirst(_ left: CategoryTotal, _ right: CategoryTotal) -> Bool {
+        if left.amount != right.amount { return left.amount > right.amount }
+        switch (left.category, right.category) {
+        case let (leftName?, rightName?): return leftName < rightName
+        case (_?, nil): return true
+        case (nil, _?): return false
+        case (nil, nil): return false
+        }
     }
 }

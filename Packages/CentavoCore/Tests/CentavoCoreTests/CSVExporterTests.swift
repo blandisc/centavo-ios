@@ -22,17 +22,17 @@ import Testing
     }
 
     @Test func writesAHeaderEvenWithNoExpenses() {
-        #expect(csv([]) == "Fecha,Comercio,Monto,Moneda,Tarjeta\r\n")
+        #expect(csv([]) == "Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría\r\n")
     }
 
     @Test func writesOneRowPerExpenseWithCRLFEndings() {
         let out = csv([
             ExpenseRecord(date: Self.date(2026, 10, 9, 8, 30), merchant: "Oxxo",
-                          amount: 89, currency: "MXN", card: "BBVA"),
+                          amount: 89, currency: "MXN", card: "BBVA", category: "Despensa"),
         ])
         #expect(out == """
-        Fecha,Comercio,Monto,Moneda,Tarjeta\r
-        2026-10-09T08:30:00-06:00,Oxxo,89.00,MXN,BBVA\r
+        Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría\r
+        2026-10-09T08:30:00-06:00,Oxxo,89.00,MXN,BBVA,Despensa\r
 
         """)
     }
@@ -66,11 +66,11 @@ import Testing
         #expect(row.contains("-230.00"))
     }
 
-    @Test func missingCardLeavesAnEmptyField() {
+    @Test func missingCardAndCategoryLeaveEmptyFields() {
         #expect(lines([
             ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Efectivo",
-                          amount: 50, currency: "MXN", card: nil),
-        ])[1].hasSuffix(",MXN,"))
+                          amount: 50, currency: "MXN", card: nil, category: nil),
+        ])[1].hasSuffix(",MXN,,"))
     }
 
     @Test func quotesFieldsThatWouldBreakTheFormat() {

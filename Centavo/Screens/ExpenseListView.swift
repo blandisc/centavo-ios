@@ -19,7 +19,8 @@ struct ExpenseListView: View {
     private var summary: MonthSummary {
         MonthSummarizer.summarize(
             expenses.map {
-                ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker, date: $0.date)
+                ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
+                              date: $0.date, category: $0.category)
             },
             inMonthOf: .now,
             primary: primaryCurrency
@@ -31,6 +32,15 @@ struct ExpenseListView: View {
             List {
                 Section {
                     MonthTotalHeader(summary: summary)
+                }
+                // Only worth a section once something is actually filed somewhere.
+                if summary.categories.contains(where: { $0.category != nil }) {
+                    Section("Por categoría") {
+                        ForEach(summary.categories, id: \.category) { total in
+                            CategoryTotalRow(total: total, isoCode: summary.primary.isoCode,
+                                             label: summary.primary.label)
+                        }
+                    }
                 }
                 Section {
                     ForEach(expenses) { expense in
@@ -119,6 +129,22 @@ private struct MonthTotalHeader: View {
     }
 }
 
+private struct CategoryTotalRow: View {
+    let total: CategoryTotal
+    let isoCode: String?
+    let label: String
+
+    var body: some View {
+        HStack {
+            Text(total.category ?? "Sin categoría")
+                .foregroundStyle(total.category == nil ? .secondary : .primary)
+            Spacer()
+            Text(formatMoney(total.amount, isoCode: isoCode, label: label))
+                .monospacedDigit()
+        }
+    }
+}
+
 private struct ExpenseRow: View {
     let expense: Expense
     let primaryCurrency: String
@@ -136,8 +162,14 @@ private struct ExpenseRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(expense.merchant)
-                Text(expense.date, format: .dateTime.day().month().hour().minute())
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(expense.date, format: .dateTime.day().month().hour().minute())
+                    if let category = expense.category {
+                        Text("·")
+                        Text(category)
+                    }
+                }
+                .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Text(amountText).monospacedDigit()
@@ -147,9 +179,12 @@ private struct ExpenseRow: View {
 
 #Preview {
     let container = try! ModelContainer(for: Expense.self, configurations: .init(isStoredInMemoryOnly: true))
-    container.mainContext.insert(Expense(amount: 89, currencyMarker: "$", merchant: "Oxxo", card: "BBVA"))
-    container.mainContext.insert(Expense(amount: 1234.5, currencyMarker: "$", merchant: "Liverpool"))
-    container.mainContext.insert(Expense(amount: -230, currencyMarker: "$", merchant: "Liverpool (reembolso)"))
+    container.mainContext.insert(Expense(amount: 89, currencyMarker: "$", merchant: "Oxxo",
+                                        card: "BBVA", category: "Despensa"))
+    container.mainContext.insert(Expense(amount: 1234.5, currencyMarker: "$", merchant: "Liverpool",
+                                        category: "Ropa"))
+    container.mainContext.insert(Expense(amount: -230, currencyMarker: "$",
+                                        merchant: "Liverpool (reembolso)", category: "Ropa"))
     container.mainContext.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam"))
     return ExpenseListView().modelContainer(container)
 }

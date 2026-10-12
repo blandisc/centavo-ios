@@ -8,21 +8,23 @@ public struct ExpenseRecord: Equatable, Sendable {
     /// ISO 4217 code when known, otherwise whatever marker Wallet sent.
     public var currency: String
     public var card: String?
+    public var category: String?
 
     public init(date: Date, merchant: String, amount: Decimal,
-                currency: String, card: String? = nil) {
+                currency: String, card: String? = nil, category: String? = nil) {
         self.date = date
         self.merchant = merchant
         self.amount = amount
         self.currency = currency
         self.card = card
+        self.category = category
     }
 }
 
 /// Writes expenses as RFC 4180 CSV — the format Numbers, Excel and every
 /// spreadsheet on the planet opens without asking questions.
 public enum CSVExporter {
-    public static let header = ["Fecha", "Comercio", "Monto", "Moneda", "Tarjeta"]
+    public static let header = ["Fecha", "Comercio", "Monto", "Moneda", "Tarjeta", "Categoría"]
 
     /// Oldest first, so the file reads like a ledger.
     ///
@@ -39,6 +41,7 @@ public enum CSVExporter {
                 amountText(record.amount),
                 record.currency,
                 record.card ?? "",
+                record.category ?? "",
             ]
         }
         return ([header] + rows)
