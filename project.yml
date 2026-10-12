@@ -1,0 +1,29 @@
+name: Centavo
+options:
+  bundleIdPrefix: com.blandisc
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+packages:
+  CentavoCore:
+    path: Packages/CentavoCore
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Centavo:
+    type: application
+    platform: iOS
+    sources: [Centavo]
+    dependencies:
+      - package: CentavoCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Centavo
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1"
