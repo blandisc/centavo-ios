@@ -15,3 +15,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **La CI de GitHub Actions es la única fuente de verdad del build de iOS.** Corre en un runner macOS con el Xcode más nuevo de la imagen; ningún PR que toque `Centavo/` se mergea sin ella en verde.
 - **El desarrollo también ocurre en Linux**, donde solo se puede correr `Tools/verify.sh package`. Por eso toda la lógica probable vive en `CentavoCore`.
 - **Sin plan de migraciones de SwiftData todavía:** cualquier cambio al esquema de `Expense` se consulta antes de hacerlo.
+
+## 2026-10-11 — Alcance de la captura
+- **Automático = solo pagos con Apple Wallet** (disparador «Transacción» de Atajos). **Todo lo demás se registra a mano** (efectivo, tarjeta física, en línea).
+- Se descartan los SMS y correos del banco como fuente. Leer las notificaciones de otras apps es imposible en iOS.

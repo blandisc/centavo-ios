@@ -6,6 +6,8 @@ struct ExpenseListView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @Environment(\.modelContext) private var context
     @State private var showingSetup = false
+    @State private var adding = false
+    @State private var editing: Expense?
 
     private var monthTotal: Decimal {
         let calendar = Calendar.current
@@ -28,7 +30,10 @@ struct ExpenseListView: View {
                 }
                 Section {
                     ForEach(expenses) { expense in
-                        ExpenseRow(expense: expense)
+                        Button { editing = expense } label: {
+                            ExpenseRow(expense: expense)
+                        }
+                        .tint(.primary)
                     }
                     .onDelete { offsets in
                         offsets.map { expenses[$0] }.forEach(context.delete)
@@ -40,17 +45,25 @@ struct ExpenseListView: View {
                     ContentUnavailableView {
                         Label("Sin gastos todavía", systemImage: "creditcard")
                     } description: {
-                        Text("Configura el atajo y cada pago con Apple Wallet aparecerá aquí.")
+                        Text("Configura el atajo y cada pago con Apple Wallet aparecerá aquí. Lo demás, agrégalo con «+».")
                     } actions: {
                         Button("Configurar atajo") { showingSetup = true }
+                        Button("Agregar gasto") { adding = true }
                     }
                 }
             }
             .navigationTitle("Centavo")
             .toolbar {
-                Button("Configurar atajo", systemImage: "questionmark.circle") { showingSetup = true }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Configurar atajo", systemImage: "questionmark.circle") { showingSetup = true }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Agregar gasto", systemImage: "plus") { adding = true }
+                }
             }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
+            .sheet(isPresented: $adding) { ExpenseEditorView(expense: nil) }
+            .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
         }
     }
 }
