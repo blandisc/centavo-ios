@@ -8,11 +8,12 @@ final class ScreenshotTests: XCTestCase {
     }
 
     private func launch(_ extra: [String] = [], demo: Bool = true,
-                        budget: Bool = true) -> XCUIApplication {
+                        budget: Bool = true, dark: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX"]
         arguments += [demo ? "-centavo-demo" : "-centavo-empty"]
         if budget { arguments += ["-monthlyBudget", "8000"] }
+        arguments += ["-AppleInterfaceStyle", dark ? "Dark" : "Light"]
         app.launchArguments = arguments + extra
         app.launch()
         XCTAssertTrue(app.buttons["Anotar gasto"].waitForExistence(timeout: 20),
@@ -105,5 +106,22 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["Presupuesto"].tap()
         sleep(1)
         snap("13-mes-anterior-presupuesto")
+    }
+
+    func testModoOscuro() {
+        let app = launch(dark: true)
+        snap("20-oscuro-principal")
+        app.buttons["Presupuesto"].tap()
+        sleep(1)
+        snap("21-oscuro-presupuesto")
+        app.buttons["Anotar gasto"].tap()
+        sleep(1)
+        snap("22-oscuro-nuevo-gasto")
+    }
+
+    func testModoOscuroLetraGrande() {
+        _ = launch(["-UIPreferredContentSizeCategoryName",
+                    "UICTContentSizeCategoryAccessibilityXXXL"], dark: true)
+        snap("23-oscuro-letra-grande")
     }
 }

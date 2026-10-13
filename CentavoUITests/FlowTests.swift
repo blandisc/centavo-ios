@@ -13,7 +13,8 @@ final class FlowTests: XCTestCase {
     private func launch(demo: Bool = false, budget: Bool = false,
                         extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX"]
+        var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                         "-AppleInterfaceStyle", "Light"]
         arguments += [demo ? "-centavo-demo" : "-centavo-empty"]
         if budget { arguments += ["-monthlyBudget", "8000"] }
         app.launchArguments = arguments + extra
@@ -56,7 +57,9 @@ final class FlowTests: XCTestCase {
         let merchantField = app.textFields["comercio"]
         merchantField.tap()
         merchantField.typeText(merchant)
-        if refund { app.switches["devolucion"].tap() }
+        if refund {
+            app.switches["devolucion"].coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        }
     }
 
     private func row(_ app: XCUIApplication, containing text: String) -> XCUIElement {
@@ -162,8 +165,10 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
         require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
         require(app.buttons["Borrar"], "No pidió confirmación")
-        app.buttons["hoja-cancelar"].firstMatch.tap()
-        app.buttons["hoja-cancelar"].firstMatch.tap()
+        let dialogCancel = app.buttons.matching(NSPredicate(
+            format: "label == 'Cancelar' AND identifier != 'hoja-cancelar'")).firstMatch
+        require(dialogCancel, "No hay botón de cancelar en la confirmación").tap()
+        app.buttons["hoja-cancelar"].tap()
         XCTAssertTrue(row(app, containing: "Cinépolis").waitForExistence(timeout: 5),
                       "Se borró aunque se canceló")
     }
@@ -286,7 +291,8 @@ final class FlowTests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
                                "-centavo-broken-store"]
         app.launch()
-        require(app.staticTexts["error-base"], "No mostró la pantalla de error de la base")
+        require(app.staticTexts["No se pudo abrir tu base de datos"],
+                "No mostró la pantalla de error de la base")
         XCTAssertFalse(app.buttons["Anotar gasto"].exists)
         snap("flujo-error-base")
     }

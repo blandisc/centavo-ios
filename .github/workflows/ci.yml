@@ -42,19 +42,20 @@ jobs:
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO -jobs 4 build
 
-      # Lo que no se ve en el build: que la tipografía, el ícono y el modo oscuro
+      # Lo que no se ve en el build: que el ícono, el manifiesto de privacidad y el idioma
       # de verdad viajen dentro de la app.
       - name: Comprobar el contenido de la app
         run: |
           app="$(find ~/Library/Developer/Xcode/DerivedData -type d -name 'Centavo.app' -path '*Build/Products*' | head -1)"
           test -n "$app" || { echo "No encontré Centavo.app"; exit 1; }
           echo "App: $app"
-          for f in IBMPlexMono-Regular.ttf IBMPlexMono-Medium.ttf IBMPlexMono-SemiBold.ttf Assets.car PrivacyInfo.xcprivacy; do
+          for f in Assets.car PrivacyInfo.xcprivacy; do
             test -f "$app/$f" && echo "ok  $f" || { echo "FALTA $f"; exit 1; }
           done
-          plutil -p "$app/Info.plist" | grep -E 'UIUserInterfaceStyle|CFBundleIconName|CFBundleDevelopmentRegion'
+          plutil -p "$app/Info.plist" | grep -E 'CFBundleIconName|CFBundleDevelopmentRegion'
+          # La app sigue la apariencia del sistema (claro u oscuro): no debe forzar una.
+          if plutil -p "$app/Info.plist" | grep -q 'UIUserInterfaceStyle'; then echo "La app fuerza una apariencia"; exit 1; fi
           plutil -p "$app/Info.plist" | grep -q '"CFBundleDevelopmentRegion" => "es"' || { echo "Falta declarar el español"; exit 1; }
-          plutil -p "$app/Info.plist" | grep -q '"UIUserInterfaceStyle" => "Dark"' || { echo "Falta el modo oscuro"; exit 1; }
           plutil -p "$app/Info.plist" | grep -E 'ITSAppUsesNonExemptEncryption|LSApplicationCategoryType'
           plutil -p "$app/Info.plist" | grep -q 'ITSAppUsesNonExemptEncryption' || { echo "Falta la declaración de cifrado"; exit 1; }
           plutil -p "$app/PrivacyInfo.xcprivacy" | grep -q 'CA92.1' || { echo "Falta el motivo de UserDefaults"; exit 1; }

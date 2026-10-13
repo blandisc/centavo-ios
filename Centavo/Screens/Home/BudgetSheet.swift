@@ -16,50 +16,44 @@ struct BudgetSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SheetBar(title: "Presupuesto") {
-                SheetAction(title: "Cancelar") { dismiss() }
-            } trailing: {
-                SheetAction(title: "Guardar", prominent: true, action: save)
-                    .disabled(amount == nil)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Tope de gasto cada mes (\(currency))").ticketCaption()
-                TextField("Presupuesto", text: $text, prompt: Text("0").foregroundStyle(Theme.faint))
-                    .font(.ticket(44, weight: .medium, relativeTo: .largeTitle))
-                    .tracking(-1.5)
-                    .foregroundStyle(Theme.ink)
-                    .keyboardType(.decimalPad)
-                    .focused($focused)
-                    .accessibilityIdentifier("presupuesto-monto")
-            }
-            .padding(.vertical, 20)
-            .overlay(alignment: .bottom) { Perforation() }
-
-            Text("Con esto Centavo te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
-                .font(.ticket(12, relativeTo: .footnote))
-                .lineSpacing(4)
-                .foregroundStyle(Theme.muted)
-                .padding(.top, 12)
-
-            if BudgetStore.amount(from: stored) != nil {
-                Button("Quitar presupuesto") {
-                    stored = ""
-                    dismiss()
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Presupuesto", text: $text, prompt: Text("0"))
+                        .font(.largeTitle.weight(.semibold).monospacedDigit())
+                        .keyboardType(.decimalPad)
+                        .focused($focused)
+                        .accessibilityIdentifier("presupuesto-monto")
+                } header: {
+                    Text("Tope de gasto cada mes (\(currency))")
+                } footer: {
+                    Text("Con esto Centavo te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
                 }
-                .font(.ticket(12, relativeTo: .footnote))
-                .tracking(1.4)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
-                .underline()
-                .accessibilityIdentifier("quitar-presupuesto")
-                .frame(minHeight: 44)
-                .padding(.top, 8)
+
+                if BudgetStore.amount(from: stored) != nil {
+                    Section {
+                        Button("Quitar presupuesto", role: .destructive) {
+                            stored = ""
+                            dismiss()
+                        }
+                        .accessibilityIdentifier("quitar-presupuesto")
+                    }
+                }
             }
-            Spacer(minLength: 0)
+            .navigationTitle("Presupuesto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                        .accessibilityIdentifier("hoja-cancelar")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Guardar", action: save)
+                        .disabled(amount == nil)
+                        .accessibilityIdentifier("hoja-guardar")
+                }
+            }
         }
-        .ticketSheet()
         .presentationDetents([.medium, .large])
         .onAppear {
             if let current = BudgetStore.amount(from: stored) {

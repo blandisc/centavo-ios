@@ -14,7 +14,7 @@ struct MonthCarousel: View {
     private let pageNames = ["Calendario", "Presupuesto"]
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 0) {
                     CalendarPage(model: calendarModel)
@@ -31,14 +31,14 @@ struct MonthCarousel: View {
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
 
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 ForEach(pageNames.indices, id: \.self) { index in
                     Button {
                         withAnimation { page = index }
                     } label: {
-                        Capsule()
-                            .fill(page == index ? Theme.ink : Color(hex: 0x4A4742))
-                            .frame(width: page == index ? 18 : 6, height: 6)
+                        Circle()
+                            .fill(page == index ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
+                            .frame(width: 7, height: 7)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -48,6 +48,7 @@ struct MonthCarousel: View {
                 }
             }
             .frame(maxWidth: .infinity)
+            .sensoryFeedback(.selection, trigger: page)
         }
     }
 }

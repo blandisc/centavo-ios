@@ -22,7 +22,18 @@ func ledgerAmount(for expense: Expense, primary: String) -> String {
     return sign + (code.isEmpty ? number : "\(code) \(number)")
 }
 
-/// "12/10": day and month, in the order the region writes them.
+/// "13 oct": day and month, in the order the region writes them.
 func shortDate(_ date: Date) -> String {
-    date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
+    date.formatted(.dateTime.day().month(.abbreviated))
+}
+
+/// "octubre": the month's name, lowercase, for the middle of a sentence.
+func monthName(_ date: Date) -> String {
+    date.formatted(.dateTime.month(.wide))
+}
+
+/// "Octubre 2026": a month as a title.
+func monthTitle(_ date: Date) -> String {
+    let name = monthName(date)
+    return name.prefix(1).uppercased() + name.dropFirst() + " " + date.formatted(.dateTime.year())
 }

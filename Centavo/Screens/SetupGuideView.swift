@@ -17,67 +17,49 @@ struct SetupGuideView: View {
     private let notes: [String] = [
         "Solo se anotan los pagos en los que acercas el iPhone o el reloj a la terminal. Las compras en línea y dentro de apps anótalas tú.",
         "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. Si un pago no aparece, anótalo tú.",
-        "Un pago rechazado también puede anotarse. Tócalo y bórralo.",
+        "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo.",
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetBar(title: "Configurar atajo") {
-                EmptyView()
-            } trailing: {
-                SheetAction(title: "Listo", prominent: true) { dismiss() }
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+        NavigationStack {
+            List {
+                Section {
                     ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text(String(format: "%02d", index + 1))
-                                .foregroundStyle(Theme.brass)
-                                .frame(minWidth: 28, alignment: .leading)
-                            Text(step).multilineTextAlignment(.leading)
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text("\(index + 1)")
+                                .font(.headline.monospacedDigit())
+                                .foregroundStyle(.tint)
+                                .frame(minWidth: 20, alignment: .leading)
+                            Text(step)
                         }
-                        .font(.ticket(13, relativeTo: .footnote))
-                        .lineSpacing(4)
-                        .padding(.vertical, 11)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay(alignment: .top) { Perforation() }
                         .accessibilityElement(children: .combine)
                     }
+                }
 
-                    Text("Bueno saber")
-                        .ticketCaption()
-                        .padding(.top, 20)
-                        .padding(.bottom, 6)
-                        .accessibilityAddTraits(.isHeader)
-
+                Section("Bueno saber") {
                     ForEach(notes, id: \.self) { note in
                         Text(note)
-                            .font(.ticket(12, relativeTo: .footnote))
-                            .lineSpacing(4)
-                            .foregroundStyle(Theme.muted)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .overlay(alignment: .top) { Perforation() }
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                }
 
+                Section {
                     Link(destination: URL(string: "shortcuts://")!) {
-                        Text("Abrir Atajos")
-                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                            .tracking(1.6)
-                            .textCase(.uppercase)
-                            .foregroundStyle(Theme.brass)
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                            .overlay(Capsule().stroke(Theme.brass, lineWidth: 1.5))
+                        Label("Abrir Atajos", systemImage: "arrow.up.forward.app")
                     }
-                    .padding(.top, 18)
-                    .padding(.bottom, 24)
                 }
             }
-            .scrollClipDisabled()
+            .navigationTitle("Configurar atajo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                        .accessibilityIdentifier("hoja-listo")
+                }
+            }
         }
-        .ticketSheet()
     }
 }
 
-#Preview { SetupGuideView().preferredColorScheme(.dark) }
+#Preview { SetupGuideView() }

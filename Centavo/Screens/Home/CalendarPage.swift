@@ -5,7 +5,7 @@ import SwiftUI
 struct CalendarPage: View {
     let model: MonthCalendar
 
-    @ScaledMetric(relativeTo: .caption2) private var cellHeight: CGFloat = 32
+    @ScaledMetric(relativeTo: .footnote) private var cellHeight: CGFloat = 36
 
     private var rows: [[MonthCalendar.Cell]] {
         var cells = model.cells
@@ -15,14 +15,15 @@ struct CalendarPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Cada día del mes").ticketCaption()
+            Text("Cada día del mes")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             Grid(horizontalSpacing: 4, verticalSpacing: 4) {
                 GridRow {
                     ForEach(Array(model.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                         Text(symbol)
-                            .font(.ticket(10, relativeTo: .caption2))
-                            .tracking(1)
-                            .foregroundStyle(Theme.muted)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .accessibilityHidden(true)
                     }
@@ -48,21 +49,22 @@ private struct DayCell: View {
     let day: MonthCalendar.Day
     let height: CGFloat
 
-    private var fill: Color {
+    /// The heat of a day is the accent at three strengths. It adapts to light and dark by itself.
+    private var fill: AnyShapeStyle {
         switch day.state {
-        case .future, .refund: .clear
-        case .empty: Theme.surface
-        case .spent(let level): level >= 3 ? Theme.brass : level == 2 ? Theme.brassMid : Theme.brassLow
+        case .future, .refund: AnyShapeStyle(Color.clear)
+        case .empty: AnyShapeStyle(.quaternary)
+        case .spent(let level):
+            AnyShapeStyle(Color.accentColor.opacity(level == 1 ? 0.22 : level == 2 ? 0.5 : 0.9))
         }
     }
 
-    private var textColor: Color {
+    /// Dark-on-light or light-on-dark, whichever the strength of the tint needs.
+    private var textStyle: AnyShapeStyle {
         switch day.state {
-        case .future: Theme.faint
-        case .empty: Theme.muted
-        case .refund: Theme.brass
-        // Light text only holds up on the darkest tint (6.8:1); on the middle one it drops to 3.4:1.
-        case .spent(let level): level == 1 ? Theme.ink : Theme.onBrass
+        case .refund: AnyShapeStyle(.tint)
+        case .spent(let level) where level >= 3: AnyShapeStyle(.background)
+        default: AnyShapeStyle(.primary)
         }
     }
 
@@ -77,27 +79,26 @@ private struct DayCell: View {
 
     var body: some View {
         Text("\(day.number)")
-            .font(.ticket(11, relativeTo: .caption2))
+            .font(.footnote.monospacedDigit())
             .lineLimit(1)
             .minimumScaleFactor(0.5)
-            .foregroundStyle(textColor)
+            .foregroundStyle(textStyle)
             .frame(maxWidth: .infinity, minHeight: height)
-            .background(fill)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .background(fill, in: RoundedRectangle(cornerRadius: 8))
             .overlay {
                 switch day.state {
                 case .future:
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(Theme.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(.quaternary, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
                 case .refund:
-                    RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.brass, lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: 8).strokeBorder(.tint, lineWidth: 2)
                 default:
                     EmptyView()
                 }
             }
             .overlay {
                 if day.isToday {
-                    RoundedRectangle(cornerRadius: 6).stroke(Theme.ink, lineWidth: 1.5).padding(-3)
+                    RoundedRectangle(cornerRadius: 10).stroke(.primary, lineWidth: 2).padding(-3)
                 }
             }
             .accessibilityElement(children: .ignore)

@@ -80,3 +80,12 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Manifiesto de privacidad:** la app no rastrea ni recolecta datos; declara solo el uso de UserDefaults (el presupuesto), motivo CA92.1 (datos propios de la app).
 - **Cifrado:** la app no usa cifrado propio (`ITSAppUsesNonExemptEncryption = NO`). **Categoría:** Finanzas.
 - **Si la base no abre, la app se explica en vez de cerrarse.** Dice que los gastos siguen en el teléfono y que no se desinstale la app.
+
+## 2026-10-13 — Diseño nativo de Apple (reemplaza «Noche ticket»)
+- **La app sigue las Human Interface Guidelines y usa componentes nativos.** Decisión del dueño: así adopta Liquid Glass (iOS 26) sin código especial y respeta Dynamic Type, accesibilidad y apariencia clara/oscura. **Reemplaza el estilo «Noche ticket»** (tipografía IBM Plex Mono, modo oscuro forzado, barra y botón hechos a mano), que tapaba los componentes del sistema.
+- **Se mantienen las ideas, no el maquillaje:** total del mes, carrusel de calendario por intensidad y presupuesto con línea de «hoy», meses anteriores, lista de pagos.
+- **Un solo color de acento** (latón) en el catálogo de assets, con variante clara (#8A6310) y oscura (#E0B556), ambas con más de 4.5:1 de contraste. Nada de colores sueltos en las pantallas.
+- **La apariencia la decide el sistema:** se quita el modo oscuro forzado.
+- **Tipografía del sistema con estilos de texto** (sin tamaños fijos, sin mayúsculas forzadas); los números usan dígitos de ancho fijo.
+- **«Anotar gasto» va en la barra superior** y las flechas de mes en la barra inferior (flotante con Liquid Glass en iOS 26). Se quita el botón flotante hecho a mano.
+- **La referencia visual son las capturas del simulador de la CI** (iOS 26), no un boceto HTML: un boceto no puede mostrar Liquid Glass de verdad.
