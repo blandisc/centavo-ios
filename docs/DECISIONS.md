@@ -68,3 +68,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Un decimal que no es de centavos ni un grupo de tres se rechaza** (`0.0001`, `1.23456`), en vez de leerse como otra cosa.
 - **El CSV neutraliza fórmulas:** un texto que empieza con `=`, `+`, `-` o `@` sale con un apóstrofo delante. Los comercios llegan de afuera y abrir el CSV no debe ejecutar nada. Los montos negativos no se tocan.
 - **A mano, una «moneda» que es una palabra («pesos») se ignora** y el gasto queda en la moneda principal. Se conservan los símbolos sueltos (`₱`), los códigos de tres letras y los conocidos.
+
+## 2026-10-13 — Meses anteriores
+- **Se puede ver cada mes, hacia atrás hasta el primer gasto.** Flechas junto al mes, en el encabezado; no hay hacia adelante. La lista muestra solo los pagos del mes que se ve (antes mezclaba todos).
+- **Un mes cerrado se mide completo:** el presupuesto entero «tocaba» gastarse, así que no hay línea de «hoy» y el texto dice «te quedaron». Hay un solo presupuesto para todos los meses.
+- **Anotar un gasto mientras se ve un mes anterior lo pone en ese mes** (último día), en vez de en hoy, para que no «desaparezca» de la vista.
+- **Exportar CSV sigue sacando todos los meses.**
+- **Las pruebas de interfaz, de flujo y de zonas táctiles corren en cada PR** (simulador de la CI) y deben pasar antes de mergear.

@@ -18,6 +18,8 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Ver meses anteriores: flechas junto al mes en el encabezado. Cada mes muestra su total, su calendario, su presupuesto (un mes cerrado se mide completo: «te quedaron») y sus pagos. Solo se puede ir hacia atrás hasta tu primer gasto. Anotar un gasto mientras ves un mes anterior lo pone en ese mes.
+- El ticket del presupuesto ahora dice de cuánto es el presupuesto.
 - Ícono de la app (provisional, igual que el nombre): el ticket del presupuesto llenándose de latón, con la línea de «hoy».
 - La guía para configurar el atajo estrena el diseño «Noche ticket». Los pagos rechazados se borran tocándolos, ya no deslizando.
 - La hoja para anotar o corregir un gasto estrena el diseño «Noche ticket», con el interruptor «Es una devolución» (el teclado de montos no tiene signo menos) y un aviso de la última categoría que usaste con ese comercio.
