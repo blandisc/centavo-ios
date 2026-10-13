@@ -11,6 +11,8 @@ struct BudgetPage: View {
     let onSetBudget: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var barHeight: CGFloat = 84
+    /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
+    @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = 22
     @State private var barWidth: CGFloat = 0
 
     private func money(_ amount: Decimal) -> String {
@@ -65,12 +67,15 @@ struct BudgetPage: View {
 
     private func ticket(_ pace: BudgetPace) -> some View {
         let isOver = pace.remaining < 0
-        let remainingInside = pace.spentFraction <= 0.55
         let markerX = barWidth * CGFloat(pace.paceFraction)
         let labelOnLeft = pace.paceFraction < 0.5
         let todayText = "Hoy · " + pace.expectedToDate.formatted(.number.precision(.fractionLength(0)))
         let remainingLabel = isOver ? "Te pasaste" : "Te quedan"
         let remainingText = money(pace.remaining.magnitude)
+        // The type is monospaced (0.6 em a character), so its width is predictable. If the
+        // figure would run over the brass, it goes under the bar instead.
+        let neededWidth = CGFloat(remainingText.count) * 0.6 * figureSize + 28
+        let remainingInside = barWidth > 0 && barWidth * CGFloat(1 - pace.spentFraction) >= neededWidth
 
         return VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .leading) {
@@ -101,6 +106,8 @@ struct BudgetPage: View {
                 .font(.ticket(10, relativeTo: .caption2))
                 .tracking(1)
                 .textCase(.uppercase)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .padding(labelOnLeft ? .leading : .trailing, labelOnLeft ? markerX + 6 : barWidth - markerX + 6)
                 .frame(maxWidth: .infinity, alignment: labelOnLeft ? .leading : .trailing)
 

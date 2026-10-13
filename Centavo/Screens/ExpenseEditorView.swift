@@ -15,11 +15,14 @@ struct ExpenseEditorView: View {
     @State private var card = ""
     @State private var category = ""
     @State private var date = Date.now
+    @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
 
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
+    /// A zero amount is never a real expense, so it cannot be saved.
     private var canSave: Bool {
-        parsed != nil && !merchant.trimmingCharacters(in: .whitespaces).isEmpty
+        guard let parsed, parsed.value != 0 else { return false }
+        return !merchant.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private var pastExpenses: [CategorizedExpense] {
@@ -40,16 +43,25 @@ struct ExpenseEditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     amountBlock
-                    TicketField(label: "Comercio", text: $merchant)
+                    TicketField(label: "Comercio", text: $merchant, prompt: "Nombre del comercio")
                     categoryBlock
                     dateBlock
-                    TicketField(label: "Tarjeta o efectivo (opcional)", text: $card)
+                    TicketField(label: "Tarjeta o efectivo (opcional)", text: $card,
+                                prompt: "BBVA, Nu, efectivo…")
                     if let expense { deleteButton(expense) }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .scrollClipDisabled()
         }
         .ticketSheet()
+        .confirmationDialog("¿Borrar este gasto?", isPresented: $confirmingDelete,
+                            titleVisibility: .visible) {
+            Button("Borrar", role: .destructive) {
+                if let expense { context.delete(expense) }
+                dismiss()
+            }
+        }
         .onAppear(perform: load)
         .onChange(of: merchant) { _, new in
             // Change the merchant and the category you last used for it fills in,
@@ -95,7 +107,7 @@ struct ExpenseEditorView: View {
             Text("Categoría (opcional)").ticketCaption()
             HStack(spacing: 8) {
                 TextField("Categoría", text: $category,
-                          prompt: Text("").foregroundStyle(Theme.faint))
+                          prompt: Text("Despensa, transporte…").foregroundStyle(Theme.faint))
                     .font(.ticket(17, relativeTo: .body))
                     .tracking(0.6)
                     .foregroundStyle(Theme.ink)
@@ -135,6 +147,7 @@ struct ExpenseEditorView: View {
             Spacer()
             DatePicker("Fecha", selection: $date, in: ...Date.now)
                 .labelsHidden()
+                .font(.ticket(14, relativeTo: .callout))
         }
         .padding(.vertical, 8)
         .frame(minHeight: 52)
@@ -143,8 +156,7 @@ struct ExpenseEditorView: View {
 
     private func deleteButton(_ expense: Expense) -> some View {
         Button(role: .destructive) {
-            context.delete(expense)
-            dismiss()
+            confirmingDelete = true
         } label: {
             Text("Borrar gasto")
                 .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
