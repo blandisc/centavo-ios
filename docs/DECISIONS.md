@@ -19,3 +19,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-11 — Alcance de la captura
 - **Automático = solo pagos con Apple Wallet** (disparador «Transacción» de Atajos). **Todo lo demás se registra a mano** (efectivo, tarjeta física, en línea).
 - Se descartan los SMS y correos del banco como fuente. Leer las notificaciones de otras apps es imposible en iOS.
+
+## 2026-10-11 — Moneda
+- **El total del mes es de una sola moneda:** la del dispositivo (`Locale.current`). Sumar monedas distintas sería mentir, así que las demás se listan aparte, debajo del total.
+- **No hay ajuste de moneda.** Cambiarla es cambiar tu región en iOS.
+- **`$` a secas significa tu moneda.** Decenas de países usan ese signo; Wallet no dice cuál. `MX$`, `US$`, `€`, `USD` y compañía sí se resuelven.
+- **Marcador desconocido no se adivina:** se agrupa tal cual y se muestra con el símbolo que mandó Wallet.
+- **Los reembolsos son montos negativos** del mismo gasto, no un tipo aparte. Un mes puede quedar en negativo.
