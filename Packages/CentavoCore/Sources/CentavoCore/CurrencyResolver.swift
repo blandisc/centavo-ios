@@ -41,7 +41,9 @@ public enum CurrencyResolver {
     public static func recognizes(_ marker: String) -> Bool {
         if isoCode(for: marker, primary: "XXX") != nil { return true }
         let trimmed = marker.trimmingCharacters(in: .whitespaces)
-        return (1...2).contains(trimmed.count) && trimmed.allSatisfy { !$0.isLetter && !$0.isNumber }
+        guard (1...3).contains(trimmed.count), !trimmed.contains(where: \.isNumber) else { return false }
+        // `kr`, `S/`, `₱` yes; a lone letter (`e` from "1e5") no.
+        return trimmed.count > 1 || !(trimmed.first?.isLetter ?? true)
     }
 
     /// Uppercases and drops the sign, space and padding characters a marker can pick up.
