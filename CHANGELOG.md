@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- La hoja para anotar o corregir un gasto estrena el diseño «Noche ticket», con el interruptor «Es una devolución» (el teclado de montos no tiene signo menos) y un aviso de la última categoría que usaste con ese comercio.
 - Nueva pantalla principal «Noche ticket»: el total del mes, un carrusel que se desliza entre el calendario del mes y tu presupuesto, y la lista de pagos como un ticket. El presupuesto se fija desde el menú «Más». Se quita el total por categoría de esta pantalla.
 - Base del nuevo diseño «Noche ticket»: modo oscuro, color latón y tipografía de ticket. Lógica del calendario y del presupuesto.
 - Captura más confiable: los pagos repetidos y los que Wallet manda vacíos ya no se anotan, y la guía explica qué pagos se capturan solos y cuáles no.

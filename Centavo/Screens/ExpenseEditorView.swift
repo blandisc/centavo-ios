@@ -10,6 +10,7 @@ struct ExpenseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Expense.date, order: .reverse) private var history: [Expense]
     @State private var amountText = ""
+    @State private var isRefund = false
     @State private var merchant = ""
     @State private var card = ""
     @State private var category = ""
@@ -28,84 +29,144 @@ struct ExpenseEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Monto", text: $amountText)
-                        .keyboardType(.decimalPad)
-                        .font(.system(.title, design: .rounded, weight: .semibold))
-                        .monospacedDigit()
-                        .focused($amountFocused)
-                    TextField("Comercio", text: $merchant)
-                        .textInputAutocapitalization(.words)
-                    categoryRow
-                }
-                Section {
-                    DatePicker("Fecha", selection: $date, in: ...Date.now)
-                    TextField("Tarjeta o efectivo (opcional)", text: $card)
-                }
-                if let expense {
-                    Section {
-                        Button("Borrar gasto", role: .destructive) {
-                            context.delete(expense)
-                            dismiss()
-                        }
-                    }
+        VStack(spacing: 0) {
+            SheetBar(title: expense == nil ? "Nuevo gasto" : "Editar gasto") {
+                SheetAction(title: "Cancelar") { dismiss() }
+            } trailing: {
+                SheetAction(title: "Guardar", prominent: true, action: save)
+                    .disabled(!canSave)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    amountBlock
+                    TicketField(label: "Comercio", text: $merchant)
+                    categoryBlock
+                    dateBlock
+                    TicketField(label: "Tarjeta o efectivo (opcional)", text: $card)
+                    if let expense { deleteButton(expense) }
                 }
             }
-            .navigationTitle(expense == nil ? "Nuevo gasto" : "Editar gasto")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save).disabled(!canSave)
-                }
-            }
-            .onAppear(perform: load)
-            .onChange(of: merchant) { _, new in
-                // Change the merchant and the category you last used for it fills in,
-                // but only while the field is empty — never overwrite a typed one.
-                guard category.trimmingCharacters(in: .whitespaces).isEmpty,
-                      let remembered = CategoryMemory.category(for: new, in: pastExpenses)
-                else { return }
-                category = remembered
-            }
+            .scrollDismissesKeyboard(.interactively)
         }
+        .ticketSheet()
+        .onAppear(perform: load)
+        .onChange(of: merchant) { _, new in
+            // Change the merchant and the category you last used for it fills in,
+            // but only while the field is empty — never overwrite a typed one.
+            guard category.trimmingCharacters(in: .whitespaces).isEmpty,
+                  let remembered = CategoryMemory.category(for: new, in: pastExpenses)
+            else { return }
+            category = remembered
+        }
+    }
+
+    // MARK: Blocks
+
+    private var amountBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Monto").ticketCaption()
+            TextField("Monto", text: $amountText, prompt: Text("0.00").foregroundStyle(Theme.faint))
+                .font(.ticket(44, weight: .medium, relativeTo: .largeTitle))
+                .tracking(-1.5)
+                .foregroundStyle(Theme.ink)
+                .keyboardType(.decimalPad)
+                .focused($amountFocused)
+            // The decimal pad has no minus key, so a refund is a switch rather than a sign.
+            Toggle(isOn: $isRefund) {
+                Text("Es una devolución")
+                    .font(.ticket(12, relativeTo: .footnote))
+                    .tracking(1.2)
+                    .textCase(.uppercase)
+            }
+            .tint(Theme.brass)
+            .padding(.top, 4)
+        }
+        .padding(.vertical, 20)
+        .overlay(alignment: .bottom) { Perforation() }
     }
 
     /// Free-text field, plus the categories already in use so they stay spelled
     /// one way instead of fragmenting into near-duplicates.
-    private var categoryRow: some View {
+    private var categoryBlock: some View {
         let known = CategoryMemory.known(in: pastExpenses)
-        return HStack {
-            TextField("Categoría (opcional)", text: $category)
-                .textInputAutocapitalization(.words)
-            if !known.isEmpty {
-                Menu {
-                    ForEach(known, id: \.self) { name in
-                        Button(name) { category = name }
+        let remembered = CategoryMemory.category(for: merchant, in: pastExpenses)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Categoría (opcional)").ticketCaption()
+            HStack(spacing: 8) {
+                TextField("Categoría", text: $category,
+                          prompt: Text("").foregroundStyle(Theme.faint))
+                    .font(.ticket(17, relativeTo: .body))
+                    .tracking(0.6)
+                    .foregroundStyle(Theme.ink)
+                    .textInputAutocapitalization(.words)
+                if !known.isEmpty {
+                    Menu {
+                        ForEach(known, id: \.self) { name in
+                            Button(name) { category = name }
+                        }
+                        if !category.isEmpty {
+                            Divider()
+                            Button("Quitar categoría", role: .destructive) { category = "" }
+                        }
+                    } label: {
+                        Label("Categorías usadas", systemImage: "chevron.up.chevron.down")
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(Theme.muted)
+                            .frame(width: 44, height: 44)
                     }
-                    if !category.isEmpty {
-                        Divider()
-                        Button("Quitar categoría", role: .destructive) { category = "" }
-                    }
-                } label: {
-                    Label("Categorías usadas", systemImage: "chevron.up.chevron.down")
-                        .labelStyle(.iconOnly)
-                        .foregroundStyle(.secondary)
                 }
             }
+            if let remembered {
+                Text(verbatim: "La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered)")
+                    .font(.ticket(11, relativeTo: .caption2))
+                    .tracking(0.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.faint)
+            }
         }
+        .padding(.vertical, 16)
+        .overlay(alignment: .bottom) { Perforation() }
     }
+
+    private var dateBlock: some View {
+        HStack {
+            Text("Fecha").ticketCaption()
+            Spacer()
+            DatePicker("Fecha", selection: $date, in: ...Date.now)
+                .labelsHidden()
+        }
+        .padding(.vertical, 8)
+        .frame(minHeight: 52)
+        .overlay(alignment: .bottom) { Perforation() }
+    }
+
+    private func deleteButton(_ expense: Expense) -> some View {
+        Button(role: .destructive) {
+            context.delete(expense)
+            dismiss()
+        } label: {
+            Text("Borrar gasto")
+                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                .tracking(1.6)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.danger)
+                .frame(maxWidth: .infinity, minHeight: 48)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 24)
+    }
+
+    // MARK: Actions
 
     private func load() {
         guard let expense else {
             amountFocused = true
             return
         }
-        amountText = expense.amount.formatted(.number.precision(.fractionLength(2)).grouping(.never))
+        isRefund = expense.amount < 0
+        amountText = expense.amount.magnitude
+            .formatted(.number.precision(.fractionLength(2)).grouping(.never))
         merchant = expense.merchant
         card = expense.card ?? ""
         category = expense.category ?? ""
@@ -117,8 +178,9 @@ struct ExpenseEditorView: View {
         let name = merchant.trimmingCharacters(in: .whitespaces)
         let cardName = card.trimmingCharacters(in: .whitespaces)
         let categoryName = category.trimmingCharacters(in: .whitespaces)
+        let value = isRefund ? -parsed.value.magnitude : parsed.value.magnitude
         if let expense {
-            expense.amount = parsed.value
+            expense.amount = value
             if let marker = parsed.currencyMarker { expense.currencyMarker = marker }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
@@ -126,7 +188,7 @@ struct ExpenseEditorView: View {
             expense.date = date
         } else {
             context.insert(Expense(
-                amount: parsed.value,
+                amount: value,
                 currencyMarker: parsed.currencyMarker ?? "$",
                 merchant: name,
                 card: cardName.isEmpty ? nil : cardName,
@@ -141,4 +203,5 @@ struct ExpenseEditorView: View {
 #Preview("Nuevo") {
     ExpenseEditorView(expense: nil)
         .modelContainer(for: Expense.self, inMemory: true)
+        .preferredColorScheme(.dark)
 }
