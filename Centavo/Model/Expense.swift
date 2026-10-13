@@ -29,15 +29,19 @@ final class Expense {
 }
 
 enum Store {
-    /// One container for the app UI and the App Intent (both run in the app process).
-    static let container: ModelContainer = {
-        do {
-            #if DEBUG
-            if DemoData.isRequested { return try DemoData.makeContainer() }
-            #endif
-            return try ModelContainer(for: Expense.self)
-        } catch {
-            fatalError("No se pudo abrir la base local: \(error)")
-        }
-    }()
+    /// The on-device store, opened once. Kept as a result, not forced open: if the file is
+    /// damaged or the disk is full, the app explains it instead of crashing at launch on
+    /// every launch, forever.
+    static let opened: Result<ModelContainer, Error> = Result {
+        #if DEBUG
+        if DemoData.isBrokenStoreRequested { throw DemoData.DemoError.brokenStore }
+        if DemoData.isRequested { return try DemoData.makeContainer() }
+        #endif
+        return try ModelContainer(for: Expense.self)
+    }
+
+    /// For code with no screen to show an error on (the App Intent).
+    static var container: ModelContainer {
+        get throws { try opened.get() }
+    }
 }

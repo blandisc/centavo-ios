@@ -75,3 +75,8 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Anotar un gasto mientras se ve un mes anterior lo pone en ese mes** (último día), en vez de en hoy, para que no «desaparezca» de la vista.
 - **Exportar CSV sigue sacando todos los meses.**
 - **Las pruebas de interfaz, de flujo y de zonas táctiles corren en cada PR** (simulador de la CI) y deben pasar antes de mergear.
+
+## 2026-10-13 — Listo para la App Store
+- **Manifiesto de privacidad:** la app no rastrea ni recolecta datos; declara solo el uso de UserDefaults (el presupuesto), motivo CA92.1 (datos propios de la app).
+- **Cifrado:** la app no usa cifrado propio (`ITSAppUsesNonExemptEncryption = NO`). **Categoría:** Finanzas.
+- **Si la base no abre, la app se explica en vez de cerrarse.** Dice que los gastos siguen en el teléfono y que no se desinstale la app.

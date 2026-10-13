@@ -249,6 +249,18 @@ final class FlowTests: XCTestCase {
                        "El gasto del mes pasado aparece en este mes")
     }
 
+    // MARK: Base de datos
+
+    func testSiLaBaseNoAbreSeExplicaEnVezDeCerrarse() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-broken-store"]
+        app.launch()
+        require(app.staticTexts["error-base"], "No mostró la pantalla de error de la base")
+        XCTAssertFalse(app.buttons["Anotar gasto"].exists)
+        snap("flujo-error-base")
+    }
+
     // MARK: Utilidades
 
     private func expectTotal(_ app: XCUIApplication, _ expected: String,
