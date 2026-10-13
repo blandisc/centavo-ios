@@ -13,6 +13,9 @@ Centavo: tracker de gastos minimalista para iOS. Captura cada pago de Apple Wall
 ## Verificar
 `Tools/verify.sh` antes de terminar cualquier cambio Swift (`package` = solo el paquete; `app` = solo el build). Builds con `-jobs 4` y nunca en paralelo con otro build en la Mac.
 
+## Diseño
+Primero se boceta, después se construye: lienzo en https://claude.ai/artifact/EuRdR9c1mQ4nNivNwQGVYN. Estilo «Noche ticket» (modo oscuro, latón, IBM Plex Mono); colores y tipografía viven en `Centavo/Theme/`, nunca se escriben sueltos en una pantalla. Detalle en [docs/DECISIONS.md](docs/DECISIONS.md).
+
 ## Reglas
 - **Cero red.** Sin servidor, telemetría ni cuenta.
 - **Minimalismo.** Antes de agregar una pantalla o un ajuste, pregunta si cabe en lo que ya existe.
