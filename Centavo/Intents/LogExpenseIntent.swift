@@ -33,17 +33,42 @@ struct LogExpenseIntent: AppIntent {
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchantName = (name?.isEmpty ?? true) ? "Sin comercio" : name!
         let context = Store.container.mainContext
+        let now = Date.now
+
+        switch CaptureGuard.check(amount: parsed.value, merchant: merchantName, card: card,
+                                  at: now, recent: recentCaptures(before: now, in: context)) {
+        case .save:
+            break
+        case .empty:
+            // Wallet sometimes hands over an empty payment. Failing loudly makes Atajos
+            // show it, instead of a silent $0 in the list.
+            throw CaptureError.empty
+        case .duplicate:
+            return .result(dialog: "Ya estaba anotado: \(amount) en \(merchantName).")
+        }
+
         let expense = Expense(
             amount: parsed.value,
             currencyMarker: parsed.currencyMarker,
             merchant: merchantName,
             card: card,
+            date: now,
             category: rememberedCategory(for: merchantName, in: context),
             rawAmount: amount
         )
         context.insert(expense)
         try context.save()
         return .result(dialog: "Anotado: \(amount) en \(expense.merchant).")
+    }
+
+    /// Payments saved in the last few minutes, the only ones a repeat could match.
+    private func recentCaptures(before now: Date, in context: ModelContext) -> [RecentCapture] {
+        let since = now.addingTimeInterval(-CaptureGuard.duplicateWindow)
+        let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since })
+        let rows = (try? context.fetch(descriptor)) ?? []
+        return rows.map {
+            RecentCapture(amount: $0.amount, merchant: $0.merchant, card: $0.card, date: $0.date)
+        }
     }
 
     /// Whatever this merchant was filed under last time, so a captured payment lands
@@ -57,6 +82,14 @@ struct LogExpenseIntent: AppIntent {
                 CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
             }
         )
+    }
+}
+
+enum CaptureError: Error, CustomLocalizedStringResourceConvertible {
+    case empty
+
+    var localizedStringResource: LocalizedStringResource {
+        "Wallet mandó el pago sin monto. Agrégalo a mano con «+» en Centavo."
     }
 }
 
