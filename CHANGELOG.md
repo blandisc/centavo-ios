@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Fixed
+- Los puntitos del carrusel y los botones «Cancelar», «Guardar» y «Listo» tenían una zona táctil de 6 a 17 puntos; ahora son de 44.
+- Los días futuros del calendario, las pistas en gris y el nivel medio de dorado del calendario no tenían contraste suficiente; ahora sí.
+- Una tarjeta de puros espacios ya no se guarda como tarjeta, y un comercio de miles de caracteres se corta a 120.
 - Montos absurdos (más de 12 dígitos) o mal formados ya no se aceptan ni se redondean en silencio.
 - Los montos con formato suizo (`CHF 1'234.56`) o con marcas invisibles de idiomas de derecha a izquierda ya no se separan de los demás pagos de su moneda.
 - Al anotar a mano, escribir «89 pesos» ya no hace que el gasto desaparezca del total del mes; la hoja avisa cómo anotar otra moneda.

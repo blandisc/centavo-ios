@@ -21,7 +21,7 @@ targets:
     dependencies:
       - package: CentavoCore
     scheme:
-      testTargets: [CentavoUITests]
+      testTargets: [CentavoTests, CentavoUITests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
@@ -43,3 +43,13 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Centavo
+  CentavoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [CentavoTests]
+    dependencies:
+      - target: Centavo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.tests
+        GENERATE_INFOPLIST_FILE: YES

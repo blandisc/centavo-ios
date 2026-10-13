@@ -61,7 +61,8 @@ private struct DayCell: View {
         case .future: Theme.faint
         case .empty: Theme.muted
         case .refund: Theme.brass
-        case .spent(let level): level >= 3 ? Theme.onBrass : Theme.ink
+        // Light text only holds up on the darkest tint (6.8:1); on the middle one it drops to 3.4:1.
+        case .spent(let level): level == 1 ? Theme.ink : Theme.onBrass
         }
     }
 
