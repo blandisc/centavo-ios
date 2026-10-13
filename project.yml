@@ -19,6 +19,8 @@ targets:
     sources: [Centavo]
     dependencies:
       - package: CentavoCore
+    scheme:
+      testTargets: [CentavoUITests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
@@ -29,3 +31,14 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
+  CentavoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [CentavoUITests]
+    dependencies:
+      - target: Centavo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Centavo

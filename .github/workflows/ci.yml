@@ -54,3 +54,61 @@ jobs:
           done
           plutil -p "$app/Info.plist" | grep -E 'UIUserInterfaceStyle|CFBundleIconName'
           plutil -p "$app/Info.plist" | grep -q '"UIUserInterfaceStyle" => "Dark"' || { echo "Falta el modo oscuro"; exit 1; }
+
+  # Corre la app en el simulador y le toma una captura a cada pantalla, para poder
+  # revisar el diseño sin una Mac a la mano. No bloquea el PR: es para ver, no para aprobar.
+  interfaz:
+    name: Capturas en simulador
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Elegir el Xcode más nuevo
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Instalar xcodegen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Elegir el simulador
+        id: sim
+        run: |
+          udid="$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          devices = json.load(sys.stdin)['devices']
+          best = None
+          for runtime in sorted(devices):
+              if 'iOS' not in runtime: continue
+              for d in devices[runtime]:
+                  if d['name'].startswith('iPhone') and d.get('isAvailable', True):
+                      if best is None or d['name'] == 'iPhone 16 Pro' or 'Pro' not in best[0]:
+                          best = (d['name'], d['udid'], runtime)
+          print(best[1])
+          ")"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices available | head -40
+
+      - name: Correr las pruebas de interfaz
+        run: |
+          xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath build/result.xcresult \
+            CODE_SIGNING_ALLOWED=NO -jobs 4
+
+      - name: Exportar las capturas
+        if: always()
+        run: |
+          mkdir -p build/capturas
+          xcrun xcresulttool export attachments --path build/result.xcresult --output-path build/capturas
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas
+          path: build/capturas
+          retention-days: 14
