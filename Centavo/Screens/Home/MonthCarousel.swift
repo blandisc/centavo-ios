@@ -6,6 +6,7 @@ struct MonthCarousel: View {
     let calendarModel: MonthCalendar
     let spent: MoneyTotal
     let pace: BudgetPace?
+    let isCurrentMonth: Bool
     let onSetBudget: () -> Void
 
     @State private var page: Int? = 0
@@ -19,7 +20,8 @@ struct MonthCarousel: View {
                     CalendarPage(model: calendarModel)
                         .containerRelativeFrame(.horizontal)
                         .id(0)
-                    BudgetPage(spent: spent, pace: pace, onSetBudget: onSetBudget)
+                    BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
+                               onSetBudget: onSetBudget)
                         .containerRelativeFrame(.horizontal)
                         .id(1)
                 }

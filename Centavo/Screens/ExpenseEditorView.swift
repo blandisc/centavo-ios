@@ -5,6 +5,8 @@ import SwiftUI
 /// Sheet to add a manual expense (`expense == nil`) or correct an existing one.
 struct ExpenseEditorView: View {
     let expense: Expense?
+    /// Where a new expense's date starts (the end of the month being browsed); `nil` is now.
+    var initialDate: Date?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -184,6 +186,7 @@ struct ExpenseEditorView: View {
 
     private func load() {
         guard let expense else {
+            if let initialDate { date = initialDate }
             amountFocused = true
             return
         }

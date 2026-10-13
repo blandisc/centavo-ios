@@ -96,4 +96,14 @@ final class ScreenshotTests: XCTestCase {
         sleep(1)
         snap("11-letra-grande-presupuesto")
     }
+
+    func testMesAnterior() {
+        let app = launch()
+        app.buttons["Mes anterior"].tap()
+        sleep(1)
+        snap("12-mes-anterior-calendario")
+        app.buttons["Presupuesto"].tap()
+        sleep(1)
+        snap("13-mes-anterior-presupuesto")
+    }
 }

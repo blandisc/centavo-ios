@@ -8,6 +8,8 @@ import SwiftUI
 struct BudgetPage: View {
     let spent: MoneyTotal
     let pace: BudgetPace?
+    /// A month that is over has no "today": the whole budget was due, so the marker goes.
+    let isCurrentMonth: Bool
     let onSetBudget: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = 84
@@ -74,7 +76,7 @@ struct BudgetPage: View {
         let markerX = barWidth * CGFloat(pace.paceFraction)
         let labelOnLeft = pace.paceFraction < 0.5
         let todayText = "Hoy · " + pace.expectedToDate.formatted(.number.precision(.fractionLength(0)))
-        let remainingLabel = isOver ? "Te pasaste" : "Te quedan"
+        let remainingLabel = isOver ? "Te pasaste" : (isCurrentMonth ? "Te quedan" : "Te quedaron")
         let remainingText = money(pace.remaining.magnitude)
         // The type is monospaced (0.6 em a character), so its width is predictable. If the
         // figure would run over the brass, it goes under the bar instead.
@@ -98,34 +100,44 @@ struct BudgetPage: View {
                         .padding(.trailing, 14)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                Rectangle()
-                    .fill(Theme.ink)
-                    .frame(width: 2, height: barHeight + 12)
-                    .offset(x: markerX - 1)
+                if isCurrentMonth {
+                    Rectangle()
+                        .fill(Theme.ink)
+                        .frame(width: 2, height: barHeight + 12)
+                        .offset(x: markerX - 1)
+                }
             }
             .frame(height: barHeight)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
 
-            Text(todayText)
-                .font(.ticket(10, relativeTo: .caption2))
-                .tracking(1)
-                .textCase(.uppercase)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .padding(labelOnLeft ? .leading : .trailing, labelOnLeft ? markerX + 6 : barWidth - markerX + 6)
-                .frame(maxWidth: .infinity, alignment: labelOnLeft ? .leading : .trailing)
+            if isCurrentMonth {
+                Text(todayText)
+                    .font(.ticket(10, relativeTo: .caption2))
+                    .tracking(1)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .padding(labelOnLeft ? .leading : .trailing, labelOnLeft ? markerX + 6 : barWidth - markerX + 6)
+                    .frame(maxWidth: .infinity, alignment: labelOnLeft ? .leading : .trailing)
+            }
 
             if !remainingInside {
                 remainingBlock(remainingLabel, remainingText, alignment: .trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            Text("Presupuesto · \(money(pace.budget))")
+                .font(.ticket(10, relativeTo: .caption2))
+                .tracking(1)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.muted)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("presupuesto-ticket")
         .accessibilityLabel(
             "Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)). "
-            + (isOver ? "Te pasaste por \(remainingText). " : "Te quedan \(remainingText). ")
-            + "A hoy podrías llevar \(money(pace.expectedToDate))."
+            + (isOver ? "Te pasaste por \(remainingText). "
+                      : (isCurrentMonth ? "Te quedan \(remainingText). " : "Te quedaron \(remainingText). "))
+            + (isCurrentMonth ? "A hoy podrías llevar \(money(pace.expectedToDate))." : "")
         )
     }
 

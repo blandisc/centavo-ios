@@ -206,6 +206,49 @@ final class FlowTests: XCTestCase {
         snap("flujo-pasado-de-presupuesto")
     }
 
+    // MARK: Meses
+
+    func testNavegarAMesesAnterioresMuestraSusDatos() {
+        let app = launch(demo: true, budget: true)
+        XCTAssertFalse(app.buttons["Mes siguiente"].isEnabled, "No debería poder ir al futuro")
+        require(row(app, containing: "Cinépolis"), "El mes actual no muestra sus pagos")
+
+        app.buttons["Mes anterior"].tap()
+        // Last month in the demo data: 880 + 2,400 + 150 + 399.
+        expectTotal(app, "$3,829.00", "El total del mes anterior no es el esperado")
+        require(row(app, containing: "Renta"), "El mes anterior no muestra sus pagos")
+        XCTAssertFalse(row(app, containing: "Cinépolis").exists,
+                       "Los pagos de este mes aparecen en el mes anterior")
+        XCTAssertFalse(app.buttons["Mes anterior"].isEnabled,
+                       "Dejó ir más atrás del primer gasto")
+        snap("flujo-mes-anterior-calendario")
+
+        app.buttons["Presupuesto"].tap()
+        let ticket = require(app.otherElements["presupuesto-ticket"], "No hay ticket del mes anterior")
+        XCTAssertTrue(ticket.label.contains("Te quedaron"), "Dice: \(ticket.label)")
+        XCTAssertFalse(ticket.label.contains("A hoy"), "Un mes cerrado no tiene «hoy»")
+        snap("flujo-mes-anterior-presupuesto")
+
+        app.buttons["Mes siguiente"].tap()
+        require(row(app, containing: "Cinépolis"), "No regresó al mes actual")
+    }
+
+    func testAnotarMientrasSeVeUnMesAnteriorLoPoneEnESeMes() {
+        let app = launch(demo: true)
+        app.buttons["Mes anterior"].tap()
+        expectTotal(app, "$3,829.00")
+
+        fillExpense(app, amount: "100", merchant: "Retroactivo")
+        app.buttons["hoja-guardar"].tap()
+        expectTotal(app, "$3,929.00", "El gasto no cayó en el mes que se estaba viendo")
+        require(row(app, containing: "Retroactivo"), "No aparece en el mes anterior")
+
+        app.buttons["Mes siguiente"].tap()
+        require(row(app, containing: "Cinépolis"), "No regresó al mes actual")
+        XCTAssertFalse(row(app, containing: "Retroactivo").exists,
+                       "El gasto del mes pasado aparece en este mes")
+    }
+
     // MARK: Utilidades
 
     private func expectTotal(_ app: XCUIApplication, _ expected: String,
