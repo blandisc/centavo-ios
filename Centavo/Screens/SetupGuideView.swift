@@ -17,66 +17,60 @@ struct SetupGuideView: View {
     private let notes: [String] = [
         "Solo se anotan los pagos en los que acercas el iPhone o el reloj a la terminal. Las compras en línea y dentro de apps anótalas tú.",
         "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. Si un pago no aparece, anótalo tú.",
-        "Un pago rechazado también puede anotarse. Tócalo y bórralo.",
+        "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo.",
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetBar(title: "Configurar atajo") {
-                EmptyView()
-            } trailing: {
-                SheetAction(title: "Listo", prominent: true) { dismiss() }
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+        NavigationStack {
+            List {
+                Section {
                     ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Text(String(format: "%02d", index + 1))
                                 .foregroundStyle(Theme.brass)
                                 .frame(minWidth: 28, alignment: .leading)
-                            Text(step).multilineTextAlignment(.leading)
+                            Text(step).foregroundStyle(Theme.ink)
                         }
                         .font(.ticket(13, relativeTo: .footnote))
                         .lineSpacing(4)
-                        .padding(.vertical, 11)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay(alignment: .top) { Perforation() }
                         .accessibilityElement(children: .combine)
                     }
+                }
+                .listRowBackground(Theme.surface)
 
-                    Text("Bueno saber")
-                        .ticketCaption()
-                        .padding(.top, 20)
-                        .padding(.bottom, 6)
-                        .accessibilityAddTraits(.isHeader)
-
+                Section {
                     ForEach(notes, id: \.self) { note in
                         Text(note)
                             .font(.ticket(12, relativeTo: .footnote))
                             .lineSpacing(4)
                             .foregroundStyle(Theme.muted)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .overlay(alignment: .top) { Perforation() }
                     }
+                } header: {
+                    Text("Bueno saber").ticketCaption()
+                }
+                .listRowBackground(Theme.surface)
 
+                Section {
                     Link(destination: URL(string: "shortcuts://")!) {
-                        Text("Abrir Atajos")
+                        Label("Abrir Atajos", systemImage: "arrow.up.forward.app")
                             .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                            .tracking(1.6)
+                            .tracking(1.4)
                             .textCase(.uppercase)
-                            .foregroundStyle(Theme.brass)
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                            .overlay(Capsule().stroke(Theme.brass, lineWidth: 1.5))
                     }
-                    .padding(.top, 18)
-                    .padding(.bottom, 24)
+                }
+                .listRowBackground(Theme.surface)
+            }
+            .ticketForm()
+            .navigationBarTitleDisplayMode(.inline)
+            .ticketBarTitle("Configurar atajo")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                        .accessibilityIdentifier("hoja-listo")
                 }
             }
-            .scrollClipDisabled()
         }
-        .ticketSheet()
     }
 }
 

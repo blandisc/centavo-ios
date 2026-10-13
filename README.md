@@ -14,12 +14,13 @@ Lo que no captura Wallet (efectivo, tarjeta física, compras en línea) se anota
 
 ## La pantalla
 
-Una sola pantalla, estilo «Noche ticket» (modo oscuro, latón, tipografía de ticket):
+Una sola pantalla, estilo «Noche ticket» (modo oscuro, latón, tipografía de ticket) sobre componentes nativos de iOS (barras con Liquid Glass en iOS 26):
 
 - **Total del mes** en tu moneda; las demás aparecen aparte.
 - **Carrusel que se desliza:** el **calendario** (cada día más dorado mientras más gastaste) y el **presupuesto** (un ticket que se llena hasta lo gastado, con una línea donde deberías ir hoy y lo que te queda).
-- **Lista de pagos** como ticket. Tocar uno lo edita; la categoría se recuerda por comercio.
-- **Menú «Más»:** fijar presupuesto, exportar todo a CSV y la guía del atajo.
+- **Lista de pagos** como ticket del mes. Tocar uno lo edita; deslizarlo lo borra. La categoría se recuerda por comercio.
+- **Meses anteriores** con las flechas de la barra inferior, hacia atrás hasta tu primer gasto.
+- **Menú «Más»** y botón «+»: fijar presupuesto, exportar todo a CSV, la guía del atajo y anotar un gasto.
 
 Apple no deja que una app cree esa automatización por ti; la app trae una guía paso a paso.
 

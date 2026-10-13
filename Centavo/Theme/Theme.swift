@@ -62,3 +62,26 @@ struct Perforation: View {
         }
     }
 }
+
+extension View {
+    /// A native `Form`/`List` dressed as the ticket: dark paper, no system grey.
+    func ticketForm() -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .background(Theme.background.ignoresSafeArea())
+            .presentationBackground(Theme.background)
+    }
+
+    /// The small spaced title in a sheet's navigation bar: "NUEVO GASTO".
+    func ticketBarTitle(_ title: String) -> some View {
+        self.toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(title)
+                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                    .tracking(2)
+                    .textCase(.uppercase)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+}
