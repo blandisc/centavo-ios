@@ -1,6 +1,7 @@
 name: Centavo
 options:
   bundleIdPrefix: com.blandisc
+  developmentLanguage: es
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true

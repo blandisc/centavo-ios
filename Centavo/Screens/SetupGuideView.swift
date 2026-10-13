@@ -74,6 +74,7 @@ struct SetupGuideView: View {
                     .padding(.bottom, 24)
                 }
             }
+            .scrollClipDisabled()
         }
         .ticketSheet()
     }

@@ -77,6 +77,8 @@ private struct DayCell: View {
     var body: some View {
         Text("\(day.number)")
             .font(.ticket(11, relativeTo: .caption2))
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
             .foregroundStyle(textColor)
             .frame(maxWidth: .infinity, minHeight: height)
             .background(fill)

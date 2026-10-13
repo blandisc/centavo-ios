@@ -1,6 +1,15 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- Los días del calendario y el selector de fecha salían en inglés: la app ahora se declara en español.
+- Con letra muy grande ya no se rompen las palabras («CENTA/VO», «OXX/O»): el encabezado y los pagos se acomodan en vertical y el botón «Anotar gasto» deja de crecer sin límite.
+- «Te quedan» en el presupuesto ya no se encima sobre la barra dorada cuando no cabe.
+- El interruptor de devolución y los botones de las hojas ya no se recortan en el borde derecho.
+- La pantalla se actualiza sola al cambiar de día, en vez de quedarse en el mes anterior.
+- No se puede guardar un gasto de $0 a mano.
+- Borrar un gasto ahora pide confirmación.
+
 ### Added
 - Ícono de la app (provisional, igual que el nombre): el ticket del presupuesto llenándose de latón, con la línea de «hoy».
 - La guía para configurar el atajo estrena el diseño «Noche ticket». Los pagos rechazados se borran tocándolos, ya no deslizando.
