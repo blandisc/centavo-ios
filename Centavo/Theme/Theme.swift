@@ -33,6 +33,8 @@ enum Theme {
     static var outline: Color { Color(hex: 0x6E6A62) }
     /// Text on a brass fill.
     static var onBrass: Color { Color(hex: 0x131211) }
+    /// The one destructive action: deleting an expense. 6:1 on `background`.
+    static var danger: Color { Color(hex: 0xD9695A) }
 
     static let horizontalPadding: CGFloat = 24
 }
