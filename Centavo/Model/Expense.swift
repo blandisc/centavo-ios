@@ -32,6 +32,9 @@ enum Store {
     /// One container for the app UI and the App Intent (both run in the app process).
     static let container: ModelContainer = {
         do {
+            #if DEBUG
+            if DemoData.isRequested { return try DemoData.makeContainer() }
+            #endif
             return try ModelContainer(for: Expense.self)
         } catch {
             fatalError("No se pudo abrir la base local: \(error)")
