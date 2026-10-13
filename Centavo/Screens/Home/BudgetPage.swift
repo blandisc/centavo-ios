@@ -64,6 +64,7 @@ struct BudgetPage: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("fijar-presupuesto")
     }
 
     // MARK: With a budget
@@ -120,6 +121,7 @@ struct BudgetPage: View {
             }
         }
         .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("presupuesto-ticket")
         .accessibilityLabel(
             "Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)). "
             + (isOver ? "Te pasaste por \(remainingText). " : "Te quedan \(remainingText). ")

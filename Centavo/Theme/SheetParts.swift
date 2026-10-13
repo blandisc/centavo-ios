@@ -46,6 +46,7 @@ struct SheetAction: View {
                 .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("hoja-\(title.lowercased())")
     }
 }
 
