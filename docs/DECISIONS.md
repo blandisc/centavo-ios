@@ -47,3 +47,12 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Un pago con monto 0 no se guarda:** la acción falla y pide agregarlo a mano. Un gasto de $0 casi siempre es un error de Wallet.
 - **Un pago idéntico (monto, comercio, tarjeta) dentro de 5 minutos se ignora** como repetido.
 - **Los pagos rechazados no se pueden distinguir;** se borran a mano.
+
+## 2026-10-12 — Diseño primero y estilo «Noche ticket»
+- **El diseño va antes que la funcionalidad.** Cada pantalla se boceta en el lienzo y se aprueba antes de construirla. Lienzo: https://claude.ai/artifact/EuRdR9c1mQ4nNivNwQGVYN. (La noche del 2026-10-12 el dueño pidió terminar la app completa sin aprobar cada paso; los bocetos quedaron en el lienzo y cada PR dice qué boceto sigue.)
+- **Estilo «Noche ticket»:** papel casi negro cálido, un solo acento latón, tipografía de ticket (IBM Plex Mono, licencia OFL, incluida en la app). Minimalista, sobrio, elegante.
+- **Solo modo oscuro por ahora.** La app fuerza el modo oscuro. La versión de día queda pendiente.
+- **La pantalla principal es un carrusel de dos vistas** que se desliza: calendario del mes y presupuesto. Se quita la vista de categorías: el total por categoría ya no se muestra en la pantalla principal (la categoría se sigue guardando, se ve en cada gasto y sale en el CSV).
+- **Calendario:** cada día se pinta más dorado mientras más se gastó, relativo al día más fuerte del mes. Solo cuenta la moneda principal. La semana empieza en el día que marque la región del teléfono.
+- **Presupuesto:** una sola cifra mensual en la moneda principal, guardada en el teléfono (no toca el esquema de SwiftData). «Lo que deberías llevar hoy» reparte el presupuesto parejo entre los días del mes.
+- **Devoluciones:** se muestran como dinero que regresa («+230.00»). El teclado decimal no tiene signo menos, así que la hoja del gasto trae el interruptor «Es una devolución».
