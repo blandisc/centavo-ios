@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// The only screen: the month's total, a swipeable calendar/budget, then every payment newest first.
+/// The only screen: a month's total, a swipeable calendar/budget, then that month's payments newest first.
 struct ExpenseListView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @Environment(\.modelContext) private var context
@@ -12,6 +12,8 @@ struct ExpenseListView: View {
     /// "Now" for the whole screen. Refreshed when the app comes back and when the clock
     /// jumps (midnight, a time-zone change), so the month and "today" never go stale.
     @State private var now = Date.now
+    /// Months back from this one that are on screen: 0 is this month, -1 last month.
+    @State private var monthOffset = 0
     @State private var pendingDelete: Expense?
     @State private var showingSetup = false
     @State private var showingBudget = false
@@ -29,33 +31,57 @@ struct ExpenseListView: View {
             ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
                           date: $0.date, category: $0.category)
         }
-        let summary = MonthSummarizer.summarize(amounts, inMonthOf: now, primary: primaryCurrency)
+        // `expenses` is newest first, so the oldest is the last one. You can browse back
+        // as far as that, and no further; deleting it pulls the limit forward.
+        let earliest = MonthNavigator.earliestOffset(oldest: expenses.last?.date, now: now)
+        let offset = min(0, max(monthOffset, earliest))
+        let isCurrent = offset == 0
+        let viewed = MonthNavigator.month(offsetBy: offset, from: now)
+        let monthExpenses = expenses.filter { MonthNavigator.isSameMonth($0.date, as: viewed) }
+        let summary = MonthSummarizer.summarize(amounts, inMonthOf: viewed, primary: primaryCurrency)
+        // A month that is over is measured at its last second: all of the budget was due.
         let pace = BudgetPace(budget: BudgetStore.amount(from: storedBudget),
-                              spent: summary.primary.amount, on: now)
+                              spent: summary.primary.amount,
+                              on: isCurrent ? now : MonthNavigator.closingMoment(of: viewed))
 
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     TopBar(
-                        now: now,
+                        viewed: viewed,
                         csv: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
                         canExport: !expenses.isEmpty,
+                        canGoBack: offset > earliest,
+                        canGoForward: offset < 0,
+                        onBack: { monthOffset = offset - 1 },
+                        onForward: { monthOffset = offset + 1 },
                         onBudget: { showingBudget = true },
                         onSetup: { showingSetup = true }
                     )
-                    HeroTotal(summary: summary, now: now)
+                    HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent)
                     if expenses.isEmpty {
                         EmptyTicket { showingSetup = true }
                     } else {
                         MonthCarousel(
-                            calendarModel: MonthCalendar.make(amounts, inMonthOf: now,
+                            calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
                                                               primary: primaryCurrency, today: now),
                             spent: summary.primary,
                             pace: pace,
+                            isCurrentMonth: isCurrent,
                             onSetBudget: { showingBudget = true }
                         )
-                        Ledger(expenses: expenses, primaryCurrency: primaryCurrency,
-                               onEdit: { editing = $0 }, onDelete: { pendingDelete = $0 })
+                        if monthExpenses.isEmpty {
+                            Text("Sin gastos este mes")
+                                .font(.ticket(13, relativeTo: .footnote))
+                                .tracking(1.4)
+                                .textCase(.uppercase)
+                                .foregroundStyle(Theme.muted)
+                                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                                .overlay(alignment: .top) { Perforation() }
+                        } else {
+                            Ledger(expenses: monthExpenses, primaryCurrency: primaryCurrency,
+                                   onEdit: { editing = $0 }, onDelete: { pendingDelete = $0 })
+                        }
                     }
                 }
                 .padding(.horizontal, Theme.horizontalPadding)
@@ -65,7 +91,11 @@ struct ExpenseListView: View {
             .safeAreaInset(edge: .bottom) { addButton }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
-            .sheet(isPresented: $adding) { ExpenseEditorView(expense: nil) }
+            .sheet(isPresented: $adding) {
+                // Adding while looking at a past month puts the expense in that month.
+                ExpenseEditorView(expense: nil,
+                                  initialDate: isCurrent ? nil : MonthNavigator.closingMoment(of: viewed))
+            }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
             .sheet(isPresented: $showingBudget) {
                 BudgetSheet(stored: $storedBudget, currency: primaryCurrency)
@@ -124,9 +154,13 @@ struct ExpenseListView: View {
 // MARK: - Pieces
 
 private struct TopBar: View {
-    let now: Date
+    let viewed: Date
     let csv: ExpensesCSVFile
     let canExport: Bool
+    let canGoBack: Bool
+    let canGoForward: Bool
+    let onBack: () -> Void
+    let onForward: () -> Void
     let onBudget: () -> Void
     let onSetup: () -> Void
 
@@ -140,19 +174,38 @@ private struct TopBar: View {
     }
 
     private var month: some View {
-        Text(now, format: .dateTime.month(.abbreviated).year())
-            .font(.ticket(13, relativeTo: .footnote))
-            .tracking(2)
-            .textCase(.uppercase)
-            .lineLimit(1)
-            .foregroundStyle(Theme.muted)
+        HStack(spacing: 0) {
+            step("Mes anterior", "chevron.left", enabled: canGoBack, action: onBack)
+            Text(viewed, format: .dateTime.month(.abbreviated).year())
+                .font(.ticket(13, relativeTo: .footnote))
+                .tracking(2)
+                .textCase(.uppercase)
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundStyle(Theme.muted)
+            step("Mes siguiente", "chevron.right", enabled: canGoForward, action: onForward)
+        }
+    }
+
+    private func step(_ label: String, _ symbol: String, enabled: Bool,
+                      action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(enabled ? Theme.ink : Theme.outline)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(label)
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
+        HStack(alignment: .center, spacing: 0) {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: 14) { title; month }
-                VStack(alignment: .leading, spacing: 2) { title; month }
+                HStack(alignment: .center, spacing: 6) { title; month }
+                VStack(alignment: .leading, spacing: 0) { title; month }
             }
             Spacer(minLength: 8)
             Menu {
@@ -175,7 +228,17 @@ private struct TopBar: View {
 
 private struct HeroTotal: View {
     let summary: MonthSummary
+    let viewed: Date
     let now: Date
+    let isCurrentMonth: Bool
+
+    /// "TOTAL MXN AL 13/10" this month; "TOTAL MXN · SEP 2026" for one that is over.
+    private var caption: String {
+        isCurrentMonth
+            ? "Total \(summary.primary.label) al \(shortDate(now))"
+            : "Total \(summary.primary.label) · "
+                + viewed.formatted(.dateTime.month(.abbreviated).year())
+    }
 
     private var totalText: AttributedString {
         let formatted = formatMoney(summary.primary.amount, isoCode: summary.primary.isoCode,
@@ -198,7 +261,7 @@ private struct HeroTotal: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: "Total \(summary.primary.label) al \(shortDate(now))").ticketCaption()
+            Text(verbatim: caption).ticketCaption()
             Text(totalText)
                 .accessibilityIdentifier("total-mes")
                 .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
