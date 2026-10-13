@@ -22,14 +22,16 @@ enum Theme {
     static var ink: Color { Color(hex: 0xEDEAE4) }
     /// Secondary text. 6.5:1 on `background`.
     static var muted: Color { Color(hex: 0x9C978D) }
-    /// Quietest text: future calendar days, placeholders. 3.6:1, so decorative use only.
-    static var faint: Color { Color(hex: 0x6E6A62) }
+    /// Quietest text: future calendar days, placeholders, hints. 5.2:1 on `background`,
+    /// 4.6:1 on `surface`: still readable, because Apple's audit failed the dimmer grey.
+    static var faint: Color { Color(hex: 0x8A867D) }
     static var brass: Color { Color(hex: 0xD0A44E) }
     static var brassMid: Color { Color(hex: 0x9A7A3E) }
     static var brassLow: Color { Color(hex: 0x5E4D2B) }
     /// Dashed rules between rows, the perforation of the ticket.
     static var hairline: Color { Color(hex: 0x2E2C29) }
-    /// Dashed outline of a blank ticket (the budget, the empty state).
+    /// Dashed outline of a blank ticket (the budget, the empty state). A line, not text, so
+    /// the 3:1 that graphics need is enough.
     static var outline: Color { Color(hex: 0x6E6A62) }
     /// Text on a brass fill.
     static var onBrass: Color { Color(hex: 0x131211) }

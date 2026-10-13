@@ -167,6 +167,7 @@ private struct TopBar: View {
                     .labelStyle(.iconOnly)
                     .foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
         }
     }

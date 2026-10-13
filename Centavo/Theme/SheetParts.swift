@@ -43,7 +43,10 @@ struct SheetAction: View {
                 .tracking(1.4)
                 .textCase(.uppercase)
                 .foregroundStyle(isEnabled ? (prominent ? Theme.brass : Theme.muted) : Theme.faint)
-                .frame(minHeight: 44)
+                // A tap target is the frame AND its shape: without the shape, VoiceOver and
+                // Apple's audit see only the 17-point word.
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("hoja-\(title.lowercased())")

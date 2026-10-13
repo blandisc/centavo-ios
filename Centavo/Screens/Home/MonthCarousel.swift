@@ -37,7 +37,8 @@ struct MonthCarousel: View {
                         Capsule()
                             .fill(page == index ? Theme.ink : Color(hex: 0x4A4742))
                             .frame(width: page == index ? 18 : 6, height: 6)
-                            .frame(width: 44, height: 28)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(pageNames[index])

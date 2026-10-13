@@ -272,6 +272,17 @@ final class AccessibilityAuditTests: XCTestCase {
         add(report)
     }
 
+    /// The one audit that fails the build: a tap target under 44 points is a bug, not a taste.
+    func testZonasTactilesSonSuficientes() throws {
+        let app = launch()
+        try app.performAccessibilityAudit(for: .hitRegion)
+        app.buttons["Presupuesto"].tap()
+        try app.performAccessibilityAudit(for: .hitRegion)
+        app.buttons["Anotar gasto"].tap()
+        XCTAssertTrue(app.textFields["monto"].waitForExistence(timeout: 10))
+        try app.performAccessibilityAudit(for: .hitRegion)
+    }
+
     func testAuditarPrincipal() throws { try audit(launch(), "principal-calendario") }
 
     func testAuditarPresupuesto() throws {
