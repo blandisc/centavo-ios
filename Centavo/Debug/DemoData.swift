@@ -8,6 +8,13 @@ import SwiftData
 /// - `-centavo-demo`: an in-memory store with a believable month.
 /// - `-centavo-empty`: an in-memory store with nothing in it (the first-launch screen).
 enum DemoData {
+    enum DemoError: Error { case brokenStore }
+
+    /// `-centavo-broken-store`: pretend the store failed to open, to see the error screen.
+    static var isBrokenStoreRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains("-centavo-broken-store")
+    }
+
     static var isRequested: Bool {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-centavo-demo") || arguments.contains("-centavo-empty")

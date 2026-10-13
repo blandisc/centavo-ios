@@ -25,8 +25,9 @@ struct LogExpenseIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         switch try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                          in: Store.container.mainContext) {
+                                          in: container.mainContext) {
         case .unreadable:
             throw $amount.needsValueError("No entendí el monto «\(amount)».")
         case .empty:
@@ -43,9 +44,13 @@ struct LogExpenseIntent: AppIntent {
 
 enum CaptureError: Error, CustomLocalizedStringResourceConvertible {
     case empty
+    case storeUnavailable
 
     var localizedStringResource: LocalizedStringResource {
-        "Wallet mandó el pago sin monto. Agrégalo a mano con «+» en Centavo."
+        switch self {
+        case .empty: "Wallet mandó el pago sin monto. Agrégalo a mano con «+» en Centavo."
+        case .storeUnavailable: "Centavo no pudo abrir su base de datos. Abre la app para ver qué pasó."
+        }
     }
 }
 

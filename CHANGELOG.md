@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Fixed
+- Si la base de datos del teléfono no abre, la app ahora lo explica en una pantalla (y le dice a Atajos qué pasó) en vez de cerrarse sola cada vez que se abre.
 - Los puntitos del carrusel y los botones «Cancelar», «Guardar» y «Listo» tenían una zona táctil de 6 a 17 puntos; ahora son de 44.
 - Los días futuros del calendario, las pistas en gris y el nivel medio de dorado del calendario no tenían contraste suficiente; ahora sí.
 - Una tarjeta de puros espacios ya no se guarda como tarjeta, y un comercio de miles de caracteres se corta a 120.

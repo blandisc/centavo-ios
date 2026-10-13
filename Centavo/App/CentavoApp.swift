@@ -9,10 +9,16 @@ struct CentavoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ExpenseListView()
-                .preferredColorScheme(.dark)
-                .tint(Theme.brass)
+            Group {
+                switch Store.opened {
+                case .success(let container):
+                    ExpenseListView().modelContainer(container)
+                case .failure:
+                    StoreErrorView()
+                }
+            }
+            .preferredColorScheme(.dark)
+            .tint(Theme.brass)
         }
-        .modelContainer(Store.container)
     }
 }
