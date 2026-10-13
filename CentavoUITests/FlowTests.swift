@@ -6,6 +6,7 @@ import XCTest
 final class FlowTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
+        XCUIDevice.shared.appearance = .light
     }
 
     // MARK: Helpers
@@ -14,7 +15,7 @@ final class FlowTests: XCTestCase {
                         extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
-                         "-AppleInterfaceStyle", "Light"]
+                         ]
         arguments += [demo ? "-centavo-demo" : "-centavo-empty"]
         if budget { arguments += ["-monthlyBudget", "8000"] }
         app.launchArguments = arguments + extra
@@ -62,8 +63,14 @@ final class FlowTests: XCTestCase {
         }
     }
 
+    /// The row for a payment. The list is lazy, so a row off screen is not in the hierarchy
+    /// at all: scroll down, then back up, until it turns up.
     private func row(_ app: XCUIApplication, containing text: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
+        let element = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
+        if element.exists { return element }
+        for _ in 0..<4 where !element.exists { app.swipeUp() }
+        for _ in 0..<8 where !element.exists { app.swipeDown() }
+        return element
     }
 
     // MARK: Anotar
@@ -165,10 +172,15 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
         require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
         require(app.buttons["Borrar"], "No pidió confirmación")
+        // On iOS 26 the dialog is a popover with no Cancel of its own: tapping outside dismisses it.
         let dialogCancel = app.buttons.matching(NSPredicate(
             format: "label == 'Cancelar' AND identifier != 'hoja-cancelar'")).firstMatch
-        require(dialogCancel, "No hay botón de cancelar en la confirmación").tap()
-        app.buttons["hoja-cancelar"].tap()
+        if dialogCancel.waitForExistence(timeout: 2) {
+            dialogCancel.tap()
+        } else {
+            app.otherElements["PopoverDismissRegion"].firstMatch.tap()
+        }
+        require(app.buttons["hoja-cancelar"], "La hoja de edición se cerró").tap()
         XCTAssertTrue(row(app, containing: "Cinépolis").waitForExistence(timeout: 5),
                       "Se borró aunque se canceló")
     }
@@ -365,13 +377,22 @@ final class AccessibilityAuditTests: XCTestCase {
 
     /// The one audit that fails the build: a tap target under 44 points is a bug, not a taste.
     func testZonasTactilesSonSuficientes() throws {
+        var issues: [String] = []
+        func check(_ app: XCUIApplication, _ screen: String) throws {
+            try app.performAccessibilityAudit(for: .hitRegion) { issue in
+                issues.append("\(screen): \(issue.compactDescription) — "
+                              + "\(issue.element?.debugDescription.prefix(220) ?? "sin elemento")")
+                return true
+            }
+        }
         let app = launch()
-        try app.performAccessibilityAudit(for: .hitRegion)
+        try check(app, "principal")
         app.buttons["Presupuesto"].tap()
-        try app.performAccessibilityAudit(for: .hitRegion)
+        try check(app, "presupuesto")
         app.buttons["Anotar gasto"].tap()
         XCTAssertTrue(app.textFields["monto"].waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit(for: .hitRegion)
+        try check(app, "hoja de gasto")
+        XCTAssertTrue(issues.isEmpty, "Zonas táctiles menores de 44 pt:\n" + issues.joined(separator: "\n"))
     }
 
     func testAuditarPrincipal() throws { try audit(launch(), "principal-calendario") }

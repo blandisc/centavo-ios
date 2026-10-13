@@ -37,7 +37,7 @@ struct MonthCarousel: View {
                         withAnimation { page = index }
                     } label: {
                         Circle()
-                            .fill(page == index ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
+                            .fill(page == index ? Color.primary : Color.secondary.opacity(0.35))
                             .frame(width: 7, height: 7)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())

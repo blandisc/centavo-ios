@@ -2,6 +2,7 @@ import XCTest
 
 /// Photographs every screen so the design can be reviewed without a Mac at hand.
 /// The CI exports the attachments; nothing here asserts pixels.
+@MainActor
 final class ScreenshotTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -13,7 +14,7 @@ final class ScreenshotTests: XCTestCase {
         var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX"]
         arguments += [demo ? "-centavo-demo" : "-centavo-empty"]
         if budget { arguments += ["-monthlyBudget", "8000"] }
-        arguments += ["-AppleInterfaceStyle", dark ? "Dark" : "Light"]
+        XCUIDevice.shared.appearance = dark ? .dark : .light
         app.launchArguments = arguments + extra
         app.launch()
         XCTAssertTrue(app.buttons["Anotar gasto"].waitForExistence(timeout: 20),
@@ -61,7 +62,9 @@ final class ScreenshotTests: XCTestCase {
 
     func testEditarGasto() {
         let app = launch()
-        app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Liverpool'")).firstMatch.tap()
+        let liverpool = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Liverpool'")).firstMatch
+        for _ in 0..<4 where !liverpool.exists { app.swipeUp() }
+        liverpool.tap()
         sleep(1)
         snap("06-editar-gasto")
     }

@@ -49,7 +49,7 @@ struct ExpenseListView: View {
                 HeroTotal(summary: summary, viewed: viewed, isCurrentMonth: isCurrent)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 4, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
 
                 if expenses.isEmpty {
                     ContentUnavailableView {
@@ -125,6 +125,8 @@ struct ExpenseListView: View {
                     Spacer()
                     Text(monthTitle(viewed))
                         .font(.headline)
+                        .lineLimit(1)
+                        .fixedSize()
                     Spacer()
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
@@ -227,19 +229,20 @@ private struct LedgerRow: View {
         return parts.joined(separator: " · ")
     }
 
-    private var amountStyle: AnyShapeStyle {
-        isRefund ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary)
+    /// Inside a Button, `.primary` means "the button's tint"; the label colors are explicit.
+    private var amountStyle: Color {
+        isRefund ? Color.accentColor : Color.primary
     }
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(expense.merchant)
                 .font(.body)
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.leading)
             Text(meta)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.leading)
         }
     }

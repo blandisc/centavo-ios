@@ -53,7 +53,7 @@ private struct DayCell: View {
     private var fill: AnyShapeStyle {
         switch day.state {
         case .future, .refund: AnyShapeStyle(Color.clear)
-        case .empty: AnyShapeStyle(.quaternary)
+        case .empty: AnyShapeStyle(.quinary)
         case .spent(let level):
             AnyShapeStyle(Color.accentColor.opacity(level == 1 ? 0.22 : level == 2 ? 0.5 : 0.9))
         }
@@ -63,6 +63,7 @@ private struct DayCell: View {
     private var textStyle: AnyShapeStyle {
         switch day.state {
         case .refund: AnyShapeStyle(.tint)
+        case .future: AnyShapeStyle(.secondary)
         case .spent(let level) where level >= 3: AnyShapeStyle(.background)
         default: AnyShapeStyle(.primary)
         }
