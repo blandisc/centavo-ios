@@ -40,3 +40,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Los comercios se comparan ignorando mayúsculas, acentos y espacios**, pero nada más. Adivinar que «OXXO 1234» y «OXXO 5678» son el mismo lugar sería adivinar, y se equivocaría lo suficiente para estorbar.
 - **El total por categoría es solo de la moneda principal**, por la misma razón que el total del mes: sumar monedas distintas sería mentir.
 - **Sin pantalla de categorías.** Se escribe en la hoja de edición que ya existe y se lee en una sección de la pantalla principal.
+
+## 2026-10-12 — Captura con base en investigación
+- **Se avanza sin prueba en el teléfono.** El dueño pidió asumir que la automatización funciona; el respaldo es `docs/research/atajos-wallet.md`.
+- **La promesa es «la mayoría», no «todos».** El disparador falla con algunos bancos y solo cubre pagos acercando el teléfono.
+- **Un pago con monto 0 no se guarda:** la acción falla y pide agregarlo a mano. Un gasto de $0 casi siempre es un error de Wallet.
+- **Un pago idéntico (monto, comercio, tarjeta) dentro de 5 minutos se ignora** como repetido.
+- **Los pagos rechazados no se pueden distinguir;** se borran a mano.
