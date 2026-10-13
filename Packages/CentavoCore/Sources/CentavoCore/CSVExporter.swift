@@ -37,16 +37,26 @@ public enum CSVExporter {
         let rows = records.sorted { $0.date < $1.date }.map { record in
             [
                 record.date.formatted(dateStyle),
-                record.merchant,
+                defused(record.merchant),
                 amountText(record.amount),
-                record.currency,
-                record.card ?? "",
-                record.category ?? "",
+                defused(record.currency),
+                defused(record.card ?? ""),
+                defused(record.category ?? ""),
             ]
         }
         return ([header] + rows)
             .map { $0.map(escape).joined(separator: ",") }
             .joined(separator: "\r\n") + "\r\n"
+    }
+
+    /// Spreadsheets run a cell that starts with `=`, `+`, `-` or `@` as a formula, and
+    /// merchant names come from outside (Wallet, a shared card): `=HYPERLINK(...)` as a shop
+    /// would be code running on the owner's machine. A leading apostrophe makes it plain text.
+    /// Only text columns go through this; amounts are numbers and keep their minus.
+    private static func defused(_ text: String) -> String {
+        guard let first = text.unicodeScalars.first,
+              "=+-@\t\r".unicodeScalars.contains(first) else { return text }
+        return "'" + text
     }
 
     /// Plain `1234.56`: no grouping, dot decimals, always two places.

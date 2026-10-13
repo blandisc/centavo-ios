@@ -62,3 +62,9 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **El arranque también es oscuro:** la app declara el estilo oscuro en su configuración, no solo en las pantallas, para que no parpadee en blanco al abrir.
 - **La CI comprueba el contenido de la app** (fuentes, ícono, modo oscuro), porque desde Linux no se puede abrir la app.
 - **Quedó en el código, sin usarse:** el desglose por categoría del mes (`MonthSummary.categories`). Se dejó por si se quiere volver a mostrar.
+
+## 2026-10-13 — Robustez
+- **Un monto con más de 12 dígitos enteros no es un monto:** se rechaza. `Decimal` redondea en silencio después de 38 dígitos y un número así solo puede ser un error o un ataque.
+- **Un decimal que no es de centavos ni un grupo de tres se rechaza** (`0.0001`, `1.23456`), en vez de leerse como otra cosa.
+- **El CSV neutraliza fórmulas:** un texto que empieza con `=`, `+`, `-` o `@` sale con un apóstrofo delante. Los comercios llegan de afuera y abrir el CSV no debe ejecutar nada. Los montos negativos no se tocan.
+- **A mano, una «moneda» que es una palabra («pesos») se ignora** y el gasto queda en la moneda principal. Se conservan los símbolos sueltos (`₱`), los códigos de tres letras y los conocidos.
