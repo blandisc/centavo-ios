@@ -14,14 +14,13 @@ Lo que no captura Wallet (efectivo, tarjeta física, compras en línea) se anota
 
 ## La pantalla
 
-Una sola pantalla, estilo «Noche ticket» (modo oscuro, latón, tipografía de ticket):
+Una sola pantalla, con los componentes nativos de iOS (Liquid Glass en iOS 26) y la apariencia del teléfono (claro u oscuro):
 
 - **Total del mes** en tu moneda; las demás aparecen aparte.
-- **Carrusel que se desliza:** el **calendario** (cada día más dorado mientras más gastaste) y el **presupuesto** (un ticket que se llena hasta lo gastado, con una línea donde deberías ir hoy y lo que te queda).
-- **Lista de pagos** como ticket. Tocar uno lo edita; la categoría se recuerda por comercio.
+- **Carrusel que se desliza:** el **calendario** (cada día más dorado mientras más gastaste) y el **presupuesto** (una barra que se llena hasta lo gastado, con una línea donde deberías ir hoy y lo que te queda).
+- **Lista de pagos** del mes. Tocar uno lo edita; deslizarlo lo borra. La categoría se recuerda por comercio.
+- **Meses anteriores** con las flechas de la barra inferior, hacia atrás hasta tu primer gasto.
 - **Menú «Más»:** fijar presupuesto, exportar todo a CSV y la guía del atajo.
-
-Apple no deja que una app cree esa automatización por ti; la app trae una guía paso a paso.
 
 ## Estructura
 
@@ -29,7 +28,7 @@ Apple no deja que una app cree esa automatización por ti; la app trae una guía
 |---|---|
 | `Packages/CentavoCore` | Lógica pura y probada: montos, monedas, resumen del mes, calendario, presupuesto, categorías, CSV, captura. Sin UI, sin SwiftData. |
 | `Centavo/` | App SwiftUI: modelo SwiftData, App Intent, pantallas. |
-| `Centavo/Theme/` | Colores, tipografía de ticket y piezas compartidas del diseño. |
+| `CentavoTests/`, `CentavoUITests/` | Pruebas con base de datos, de interfaz, de flujo y de accesibilidad (corren en la CI). |
 | `docs/` | Decisiones del dueño (`DECISIONS.md`) e investigación (`research/`). |
 | `project.yml` | Spec de XcodeGen. El `.xcodeproj` se genera, no se versiona. |
 
