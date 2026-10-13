@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- La estructura de la app ahora usa componentes nativos de Apple (barra superior e inferior del sistema, que en iOS 26 son Liquid Glass; lista, formularios, hojas y menús estándar), **conservando el estilo «Noche ticket»** (oscuro, latón, tipografía de ticket).
+- «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
+- Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
 - Si la base de datos del teléfono no abre, la app ahora lo explica en una pantalla (y le dice a Atajos qué pasó) en vez de cerrarse sola cada vez que se abre.
 - Los puntitos del carrusel y los botones «Cancelar», «Guardar» y «Listo» tenían una zona táctil de 6 a 17 puntos; ahora son de 44.

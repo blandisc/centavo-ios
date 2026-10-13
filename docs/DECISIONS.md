@@ -80,3 +80,9 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Manifiesto de privacidad:** la app no rastrea ni recolecta datos; declara solo el uso de UserDefaults (el presupuesto), motivo CA92.1 (datos propios de la app).
 - **Cifrado:** la app no usa cifrado propio (`ITSAppUsesNonExemptEncryption = NO`). **Categoría:** Finanzas.
 - **Si la base no abre, la app se explica en vez de cerrarse.** Dice que los gastos siguen en el teléfono y que no se desinstale la app.
+
+## 2026-10-13 — Estilo aprobado + componentes nativos de Apple; el repo es público
+- **Se conserva «Noche ticket» y la estructura pasa a componentes nativos.** Decisión del dueño (opción 1 de tres): modo oscuro, latón y tipografía de ticket se quedan; las barras (superior e inferior), la lista, las hojas con formulario, los menús y los botones de Cancelar/Guardar son los del sistema, que en iOS 26 son Liquid Glass sin código extra.
+- **No se reemplaza la identidad por los valores estándar del sistema.** Se probó un rediseño totalmente estándar (PR #20, cerrado sin mergear) y el dueño no lo quiso. Ante una petición que puede leerse de dos maneras («usa los guidelines de Apple»), se pregunta antes de cambiar lo aprobado.
+- **«Anotar gasto» va en la barra superior** (botón «+») y las flechas de mes en la barra inferior; se quita el botón flotante hecho a mano. Deslizar para borrar vuelve, con confirmación.
+- **El repo es público** (antes privado). La CI en Macs de GitHub agotó los minutos del plan privado y dejó de correr; en un repo público es gratis. Se revisó que el historial no tuviera secretos ni correos personales.

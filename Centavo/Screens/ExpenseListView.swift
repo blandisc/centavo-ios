@@ -3,7 +3,11 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// The only screen: a month's total, a swipeable calendar/budget, then that month's payments newest first.
+/// The only screen: a month's total, a swipeable calendar/budget, then that month's payments.
+///
+/// The look is the approved "Noche ticket" (dark, brass, receipt type). The structure is
+/// Apple's: a real navigation bar and bottom bar (Liquid Glass on iOS 26), a `List` with
+/// swipe-to-delete, system menus and sheets.
 struct ExpenseListView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @Environment(\.modelContext) private var context
@@ -45,51 +49,100 @@ struct ExpenseListView: View {
                               on: isCurrent ? now : MonthNavigator.closingMoment(of: viewed))
 
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    TopBar(
-                        viewed: viewed,
-                        csv: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
-                        canExport: !expenses.isEmpty,
-                        canGoBack: offset > earliest,
-                        canGoForward: offset < 0,
-                        onBack: { monthOffset = offset - 1 },
-                        onForward: { monthOffset = offset + 1 },
-                        onBudget: { showingBudget = true },
-                        onSetup: { showingSetup = true }
+            List {
+                HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent)
+                    .ticketRow(bottom: 20)
+
+                if expenses.isEmpty {
+                    EmptyTicket { showingSetup = true }
+                        .ticketRow()
+                } else {
+                    MonthCarousel(
+                        calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
+                                                          primary: primaryCurrency, today: now),
+                        spent: summary.primary,
+                        pace: pace,
+                        isCurrentMonth: isCurrent,
+                        onSetBudget: { showingBudget = true }
                     )
-                    HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent)
-                    if expenses.isEmpty {
-                        EmptyTicket { showingSetup = true }
-                    } else {
-                        MonthCarousel(
-                            calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
-                                                              primary: primaryCurrency, today: now),
-                            spent: summary.primary,
-                            pace: pace,
-                            isCurrentMonth: isCurrent,
-                            onSetBudget: { showingBudget = true }
-                        )
-                        if monthExpenses.isEmpty {
-                            Text("Sin gastos este mes")
-                                .font(.ticket(13, relativeTo: .footnote))
-                                .tracking(1.4)
-                                .textCase(.uppercase)
-                                .foregroundStyle(Theme.muted)
-                                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-                                .overlay(alignment: .top) { Perforation() }
-                        } else {
-                            Ledger(expenses: monthExpenses, primaryCurrency: primaryCurrency,
-                                   onEdit: { editing = $0 }, onDelete: { pendingDelete = $0 })
+                    .ticketRow(bottom: 20)
+
+                    if monthExpenses.isEmpty {
+                        Text("Sin gastos este mes")
+                            .font(.ticket(13, relativeTo: .footnote))
+                            .tracking(1.4)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.muted)
+                            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            .overlay(alignment: .top) { Perforation() }
+                            .ticketRow()
+                    }
+                    ForEach(monthExpenses) { expense in
+                        Button { editing = expense } label: {
+                            LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
+                        }
+                        .buttonStyle(.plain)
+                        .ticketRow()
+                        .swipeActions(edge: .trailing) {
+                            Button("Borrar", systemImage: "trash", role: .destructive) {
+                                pendingDelete = expense
+                            }
+                        }
+                        .contextMenu {
+                            Button("Borrar gasto", systemImage: "trash", role: .destructive) {
+                                pendingDelete = expense
+                            }
                         }
                     }
                 }
-                .padding(.horizontal, Theme.horizontalPadding)
-                .padding(.top, 8)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
-            .safeAreaInset(edge: .bottom) { addButton }
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Centavo")
+                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                        .tracking(2)
+                        .textCase(.uppercase)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
+                        ShareLink(
+                            item: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
+                            preview: SharePreview("Gastos de Centavo")
+                        ) {
+                            Label("Exportar CSV", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(expenses.isEmpty)
+                        Button("Configurar atajo", systemImage: "questionmark.circle") {
+                            showingSetup = true
+                        }
+                    } label: {
+                        Label("Más", systemImage: "ellipsis")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Anotar gasto", systemImage: "plus") { adding = true }
+                }
+                ToolbarItemGroup(placement: .bottomBar) {
+                    Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
+                        .disabled(offset <= earliest)
+                    Spacer()
+                    Text(viewed, format: .dateTime.month(.abbreviated).year())
+                        .font(.ticket(13, relativeTo: .footnote))
+                        .tracking(2)
+                        .textCase(.uppercase)
+                        .lineLimit(1)
+                        .fixedSize()
+                    Spacer()
+                    Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
+                        .disabled(offset >= 0)
+                }
+            }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
             .sheet(isPresented: $adding) {
                 // Adding while looking at a past month puts the expense in that month.
@@ -120,111 +173,20 @@ struct ExpenseListView: View {
             }
         }
     }
+}
 
-    private var addButton: some View {
-        Button { adding = true } label: {
-            Label {
-                Text("Anotar gasto").tracking(1.4).textCase(.uppercase)
-            } icon: {
-                Image(systemName: "plus").fontWeight(.bold)
-            }
-            .font(.ticket(14, weight: .semibold, relativeTo: .callout))
-            .lineLimit(1)
-            .foregroundStyle(Theme.onBrass)
-            .padding(.horizontal, 24)
-            .frame(minHeight: 52)
-            .background(Theme.brass, in: Capsule())
-            .shadow(color: .black.opacity(0.55), radius: 15, y: 12)
-        }
-        .buttonStyle(.plain)
-        // A floating button that grows with the text would swallow the screen.
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 14)
-        .padding(.bottom, 8)
-        .background {
-            // The rows fade out behind the button instead of being cut by it.
-            LinearGradient(colors: [Theme.background.opacity(0), Theme.background],
-                           startPoint: .top, endPoint: .center)
-                .ignoresSafeArea(edges: .bottom)
-        }
+private extension View {
+    /// A list row that looks like part of the ticket: no card, no separator, side margins.
+    func ticketRow(bottom: CGFloat = 0) -> some View {
+        self
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 0, leading: Theme.horizontalPadding,
+                                      bottom: bottom, trailing: Theme.horizontalPadding))
     }
 }
 
 // MARK: - Pieces
-
-private struct TopBar: View {
-    let viewed: Date
-    let csv: ExpensesCSVFile
-    let canExport: Bool
-    let canGoBack: Bool
-    let canGoForward: Bool
-    let onBack: () -> Void
-    let onForward: () -> Void
-    let onBudget: () -> Void
-    let onSetup: () -> Void
-
-    private var title: some View {
-        Text("Centavo")
-            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-            .tracking(2)
-            .textCase(.uppercase)
-            .lineLimit(1)
-            .accessibilityAddTraits(.isHeader)
-    }
-
-    private var month: some View {
-        HStack(spacing: 0) {
-            step("Mes anterior", "chevron.left", enabled: canGoBack, action: onBack)
-            Text(viewed, format: .dateTime.month(.abbreviated).year())
-                .font(.ticket(13, relativeTo: .footnote))
-                .tracking(2)
-                .textCase(.uppercase)
-                .lineLimit(1)
-                .fixedSize()
-                .foregroundStyle(Theme.muted)
-            step("Mes siguiente", "chevron.right", enabled: canGoForward, action: onForward)
-        }
-    }
-
-    private func step(_ label: String, _ symbol: String, enabled: Bool,
-                      action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(enabled ? Theme.ink : Theme.outline)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(label)
-    }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 0) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 6) { title; month }
-                VStack(alignment: .leading, spacing: 0) { title; month }
-            }
-            Spacer(minLength: 8)
-            Menu {
-                Button("Presupuesto del mes", systemImage: "target", action: onBudget)
-                ShareLink(item: csv, preview: SharePreview("Gastos de Centavo")) {
-                    Label("Exportar CSV", systemImage: "square.and.arrow.up")
-                }
-                .disabled(!canExport)
-                Button("Configurar atajo", systemImage: "questionmark.circle", action: onSetup)
-            } label: {
-                Label("Más", systemImage: "ellipsis")
-                    .labelStyle(.iconOnly)
-                    .foregroundStyle(Theme.muted)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-        }
-    }
-}
 
 private struct HeroTotal: View {
     let summary: MonthSummary
@@ -294,46 +256,16 @@ private struct EmptyTicket: View {
                 .font(.ticket(14, relativeTo: .callout))
                 .lineSpacing(4)
                 .foregroundStyle(Theme.muted)
-            Button(action: onSetup) {
-                Text("Configurar atajo")
-                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                    .tracking(1.6)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.brass)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .overlay(Capsule().stroke(Theme.brass, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 6)
+            Button("Configurar atajo", action: onSetup)
+                .buttonStyle(.bordered)
+                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                .padding(.top, 6)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-        }
-    }
-}
-
-private struct Ledger: View {
-    let expenses: [Expense]
-    let primaryCurrency: String
-    let onEdit: (Expense) -> Void
-    let onDelete: (Expense) -> Void
-
-    var body: some View {
-        LazyVStack(spacing: 0) {
-            ForEach(expenses) { expense in
-                Button { onEdit(expense) } label: {
-                    LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
-                }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    Button("Borrar gasto", systemImage: "trash", role: .destructive) {
-                        onDelete(expense)
-                    }
-                }
-            }
         }
     }
 }
@@ -365,6 +297,7 @@ private struct LedgerRow: View {
             .font(.ticket(15, weight: .medium, relativeTo: .body))
             .tracking(0.4)
             .textCase(.uppercase)
+            .foregroundStyle(Theme.ink)
             .multilineTextAlignment(.leading)
     }
 

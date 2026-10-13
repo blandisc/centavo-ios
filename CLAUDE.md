@@ -14,7 +14,11 @@ Centavo: tracker de gastos minimalista para iOS. Captura cada pago de Apple Wall
 `Tools/verify.sh` antes de terminar cualquier cambio Swift (`package` = solo el paquete; `app` = solo el build). Builds con `-jobs 4` y nunca en paralelo con otro build en la Mac.
 
 ## Diseño
-Primero se boceta, después se construye: lienzo en https://claude.ai/artifact/EuRdR9c1mQ4nNivNwQGVYN. Estilo «Noche ticket» (modo oscuro, latón, IBM Plex Mono); colores y tipografía viven en `Centavo/Theme/`, nunca se escriben sueltos en una pantalla. Detalle en [docs/DECISIONS.md](docs/DECISIONS.md).
+Estilo **«Noche ticket»** aprobado por el dueño: modo oscuro forzado, acento latón, tipografía de ticket (IBM Plex Mono). Colores y tipografía viven en `Centavo/Theme/`; nunca se escriben sueltos en una pantalla.
+La **estructura es nativa de Apple** (Human Interface Guidelines): `NavigationStack` con barra superior e inferior del sistema, `List` con `swipeActions`, `Form`, `Menu`, hojas y botones estándar. En iOS 26 eso es Liquid Glass sin código extra: **no lo tapes con piezas propias** (barras o botones hechos a mano). Lo que se viste (fondos, tipografía, colores) usa los tokens de `Theme`.
+- Cuidado: dentro de un `Button` el estilo jerárquico (`.primary`) sigue el acento; usa colores explícitos de `Theme`.
+- La referencia visual son las **capturas del simulador de la CI** (artefacto `capturas`). Los bocetos están en el lienzo: https://claude.ai/artifact/EuRdR9c1mQ4nNivNwQGVYN
+- Si una petición de diseño puede leerse de dos maneras, **pregunta antes de cambiar lo aprobado**. Detalle en [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Reglas
 - **Cero red.** Sin servidor, telemetría ni cuenta.
