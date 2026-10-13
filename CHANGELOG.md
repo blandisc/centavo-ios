@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Ícono de la app (provisional, igual que el nombre): el ticket del presupuesto llenándose de latón, con la línea de «hoy».
 - La guía para configurar el atajo estrena el diseño «Noche ticket». Los pagos rechazados se borran tocándolos, ya no deslizando.
 - La hoja para anotar o corregir un gasto estrena el diseño «Noche ticket», con el interruptor «Es una devolución» (el teclado de montos no tiene signo menos) y un aviso de la última categoría que usaste con ese comercio.
 - Nueva pantalla principal «Noche ticket»: el total del mes, un carrusel que se desliza entre el calendario del mes y tu presupuesto, y la lista de pagos como un ticket. El presupuesto se fija desde el menú «Más». Se quita el total por categoría de esta pantalla.
