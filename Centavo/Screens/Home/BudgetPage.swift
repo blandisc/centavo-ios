@@ -10,10 +10,13 @@ struct BudgetPage: View {
     let pace: BudgetPace?
     let onSetBudget: () -> Void
 
-    @ScaledMetric(relativeTo: .body) private var barHeight: CGFloat = 84
+    @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = 84
     /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
     @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = 22
     @State private var barWidth: CGFloat = 0
+
+    /// Grows a little with the text, but a bar the size of the screen helps nobody.
+    private var barHeight: CGFloat { min(scaledBarHeight, 132) }
 
     private func money(_ amount: Decimal) -> String {
         formatMoney(amount, isoCode: spent.isoCode, label: spent.label)
