@@ -59,7 +59,21 @@ struct ExpenseListView: View {
             .navigationTitle("Centavo")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Configurar atajo", systemImage: "questionmark.circle") { showingSetup = true }
+                    // The guide and the export are both occasional, so they share a
+                    // menu instead of each taking a spot in the bar.
+                    Menu("Más", systemImage: "ellipsis.circle") {
+                        Button("Configurar atajo", systemImage: "questionmark.circle") {
+                            showingSetup = true
+                        }
+                        ShareLink(
+                            item: ExpensesCSVFile(expenses: expenses,
+                                                  primaryCurrency: primaryCurrency),
+                            preview: SharePreview("Gastos de Centavo")
+                        ) {
+                            Label("Exportar CSV", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(expenses.isEmpty)
+                    }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Agregar gasto", systemImage: "plus") { adding = true }
