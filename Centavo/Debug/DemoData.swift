@@ -18,6 +18,7 @@ enum DemoData {
     static var isRequested: Bool {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-centavo-demo") || arguments.contains("-centavo-empty")
+            || arguments.contains("-centavo-demo-large")
     }
 
     static func makeContainer() throws -> ModelContainer {
@@ -25,6 +26,10 @@ enum DemoData {
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
+        if ProcessInfo.processInfo.arguments.contains("-centavo-demo-large") {
+            try seedLarge(ModelContext(container))
+            return container
+        }
         guard ProcessInfo.processInfo.arguments.contains("-centavo-demo") else { return container }
 
         let context = ModelContext(container)
@@ -75,6 +80,28 @@ enum DemoData {
         }
         try context.save()
         return container
+    }
+
+    /// Five thousand payments over about two years: what a few years of real use look like.
+    private static func seedLarge(_ context: ModelContext) throws {
+        let merchants = ["Oxxo", "Soriana", "Liverpool", "Uber", "Starbucks", "CFE", "Netflix",
+                         "Cinépolis", "Farmacia del Ahorro", "Walmart", "Rappi", "Spotify"]
+        let categories: [String?] = ["Despensa", "Ropa", "Transporte", "Café", "Servicios", nil]
+        let now = Date.now
+        for i in 0..<5_000 {
+            let daysAgo = (i * 7919) % 730            // spread over ~2 years, deterministic
+            let date = now.addingTimeInterval(-Double(daysAgo) * 86_400 - Double(i % 86_400) / 4)
+            let amount = Decimal(((i * 104_729) % 90_000) + 500) / 100
+            context.insert(Expense(
+                amount: i % 37 == 0 ? -amount : amount,
+                currencyMarker: i % 53 == 0 ? "USD" : "$",
+                merchant: merchants[i % merchants.count],
+                card: i % 3 == 0 ? "BBVA" : "Nu",
+                date: min(date, now),
+                category: categories[i % categories.count]
+            ))
+        }
+        try context.save()
     }
 }
 #endif
