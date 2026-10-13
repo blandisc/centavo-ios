@@ -236,3 +236,69 @@ private extension XCUIElement {
         typeText(text)
     }
 }
+
+// MARK: - Auditoría de accesibilidad
+
+/// Runs Apple's own accessibility audit on each screen and writes every finding to an
+/// attachment. It reports rather than fails, so the findings can be read and fixed.
+@MainActor
+final class AccessibilityAuditTests: XCTestCase {
+    override func setUp() {
+        continueAfterFailure = true
+    }
+
+    private func launch(demo: Bool = true, extra: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               demo ? "-centavo-demo" : "-centavo-empty",
+                               "-monthlyBudget", "8000"] + extra
+        app.launch()
+        XCTAssertTrue(app.buttons["Anotar gasto"].waitForExistence(timeout: 20))
+        return app
+    }
+
+    private func audit(_ app: XCUIApplication, _ screen: String) throws {
+        var findings: [String] = []
+        try app.performAccessibilityAudit { issue in
+            findings.append("[\(issue.auditType.rawValue)] \(issue.compactDescription) — "
+                            + "\(issue.element?.debugDescription.prefix(160) ?? "sin elemento")")
+            return true
+        }
+        let report = XCTAttachment(string: findings.isEmpty
+                                   ? "Sin hallazgos en \(screen)"
+                                   : "\(findings.count) hallazgos en \(screen):\n" + findings.joined(separator: "\n"))
+        report.name = "auditoria-\(screen)"
+        report.lifetime = .keepAlways
+        add(report)
+    }
+
+    func testAuditarPrincipal() throws { try audit(launch(), "principal-calendario") }
+
+    func testAuditarPresupuesto() throws {
+        let app = launch()
+        app.buttons["Presupuesto"].tap()
+        try audit(app, "principal-presupuesto")
+    }
+
+    func testAuditarPrimeraVez() throws { try audit(launch(demo: false), "primera-vez") }
+
+    func testAuditarHojaDeGasto() throws {
+        let app = launch()
+        app.buttons["Anotar gasto"].tap()
+        XCTAssertTrue(app.textFields["monto"].waitForExistence(timeout: 10))
+        try audit(app, "hoja-de-gasto")
+    }
+
+    func testAuditarGuia() throws {
+        let app = launch()
+        app.buttons["Más"].tap()
+        app.buttons["Configurar atajo"].tap()
+        XCTAssertTrue(app.buttons["hoja-listo"].waitForExistence(timeout: 10))
+        try audit(app, "guia")
+    }
+
+    func testAuditarLetraGrande() throws {
+        try audit(launch(extra: ["-UIPreferredContentSizeCategoryName",
+                                 "UICTContentSizeCategoryAccessibilityXXXL"]), "letra-grande")
+    }
+}
