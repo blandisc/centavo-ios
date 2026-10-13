@@ -10,12 +10,13 @@ final class FlowTests: XCTestCase {
 
     // MARK: Helpers
 
-    private func launch(demo: Bool = false, budget: Bool = false) -> XCUIApplication {
+    private func launch(demo: Bool = false, budget: Bool = false,
+                        extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX"]
         arguments += [demo ? "-centavo-demo" : "-centavo-empty"]
         if budget { arguments += ["-monthlyBudget", "8000"] }
-        app.launchArguments = arguments
+        app.launchArguments = arguments + extra
         app.launch()
         XCTAssertTrue(app.buttons["Anotar gasto"].waitForExistence(timeout: 20),
                       "La pantalla principal no abrió")
@@ -247,6 +248,35 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No regresó al mes actual")
         XCTAssertFalse(row(app, containing: "Retroactivo").exists,
                        "El gasto del mes pasado aparece en este mes")
+    }
+
+    // MARK: Volumen
+
+    func testConCincoMilGastosLaPantallaAbreYRespondeDeprisa() {
+        let started = Date()
+        let app = launch(budget: true, extra: ["-centavo-demo-large"])
+        let opened = Date().timeIntervalSince(started)
+
+        // Scroll the ledger a long way, then come back and use the app.
+        let scrolled = Date()
+        for _ in 0..<6 { app.swipeUp(velocity: .fast) }
+        let scrolling = Date().timeIntervalSince(scrolled)
+
+        let editorStarted = Date()
+        app.buttons["Anotar gasto"].tap()
+        require(app.textFields["monto"], "No abrió la hoja de gasto con 5,000 gastos")
+        let editorOpened = Date().timeIntervalSince(editorStarted)
+
+        let report = XCTAttachment(string: String(format:
+            "Abrir con 5,000 gastos: %.1f s\nDesplazar 6 veces: %.1f s\nAbrir la hoja de gasto: %.1f s",
+            opened, scrolling, editorOpened))
+        report.name = "tiempos-5000-gastos"
+        report.lifetime = .keepAlways
+        add(report)
+        snap("flujo-5000-gastos")
+
+        XCTAssertLessThan(opened, 25, "Abrir con 5,000 gastos tardó \(opened) s")
+        XCTAssertLessThan(editorOpened, 10, "Abrir la hoja con 5,000 gastos tardó \(editorOpened) s")
     }
 
     // MARK: Base de datos
