@@ -34,6 +34,18 @@ public enum CurrencyResolver {
         return nil
     }
 
+    /// Whether a marker typed by hand is worth keeping as a currency: one we know, a
+    /// three-letter code, or a lone symbol (`₱`). A word like `pesos` is not a currency,
+    /// it is somebody explaining themselves, and keeping it would file the expense under
+    /// a currency of its own and drop it from the month's total.
+    public static func recognizes(_ marker: String) -> Bool {
+        if isoCode(for: marker, primary: "XXX") != nil { return true }
+        let trimmed = marker.trimmingCharacters(in: .whitespaces)
+        guard (1...3).contains(trimmed.count), !trimmed.contains(where: \.isNumber) else { return false }
+        // `kr`, `S/`, `₱` yes; a lone letter (`e` from "1e5") no.
+        return trimmed.count > 1 || !(trimmed.first?.isLetter ?? true)
+    }
+
     /// Uppercases and drops the sign, space and padding characters a marker can pick up.
     private static func normalize(_ marker: String?) -> String {
         guard let marker else { return "" }

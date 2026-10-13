@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Fixed
+- Montos absurdos (más de 12 dígitos) o mal formados ya no se aceptan ni se redondean en silencio.
+- Los montos con formato suizo (`CHF 1'234.56`) o con marcas invisibles de idiomas de derecha a izquierda ya no se separan de los demás pagos de su moneda.
+- Al anotar a mano, escribir «89 pesos» ya no hace que el gasto desaparezca del total del mes; la hoja avisa cómo anotar otra moneda.
+- Exportar a CSV ya no deja que un comercio con nombre de fórmula (`=…`, `+…`, `@…`) se ejecute al abrirlo en una hoja de cálculo.
 - Los días del calendario y el selector de fecha salían en inglés: la app ahora se declara en español.
 - Con letra muy grande ya no se rompen las palabras («CENTA/VO», «OXX/O»): el encabezado y los pagos se acomodan en vertical y el botón «Anotar gasto» deja de crecer sin límite.
 - «Te quedan» en el presupuesto ya no se encima sobre la barra dorada cuando no cabe.

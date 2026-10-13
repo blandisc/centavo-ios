@@ -102,4 +102,31 @@ import Testing
         ])[1]
         #expect(row.contains("Farmacia Güemes"))
     }
+
+    @Test(arguments: ["=HYPERLINK(\"http://x\",\"a\")", "+1+1", "-2+3", "@SUM(A1)", "\tcmd"])
+    func aMerchantThatLooksLikeAFormulaIsDefused(merchant: String) {
+        let out = csv([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: merchant,
+                          amount: 1, currency: "MXN"),
+        ])
+        let row = out.split(separator: "\r\n").dropFirst().first.map(String.init) ?? ""
+        #expect(!row.contains(",=") && !row.contains(",+") && !row.contains(",@"))
+        #expect(row.contains("'"))
+    }
+
+    @Test func cardAndCategoryAreDefusedToo() {
+        let out = csv([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Oxxo", amount: 1,
+                          currency: "MXN", card: "=1+1", category: "@x"),
+        ])
+        #expect(out.contains(",'=1+1,'@x"))
+    }
+
+    @Test func amountsKeepTheirMinusEvenThoughTextColumnsAreDefused() {
+        let row = lines([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Liverpool",
+                          amount: -230, currency: "MXN"),
+        ])[1]
+        #expect(row.contains(",-230.00,"))
+    }
 }

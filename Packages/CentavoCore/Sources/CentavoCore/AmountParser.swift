@@ -14,7 +14,21 @@ public struct ParsedAmount: Equatable, Sendable {
 }
 
 public enum AmountParser {
-    /// Parses a locale-agnostic amount string. Returns `nil` when no digits are present.
+    /// More integer digits than this is not an amount, it is a typo (or an attack): no
+    /// card statement has a trillion pesos on it, and `Decimal` silently rounds past 38.
+    public static let maxIntegerDigits = 12
+
+    /// Characters that sit around an amount without being part of it or of its currency:
+    /// signs, brackets, spaces of every width, the apostrophes Swiss formats group with,
+    /// and the invisible direction marks Wallet adds in right-to-left languages.
+    private static let ignorable = Set(
+        ",.-−() \u{00A0}\u{202F}\u{2009}\u{2007}\u{2008}'’´ʼ`\u{200B}\u{200E}\u{200F}"
+        + "\u{202A}\u{202B}\u{202C}\u{202D}\u{202E}\u{2066}\u{2067}\u{2068}\u{2069}"
+    )
+
+    /// Parses a locale-agnostic amount string. Returns `nil` when no digits are present,
+    /// when it has more than `maxIntegerDigits`, or when the last separator is followed by
+    /// something that is neither cents nor a group of three.
     ///
     /// Separator rule: the LAST `.` or `,` is the decimal separator only when it is
     /// followed by 1–2 digits; every other separator is digit grouping.
@@ -29,20 +43,25 @@ public enum AmountParser {
             || (text.hasPrefix("(") && text.hasSuffix(")"))
 
         // Everything that isn't a digit, separator, sign or space is the currency marker.
-        let marker = text
-            .filter { !$0.isNumber && !",.-−() \u{00A0}\u{202F}".contains($0) }
+        let marker = text.filter { !$0.isNumber && !ignorable.contains($0) }
         let numeric = text.filter { $0.isNumber || $0 == "." || $0 == "," }
 
         var integerPart = numeric
         var fractionPart = ""
         if let lastSep = numeric.lastIndex(where: { $0 == "." || $0 == "," }) {
             let tail = numeric[numeric.index(after: lastSep)...]
-            if (1...2).contains(tail.count) {
+            switch tail.count {
+            case 1...2:
                 integerPart = String(numeric[..<lastSep])
                 fractionPart = String(tail)
+            case 3:
+                break                       // a group of three: `1,000` is a thousand
+            default:
+                return nil                  // `0.0001`, `1.23456`: not money
             }
         }
         let digits = integerPart.filter(\.isNumber)
+        guard digits.count <= maxIntegerDigits else { return nil }
         let normalized = (digits.isEmpty ? "0" : digits) + (fractionPart.isEmpty ? "" : "." + fractionPart)
         guard var value = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) else {
             return nil

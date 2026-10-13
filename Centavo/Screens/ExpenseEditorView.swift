@@ -84,6 +84,11 @@ struct ExpenseEditorView: View {
                 .foregroundStyle(Theme.ink)
                 .keyboardType(.decimalPad)
                 .focused($amountFocused)
+            Text("Otra moneda: escribe USD 20 o € 20")
+                .font(.ticket(11, relativeTo: .caption2))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.faint)
             // The decimal pad has no minus key, so a refund is a switch rather than a sign.
             Toggle(isOn: $isRefund) {
                 Text("Es una devolución")
@@ -191,9 +196,11 @@ struct ExpenseEditorView: View {
         let cardName = card.trimmingCharacters(in: .whitespaces)
         let categoryName = category.trimmingCharacters(in: .whitespaces)
         let value = isRefund ? -parsed.value.magnitude : parsed.value.magnitude
+        // "89 pesos" is not a currency; only keep a marker that looks like one.
+        let typedMarker = parsed.currencyMarker.flatMap { CurrencyResolver.recognizes($0) ? $0 : nil }
         if let expense {
             expense.amount = value
-            if let marker = parsed.currencyMarker { expense.currencyMarker = marker }
+            if let marker = typedMarker { expense.currencyMarker = marker }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
             expense.category = categoryName.isEmpty ? nil : categoryName
@@ -201,7 +208,7 @@ struct ExpenseEditorView: View {
         } else {
             context.insert(Expense(
                 amount: value,
-                currencyMarker: parsed.currencyMarker ?? "$",
+                currencyMarker: typedMarker ?? "$",
                 merchant: name,
                 card: cardName.isEmpty ? nil : cardName,
                 date: date,

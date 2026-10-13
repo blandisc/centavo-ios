@@ -37,4 +37,14 @@ import Testing
         #expect(CurrencyResolver.isoCode(for: "₱", primary: "MXN") == nil)
         #expect(CurrencyResolver.isoCode(for: "pesos", primary: "MXN") == nil)
     }
+
+    @Test(arguments: ["$", "MX$", "€", "USD", "COP", "₱", "S/", "kr", "Rp"])
+    func recognizesWhatLooksLikeACurrency(marker: String) {
+        #expect(CurrencyResolver.recognizes(marker))
+    }
+
+    @Test(arguments: ["pesos", "dolares", "mxn pesos", "e", "gasto"])
+    func doesNotMistakeWordsForCurrencies(marker: String) {
+        #expect(!CurrencyResolver.recognizes(marker))
+    }
 }
