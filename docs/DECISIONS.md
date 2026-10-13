@@ -56,3 +56,9 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Calendario:** cada día se pinta más dorado mientras más se gastó, relativo al día más fuerte del mes. Solo cuenta la moneda principal. La semana empieza en el día que marque la región del teléfono.
 - **Presupuesto:** una sola cifra mensual en la moneda principal, guardada en el teléfono (no toca el esquema de SwiftData). «Lo que deberías llevar hoy» reparte el presupuesto parejo entre los días del mes.
 - **Devoluciones:** se muestran como dinero que regresa («+230.00»). El teclado decimal no tiene signo menos, así que la hoja del gasto trae el interruptor «Es una devolución».
+
+## 2026-10-13 — Entrega
+- **Ícono provisional,** igual que el nombre «Centavo»: el ticket del presupuesto llenándose de latón con la línea de «hoy». Se cambia cuando se decida el nombre definitivo.
+- **El arranque también es oscuro:** la app declara el estilo oscuro en su configuración, no solo en las pantallas, para que no parpadee en blanco al abrir.
+- **La CI comprueba el contenido de la app** (fuentes, ícono, modo oscuro), porque desde Linux no se puede abrir la app.
+- **Quedó en el código, sin usarse:** el desglose por categoría del mes (`MonthSummary.categories`). Se dejó por si se quiere volver a mostrar.

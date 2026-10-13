@@ -41,3 +41,16 @@ jobs:
           xcodebuild -project Centavo.xcodeproj -scheme Centavo \
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO -jobs 4 build
+
+      # Lo que no se ve en el build: que la tipografía, el ícono y el modo oscuro
+      # de verdad viajen dentro de la app.
+      - name: Comprobar el contenido de la app
+        run: |
+          app="$(find ~/Library/Developer/Xcode/DerivedData -type d -name 'Centavo.app' -path '*Build/Products*' | head -1)"
+          test -n "$app" || { echo "No encontré Centavo.app"; exit 1; }
+          echo "App: $app"
+          for f in IBMPlexMono-Regular.ttf IBMPlexMono-Medium.ttf IBMPlexMono-SemiBold.ttf Assets.car; do
+            test -f "$app/$f" && echo "ok  $f" || { echo "FALTA $f"; exit 1; }
+          done
+          plutil -p "$app/Info.plist" | grep -E 'UIUserInterfaceStyle|CFBundleIconName'
+          plutil -p "$app/Info.plist" | grep -q '"UIUserInterfaceStyle" => "Dark"' || { echo "Falta el modo oscuro"; exit 1; }
