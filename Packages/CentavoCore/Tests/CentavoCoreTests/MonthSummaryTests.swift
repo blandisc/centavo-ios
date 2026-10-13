@@ -85,6 +85,58 @@ import Testing
         #expect(summary.others == [MoneyTotal(isoCode: nil, label: "₱", amount: 500)])
     }
 
+    @Test func breaksThePrimaryTotalDownByCategoryBiggestFirst() {
+        let summary = summarize([
+            ExpenseAmount(value: 300, currencyMarker: "$", date: Self.day(2026, 10, 2),
+                          category: "Despensa"),
+            ExpenseAmount(value: 120, currencyMarker: "$", date: Self.day(2026, 10, 3),
+                          category: "Transporte"),
+            ExpenseAmount(value: 200, currencyMarker: "$", date: Self.day(2026, 10, 4),
+                          category: "despensa"),
+            ExpenseAmount(value: 50, currencyMarker: "$", date: Self.day(2026, 10, 5)),
+        ])
+        #expect(summary.primary.amount == 670)
+        #expect(summary.categories == [
+            // Two spellings, one category; the newest spelling is the one shown.
+            CategoryTotal(category: "despensa", amount: 500),
+            CategoryTotal(category: "Transporte", amount: 120),
+            CategoryTotal(category: nil, amount: 50),
+        ])
+    }
+
+    @Test func categoriesOnlyBreakDownThePrimaryCurrency() {
+        let summary = summarize([
+            ExpenseAmount(value: 100, currencyMarker: "$", date: Self.day(2026, 10, 2),
+                          category: "Despensa"),
+            ExpenseAmount(value: 900, currencyMarker: "USD", date: Self.day(2026, 10, 3),
+                          category: "Despensa"),
+        ])
+        #expect(summary.categories == [CategoryTotal(category: "Despensa", amount: 100)])
+    }
+
+    @Test func refundsSubtractFromTheirCategory() {
+        let summary = summarize([
+            ExpenseAmount(value: 300, currencyMarker: "$", date: Self.day(2026, 10, 2),
+                          category: "Ropa"),
+            ExpenseAmount(value: -300, currencyMarker: "$", date: Self.day(2026, 10, 9),
+                          category: "Ropa"),
+        ])
+        #expect(summary.categories == [CategoryTotal(category: "Ropa", amount: 0)])
+    }
+
+    @Test func anEmptyMonthHasNoCategories() {
+        #expect(summarize([]).categories.isEmpty)
+    }
+
+    @Test func blankCategoriesCountAsUnfiled() {
+        let summary = summarize([
+            ExpenseAmount(value: 10, currencyMarker: "$", date: Self.day(2026, 10, 2),
+                          category: "   "),
+            ExpenseAmount(value: 5, currencyMarker: "$", date: Self.day(2026, 10, 3)),
+        ])
+        #expect(summary.categories == [CategoryTotal(category: nil, amount: 15)])
+    }
+
     @Test func thePrimaryCurrencyFollowsThePerson() {
         let amounts = [
             ExpenseAmount(value: 10, currencyMarker: "€", date: Self.day(2026, 10, 2)),

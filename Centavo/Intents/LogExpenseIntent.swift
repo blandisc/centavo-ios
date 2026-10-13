@@ -31,17 +31,32 @@ struct LogExpenseIntent: AppIntent {
             throw $amount.needsValueError("No entendí el monto «\(amount)».")
         }
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let merchantName = (name?.isEmpty ?? true) ? "Sin comercio" : name!
+        let context = Store.container.mainContext
         let expense = Expense(
             amount: parsed.value,
             currencyMarker: parsed.currencyMarker,
-            merchant: (name?.isEmpty ?? true) ? "Sin comercio" : name!,
+            merchant: merchantName,
             card: card,
+            category: rememberedCategory(for: merchantName, in: context),
             rawAmount: amount
         )
-        let context = Store.container.mainContext
         context.insert(expense)
         try context.save()
         return .result(dialog: "Anotado: \(amount) en \(expense.merchant).")
+    }
+
+    /// Whatever this merchant was filed under last time, so a captured payment lands
+    /// in the right place without anyone touching the app.
+    private func rememberedCategory(for merchant: String, in context: ModelContext) -> String? {
+        let descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        guard let history = try? context.fetch(descriptor) else { return nil }
+        return CategoryMemory.category(
+            for: merchant,
+            in: history.map {
+                CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
+            }
+        )
     }
 }
 

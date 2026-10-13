@@ -18,7 +18,8 @@ struct ExpensesCSVFile: Transferable {
                 currency: CurrencyResolver.isoCode(for: expense.currencyMarker,
                                                    primary: primaryCurrency)
                     ?? expense.currencyMarker ?? primaryCurrency,
-                card: expense.card
+                card: expense.card,
+                category: expense.category
             )
         })
         suggestedName = "Centavo-\(now.formatted(.iso8601.year().month().day())).csv"
