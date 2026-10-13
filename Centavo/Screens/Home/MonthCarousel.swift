@@ -1,0 +1,50 @@
+import CentavoCore
+import SwiftUI
+
+/// The swipeable middle of the main screen: calendar, then budget.
+struct MonthCarousel: View {
+    let calendarModel: MonthCalendar
+    let spent: MoneyTotal
+    let pace: BudgetPace?
+    let onSetBudget: () -> Void
+
+    @State private var page: Int? = 0
+
+    private let pageNames = ["Calendario", "Presupuesto"]
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 0) {
+                    CalendarPage(model: calendarModel)
+                        .containerRelativeFrame(.horizontal)
+                        .id(0)
+                    BudgetPage(spent: spent, pace: pace, onSetBudget: onSetBudget)
+                        .containerRelativeFrame(.horizontal)
+                        .id(1)
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $page)
+            .scrollIndicators(.hidden)
+
+            HStack(spacing: 4) {
+                ForEach(pageNames.indices, id: \.self) { index in
+                    Button {
+                        withAnimation { page = index }
+                    } label: {
+                        Capsule()
+                            .fill(page == index ? Theme.ink : Color(hex: 0x4A4742))
+                            .frame(width: page == index ? 18 : 6, height: 6)
+                            .frame(width: 44, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(pageNames[index])
+                    .accessibilityAddTraits(page == index ? .isSelected : [])
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}

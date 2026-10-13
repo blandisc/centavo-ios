@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Nueva pantalla principal «Noche ticket»: el total del mes, un carrusel que se desliza entre el calendario del mes y tu presupuesto, y la lista de pagos como un ticket. El presupuesto se fija desde el menú «Más». Se quita el total por categoría de esta pantalla.
 - Base del nuevo diseño «Noche ticket»: modo oscuro, color latón y tipografía de ticket. Lógica del calendario y del presupuesto.
 - Captura más confiable: los pagos repetidos y los que Wallet manda vacíos ya no se anotan, y la guía explica qué pagos se capturan solos y cuáles no.
 - Categorías que se recuerdan por comercio: la que usaste la última vez se aplica sola al siguiente pago de ese comercio, incluso a los que captura Wallet. Total por categoría en la pantalla principal y columna nueva en el CSV (CEN-3).

@@ -2,11 +2,13 @@ import CentavoCore
 import SwiftData
 import SwiftUI
 
-/// The only screen: this month's total, then every payment newest first.
+/// The only screen: the month's total, a swipeable calendar/budget, then every payment newest first.
 struct ExpenseListView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @Environment(\.modelContext) private var context
+    @AppStorage(BudgetStore.key) private var storedBudget = ""
     @State private var showingSetup = false
+    @State private var showingBudget = false
     @State private var adding = false
     @State private var editing: Expense?
 
@@ -16,175 +18,274 @@ struct ExpenseListView: View {
         Locale.current.currency?.identifier ?? "MXN"
     }
 
-    private var summary: MonthSummary {
-        MonthSummarizer.summarize(
-            expenses.map {
-                ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
-                              date: $0.date, category: $0.category)
-            },
-            inMonthOf: .now,
-            primary: primaryCurrency
-        )
-    }
-
     var body: some View {
+        let now = Date.now
+        let amounts = expenses.map {
+            ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
+                          date: $0.date, category: $0.category)
+        }
+        let summary = MonthSummarizer.summarize(amounts, inMonthOf: now, primary: primaryCurrency)
+        let pace = BudgetPace(budget: BudgetStore.amount(from: storedBudget),
+                              spent: summary.primary.amount, on: now)
+
         NavigationStack {
-            List {
-                Section {
-                    MonthTotalHeader(summary: summary)
-                }
-                // Only worth a section once something is actually filed somewhere.
-                if summary.categories.contains(where: { $0.category != nil }) {
-                    Section("Por categoría") {
-                        ForEach(summary.categories, id: \.category) { total in
-                            CategoryTotalRow(total: total, isoCode: summary.primary.isoCode,
-                                             label: summary.primary.label)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    TopBar(
+                        now: now,
+                        csv: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
+                        canExport: !expenses.isEmpty,
+                        onBudget: { showingBudget = true },
+                        onSetup: { showingSetup = true }
+                    )
+                    HeroTotal(summary: summary, now: now)
+                    if expenses.isEmpty {
+                        EmptyTicket { showingSetup = true }
+                    } else {
+                        MonthCarousel(
+                            calendarModel: MonthCalendar.make(amounts, inMonthOf: now,
+                                                              primary: primaryCurrency, today: now),
+                            spent: summary.primary,
+                            pace: pace,
+                            onSetBudget: { showingBudget = true }
+                        )
+                        Ledger(expenses: expenses, primaryCurrency: primaryCurrency,
+                               onEdit: { editing = $0 }, onDelete: { context.delete($0) })
                     }
                 }
-                Section {
-                    ForEach(expenses) { expense in
-                        Button { editing = expense } label: {
-                            ExpenseRow(expense: expense, primaryCurrency: primaryCurrency)
-                        }
-                        .tint(.primary)
-                    }
-                    .onDelete { offsets in
-                        offsets.map { expenses[$0] }.forEach(context.delete)
-                    }
-                }
+                .padding(.horizontal, Theme.horizontalPadding)
+                .padding(.top, 8)
             }
-            .overlay {
-                if expenses.isEmpty {
-                    ContentUnavailableView {
-                        Label("Sin gastos todavía", systemImage: "creditcard")
-                    } description: {
-                        Text("Configura el atajo y cada pago con Apple Wallet aparecerá aquí. Lo demás, agrégalo con «+».")
-                    } actions: {
-                        Button("Configurar atajo") { showingSetup = true }
-                        Button("Agregar gasto") { adding = true }
-                    }
-                }
-            }
-            .navigationTitle("Centavo")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    // The guide and the export are both occasional, so they share a
-                    // menu instead of each taking a spot in the bar.
-                    Menu("Más", systemImage: "ellipsis.circle") {
-                        Button("Configurar atajo", systemImage: "questionmark.circle") {
-                            showingSetup = true
-                        }
-                        ShareLink(
-                            item: ExpensesCSVFile(expenses: expenses,
-                                                  primaryCurrency: primaryCurrency),
-                            preview: SharePreview("Gastos de Centavo")
-                        ) {
-                            Label("Exportar CSV", systemImage: "square.and.arrow.up")
-                        }
-                        .disabled(expenses.isEmpty)
-                    }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Agregar gasto", systemImage: "plus") { adding = true }
-                }
-            }
+            .background(Theme.background.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) { addButton }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
             .sheet(isPresented: $adding) { ExpenseEditorView(expense: nil) }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
-        }
-    }
-}
-
-/// Formats money for the screen: the real currency style when the ISO code is known,
-/// otherwise the marker Wallet sent in front of a plain number.
-private func formatMoney(_ amount: Decimal, isoCode: String?, label: String) -> String {
-    if let isoCode {
-        return amount.formatted(.currency(code: isoCode))
-    }
-    let digits = amount.magnitude.formatted(.number.precision(.fractionLength(2)))
-    return (amount < 0 ? "-" : "") + label + digits
-}
-
-private struct MonthTotalHeader: View {
-    let summary: MonthSummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Este mes").font(.subheadline).foregroundStyle(.secondary)
-            Text(formatMoney(summary.primary.amount,
-                             isoCode: summary.primary.isoCode,
-                             label: summary.primary.label))
-                .font(.system(.largeTitle, design: .rounded, weight: .semibold))
-                .monospacedDigit()
-            // Adding currencies together would be a lie, so they ride along separately.
-            if !summary.others.isEmpty {
-                Text("y además " + summary.others
-                    .map { formatMoney($0.amount, isoCode: $0.isoCode, label: $0.label) }
-                    .formatted(.list(type: .and)))
-                    .font(.footnote).foregroundStyle(.secondary)
+            .sheet(isPresented: $showingBudget) {
+                BudgetSheet(stored: $storedBudget, currency: primaryCurrency)
             }
         }
-        .padding(.vertical, 8)
+    }
+
+    private var addButton: some View {
+        Button { adding = true } label: {
+            Label {
+                Text("Anotar gasto").tracking(1.4).textCase(.uppercase)
+            } icon: {
+                Image(systemName: "plus").fontWeight(.bold)
+            }
+            .font(.ticket(14, weight: .semibold, relativeTo: .callout))
+            .foregroundStyle(Theme.onBrass)
+            .padding(.horizontal, 24)
+            .frame(minHeight: 52)
+            .background(Theme.brass, in: Capsule())
+            .shadow(color: .black.opacity(0.55), radius: 15, y: 12)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 8)
     }
 }
 
-private struct CategoryTotalRow: View {
-    let total: CategoryTotal
-    let isoCode: String?
-    let label: String
+// MARK: - Pieces
+
+private struct TopBar: View {
+    let now: Date
+    let csv: ExpensesCSVFile
+    let canExport: Bool
+    let onBudget: () -> Void
+    let onSetup: () -> Void
 
     var body: some View {
-        HStack {
-            Text(total.category ?? "Sin categoría")
-                .foregroundStyle(total.category == nil ? .secondary : .primary)
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text("Centavo")
+                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                .tracking(2)
+                .textCase(.uppercase)
+                .accessibilityAddTraits(.isHeader)
+            Text(now, format: .dateTime.month(.abbreviated).year())
+                .font(.ticket(13, relativeTo: .footnote))
+                .tracking(2)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.muted)
             Spacer()
-            Text(formatMoney(total.amount, isoCode: isoCode, label: label))
-                .monospacedDigit()
+            Menu {
+                Button("Presupuesto del mes", systemImage: "target", action: onBudget)
+                ShareLink(item: csv, preview: SharePreview("Gastos de Centavo")) {
+                    Label("Exportar CSV", systemImage: "square.and.arrow.up")
+                }
+                .disabled(!canExport)
+                Button("Configurar atajo", systemImage: "questionmark.circle", action: onSetup)
+            } label: {
+                Label("Más", systemImage: "ellipsis")
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 44, height: 44)
+            }
         }
     }
 }
 
-private struct ExpenseRow: View {
+private struct HeroTotal: View {
+    let summary: MonthSummary
+    let now: Date
+
+    private var totalText: AttributedString {
+        let formatted = formatMoney(summary.primary.amount, isoCode: summary.primary.isoCode,
+                                    label: summary.primary.label)
+        let parts = MoneyText.splitCents(formatted,
+                                         decimalSeparator: Locale.current.decimalSeparator ?? ".")
+        var text = AttributedString(parts.head)
+        var cents = AttributedString(parts.cents)
+        cents.foregroundColor = Theme.muted
+        text += cents
+        text += AttributedString(parts.tail)
+        return text
+    }
+
+    private var othersText: String {
+        summary.others
+            .map { "\($0.label) \($0.amount.formatted(.number.precision(.fractionLength(2))))" }
+            .formatted(.list(type: .and, width: .narrow))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: "Total \(summary.primary.label) al \(shortDate(now))").ticketCaption()
+            Text(totalText)
+                .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
+                .tracking(-2)
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            if !summary.others.isEmpty {
+                // Adding currencies together would be a lie, so they ride along separately.
+                Text(verbatim: "+ \(othersText) aparte")
+                    .font(.ticket(13, relativeTo: .footnote))
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.muted)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct EmptyTicket: View {
+    let onSetup: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Sin gastos todavía")
+                .font(.ticket(15, weight: .semibold, relativeTo: .body))
+                .tracking(1.6)
+                .textCase(.uppercase)
+            Text("Configura el atajo y cada pago con Apple Wallet se anotará solo. Lo demás, anótalo tú.")
+                .font(.ticket(14, relativeTo: .callout))
+                .lineSpacing(4)
+                .foregroundStyle(Theme.muted)
+            Button(action: onSetup) {
+                Text("Configurar atajo")
+                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                    .tracking(1.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.brass)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .overlay(Capsule().stroke(Theme.brass, lineWidth: 1.5))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay {
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+        }
+    }
+}
+
+private struct Ledger: View {
+    let expenses: [Expense]
+    let primaryCurrency: String
+    let onEdit: (Expense) -> Void
+    let onDelete: (Expense) -> Void
+
+    var body: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(expenses) { expense in
+                Button { onEdit(expense) } label: {
+                    LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button("Borrar gasto", systemImage: "trash", role: .destructive) {
+                        onDelete(expense)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct LedgerRow: View {
     let expense: Expense
     let primaryCurrency: String
 
-    private var amountText: String {
-        let marker = expense.currencyMarker
-        return formatMoney(
-            expense.amount,
-            isoCode: CurrencyResolver.isoCode(for: marker, primary: primaryCurrency),
-            label: marker ?? primaryCurrency
-        )
+    @ScaledMetric(relativeTo: .caption) private var dateWidth: CGFloat = 46
+
+    private var isRefund: Bool { expense.amount < 0 }
+
+    private var meta: String? {
+        let parts = [isRefund ? "Devolución" : nil, expense.category, expense.card]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(shortDate(expense.date))
+                .font(.ticket(12, relativeTo: .caption))
+                .foregroundStyle(Theme.muted)
+                .frame(width: dateWidth, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(expense.merchant)
-                HStack(spacing: 4) {
-                    Text(expense.date, format: .dateTime.day().month().hour().minute())
-                    if let category = expense.category {
-                        Text("·")
-                        Text(category)
-                    }
+                    .font(.ticket(15, weight: .medium, relativeTo: .body))
+                    .tracking(0.4)
+                    .textCase(.uppercase)
+                    .multilineTextAlignment(.leading)
+                if let meta {
+                    Text(meta)
+                        .font(.ticket(11, relativeTo: .caption2))
+                        .tracking(0.6)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Theme.muted)
+                        .multilineTextAlignment(.leading)
                 }
-                .font(.caption).foregroundStyle(.secondary)
             }
-            Spacer()
-            Text(amountText).monospacedDigit()
+            Spacer(minLength: 8)
+            Text(ledgerAmount(for: expense, primary: primaryCurrency))
+                .font(.ticket(15, relativeTo: .body))
+                .foregroundStyle(isRefund ? Theme.brass : Theme.ink)
         }
+        .padding(.vertical, 8)
+        .frame(minHeight: 52)
+        .overlay(alignment: .top) { Perforation() }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
 #Preview {
     let container = try! ModelContainer(for: Expense.self, configurations: .init(isStoredInMemoryOnly: true))
-    container.mainContext.insert(Expense(amount: 89, currencyMarker: "$", merchant: "Oxxo",
-                                        card: "BBVA", category: "Despensa"))
-    container.mainContext.insert(Expense(amount: 1234.5, currencyMarker: "$", merchant: "Liverpool",
-                                        category: "Ropa"))
-    container.mainContext.insert(Expense(amount: -230, currencyMarker: "$",
-                                        merchant: "Liverpool (reembolso)", category: "Ropa"))
-    container.mainContext.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam"))
-    return ExpenseListView().modelContainer(container)
+    let context = container.mainContext
+    context.insert(Expense(amount: 89, currencyMarker: "$", merchant: "Oxxo",
+                           card: "BBVA", date: .now.addingTimeInterval(-86_400 * 4), category: "Despensa"))
+    context.insert(Expense(amount: 1234.5, currencyMarker: "$", merchant: "Liverpool",
+                           card: "BBVA", date: .now.addingTimeInterval(-86_400 * 3), category: "Ropa"))
+    context.insert(Expense(amount: -230, currencyMarker: "$", merchant: "Liverpool",
+                           date: .now.addingTimeInterval(-86_400), category: "Ropa"))
+    context.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam", card: "BBVA"))
+    return ExpenseListView().modelContainer(container).preferredColorScheme(.dark)
 }
