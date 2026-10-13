@@ -43,11 +43,12 @@ struct ExpenseEditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     amountBlock
-                    TicketField(label: "Comercio", text: $merchant, prompt: "Nombre del comercio")
+                    TicketField(label: "Comercio", text: $merchant, prompt: "Nombre del comercio",
+                                identifier: "comercio")
                     categoryBlock
                     dateBlock
                     TicketField(label: "Tarjeta o efectivo (opcional)", text: $card,
-                                prompt: "BBVA, Nu, efectivo…")
+                                prompt: "BBVA, Nu, efectivo…", identifier: "tarjeta")
                     if let expense { deleteButton(expense) }
                 }
             }
@@ -84,6 +85,7 @@ struct ExpenseEditorView: View {
                 .foregroundStyle(Theme.ink)
                 .keyboardType(.decimalPad)
                 .focused($amountFocused)
+                .accessibilityIdentifier("monto")
             Text("Otra moneda: escribe USD 20 o € 20")
                 .font(.ticket(11, relativeTo: .caption2))
                 .tracking(0.6)
@@ -97,6 +99,7 @@ struct ExpenseEditorView: View {
                     .textCase(.uppercase)
             }
             .tint(Theme.brass)
+            .accessibilityIdentifier("devolucion")
             .padding(.top, 4)
         }
         .padding(.vertical, 20)
@@ -117,6 +120,7 @@ struct ExpenseEditorView: View {
                     .tracking(0.6)
                     .foregroundStyle(Theme.ink)
                     .textInputAutocapitalization(.words)
+                    .accessibilityIdentifier("categoria")
                 if !known.isEmpty {
                     Menu {
                         ForEach(known, id: \.self) { name in
@@ -171,6 +175,7 @@ struct ExpenseEditorView: View {
                 .frame(maxWidth: .infinity, minHeight: 48)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("borrar-gasto")
         .padding(.top, 24)
     }
 

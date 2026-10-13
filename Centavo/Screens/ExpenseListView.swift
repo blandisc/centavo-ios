@@ -199,6 +199,7 @@ private struct HeroTotal: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(verbatim: "Total \(summary.primary.label) al \(shortDate(now))").ticketCaption()
             Text(totalText)
+                .accessibilityIdentifier("total-mes")
                 .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
                 .tracking(-2)
                 .foregroundStyle(Theme.ink)
@@ -207,12 +208,12 @@ private struct HeroTotal: View {
             if !summary.others.isEmpty {
                 // Adding currencies together would be a lie, so they ride along separately.
                 Text(verbatim: "+ \(othersText) aparte")
+                    .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(13, relativeTo: .footnote))
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
         }
-        .accessibilityElement(children: .combine)
     }
 }
 

@@ -6,6 +6,7 @@ struct TicketField: View {
     @Binding var text: String
     var prompt = ""
     var capitalization: TextInputAutocapitalization = .words
+    var identifier = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -15,6 +16,7 @@ struct TicketField: View {
                 .tracking(0.6)
                 .foregroundStyle(Theme.ink)
                 .textInputAutocapitalization(capitalization)
+                .accessibilityIdentifier(identifier)
         }
         .padding(.vertical, 16)
         .overlay(alignment: .bottom) { Perforation() }

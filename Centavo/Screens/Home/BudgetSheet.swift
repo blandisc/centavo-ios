@@ -32,6 +32,7 @@ struct BudgetSheet: View {
                     .foregroundStyle(Theme.ink)
                     .keyboardType(.decimalPad)
                     .focused($focused)
+                    .accessibilityIdentifier("presupuesto-monto")
             }
             .padding(.vertical, 20)
             .overlay(alignment: .bottom) { Perforation() }
@@ -52,6 +53,7 @@ struct BudgetSheet: View {
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
                 .underline()
+                .accessibilityIdentifier("quitar-presupuesto")
                 .frame(minHeight: 44)
                 .padding(.top, 8)
             }
