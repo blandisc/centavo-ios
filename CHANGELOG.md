@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- La pantalla principal abre en el presupuesto; el calendario queda en la segunda página del carrusel.
 - La estructura de la app ahora usa componentes nativos de Apple (barra superior e inferior del sistema, que en iOS 26 son Liquid Glass; lista, formularios, hojas y menús estándar), **conservando el estilo «Noche ticket»** (oscuro, latón, tipografía de ticket).
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.

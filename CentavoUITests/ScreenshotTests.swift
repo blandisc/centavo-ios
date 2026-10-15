@@ -29,22 +29,20 @@ final class ScreenshotTests: XCTestCase {
         add(attachment)
     }
 
-    func testPrincipalCalendario() {
+    func testPrincipalPresupuesto() {
         _ = launch()
-        snap("01-principal-calendario")
+        snap("01-principal-presupuesto")
     }
 
-    func testPrincipalPresupuesto() {
+    func testPrincipalCalendario() {
         let app = launch()
-        app.buttons["Presupuesto"].tap()
+        app.buttons["Calendario"].tap()
         sleep(1)
-        snap("02-principal-presupuesto")
+        snap("02-principal-calendario")
     }
 
     func testPrincipalSinPresupuesto() {
-        let app = launch(budget: false)
-        app.buttons["Presupuesto"].tap()
-        sleep(1)
+        _ = launch(budget: false)
         snap("03-principal-sin-presupuesto")
     }
 
@@ -95,20 +93,20 @@ final class ScreenshotTests: XCTestCase {
     func testLetraGrande() {
         let app = launch(["-UIPreferredContentSizeCategoryName",
                           "UICTContentSizeCategoryAccessibilityXXXL"])
-        snap("10-letra-grande-calendario")
-        app.buttons["Presupuesto"].tap()
+        snap("10-letra-grande-presupuesto")
+        app.buttons["Calendario"].tap()
         sleep(1)
-        snap("11-letra-grande-presupuesto")
+        snap("11-letra-grande-calendario")
     }
 
     func testMesAnterior() {
         let app = launch()
         app.buttons["Mes anterior"].tap()
         sleep(1)
-        snap("12-mes-anterior-calendario")
-        app.buttons["Presupuesto"].tap()
+        snap("12-mes-anterior-presupuesto")
+        app.buttons["Calendario"].tap()
         sleep(1)
-        snap("13-mes-anterior-presupuesto")
+        snap("13-mes-anterior-calendario")
     }
 
 }

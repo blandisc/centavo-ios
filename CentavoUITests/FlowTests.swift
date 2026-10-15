@@ -263,13 +263,14 @@ final class FlowTests: XCTestCase {
                        "Los pagos de este mes aparecen en el mes anterior")
         XCTAssertFalse(app.buttons["Mes anterior"].isEnabled,
                        "Dejó ir más atrás del primer gasto")
-        snap("flujo-mes-anterior-calendario")
-
-        app.buttons["Presupuesto"].tap()
+        // The budget is what the screen opens on.
         let ticket = require(app.otherElements["presupuesto-ticket"], "No hay ticket del mes anterior")
         XCTAssertTrue(ticket.label.contains("Te quedaron"), "Dice: \(ticket.label)")
         XCTAssertFalse(ticket.label.contains("A hoy"), "Un mes cerrado no tiene «hoy»")
         snap("flujo-mes-anterior-presupuesto")
+
+        app.buttons["Calendario"].tap()
+        snap("flujo-mes-anterior-calendario")
 
         app.buttons["Mes siguiente"].tap()
         require(row(app, containing: "Cinépolis"), "No regresó al mes actual")
@@ -411,20 +412,20 @@ final class AccessibilityAuditTests: XCTestCase {
         }
         let app = launch()
         try check(app, "principal")
-        app.buttons["Presupuesto"].tap()
-        try check(app, "presupuesto")
+        app.buttons["Calendario"].tap()
+        try check(app, "calendario")
         app.buttons["Anotar gasto"].tap()
         XCTAssertTrue(app.textFields["monto"].waitForExistence(timeout: 10))
         try check(app, "hoja de gasto")
         XCTAssertTrue(issues.isEmpty, "Zonas táctiles menores de 44 pt:\n" + issues.joined(separator: "\n"))
     }
 
-    func testAuditarPrincipal() throws { try audit(launch(), "principal-calendario") }
+    func testAuditarPrincipal() throws { try audit(launch(), "principal-presupuesto") }
 
-    func testAuditarPresupuesto() throws {
+    func testAuditarCalendario() throws {
         let app = launch()
-        app.buttons["Presupuesto"].tap()
-        try audit(app, "principal-presupuesto")
+        app.buttons["Calendario"].tap()
+        try audit(app, "principal-calendario")
     }
 
     func testAuditarPrimeraVez() throws { try audit(launch(demo: false), "primera-vez") }
