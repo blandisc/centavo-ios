@@ -222,6 +222,30 @@ final class FlowTests: XCTestCase {
         let ticket = require(app.otherElements["presupuesto-ticket"], "No apareció el ticket")
         XCTAssertTrue(ticket.label.contains("Te pasaste"), "El ticket dice: \(ticket.label)")
         snap("flujo-pasado-de-presupuesto")
+        expectFitsOnScreen(app, ticket)
+    }
+
+    /// Opening the app already over budget once locked the page wider than the screen:
+    /// "Gastado" and the budget line were cut off and the brass spilled onto the calendar.
+    func testAbrirYaPasadoDelPresupuestoCabeEnPantalla() {
+        let app = launch(demo: true, extra: ["-monthlyBudget", "1000"])
+        app.buttons["Presupuesto"].tap()
+        let ticket = require(app.otherElements["presupuesto-ticket"], "No apareció el ticket")
+        XCTAssertTrue(ticket.label.contains("Te pasaste"), "El ticket dice: \(ticket.label)")
+        snap("flujo-abre-pasado-de-presupuesto")
+        expectFitsOnScreen(app, ticket)
+    }
+
+    /// Accessibility frames are clipped to what is visible, so "inside the screen" proves
+    /// nothing. The ticket has to keep the same margins as the total above it.
+    private func expectFitsOnScreen(_ app: XCUIApplication, _ element: XCUIElement) {
+        let total = app.staticTexts["total-mes"].frame
+        let screen = app.windows.firstMatch.frame
+        let margin = total.minX - screen.minX
+        XCTAssertEqual(element.frame.minX, total.minX, accuracy: 1,
+                       "No respeta el margen izquierdo: \(element.frame), total en \(total)")
+        XCTAssertEqual(element.frame.maxX, screen.maxX - margin, accuracy: 1,
+                       "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
     // MARK: Meses
