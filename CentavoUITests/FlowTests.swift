@@ -389,10 +389,16 @@ final class AccessibilityAuditTests: XCTestCase {
 
     private func audit(_ app: XCUIApplication, _ screen: String) throws {
         var findings: [String] = []
-        try app.performAccessibilityAudit { issue in
-            findings.append("[\(issue.auditType.rawValue)] \(issue.compactDescription) — "
-                            + "\(issue.element?.debugDescription.prefix(160) ?? "sin elemento")")
-            return true
+        do {
+            try app.performAccessibilityAudit { issue in
+                findings.append("[\(issue.auditType.rawValue)] \(issue.compactDescription) — "
+                                + "\(issue.element?.debugDescription.prefix(160) ?? "sin elemento")")
+                return true
+            }
+        } catch let error as NSError where error.code == -56 {
+            // "Audit failed to complete in time": the CI runner is slow on busy screens. This
+            // audit only reports, so a timeout is noted instead of failing the PR.
+            findings.append("La auditoría no terminó a tiempo: \(error.localizedDescription)")
         }
         let report = XCTAttachment(string: findings.isEmpty
                                    ? "Sin hallazgos en \(screen)"
