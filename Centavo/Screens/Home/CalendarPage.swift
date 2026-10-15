@@ -1,7 +1,7 @@
 import CentavoCore
 import SwiftUI
 
-/// First page of the carousel: the month as a calendar, each day tinted by how much was spent.
+/// Second page of the carousel: the month as a calendar, each day tinted by how much was spent.
 struct CalendarPage: View {
     let model: MonthCalendar
 

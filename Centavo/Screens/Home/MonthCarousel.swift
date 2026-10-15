@@ -1,7 +1,7 @@
 import CentavoCore
 import SwiftUI
 
-/// The swipeable middle of the main screen: calendar, then budget.
+/// The swipeable middle of the main screen: budget first, then the calendar.
 struct MonthCarousel: View {
     let calendarModel: MonthCalendar
     let spent: MoneyTotal
@@ -11,17 +11,17 @@ struct MonthCarousel: View {
 
     @State private var page: Int? = 0
 
-    private let pageNames = ["Calendario", "Presupuesto"]
+    private let pageNames = ["Presupuesto", "Calendario"]
 
     var body: some View {
         VStack(spacing: 12) {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 0) {
-                    CalendarPage(model: calendarModel)
-                        .containerRelativeFrame(.horizontal)
-                        .id(0)
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
                                onSetBudget: onSetBudget)
+                        .containerRelativeFrame(.horizontal)
+                        .id(0)
+                    CalendarPage(model: calendarModel)
                         .containerRelativeFrame(.horizontal)
                         .id(1)
                 }
