@@ -10,6 +10,8 @@ Un tracker de gastos minimalista para iOS. Cada pago con **Apple Wallet** se ano
 2. Tú creas una automatización de Atajos con el disparador **Transacción** (iOS 17+) que llama esa acción con las variables del pago.
 3. Centavo interpreta el monto (`$1,234.56`, `12,50 €`, …), lo guarda en SwiftData y te muestra el total del mes.
 
+Después de cada pago, el aviso de Atajos te dice cuánto te queda del presupuesto. Y en cualquier momento puedes preguntarle a Siri **«¿Cuánto llevo en Centavo?»**.
+
 Lo que no captura Wallet (efectivo, tarjeta física, compras en línea) se anota a mano con «Anotar gasto».
 
 ## La pantalla
@@ -17,7 +19,7 @@ Lo que no captura Wallet (efectivo, tarjeta física, compras en línea) se anota
 Una sola pantalla, estilo «Noche ticket» (modo oscuro, latón, tipografía de ticket) sobre componentes nativos de iOS (barras con Liquid Glass en iOS 26):
 
 - **Total del mes** en tu moneda; las demás aparecen aparte.
-- **Carrusel que se desliza:** el **calendario** (cada día más dorado mientras más gastaste) y el **presupuesto** (un ticket que se llena hasta lo gastado, con una línea donde deberías ir hoy y lo que te queda).
+- **Carrusel que se desliza:** primero el **presupuesto** (un ticket que se llena hasta lo gastado, con el porcentaje que llevas, una línea donde deberías ir hoy y lo que te queda) y luego el **calendario** (cada día más dorado mientras más gastaste).
 - **Lista de pagos** como ticket del mes. Tocar uno lo edita; deslizarlo lo borra. La categoría se recuerda por comercio.
 - **Meses anteriores** con las flechas de la barra inferior, hacia atrás hasta tu primer gasto.
 - **Menú «Más»** y botón «+»: fijar presupuesto, exportar todo a CSV, la guía del atajo y anotar un gasto.
