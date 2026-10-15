@@ -72,6 +72,37 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().count, 0)
     }
 
+    // MARK: A mano, con Siri
+
+    func testSiriSavesHowMuchAndWhere() throws {
+        XCTAssertEqual(try ExpenseRecorder.recordByHand(amountText: "89.50", merchant: " Tacos ",
+                                                        in: context, now: now),
+                       .saved(merchant: "Tacos"))
+        let expense = try XCTUnwrap(saved().first)
+        XCTAssertEqual(expense.amount, Decimal(string: "89.5"))
+        XCTAssertEqual(expense.currencyMarker, "$")
+        XCTAssertNil(expense.rawAmount, "Un gasto a mano no debe contar como captura de Wallet")
+    }
+
+    func testTwoCoffeesByHandAreTwoCoffees() throws {
+        for _ in 0..<2 {
+            _ = try ExpenseRecorder.recordByHand(amountText: "45", merchant: "Café", in: context, now: now)
+        }
+        XCTAssertEqual(try saved().count, 2)
+    }
+
+    func testAWordForACurrencyKeepsItInTheTotal() throws {
+        _ = try ExpenseRecorder.recordByHand(amountText: "89 pesos", merchant: "Oxxo", in: context, now: now)
+        XCTAssertEqual(try saved().first?.currencyMarker, "$")
+    }
+
+    func testSiriRejectsZeroAndNonsense() throws {
+        XCTAssertEqual(try ExpenseRecorder.recordByHand(amountText: "0", merchant: "x", in: context), .empty)
+        XCTAssertEqual(try ExpenseRecorder.recordByHand(amountText: "mucho", merchant: "x", in: context),
+                       .unreadable)
+        XCTAssertEqual(try saved().count, 0)
+    }
+
     func testUnreadableAmountsSaveNothing() throws {
         for junk in ["", "abc", "$", "1234567890123", "1.23456"] {
             XCTAssertEqual(try record(junk), .unreadable, "«\(junk)» debía ser ilegible")

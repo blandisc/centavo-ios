@@ -169,7 +169,7 @@ private struct GuideStep {
         GuideStep(
             title: "Toca «Crear nuevo atajo»",
             taps: ["Arriba, en «Empezar», toca «Crear nuevo atajo»."],
-            note: "Ojo: no toques «Centavo · Registrar gasto» en la lista de apps. Ese atajo se crea "
+            note: "Ojo: no toques Centavo en la lista de apps. Así la automatización se crea "
                 + "sin el importe del pago y no anota nada. Si ya lo hiciste, ve a «Automatización», "
                 + "desliza esa automatización a la izquierda, bórrala y empieza de nuevo.",
             scene: .newShortcut

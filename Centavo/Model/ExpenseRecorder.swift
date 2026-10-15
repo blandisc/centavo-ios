@@ -55,6 +55,33 @@ enum ExpenseRecorder {
         return .saved(merchant: merchantName)
     }
 
+    /// A payment told to Siri or the Action button: how much and where, nothing else.
+    ///
+    /// Not a Wallet capture, so the raw text is not kept and nothing is treated as a repeat
+    /// (two coffees in a row are two coffees). A word for a currency ("89 pesos") is ignored,
+    /// as in the expense sheet, so the expense stays in the month's total.
+    static func recordByHand(
+        amountText: String,
+        merchant: String,
+        in context: ModelContext,
+        now: Date = .now
+    ) throws -> CaptureOutcome {
+        guard let parsed = AmountParser.parse(amountText) else { return .unreadable }
+        guard parsed.value != 0 else { return .empty }
+        let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
+        let marker = parsed.currencyMarker.flatMap { CurrencyResolver.recognizes($0) ? $0 : nil }
+        context.insert(Expense(
+            amount: parsed.value,
+            currencyMarker: marker ?? "$",
+            merchant: merchantName,
+            date: now,
+            category: rememberedCategory(for: merchantName, in: context)
+        ))
+        try context.save()
+        return .saved(merchant: merchantName)
+    }
+
     /// Payments saved in the last few minutes, the only ones a repeat could match.
     private static func recentCaptures(before now: Date, in context: ModelContext) -> [RecentCapture] {
         let since = now.addingTimeInterval(-CaptureGuard.duplicateWindow)

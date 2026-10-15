@@ -64,13 +64,23 @@ enum CaptureError: Error, CustomLocalizedStringResourceConvertible {
     }
 }
 
+/// What Siri, Spotlight and the Action button offer with no setup.
+///
+/// «Registrar gasto» is not here on purpose: it only makes sense inside the Wallet
+/// automation, wired to the payment. Offered as a ready-made shortcut it showed up in the
+/// list Atajos gives when creating that automation, and picking it there saved an
+/// automation with no amount that never logged anything. It stays an action in Atajos.
 struct CentavoShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
-            intent: LogExpenseIntent(),
-            phrases: ["Registrar gasto en \(.applicationName)"],
-            shortTitle: "Registrar gasto",
-            systemImageName: "creditcard"
+            intent: AddExpenseIntent(),
+            phrases: [
+                "Anotar gasto en \(.applicationName)",
+                "Anota un gasto en \(.applicationName)",
+                "Gasté en \(.applicationName)",
+            ],
+            shortTitle: "Anotar gasto",
+            systemImageName: "plus.circle"
         )
         AppShortcut(
             intent: MonthTotalIntent(),
