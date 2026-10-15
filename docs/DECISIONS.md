@@ -86,3 +86,6 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **No se reemplaza la identidad por los valores estándar del sistema.** Se probó un rediseño totalmente estándar (PR #20, cerrado sin mergear) y el dueño no lo quiso. Ante una petición que puede leerse de dos maneras («usa los guidelines de Apple»), se pregunta antes de cambiar lo aprobado.
 - **«Anotar gasto» va en la barra superior** (botón «+») y las flechas de mes en la barra inferior; se quita el botón flotante hecho a mano. Deslizar para borrar vuelve, con confirmación.
 - **El repo es público** (antes privado). La CI en Macs de GitHub agotó los minutos del plan privado y dejó de correr; en un repo público es gratis. Se revisó que el historial no tuviera secretos ni correos personales.
+
+## 2026-10-15 — El presupuesto va primero
+- **La pantalla principal abre en el presupuesto; el calendario pasa a la segunda página del carrusel.** Decisión del dueño. Reemplaza el orden «calendario, luego presupuesto» del 2026-10-12. Sin presupuesto fijado, la primera página es la invitación «Fijar presupuesto».

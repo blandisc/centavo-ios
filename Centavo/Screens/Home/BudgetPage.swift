@@ -1,7 +1,7 @@
 import CentavoCore
 import SwiftUI
 
-/// Second page of the carousel: the budget as a blank ticket that fills up as the month is spent.
+/// First page of the carousel, what the main screen opens on: the budget as a blank ticket that fills up as the month is spent.
 ///
 /// Brass is what you have spent, the white line is where an even spend would be today,
 /// and what is still dashed is what remains.
