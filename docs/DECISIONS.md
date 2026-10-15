@@ -110,3 +110,6 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-15 — Captura tolerante
 - **Si llega el pago completo en vez del importe, se busca la cifra con moneda** (`CaptureText`): solo cuenta un número con signo o código de moneda real al lado. Un número sin moneda (la tarjeta, un folio) nunca se toma como monto; si no hay cifra con moneda, la acción falla como antes. Un texto que es solo un monto se lee exactamente igual que antes.
 - **El parámetro «Importe» se conecta solo a lo anterior** donde Atajos lo permite (`connectToPreviousIntentResult`). No verificado con el disparador de Wallet.
+
+## 2026-10-15 — Salud de la captura
+- **Una línea bajo el carrusel dice cuándo llegó el último pago de Wallet** (solo en el mes actual). Una automatización rota fallaba en silencio. Tres días sin pagos, o ningún pago de Wallet nunca, se muestra en latón y abre la guía. Se distingue un pago de Wallet porque solo la automatización guarda el texto original del importe.

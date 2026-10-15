@@ -61,7 +61,17 @@ struct ExpenseListView: View {
                         isCurrentMonth: isCurrent,
                         onSetBudget: { showingBudget = true }
                     )
-                    .ticketRow(bottom: 20)
+                    .ticketRow(bottom: isCurrent ? 4 : 20)
+
+                    if isCurrent {
+                        // `expenses` is newest first; only the automation keeps Wallet's raw text.
+                        CaptureHealthRow(
+                            health: CaptureHealth(lastCapture: expenses.first { $0.rawAmount != nil }?.date,
+                                                  now: now),
+                            openGuide: { showingSetup = true }
+                        )
+                        .ticketRow(bottom: 12)
+                    }
 
                     if monthExpenses.isEmpty {
                         Text("Sin gastos este mes")

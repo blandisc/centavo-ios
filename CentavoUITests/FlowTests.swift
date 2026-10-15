@@ -250,6 +250,22 @@ final class FlowTests: XCTestCase {
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
+    // MARK: Salud de la captura
+
+    func testDiceCuandoLlegoElUltimoPagoDeWallet() {
+        let app = launch(demo: true)
+        let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
+        XCTAssertTrue(health.label.localizedCaseInsensitiveContains("último pago"), "Dice: \(health.label)")
+    }
+
+    func testSinPagosDeWalletInvitaAConfigurarYAbreLaGuia() {
+        let app = launch(budget: true, extra: ["-centavo-demo-large"])
+        let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
+        XCTAssertTrue(health.label.localizedCaseInsensitiveContains("sin conectar"), "Dice: \(health.label)")
+        health.tap()
+        require(app.buttons["guia-siguiente"], "No abrió la guía")
+    }
+
     // MARK: Guía del atajo
 
     /// Opens the guide from the menu, or from the empty screen on a first launch.

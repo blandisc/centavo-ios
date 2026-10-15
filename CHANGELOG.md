@@ -28,6 +28,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Debajo del presupuesto, una línea dice cuándo llegó el último pago de Wallet. Si pasan 3 días sin pagos, o si la automatización nunca se conectó, lo dice en dorado y te lleva a la guía.
 - Tus gastos y tu presupuesto se respaldan en tu iCloud privado y regresan al reinstalar la app o en un iPhone nuevo (requiere firmar la app con la cuenta de desarrollador de pago).
 - Guía del atajo paso a paso: una pantalla por paso con un dibujo de Atajos que marca dónde tocar, una animación con subtítulos del paso de conectar el importe y el comercio, y una comprobación al final que te avisa en cuanto llega tu primer pago.
 - Pregúntale a Siri «¿Cuánto llevo en Centavo?» (o úsalo desde Atajos, Spotlight o el botón de Acción): dice el total del mes, las otras monedas aparte y cuánto te queda del presupuesto, sin abrir la app.
