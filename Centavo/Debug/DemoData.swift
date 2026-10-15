@@ -22,6 +22,10 @@ enum DemoData {
     }
 
     static func makeContainer() throws -> ModelContainer {
+        // A demo starts as clean as its in-memory store: a budget saved by an earlier run
+        // would leak into this one. `-monthlyBudget 8000` still applies (launch arguments
+        // win over what is saved).
+        UserDefaults.standard.removeObject(forKey: BudgetStore.key)
         let container = try ModelContainer(
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)

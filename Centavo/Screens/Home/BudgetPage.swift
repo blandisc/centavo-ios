@@ -84,31 +84,38 @@ struct BudgetPage: View {
         let remainingInside = barWidth > 0 && barWidth * CGFloat(1 - pace.spentFraction) >= neededWidth
 
         return VStack(alignment: .leading, spacing: 8) {
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 6,
-                    bottomLeadingRadius: 6,
-                    bottomTrailingRadius: pace.spentFraction >= 1 ? 6 : 0,
-                    topTrailingRadius: pace.spentFraction >= 1 ? 6 : 0
-                )
-                .fill(Theme.brass)
-                .frame(width: barWidth * CGFloat(pace.spentFraction))
-                if remainingInside {
-                    remainingBlock(remainingLabel, remainingText)
-                        .padding(.trailing, 14)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+            // The outline alone sets the size. Everything sized from `barWidth` is an overlay,
+            // so it can never feed back into the width it was measured from: a full brass bar
+            // used to hold the ticket at a stale, wider width and push the page off screen.
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .frame(maxWidth: .infinity)
+                .frame(height: barHeight)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
+                .overlay(alignment: .leading) {
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 6,
+                        bottomLeadingRadius: 6,
+                        bottomTrailingRadius: pace.spentFraction >= 1 ? 6 : 0,
+                        topTrailingRadius: pace.spentFraction >= 1 ? 6 : 0
+                    )
+                    .fill(Theme.brass)
+                    .frame(width: barWidth * CGFloat(pace.spentFraction))
                 }
-                if isCurrentMonth {
-                    Rectangle()
-                        .fill(Theme.ink)
-                        .frame(width: 2, height: barHeight + 12)
-                        .offset(x: markerX - 1)
+                .overlay(alignment: .trailing) {
+                    if remainingInside {
+                        remainingBlock(remainingLabel, remainingText)
+                            .padding(.trailing, 14)
+                    }
                 }
-            }
-            .frame(height: barHeight)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
+                .overlay(alignment: .leading) {
+                    if isCurrentMonth {
+                        Rectangle()
+                            .fill(Theme.ink)
+                            .frame(width: 2, height: barHeight + 12)
+                            .offset(x: markerX - 1)
+                    }
+                }
 
             if isCurrentMonth {
                 Text(todayText)

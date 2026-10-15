@@ -6,6 +6,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Al pasarte del presupuesto, su página ya no se sale de la pantalla: se cortaban «Gastado» y la línea del presupuesto, y la barra dorada se asomaba sobre el calendario.
 - Si la base de datos del teléfono no abre, la app ahora lo explica en una pantalla (y le dice a Atajos qué pasó) en vez de cerrarse sola cada vez que se abre.
 - Los puntitos del carrusel y los botones «Cancelar», «Guardar» y «Listo» tenían una zona táctil de 6 a 17 puntos; ahora son de 44.
 - Los días futuros del calendario, las pistas en gris y el nivel medio de dorado del calendario no tenían contraste suficiente; ahora sí.
