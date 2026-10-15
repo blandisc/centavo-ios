@@ -117,3 +117,6 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-15 — Anotar con Siri
 - **«Anotar gasto» es un atajo listo de Siri, Spotlight y el botón de Acción**: pregunta «¿Cuánto fue?» y «¿Dónde?» y guarda sin abrir la app. Un gasto a mano no cuenta como captura de Wallet ni se descarta como repetido. Una moneda escrita como palabra se ignora, igual que en la hoja.
 - **«Registrar gasto» deja de ser atajo listo** y queda solo como acción de Atajos, que es su lugar. Ofrecido como atajo listo aparecía en la lista de apps al crear la automatización, y elegirlo ahí la guardaba sin importe.
+
+## 2026-10-15 — En qué se va
+- **Vuelve el desglose por categoría, dentro del ticket del presupuesto**: las tres categorías más grandes del mes como porcentaje de lo gastado (moneda principal), con una raya latón proporcional. Revierte en parte el «se quita la vista de categorías» del 2026-10-12: sin pantalla ni página propia, en el espacio que ya existía. Las devoluciones no cuentan para los porcentajes; si nada tiene categoría, no se muestra.
