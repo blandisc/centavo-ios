@@ -8,6 +8,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Si en Atajos conectas el pago completo («Entrada del atajo») en vez de su «Importe», el gasto se anota igual con el monto correcto, y el número de la tarjeta nunca se confunde con el monto.
 - La guía para configurar el atajo tenía nombres que ya no existen en iOS 26 («Transacción», «Ejecutar inmediatamente») y no avisaba de la trampa más común: tocar «Centavo» en la lista de apps crea una automatización que no anota nada.
 - Al pasarte del presupuesto, su página ya no se sale de la pantalla: se cortaban «Gastado» y la línea del presupuesto, y la barra dorada se asomaba sobre el calendario.
 - Si la base de datos del teléfono no abre, la app ahora lo explica en una pantalla (y le dice a Atajos qué pasó) en vez de cerrarse sola cada vez que se abre.

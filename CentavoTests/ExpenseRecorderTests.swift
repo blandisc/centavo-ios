@@ -61,6 +61,17 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().count, 0)
     }
 
+    /// Connecting «Entrada del atajo» instead of «Importe» hands over the whole payment.
+    func testTheWholePaymentStillSavesTheRightAmount() throws {
+        XCTAssertEqual(try record("Oxxo\n$89.00\nBBVA •••• 1234", nil), .saved(merchant: "Sin comercio"))
+        XCTAssertEqual(try saved().first?.amount, 89)
+    }
+
+    func testACardNumberIsNeverReadAsTheAmount() throws {
+        XCTAssertEqual(try record("Oxxo BBVA 1234"), .unreadable)
+        XCTAssertEqual(try saved().count, 0)
+    }
+
     func testUnreadableAmountsSaveNothing() throws {
         for junk in ["", "abc", "$", "1234567890123", "1.23456"] {
             XCTAssertEqual(try record(junk), .unreadable, "«\(junk)» debía ser ilegible")
