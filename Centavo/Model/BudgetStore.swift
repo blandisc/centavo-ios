@@ -19,3 +19,36 @@ enum BudgetStore {
         return "\(amount)"
     }
 }
+
+/// Keeps the budget in the person's iCloud key-value store as well, so it comes back after
+/// reinstalling or on a new phone. Without the iCloud entitlement that store never leaves
+/// the phone and none of this does any harm.
+enum BudgetSync {
+    private static var cloud: NSUbiquitousKeyValueStore { .default }
+    private static var local: UserDefaults { .standard }
+
+    /// At launch: take what iCloud has, or hand it the budget this phone already had.
+    static func start() {
+        NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: nil, queue: .main
+        ) { _ in adoptCloud() }
+        cloud.synchronize()
+        if cloud.string(forKey: BudgetStore.key) == nil {
+            push(local.string(forKey: BudgetStore.key) ?? "")
+        } else {
+            adoptCloud()
+        }
+    }
+
+    /// Every change on this phone, including clearing it.
+    static func push(_ stored: String) {
+        cloud.set(stored, forKey: BudgetStore.key)
+    }
+
+    private static func adoptCloud() {
+        guard let remote = cloud.string(forKey: BudgetStore.key),
+              remote != local.string(forKey: BudgetStore.key) else { return }
+        local.set(remote, forKey: BudgetStore.key)
+    }
+}

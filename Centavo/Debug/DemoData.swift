@@ -28,7 +28,7 @@ enum DemoData {
         UserDefaults.standard.removeObject(forKey: BudgetStore.key)
         let container = try ModelContainer(
             for: Expense.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
         if ProcessInfo.processInfo.arguments.contains("-centavo-demo-large") {
             try seedLarge(ModelContext(container))
