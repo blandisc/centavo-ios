@@ -26,6 +26,7 @@ Octubre 2026. Investigación de escritorio, sin prueba en un iPhone. El dueño p
 - Lista de países y bancos de México donde funciona. Ninguna fuente lo dice.
 - El formato exacto del monto con una tarjeta mexicana (¿`$89.00` o `MX$89.00`?). El lector de montos acepta ambos.
 - Si un reembolso dispara la automatización y con qué signo.
+- Cómo se llama en español la opción de la automatización que muestra el aviso al ejecutarse (en inglés, «Notify When Run»). La guía la describe sin citar el nombre; confirmarlo en CEN-1.
 - Que no exista una API para leer el historial de Wallet de otras tarjetas: se confirma de nuevo; FinanceKit sigue limitado. ([foro de Apple](https://developer.apple.com/forums/thread/773797))
 
 ## Riesgo principal

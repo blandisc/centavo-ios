@@ -8,7 +8,7 @@ struct SetupGuideView: View {
     private let steps: [String] = [
         "Abre la app Atajos y ve a la pestaña Automatización.",
         "Toca «+» y elige «Transacción» (en versiones recientes de iOS se llama «Wallet»).",
-        "Selecciona tus tarjetas, deja marcadas todas las categorías y elige «Ejecutar inmediatamente».",
+        "Selecciona tus tarjetas, deja marcadas todas las categorías y elige «Ejecutar inmediatamente». Si además activas que te avise al ejecutarse, cada pago te dirá cuánto te queda del presupuesto.",
         "Agrega la acción «Registrar gasto» de Centavo.",
         "En Monto, Comercio y Tarjeta elige las variables de la transacción.",
         "Listo: el próximo pago con Wallet aparece aquí solo.",
