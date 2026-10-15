@@ -232,6 +232,8 @@ final class FlowTests: XCTestCase {
         app.buttons["Presupuesto"].tap()
         let ticket = require(app.otherElements["presupuesto-ticket"], "No apareció el ticket")
         XCTAssertTrue(ticket.label.contains("Te pasaste"), "El ticket dice: \(ticket.label)")
+        // $2,366 spent of a $1,000 budget, the demo month.
+        XCTAssertTrue(ticket.label.contains("el 237"), "No dice el porcentaje: \(ticket.label)")
         snap("flujo-abre-pasado-de-presupuesto")
         expectFitsOnScreen(app, ticket)
     }
