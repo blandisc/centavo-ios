@@ -8,6 +8,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- La guía para configurar el atajo tenía nombres que ya no existen en iOS 26 («Transacción», «Ejecutar inmediatamente») y no avisaba de la trampa más común: tocar «Centavo» en la lista de apps crea una automatización que no anota nada.
 - Al pasarte del presupuesto, su página ya no se sale de la pantalla: se cortaban «Gastado» y la línea del presupuesto, y la barra dorada se asomaba sobre el calendario.
 - Si la base de datos del teléfono no abre, la app ahora lo explica en una pantalla (y le dice a Atajos qué pasó) en vez de cerrarse sola cada vez que se abre.
 - Los puntitos del carrusel y los botones «Cancelar», «Guardar» y «Listo» tenían una zona táctil de 6 a 17 puntos; ahora son de 44.
@@ -26,6 +27,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Guía del atajo paso a paso: una pantalla por paso con un dibujo de Atajos que marca dónde tocar, una animación con subtítulos del paso de conectar el importe y el comercio, y una comprobación al final que te avisa en cuanto llega tu primer pago.
 - Pregúntale a Siri «¿Cuánto llevo en Centavo?» (o úsalo desde Atajos, Spotlight o el botón de Acción): dice el total del mes, las otras monedas aparte y cuánto te queda del presupuesto, sin abrir la app.
 - Al pagar con Wallet, el aviso de Atajos ahora dice cuánto te queda del presupuesto (o por cuánto te pasaste). La guía explica cómo activar ese aviso.
 - Ver meses anteriores: flechas junto al mes en el encabezado. Cada mes muestra su total, su calendario, su presupuesto (un mes cerrado se mide completo: «te quedaron») y sus pagos. Solo se puede ir hacia atrás hasta tu primer gasto. Anotar un gasto mientras ves un mes anterior lo pone en ese mes.

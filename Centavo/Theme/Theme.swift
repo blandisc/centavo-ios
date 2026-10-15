@@ -39,6 +39,17 @@ enum Theme {
     static var danger: Color { Color(hex: 0xD9695A) }
 
     static let horizontalPadding: CGFloat = 24
+
+    /// The setup guide draws Apple's Shortcuts app (dark mode) so each step looks like the
+    /// screen the person will see there. Only for those drawings, never for Centavo itself.
+    enum Shortcuts {
+        static var screen: Color { Color(hex: 0x1C1C1E) }
+        static var card: Color { Color(hex: 0x2C2C2E) }
+        static var text: Color { Color(hex: 0xFFFFFF) }
+        static var secondary: Color { Color(hex: 0x98989F) }
+        /// iOS's dark-mode blue: placeholders and variables in an action.
+        static var blue: Color { Color(hex: 0x0A84FF) }
+    }
 }
 
 /// A dashed perforation line, drawn at the top of whatever it is attached to.
