@@ -74,6 +74,13 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().count, 0)
     }
 
+    /// A junk "currency" (a merchant's name, seen for real) never pushes a row off screen.
+    func testALongJunkMarkerIsCutInTheLedger() {
+        let expense = Expense(amount: 501_501, currencyMarker: "OxxoRobleMtyhtOxxoRobleMtyht",
+                              merchant: "Sin comercio")
+        XCTAssertEqual(ledgerAmount(for: expense, primary: "MXN"), "Oxxo 501,501.00")
+    }
+
     func testACardNumberIsNeverReadAsTheAmount() throws {
         XCTAssertEqual(try record("Oxxo BBVA 1234"), .unreadable)
         XCTAssertEqual(try saved().count, 0)

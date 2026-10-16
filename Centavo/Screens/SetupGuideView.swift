@@ -222,7 +222,7 @@ private struct GuideStep {
             note: "Centavo no puede crear la automatización por ti: Apple no lo permite. "
                 + "Son 2 minutos y se hace una vez.",
             opensShortcuts: true,
-            scene: .tabs
+            scene: .library27
         ),
         GuideStep(
             title: "Abre el editor",
@@ -230,14 +230,14 @@ private struct GuideStep {
                    "Arriba a la derecha, toca «Editor»."],
             note: "Describirlo con palabras arma el atajo, pero no siempre conecta el importe. "
                 + "A mano es seguro.",
-            scene: .newShortcut
+            scene: .editor27
         ),
         GuideStep(
             title: "Agrega «Wallet»",
             taps: ["En las categorías de abajo toca «Automatización».",
                    "Toca «Wallet». Arriba queda «Cuando se use Cualquier tarjeta».",
                    "Si quieres, toca «Cualquier tarjeta» para elegir solo algunas."],
-            scene: .wallet
+            scene: .wallet27
         ),
         GuideStep(
             title: "Agrega «Registrar gasto»",
@@ -258,9 +258,11 @@ private struct GuideStep {
             title: "Conecta el comercio",
             taps: ["Toca «Comercio» y haz lo mismo: «Seleccionar variable», el bloque de Wallet "
                    + "y luego «Comercio».",
-                   "Toca la palomita de arriba para guardar."],
-            note: "Si al guardar te pregunta cómo ejecutarla, elige «Ejecutar de inmediato» y activa "
-                + "«Notificar al ejecutar»: así cada pago te dice cuánto te queda.",
+                   "Toca la flecha de arriba a la izquierda: se guarda sola y aparece en "
+                   + "«Automatización», en «Personal»."],
+            note: "Si al pagar Atajos te pide confirmar antes de correrla, abre esa automatización "
+                + "y elige «Ejecutar de inmediato»; si ves «Notificar al ejecutar», actívalo para "
+                + "que cada pago te diga cuánto te queda.",
             scene: .connect(field: "Comercio", done: ["Importe"])
         ),
         GuideStep(

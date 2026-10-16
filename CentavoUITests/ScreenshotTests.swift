@@ -88,7 +88,9 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["Configurar atajo"].tap()
         sleep(1)
         snap("09-guia")
-        for _ in 0..<5 { app.buttons["guia-siguiente"].tap() }
+        app.buttons["guia-siguiente"].tap(); sleep(1); snap("09b-guia-paso-2")
+        app.buttons["guia-siguiente"].tap(); sleep(1); snap("09c-guia-paso-3")
+        for _ in 0..<3 { app.buttons["guia-siguiente"].tap() }
         sleep(4)  // let the taps play out
         snap("14-guia-conectar-importe")
     }

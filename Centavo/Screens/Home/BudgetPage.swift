@@ -122,7 +122,8 @@ struct BudgetPage: View {
         let markerX = barWidth * CGFloat(pace.paceFraction)
         let labelOnLeft = pace.paceFraction < 0.5
         let todayText = "Hoy · " + wholeMoney(pace.expectedToDate)
-        let share = NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue
+        // A month where more came back than went out is 0 %, not "-5 %".
+        let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         let remainingLabel = isOver ? "Te pasaste" : (isCurrentMonth ? "Te quedan" : "Te quedaron")
         let remainingText = money(pace.remaining.magnitude)
         // The type is monospaced (0.6 em a character), so its width is predictable. If the

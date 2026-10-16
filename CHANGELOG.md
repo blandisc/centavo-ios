@@ -8,6 +8,10 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Al estrenar un iPhone, el presupuesto ya no se puede borrar por subir a iCloud un «sin presupuesto» antes de que iCloud termine de bajar el tuyo.
+- Un renglón con una «moneda» basura ya no se sale de la pantalla.
+- Un mes con más devoluciones que gastos dice «Gastado · 0 %», no un porcentaje negativo.
+- La guía de iOS 27 muestra las pantallas de iOS 27 (Biblioteca, «Editor», el bloque «Wallet») y dice que se guarda con la flecha de atrás.
 - Si la automatización manda el nombre del comercio en lugar del importe, ya no se guarda un monto inventado (se vio «501,501» en una moneda de letras): Atajos muestra cómo conectar «Importe».
 - Si en Atajos conectas el pago completo («Entrada del atajo») en vez de su «Importe», el gasto se anota igual con el monto correcto, y el número de la tarjeta nunca se confunde con el monto.
 - La guía para configurar el atajo tenía nombres que ya no existen en iOS 26 («Transacción», «Ejecutar inmediatamente») y no avisaba de la trampa más común: tocar «Centavo» en la lista de apps crea una automatización que no anota nada.
