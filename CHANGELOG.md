@@ -28,6 +28,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- La guía del atajo tiene su versión para iOS 27, donde Atajos cambió: la automatización se arma en el editor con el bloque «Wallet», y avisa que «Entrada de atajo» ya no trae el pago.
 - «En qué se va»: bajo el presupuesto, tus tres categorías más grandes del mes como porcentaje de lo gastado.
 - «Oye Siri, anotar gasto en Centavo» (o el botón de Acción): pregunta cuánto y dónde, lo guarda sin abrir la app y te dice cuánto te queda. Para el efectivo y lo que Wallet no capture.
 - Debajo del presupuesto, una línea dice cuándo llegó el último pago de Wallet. Si pasan 3 días sin pagos, o si la automatización nunca se conectó, lo dice en dorado y te lleva a la guía.

@@ -14,7 +14,7 @@ struct SetupGuideView: View {
     private var captured: [Expense]
     @State private var step = 0
 
-    private let steps = GuideStep.all
+    private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
 
     var body: some View {
@@ -198,6 +198,69 @@ private struct GuideStep {
                    "Arriba a la derecha, toca la palomita azul para guardar."],
             note: "La tarjeta es opcional. Si la quieres, toca la flechita de la acción para ver "
                 + "«Tarjeta» y conéctala igual, eligiendo la tarjeta en la lista.",
+            scene: .connect(field: "Comercio", done: ["Importe"])
+        ),
+        GuideStep(
+            title: "Pruébalo",
+            taps: ["Paga algo acercando el iPhone o el reloj a la terminal.",
+                   "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
+            scene: .finished
+        ),
+    ]
+
+    // Checked against Atajos in iOS 27.0 (es-MX, simulator, 2026-10-15): Biblioteca →
+    // Automatización → «Nuevo atajo» opens «Describir un atajo»; «Editor» shows the action
+    // list with an «Automatización» category holding «Wallet» («Cuando se use»). «Entrada de
+    // atajo» is NOT the payment there: inserting it adds «Recibir… de Ningún lado».
+    // Not verifiable without cards in Wallet: the variable picked from the Wallet block.
+    static let ios27: [GuideStep] = [
+        GuideStep(
+            title: "Abre Atajos",
+            taps: ["Abre la app Atajos.",
+                   "Arriba a la izquierda, toca la flecha para ir a «Biblioteca».",
+                   "Toca «Automatización» y luego el «+» de abajo."],
+            note: "Centavo no puede crear la automatización por ti: Apple no lo permite. "
+                + "Son 2 minutos y se hace una vez.",
+            opensShortcuts: true,
+            scene: .tabs
+        ),
+        GuideStep(
+            title: "Abre el editor",
+            taps: ["Se abre «Describir un atajo». No escribas nada ahí.",
+                   "Arriba a la derecha, toca «Editor»."],
+            note: "Describirlo con palabras arma el atajo, pero no siempre conecta el importe. "
+                + "A mano es seguro.",
+            scene: .newShortcut
+        ),
+        GuideStep(
+            title: "Agrega «Wallet»",
+            taps: ["En las categorías de abajo toca «Automatización».",
+                   "Toca «Wallet». Arriba queda «Cuando se use Cualquier tarjeta».",
+                   "Si quieres, toca «Cualquier tarjeta» para elegir solo algunas."],
+            scene: .wallet
+        ),
+        GuideStep(
+            title: "Agrega «Registrar gasto»",
+            taps: ["Toca «Buscar» y escribe «Registrar gasto».",
+                   "Toca «Registrar gasto», la de Centavo. Queda abajo de Wallet."],
+            scene: .addAction
+        ),
+        GuideStep(
+            title: "Conecta el importe",
+            taps: ["En la acción, toca «Importe».",
+                   "Arriba del teclado toca «Seleccionar variable».",
+                   "Toca el bloque de Wallet de arriba: en «Importe» queda una burbuja.",
+                   "Toca la burbuja y elige «Importe»."],
+            note: "No uses «Entrada de atajo»: en iOS 27 no trae el pago y el gasto no se anota.",
+            scene: .connect(field: "Importe", done: [])
+        ),
+        GuideStep(
+            title: "Conecta el comercio",
+            taps: ["Toca «Comercio» y haz lo mismo: «Seleccionar variable», el bloque de Wallet "
+                   + "y luego «Comercio».",
+                   "Toca la palomita de arriba para guardar."],
+            note: "Si al guardar te pregunta cómo ejecutarla, elige «Ejecutar de inmediato» y activa "
+                + "«Notificar al ejecutar»: así cada pago te dice cuánto te queda.",
             scene: .connect(field: "Comercio", done: ["Importe"])
         ),
         GuideStep(

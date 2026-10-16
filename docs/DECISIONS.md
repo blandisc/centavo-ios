@@ -120,3 +120,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 
 ## 2026-10-15 — En qué se va
 - **Vuelve el desglose por categoría, dentro del ticket del presupuesto**: las tres categorías más grandes del mes como porcentaje de lo gastado (moneda principal), con una raya latón proporcional. Revierte en parte el «se quita la vista de categorías» del 2026-10-12: sin pantalla ni página propia, en el espacio que ya existía. Las devoluciones no cuentan para los porcentajes; si nada tiene categoría, no se muestra.
+
+## 2026-10-15 — Guía para iOS 27
+- **La guía muestra los pasos de la versión de iOS del teléfono**: iOS 27 arma la automatización en el editor (Biblioteca → Automatización → «+» → «Editor» → categoría «Automatización» → «Wallet»). Verificado en el simulador de iOS 27 es-MX.
+- **En iOS 27 «Entrada de atajo» no es el pago** (agrega un bloque «Recibir… de Ningún lado»); la guía pide conectar la variable del bloque de Wallet. Esa última parte no se pudo ver en el simulador (no tiene tarjetas) y se confirma en el teléfono.

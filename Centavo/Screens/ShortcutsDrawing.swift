@@ -1,6 +1,14 @@
 import SwiftUI
 
 /// Which Atajos screen a guide step draws.
+/// Atajos changed its layout in iOS 27; the guide draws whichever the phone has.
+enum ShortcutsVersion {
+    static var isIOS27: Bool {
+        ProcessInfo.processInfo.isOperatingSystemAtLeast(
+            OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0))
+    }
+}
+
 enum ShortcutsScene {
     case tabs
     case wallet
@@ -235,7 +243,9 @@ private struct ConnectAnimation: View {
     private func caption(_ phase: Phase) -> String {
         switch phase {
         case .start, .tapWord: "1 · Toca «\(field)» en azul"
-        case .tapSuggestion: "2 · Toca «Entrada del atajo»"
+        case .tapSuggestion: ShortcutsVersion.isIOS27
+            ? "2 · «Seleccionar variable» y toca el bloque de Wallet"
+            : "2 · Toca «Entrada del atajo»"
         case .tapBubble: "3 · Toca la burbuja otra vez"
         case .pickProperty: "4 · Elige «\(field)»"
         case .connected: "Listo: «\(field)» quedó conectado"
@@ -276,20 +286,32 @@ private struct ConnectAnimation: View {
         guard name == field else { return .placeholder(name) }
         switch phase {
         case .start, .tapWord, .tapSuggestion: return .placeholder(name)
-        case .tapBubble, .pickProperty: return .variable("Entrada del atajo")
+        case .tapBubble, .pickProperty:
+            return .variable(ShortcutsVersion.isIOS27 ? "Wallet" : "Entrada del atajo")
         case .connected: return .variable(name)
         }
     }
 
     private var suggestionBar: some View {
         HStack(spacing: 8) {
-            Text("Entrada del atajo")
-                .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(Theme.Shortcuts.card, in: Capsule())
-                .tapTarget()
-            Text("Seleccionar variable")
-                .foregroundStyle(Theme.Shortcuts.secondary)
-                .padding(.horizontal, 10).padding(.vertical, 6)
+            if ShortcutsVersion.isIOS27 {
+                Text("Seleccionar variable")
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Theme.Shortcuts.card, in: Capsule())
+                    .tapTarget()
+                Text("Entrada de atajo")
+                    .foregroundStyle(Theme.Shortcuts.secondary)
+                    .strikethrough()
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+            } else {
+                Text("Entrada del atajo")
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Theme.Shortcuts.card, in: Capsule())
+                    .tapTarget()
+                Text("Seleccionar variable")
+                    .foregroundStyle(Theme.Shortcuts.secondary)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+            }
         }
         .font(.footnote)
     }
