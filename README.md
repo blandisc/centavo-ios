@@ -44,10 +44,10 @@ Tools/verify.sh
 
 Requiere Xcode 27 y `xcodegen` (`brew install xcodegen`).
 
-La app sincroniza con iCloud, y eso solo se puede firmar con la cuenta de desarrollador de pago. Con una cuenta gratuita, compila sin el permiso de iCloud y la app guarda solo en el teléfono:
+La app sincroniza con iCloud, y eso solo se puede firmar con la cuenta de desarrollador de pago. Con una cuenta gratuita, compila con un archivo de permisos vacío (dejar el valor en blanco no basta) y la app guarda solo en el teléfono:
 
 ```bash
-xcodebuild -scheme Centavo -destination 'platform=iOS,id=<tu iPhone>' -allowProvisioningUpdates DEVELOPMENT_TEAM=<tu equipo> CODE_SIGN_ENTITLEMENTS= build
+xcodebuild -scheme Centavo -destination 'platform=iOS,id=<tu iPhone>' -allowProvisioningUpdates DEVELOPMENT_TEAM=<tu equipo> CODE_SIGN_ENTITLEMENTS=<ruta a un .entitlements con <dict/> vacío> build
 ```
 
 En Linux solo corre el paquete (`Tools/verify.sh package`): la app necesita macOS.
