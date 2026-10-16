@@ -50,3 +50,10 @@ import Testing
         #expect(CaptureText.isCurrency("MX$"))
     }
 }
+
+@Suite struct CaptureTextRealWorldTests {
+    /// Sent by a real automation: the merchant name, twice, where the amount should be.
+    @Test func aMerchantNameIsNotAnAmount() {
+        #expect(CaptureText.amount(in: "Oxxo Roble Mty 50ht1Oxxo Roble Mty 50ht1") == nil)
+    }
+}
