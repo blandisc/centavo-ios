@@ -8,7 +8,9 @@ struct LogExpenseIntent: AppIntent {
     static let description = IntentDescription("Guarda un pago de Apple Wallet en Centavo.")
     static let openAppWhenRun = false
 
-    @Parameter(title: "Monto", description: "El monto tal como lo envía Wallet, p. ej. $123.45")
+    // Titled «Importe» because that is what Atajos (in Spanish) calls the amount of a Wallet
+    // transaction: the person matches the word in the action to the same word in the list.
+    @Parameter(title: "Importe", description: "El importe tal como lo envía Wallet, p. ej. $123.45")
     var amount: String
 
     @Parameter(title: "Comercio")

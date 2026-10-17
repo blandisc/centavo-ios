@@ -93,3 +93,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-15 — Aviso al pagar
 - **El aviso que muestra Atajos después de un pago dice cuánto te queda del presupuesto** («Anotado: $47.50 en OXXO. Te quedan $5,586.50 del presupuesto.»), o por cuánto te pasaste. Es el momento en que más sirve y no pide permisos: es el mismo diálogo que la acción ya devolvía. Sin presupuesto, el aviso queda como antes.
 - **Si calcular el presupuesto falla, el pago se guarda igual** y el aviso dice menos. La captura nunca depende de eso.
+
+## 2026-10-15 — Guía del atajo paso a paso
+- **La guía es un recorrido de 8 pasos, uno por pantalla, con un dibujo de la pantalla de Atajos** y un anillo latón donde hay que tocar. El dueño no pudo crear la automatización con la lista de texto. Se descartó un video grabado: el simulador no llega a esa parte con el disparador de Wallet, se volvería viejo con cada iOS y pesaría en la app. Los dibujos se ajustan en código.
+- **El paso de conectar variables se anima en bucle, con subtítulos** (los 4 toques). Con «Reducir movimiento» se queda quieto.
+- **Los textos de la guía salen del Atajos real** (iOS 26, es-MX), no de supuestos. Detalle en `docs/research/atajos-wallet.md`.
+- **El campo «Monto» de «Registrar gasto» se llama «Importe»**, como lo llama Atajos en español. Solo cambia el título visible: las automatizaciones ya hechas siguen funcionando.
+- **El último paso comprueba que funciona:** detecta el primer pago que guardó la automatización (los únicos que guardan el texto original de Wallet).

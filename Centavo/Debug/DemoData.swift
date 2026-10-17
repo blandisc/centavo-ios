@@ -68,8 +68,11 @@ enum DemoData {
                                    card: card, date: min(date, now), category: category))
         }
         // Today's own payment, so the list always opens on something recent.
+        // Captured by the Wallet automation (it keeps the raw text), so the setup guide can
+        // show that capture works.
         context.insert(Expense(amount: 47.5, currencyMarker: "$", merchant: "Oxxo",
-                               card: "BBVA", date: now.addingTimeInterval(-3_600), category: "Despensa"))
+                               card: "BBVA", date: now.addingTimeInterval(-3_600), category: "Despensa",
+                               rawAmount: "$47.50"))
 
         let lastMonth: [(Int, Decimal, String, String, String?, String?)] = [
             (3, 880, "$", "Soriana", "BBVA", "Despensa"),

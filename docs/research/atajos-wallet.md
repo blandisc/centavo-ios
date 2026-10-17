@@ -26,9 +26,17 @@ Octubre 2026. Investigación de escritorio, sin prueba en un iPhone. El dueño p
 - Lista de países y bancos de México donde funciona. Ninguna fuente lo dice.
 - El formato exacto del monto con una tarjeta mexicana (¿`$89.00` o `MX$89.00`?). El lector de montos acepta ambos.
 - Si un reembolso dispara la automatización y con qué signo.
-- Cómo se llama en español la opción de la automatización que muestra el aviso al ejecutarse (en inglés, «Notify When Run»). La guía la describe sin citar el nombre; confirmarlo en CEN-1.
 - Que no exista una API para leer el historial de Wallet de otras tarjetas: se confirma de nuevo; FinanceKit sigue limitado. ([foro de Apple](https://developer.apple.com/forums/thread/773797))
 
 ## Riesgo principal
 
 El disparador es frágil y Apple no ha respondido los reportes. Una parte de los pagos no se va a capturar sola. El producto ya asume captura manual para todo lo demás, así que esto no cambia la decisión de arranque, pero sí la promesa: **«la mayoría de tus pagos con Wallet se anotan solos»**, no «todos».
+
+## Recorrido verificado en Atajos (iOS 26.3, es-MX, simulador, 2026-10-15)
+
+- Pestañas: «Biblioteca», «Automatización», «Galería». Sin automatizaciones, el botón es «Nueva automatización».
+- El disparador se llama **«Wallet»** («Al realizar un pago sin contacto con mi tarjeta o pase de Wallet»), no «Transacción». Se encuentra escribiéndolo en el buscador de abajo.
+- Opciones: «Ejecutar después de confirmar», **«Ejecutar de inmediato»** y el interruptor **«Notificar al ejecutar»**. Título de la pantalla: «Cuando use sin contacto». Sin tarjetas en Wallet, «Siguiente» no se activa (por eso el simulador no llega más lejos con este disparador).
+- Después de «Siguiente» no hay editor en blanco: sale «Empezar» (con **«Crear nuevo atajo»**), «Mis atajos» y una lista de apps. **Tocar «Centavo · Registrar gasto» en esa lista crea la automatización al instante, sin editor y sin conectar el importe**: la acción corre sin monto y no anota nada. Es la trampa más probable. El camino correcto es «Crear nuevo atajo», «Buscar acciones», «Registrar gasto».
+- El editor se guarda con una palomita azul arriba a la derecha.
+- No verificado en el simulador (el buscador de acciones no devuelve resultados ahí): la burbuja de la variable («Entrada del atajo») y los nombres de las propiedades. Fuentes en español dan **«Importe»** y **«Comercio»**. ([Gastimo](https://gastimo.com/atajo-ios))

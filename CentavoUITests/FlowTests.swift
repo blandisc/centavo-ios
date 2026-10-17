@@ -250,6 +250,31 @@ final class FlowTests: XCTestCase {
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
+    // MARK: Guía del atajo
+
+    /// Opens the guide from the menu, or from the empty screen on a first launch.
+    private func walkGuideToTheEnd(_ app: XCUIApplication, fromMenu: Bool = true) -> XCUIElement {
+        if fromMenu { app.buttons["Más"].tap() }
+        app.buttons["Configurar atajo"].firstMatch.tap()
+        let next = require(app.buttons["guia-siguiente"], "No abrió la guía paso a paso")
+        for _ in 0..<7 { next.tap() }
+        XCTAssertFalse(next.isEnabled, "Hay más pasos de los esperados")
+        return require(app.descendants(matching: .any)["guia-comprobacion"], "El último paso no comprueba la captura")
+    }
+
+    func testLaGuiaEsperaElPrimerPago() {
+        let check = walkGuideToTheEnd(launch(), fromMenu: false)
+        XCTAssertTrue(check.label.contains("Esperando"), "Dice: \(check.label)")
+        snap("flujo-guia-esperando")
+    }
+
+    func testLaGuiaConfirmaQueLaCapturaFunciona() {
+        let check = walkGuideToTheEnd(launch(demo: true))
+        XCTAssertTrue(check.label.contains("Ya funciona"), "Dice: \(check.label)")
+        XCTAssertTrue(check.label.contains("Oxxo"), "Dice: \(check.label)")
+        snap("flujo-guia-funciona")
+    }
+
     // MARK: Meses
 
     func testNavegarAMesesAnterioresMuestraSusDatos() {
