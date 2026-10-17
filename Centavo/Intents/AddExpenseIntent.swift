@@ -11,7 +11,7 @@ struct AddExpenseIntent: AppIntent {
     )
     static let openAppWhenRun = false
 
-    @Parameter(title: "Monto", requestValueDialog: "¿Cuánto fue?")
+    @Parameter(title: "Monto", requestValueDialog: "¿Cuánto fue? Si no fue en tu moneda, di «dólares» o «euros».")
     var amount: String
 
     @Parameter(title: "Comercio", requestValueDialog: "¿Dónde?")
@@ -40,9 +40,7 @@ struct AddExpenseIntent: AppIntent {
     /// "89" said to Siri reads back as money: "$89.00".
     private func spoken(_ text: String) -> String {
         guard let parsed = AmountParser.parse(text) else { return text }
-        let marker = parsed.currencyMarker.flatMap { CurrencyResolver.recognizes($0) ? $0 : nil }
-        let primary = MonthStatus.primaryCurrency
-        return formatMoney(parsed.value, isoCode: CurrencyResolver.isoCode(for: marker, primary: primary),
-                           label: marker ?? "$")
+        let code = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: MonthStatus.primaryCurrency)
+        return formatMoney(parsed.value, isoCode: code, label: code)
     }
 }

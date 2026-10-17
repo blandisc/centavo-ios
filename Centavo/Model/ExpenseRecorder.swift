@@ -64,22 +64,37 @@ enum ExpenseRecorder {
         amountText: String,
         merchant: String,
         in context: ModelContext,
+        primary: String = CurrencyPreference.current,
         now: Date = .now
     ) throws -> CaptureOutcome {
         guard let parsed = AmountParser.parse(amountText) else { return .unreadable }
         guard parsed.value != 0 else { return .empty }
         let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
-        let marker = parsed.currencyMarker.flatMap { CurrencyResolver.recognizes($0) ? $0 : nil }
         context.insert(Expense(
             amount: parsed.value,
-            currencyMarker: marker ?? "$",
+            currencyMarker: spokenCurrency(parsed.currencyMarker, primary: primary),
             merchant: merchantName,
             date: now,
             category: rememberedCategory(for: merchantName, in: context)
         ))
         try context.save()
         return .saved(merchant: merchantName)
+    }
+
+    /// What Siri heard as a currency, as an ISO code: "20 dólares" is USD, "89 pesos" or no
+    /// word at all is the month's currency. A code or symbol it recognizes is kept.
+    static func spokenCurrency(_ marker: String?, primary: String) -> String {
+        let word = (marker ?? "").lowercased().folding(options: .diacriticInsensitive, locale: nil)
+            .trimmingCharacters(in: .whitespaces)
+        if word.hasPrefix("dolar") { return "USD" }
+        if word.hasPrefix("euro") { return "EUR" }
+        if word.hasPrefix("peso") { return "MXN" }
+        if let marker, CurrencyResolver.recognizes(marker),
+           let code = CurrencyResolver.isoCode(for: marker, primary: primary) {
+            return code
+        }
+        return primary
     }
 
     /// Payments saved in the last few minutes, the only ones a repeat could match.

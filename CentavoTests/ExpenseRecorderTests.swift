@@ -90,11 +90,11 @@ final class ExpenseRecorderTests: XCTestCase {
 
     func testSiriSavesHowMuchAndWhere() throws {
         XCTAssertEqual(try ExpenseRecorder.recordByHand(amountText: "89.50", merchant: " Tacos ",
-                                                        in: context, now: now),
+                                                        in: context, primary: "MXN", now: now),
                        .saved(merchant: "Tacos"))
         let expense = try XCTUnwrap(saved().first)
         XCTAssertEqual(expense.amount, Decimal(string: "89.5"))
-        XCTAssertEqual(expense.currencyMarker, "$")
+        XCTAssertEqual(expense.currencyMarker, "MXN", "Se guarda el código, no un «$» ambiguo")
         XCTAssertNil(expense.rawAmount, "Un gasto a mano no debe contar como captura de Wallet")
     }
 
@@ -106,8 +106,17 @@ final class ExpenseRecorderTests: XCTestCase {
     }
 
     func testAWordForACurrencyKeepsItInTheTotal() throws {
-        _ = try ExpenseRecorder.recordByHand(amountText: "89 pesos", merchant: "Oxxo", in: context, now: now)
-        XCTAssertEqual(try saved().first?.currencyMarker, "$")
+        _ = try ExpenseRecorder.recordByHand(amountText: "89 pesos", merchant: "Oxxo", in: context,
+                                             primary: "MXN", now: now)
+        XCTAssertEqual(try saved().first?.currencyMarker, "MXN")
+    }
+
+    func testSiriUnderstandsDollarsAndEuros() {
+        XCTAssertEqual(ExpenseRecorder.spokenCurrency("dólares", primary: "MXN"), "USD")
+        XCTAssertEqual(ExpenseRecorder.spokenCurrency("Euros", primary: "MXN"), "EUR")
+        XCTAssertEqual(ExpenseRecorder.spokenCurrency("US$", primary: "MXN"), "USD")
+        XCTAssertEqual(ExpenseRecorder.spokenCurrency(nil, primary: "MXN"), "MXN")
+        XCTAssertEqual(ExpenseRecorder.spokenCurrency("varos", primary: "MXN"), "MXN")
     }
 
     func testSiriRejectsZeroAndNonsense() throws {

@@ -12,6 +12,8 @@ struct ExpenseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Expense.date, order: .reverse) private var history: [Expense]
     @State private var amountText = ""
+    /// The expense's currency. New ones start in the month's currency.
+    @State private var currency = CurrencyPreference.current
     @State private var isRefund = false
     @State private var merchant = ""
     @State private var card = ""
@@ -21,6 +23,11 @@ struct ExpenseEditorView: View {
     @FocusState private var amountFocused: Bool
 
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
+    /// The offered currencies, plus this expense's own if it came in another (Wallet abroad).
+    private var currencies: [String] {
+        CurrencyPreference.offered.contains(currency)
+            ? CurrencyPreference.offered : CurrencyPreference.offered + [currency]
+    }
     /// A zero amount is never a real expense, so it cannot be saved.
     private var canSave: Bool {
         guard let parsed, parsed.value != 0 else { return false }
@@ -70,10 +77,14 @@ struct ExpenseEditorView: View {
                     }
                     .tint(Theme.brass)
                     .accessibilityIdentifier("devolucion")
+                    // The decimal pad cannot type "USD" or "€", so the currency is a choice.
+                    Picker("Moneda", selection: $currency) {
+                        ForEach(currencies, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("moneda")
                 } header: {
                     Text("Monto").ticketCaption()
-                } footer: {
-                    hint("Otra moneda: escribe USD 20 o € 20.")
                 }
                 .listRowBackground(Theme.surface)
 
@@ -184,6 +195,10 @@ struct ExpenseEditorView: View {
             amountFocused = true
             return
         }
+        // A bare "$" from Wallet is the month's currency; anything else keeps its own.
+        currency = CurrencyResolver.isoCode(for: expense.currencyMarker,
+                                            primary: CurrencyPreference.current)
+            ?? CurrencyPreference.current
         isRefund = expense.amount < 0
         amountText = expense.amount.magnitude
             .formatted(.number.precision(.fractionLength(2)).grouping(.never))
@@ -199,11 +214,13 @@ struct ExpenseEditorView: View {
         let cardName = card.trimmingCharacters(in: .whitespaces)
         let categoryName = category.trimmingCharacters(in: .whitespaces)
         let value = isRefund ? -parsed.value.magnitude : parsed.value.magnitude
-        // "89 pesos" is not a currency; only keep a marker that looks like one.
-        let typedMarker = parsed.currencyMarker.flatMap { CurrencyResolver.recognizes($0) ? $0 : nil }
+        // Saved as its ISO code, never "$": a bare "$" would follow the month's currency and
+        // change meaning if that is switched later.
         if let expense {
             expense.amount = value
-            if let marker = typedMarker { expense.currencyMarker = marker }
+            let before = CurrencyResolver.isoCode(for: expense.currencyMarker,
+                                                  primary: CurrencyPreference.current)
+            if before != currency { expense.currencyMarker = currency }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
             expense.category = categoryName.isEmpty ? nil : categoryName
@@ -211,7 +228,7 @@ struct ExpenseEditorView: View {
         } else {
             context.insert(Expense(
                 amount: value,
-                currencyMarker: typedMarker ?? "$",
+                currencyMarker: currency,
                 merchant: name,
                 card: cardName.isEmpty ? nil : cardName,
                 date: date,

@@ -104,7 +104,8 @@ final class FlowTests: XCTestCase {
         app.buttons["hoja-guardar"].tap()
         expectTotal(app, "$50.00")
 
-        fillExpense(app, amount: "USD 20", merchant: "Steam")
+        fillExpense(app, amount: "20", merchant: "Steam")
+        app.buttons["USD"].tap()
         app.buttons["hoja-guardar"].tap()
         let others = require(app.staticTexts["otras-monedas"], "El gasto en USD no salió aparte")
         XCTAssertTrue(others.label.contains("USD 20.00"), "Otras monedas dice: \(others.label)")
