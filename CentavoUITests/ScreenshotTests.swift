@@ -67,6 +67,14 @@ final class ScreenshotTests: XCTestCase {
         snap("06-editar-gasto")
     }
 
+    func testNuevoGastoEnDolares() {
+        let app = launch()
+        app.buttons["Anotar gasto"].tap()
+        sleep(1)
+        app.buttons["USD"].tap()
+        snap("05b-nuevo-gasto-dolares")
+    }
+
     func testMenuMas() {
         let app = launch()
         app.buttons["Más"].tap()

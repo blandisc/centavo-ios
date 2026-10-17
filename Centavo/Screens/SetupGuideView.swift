@@ -279,6 +279,8 @@ private struct GuideStep {
         "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. "
             + "Si un pago no aparece, anótalo tú.",
         "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo.",
+        "Para el efectivo, di «Oye Siri, anotar gasto en Centavo». También puedes ponerlo en el "
+            + "botón de Acción (Ajustes › Botón de Acción › Atajo) o en el Centro de control.",
     ]
 }
 
