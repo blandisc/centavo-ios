@@ -24,21 +24,21 @@ struct BudgetPage: View {
         formatMoney(amount, isoCode: spent.isoCode, label: spent.label)
     }
 
+    /// "$3,871": a rough mark, so no cents, but still money like every other figure.
+    private func wholeMoney(_ amount: Decimal) -> String {
+        if let isoCode = spent.isoCode {
+            return amount.formatted(.currency(code: isoCode).precision(.fractionLength(0)))
+        }
+        return spent.label + amount.formatted(.number.precision(.fractionLength(0)))
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Gastado").font(.ticket(10, relativeTo: .caption2)).tracking(1.2)
-                    .textCase(.uppercase).foregroundStyle(Theme.muted)
-                Text(money(spent.amount))
-                    .font(.ticket(22, relativeTo: .title2))
-                    .tracking(-0.5)
-                    .foregroundStyle(Theme.brass)
-            }
-            if let pace {
-                ticket(pace)
-            } else {
-                invitation
-            }
+        // What was spent is already the big total right above; this page only says how it
+        // measures against the budget.
+        if let pace {
+            ticket(pace)
+        } else {
+            invitation
         }
     }
 
@@ -75,7 +75,8 @@ struct BudgetPage: View {
         let isOver = pace.remaining < 0
         let markerX = barWidth * CGFloat(pace.paceFraction)
         let labelOnLeft = pace.paceFraction < 0.5
-        let todayText = "Hoy · " + pace.expectedToDate.formatted(.number.precision(.fractionLength(0)))
+        let todayText = "Hoy · " + wholeMoney(pace.expectedToDate)
+        let share = NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue
         let remainingLabel = isOver ? "Te pasaste" : (isCurrentMonth ? "Te quedan" : "Te quedaron")
         let remainingText = money(pace.remaining.magnitude)
         // The type is monospaced (0.6 em a character), so its width is predictable. If the
@@ -84,6 +85,13 @@ struct BudgetPage: View {
         let remainingInside = barWidth > 0 && barWidth * CGFloat(1 - pace.spentFraction) >= neededWidth
 
         return VStack(alignment: .leading, spacing: 8) {
+            // The legend of the brass: what share of the budget is gone, past 100 % if need be.
+            Text("Gastado · " + share.formatted(.percent.precision(.fractionLength(0))))
+                .font(.ticket(10, relativeTo: .caption2))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+                .padding(.bottom, 4)
             // The outline alone sets the size. Everything sized from `barWidth` is an overlay,
             // so it can never feed back into the width it was measured from: a full brass bar
             // used to hold the ticket at a stale, wider width and push the page off screen.
@@ -141,7 +149,8 @@ struct BudgetPage: View {
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("presupuesto-ticket")
         .accessibilityLabel(
-            "Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)). "
+            "Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)), "
+            + "el \(share.formatted(.percent.precision(.fractionLength(0)))). "
             + (isOver ? "Te pasaste por \(remainingText). "
                       : (isCurrentMonth ? "Te quedan \(remainingText). " : "Te quedaron \(remainingText). "))
             + (isCurrentMonth ? "A hoy podrías llevar \(money(pace.expectedToDate))." : "")
