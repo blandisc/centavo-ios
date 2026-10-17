@@ -35,7 +35,10 @@ enum BudgetSync {
         ) { _ in adoptCloud() }
         cloud.synchronize()
         if cloud.string(forKey: BudgetStore.key) == nil {
-            push(local.string(forKey: BudgetStore.key) ?? "")
+            // On a new phone iCloud may not have arrived yet: handing it "no budget" here
+            // would wipe the real one. Only a budget this phone actually has goes up.
+            let mine = local.string(forKey: BudgetStore.key) ?? ""
+            if !mine.isEmpty { push(mine) }
         } else {
             adoptCloud()
         }

@@ -18,6 +18,10 @@ enum ShortcutsScene {
     /// Connecting `field` to the transaction, with `done` fields already connected.
     case connect(field: String, done: [String])
     case finished
+    // iOS 27
+    case library27
+    case editor27
+    case wallet27
 }
 
 /// A simplified drawing of Apple's Shortcuts app in dark mode, with a brass ring on what to
@@ -35,6 +39,9 @@ struct ShortcutsDrawing: View {
             case .addAction: addAction
             case .connect(let field, let done): ConnectAnimation(field: field, done: done)
             case .finished: finished
+            case .library27: library27
+            case .editor27: editor27
+            case .wallet27: wallet27
             }
         }
         .font(.subheadline)
@@ -200,6 +207,75 @@ struct ShortcutsDrawing: View {
                     .background(Theme.Shortcuts.blue, in: Circle())
             }
             ActionCard(importe: .variable("Importe"), comercio: .variable("Comercio"))
+        }
+    }
+
+    // MARK: iOS 27
+
+    /// Biblioteca: the sections are rows now, and «+» sits at the bottom.
+    private var library27: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left").foregroundStyle(Theme.Shortcuts.blue)
+                Text("Biblioteca").font(.headline)
+            }
+            row("Todos los atajos", "square.stack.fill")
+            row("Automatización", "checkmark.circle.fill").tapTarget()
+            HStack {
+                Spacer()
+                Image(systemName: "plus")
+                    .font(.headline)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.Shortcuts.card, in: Circle())
+                    .tapTarget()
+                Spacer()
+            }
+            .padding(.top, 6)
+        }
+    }
+
+    /// «Nuevo atajo» opens «Describir un atajo»; the editor is behind «Editor».
+    private var editor27: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Nuevo atajo").font(.headline)
+                Spacer()
+                Text("Editor")
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Theme.Shortcuts.card, in: Capsule())
+                    .tapTarget()
+            }
+            Text("Describir un atajo")
+                .foregroundStyle(Theme.Shortcuts.secondary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Shortcuts.card, in: Capsule())
+                .opacity(0.6)
+        }
+    }
+
+    /// In the editor: the «Automatización» category holds «Wallet»; it lands as a block on top.
+    private var wallet27: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "creditcard.fill").foregroundStyle(Theme.Shortcuts.blue)
+                Text("Cuando se use")
+                Text("Cualquier tarjeta").foregroundStyle(Theme.Shortcuts.blue)
+            }
+            .font(.footnote)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
+            HStack(spacing: 6) {
+                Text("Automatización")
+                    .foregroundStyle(Theme.Shortcuts.blue)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Theme.Shortcuts.card, in: Capsule())
+                    .tapTarget()
+                Text("Scripts").foregroundStyle(Theme.Shortcuts.secondary)
+            }
+            .font(.footnote)
+            row("Wallet", "wallet.pass.fill").tapTarget()
         }
     }
 

@@ -18,7 +18,9 @@ func ledgerAmount(for expense: Expense, primary: String) -> String {
     let number = expense.amount.magnitude.formatted(.number.precision(.fractionLength(2)))
     let sign = expense.amount < 0 ? "+" : ""
     if iso == primary { return sign + number }
-    let code = iso ?? expense.currencyMarker ?? ""
+    // A marker is a few characters. Anything longer is junk that slipped in (a merchant's
+    // name, seen for real) and must not push the row off the screen.
+    let code = String((iso ?? expense.currencyMarker ?? "").prefix(4))
     return sign + (code.isEmpty ? number : "\(code) \(number)")
 }
 

@@ -10,6 +10,18 @@ import UIKit
 /// swipe-to-delete, system menus and sheets.
 struct ExpenseListView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
+    /// The newest payment the Wallet automation saved (only it keeps the raw text). Asked of
+    /// the store, one row, instead of scanning every expense on each redraw.
+    @Query(Self.latestCapture) private var latestCaptures: [Expense]
+
+    private static var latestCapture: FetchDescriptor<Expense> {
+        var descriptor = FetchDescriptor<Expense>(
+            predicate: #Predicate { $0.rawAmount != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return descriptor
+    }
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(BudgetStore.key) private var storedBudget = ""
@@ -65,9 +77,8 @@ struct ExpenseListView: View {
                     .ticketRow(bottom: isCurrent ? 4 : 20)
 
                     if isCurrent {
-                        // `expenses` is newest first; only the automation keeps Wallet's raw text.
                         CaptureHealthRow(
-                            health: CaptureHealth(lastCapture: expenses.first { $0.rawAmount != nil }?.date,
+                            health: CaptureHealth(lastCapture: latestCaptures.first?.date,
                                                   now: now),
                             openGuide: { showingSetup = true }
                         )
