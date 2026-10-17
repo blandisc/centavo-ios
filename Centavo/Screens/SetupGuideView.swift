@@ -217,53 +217,55 @@ private struct GuideStep {
         GuideStep(
             title: "Abre Atajos",
             taps: ["Abre la app Atajos.",
-                   "Arriba a la izquierda, toca la flecha para ir a «Biblioteca».",
+                   "Toca la flecha de arriba a la izquierda.",
                    "Toca «Automatización» y luego el «+» de abajo."],
             note: "Centavo no puede crear la automatización por ti: Apple no lo permite. "
                 + "Son 2 minutos y se hace una vez.",
             opensShortcuts: true,
-            scene: .library27
+            scene: .frames(GuideFrame.openAutomation)
         ),
         GuideStep(
             title: "Abre el editor",
-            taps: ["Se abre «Describir un atajo». No escribas nada ahí.",
-                   "Arriba a la derecha, toca «Editor»."],
-            note: "Describirlo con palabras arma el atajo, pero no siempre conecta el importe. "
-                + "A mano es seguro.",
-            scene: .editor27
+            taps: ["Se abre «Describir un atajo». No escribas nada.",
+                   "Toca «Editor» arriba a la derecha."],
+            scene: .frames(GuideFrame.openEditor)
         ),
         GuideStep(
             title: "Agrega «Wallet»",
-            taps: ["En las categorías de abajo toca «Automatización».",
-                   "Toca «Wallet». Arriba queda «Cuando se use Cualquier tarjeta».",
-                   "Si quieres, toca «Cualquier tarjeta» para elegir solo algunas."],
-            scene: .wallet27
+            taps: ["Abajo, toca la categoría «Automatización».",
+                   "Toca «Wallet». Arriba queda «Cuando se use Cualquier tarjeta»."],
+            scene: .frames(GuideFrame.addWallet)
         ),
         GuideStep(
             title: "Agrega «Registrar gasto»",
             taps: ["Toca «Buscar» y escribe «Registrar gasto».",
-                   "Toca «Registrar gasto», la de Centavo. Queda abajo de Wallet."],
-            scene: .addAction
+                   "Toca «Registrar gasto», la de Centavo."],
+            scene: .frames(GuideFrame.addAction)
         ),
         GuideStep(
-            title: "Conecta el importe",
-            taps: ["En la acción, toca «Importe».",
-                   "Arriba del teclado toca «Seleccionar variable».",
-                   "Toca el bloque de Wallet de arriba: en «Importe» queda una burbuja.",
-                   "Toca la burbuja y elige «Importe»."],
-            note: "No uses «Entrada de atajo»: en iOS 27 no trae el pago y el gasto no se anota.",
-            scene: .connect(field: "Importe", done: [])
+            title: "Conecta la cantidad",
+            taps: ["Toca «Importe».",
+                   "Arriba del teclado toca «Transacción».",
+                   "Toca la burbuja «Transacción» otra vez.",
+                   "En «Obtener», elige «Cantidad»."],
+            note: "Si ves «Cantidad» con palomita, ya quedó. Si en «Importe» dice «Transacción» y no "
+                + "«Cantidad», el gasto no se anota: toca la burbuja y elige «Cantidad».",
+            scene: .frames(GuideFrame.connectAmount)
         ),
         GuideStep(
             title: "Conecta el comercio",
-            taps: ["Toca «Comercio» y haz lo mismo: «Seleccionar variable», el bloque de Wallet "
-                   + "y luego «Comercio».",
-                   "Toca la flecha de arriba a la izquierda: se guarda sola y aparece en "
+            taps: ["Toca «Comercio».",
+                   "Arriba del teclado toca «Transacción».",
+                   "Toca la burbuja otra vez y elige «Comercio»."],
+            scene: .frames(GuideFrame.connectMerchant)
+        ),
+        GuideStep(
+            title: "Guárdala",
+            taps: ["Toca la flecha de arriba a la izquierda. Se guarda sola y aparece en "
                    + "«Automatización», en «Personal»."],
-            note: "Si al pagar Atajos te pide confirmar antes de correrla, abre esa automatización "
-                + "y elige «Ejecutar de inmediato»; si ves «Notificar al ejecutar», actívalo para "
-                + "que cada pago te diga cuánto te queda.",
-            scene: .connect(field: "Comercio", done: ["Importe"])
+            note: "Si al pagar Atajos te pide confirmar, abre esa automatización y elige "
+                + "«Ejecutar de inmediato».",
+            scene: .frames(GuideFrame.save)
         ),
         GuideStep(
             title: "Pruébalo",
@@ -311,7 +313,9 @@ private struct CaptureCheck: View {
                     Text("Esperando tu primer pago")
                         .font(.ticket(14, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Theme.ink)
-                    Text("Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
+                    Text(ShortcutsVersion.isIOS27
+                         ? "Si pagaste y no llega en un par de minutos, revisa los pasos 5 y 6."
+                         : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
                         .font(.ticket(12, relativeTo: .footnote))
                         .foregroundStyle(Theme.muted)
                 }

@@ -98,7 +98,9 @@ final class ScreenshotTests: XCTestCase {
         snap("09-guia")
         app.buttons["guia-siguiente"].tap(); sleep(1); snap("09b-guia-paso-2")
         app.buttons["guia-siguiente"].tap(); sleep(1); snap("09c-guia-paso-3")
-        for _ in 0..<3 { app.buttons["guia-siguiente"].tap() }
+        app.buttons["guia-siguiente"].tap(); app.buttons["guia-siguiente"].tap()
+        snap("09d-guia-paso-5-a"); sleep(2); snap("09e-guia-paso-5-b"); sleep(2); snap("09f-guia-paso-5-c")
+        app.buttons["guia-siguiente"].tap()
         sleep(4)  // let the taps play out
         snap("14-guia-conectar-importe")
     }

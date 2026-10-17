@@ -140,3 +140,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Un gasto puede repetirse cada mes** (interruptor «Se repite cada mes» en la hoja). La copia se anota sola el mismo día del mes, o el último si el mes es más corto, en cuanto ese día llega; se revisa al abrir la app y antes de cada aviso de Wallet y de Siri.
 - **Esquema:** tres propiedades opcionales en `Expense` (`repeatsMonthly`, `repeatsThrough`, `isRepeat`), migración ligera y compatible con iCloud. Se decide sin consulta previa porque el dueño dio carta blanca el 2026-10-16.
 - **Al activarlo empieza a contar desde ahora:** marcar un gasto viejo no rellena meses pasados (podrían estar anotados a mano). Una copia borrada no regresa. Las copias se ven con «Fijo» y no generan más copias.
+
+## 2026-10-17 — Guía animada
+- **Cada paso de la guía de iOS 27 es una animación de sus toques**, uno por uno con subtítulo, en bucle (quieta y desplegada con «Reducir movimiento»). El dueño no pudo seguirla con dibujos fijos.
+- **Fuente: la pantalla real del iPhone del dueño (iOS 27).** La burbuja del pago se llama «Transacción»; al tocarla, «Obtener» ofrece Transacción, Tarjeta o pase, Comercio, **Cantidad** y Nombre. El monto es «Cantidad».

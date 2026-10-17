@@ -22,6 +22,8 @@ enum ShortcutsScene {
     case library27
     case editor27
     case wallet27
+    /// A step played tap by tap (iOS 27).
+    case frames([GuideFrame])
 }
 
 /// A simplified drawing of Apple's Shortcuts app in dark mode, with a brass ring on what to
@@ -30,6 +32,14 @@ struct ShortcutsDrawing: View {
     let scene: ShortcutsScene
 
     var body: some View {
+        if case .frames(let frames) = scene {
+            GuideFrameAnimation(frames: frames)
+        } else {
+            drawing
+        }
+    }
+
+    private var drawing: some View {
         VStack(alignment: .leading, spacing: 10) {
             switch scene {
             case .tabs: tabs
@@ -42,6 +52,7 @@ struct ShortcutsDrawing: View {
             case .library27: library27
             case .editor27: editor27
             case .wallet27: wallet27
+            case .frames: EmptyView()
             }
         }
         .font(.subheadline)
