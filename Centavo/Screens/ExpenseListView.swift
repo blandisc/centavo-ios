@@ -59,6 +59,7 @@ struct ExpenseListView: View {
                         spent: summary.primary,
                         pace: pace,
                         isCurrentMonth: isCurrent,
+                        shares: CategoryShare.top(summary.categories),
                         onSetBudget: { showingBudget = true }
                     )
                     .ticketRow(bottom: isCurrent ? 4 : 20)

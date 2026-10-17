@@ -250,6 +250,16 @@ final class FlowTests: XCTestCase {
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
+    // MARK: En qué se va
+
+    func testElPresupuestoDiceEnQueSeVa() {
+        let app = launch(demo: true, budget: true)
+        let shares = require(app.descendants(matching: .any)["en-que-se-va"], "No dice en qué se va")
+        XCTAssertTrue(app.staticTexts["Ropa: 42 % de lo gastado"].exists
+                      || shares.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Ropa'")).count > 0,
+                      "No aparece la categoría más grande")
+    }
+
     // MARK: Salud de la captura
 
     func testDiceCuandoLlegoElUltimoPagoDeWallet() {

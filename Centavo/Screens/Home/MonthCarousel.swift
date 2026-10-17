@@ -7,6 +7,7 @@ struct MonthCarousel: View {
     let spent: MoneyTotal
     let pace: BudgetPace?
     let isCurrentMonth: Bool
+    var shares: [CategoryShare] = []
     let onSetBudget: () -> Void
 
     @State private var page: Int? = 0
@@ -18,7 +19,7 @@ struct MonthCarousel: View {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 0) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
-                               onSetBudget: onSetBudget)
+                               shares: shares, onSetBudget: onSetBudget)
                         .containerRelativeFrame(.horizontal)
                         .id(0)
                     CalendarPage(model: calendarModel)

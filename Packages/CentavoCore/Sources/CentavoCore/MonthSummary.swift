@@ -126,3 +126,25 @@ public enum MonthSummarizer {
         }
     }
 }
+
+/// One line of "where it goes": a category and its share of the month's spending.
+public struct CategoryShare: Equatable, Sendable {
+    /// `nil` for what isn't filed anywhere yet.
+    public let category: String?
+    /// 0...1 of what was spent in the primary currency.
+    public let share: Double
+
+    /// The biggest few, as shares of the spending (refunds that left a category in the
+    /// negative don't count, or the shares would stop adding up). Empty when nothing is
+    /// filed under a name: "100 % sin categoría" says nothing.
+    public static func top(_ categories: [CategoryTotal], limit: Int = 3) -> [CategoryShare] {
+        let spent = categories.filter { $0.amount > 0 }
+        guard spent.contains(where: { $0.category != nil }) else { return [] }
+        let total = spent.reduce(Decimal(0)) { $0 + $1.amount }
+        guard total > 0 else { return [] }
+        return spent.prefix(limit).map {
+            CategoryShare(category: $0.category,
+                          share: NSDecimalNumber(decimal: $0.amount / total).doubleValue)
+        }
+    }
+}

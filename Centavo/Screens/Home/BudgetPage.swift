@@ -10,6 +10,8 @@ struct BudgetPage: View {
     let pace: BudgetPace?
     /// A month that is over has no "today": the whole budget was due, so the marker goes.
     let isCurrentMonth: Bool
+    /// Where the month's money went, biggest first. Empty when nothing is filed.
+    var shares: [CategoryShare] = []
     let onSetBudget: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = 84
@@ -35,11 +37,55 @@ struct BudgetPage: View {
     var body: some View {
         // What was spent is already the big total right above; this page only says how it
         // measures against the budget.
-        if let pace {
-            ticket(pace)
-        } else {
-            invitation
+        VStack(alignment: .leading, spacing: 20) {
+            if let pace {
+                ticket(pace)
+            } else {
+                invitation
+            }
+            if !shares.isEmpty {
+                whereItGoes
+            }
         }
+    }
+
+    // MARK: Where it goes
+
+    /// The biggest categories, each a line of the ticket with a brass rule for its share.
+    private var whereItGoes: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("En qué se va")
+                .font(.ticket(10, relativeTo: .caption2))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.muted)
+            ForEach(Array(shares.enumerated()), id: \.offset) { _, line in
+                let name = line.category ?? "Sin categoría"
+                let percent = line.share.formatted(.percent.precision(.fractionLength(0)))
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(name)
+                            .foregroundStyle(line.category == nil ? Theme.muted : Theme.ink)
+                            .lineLimit(1)
+                        Spacer(minLength: 12)
+                        Text(percent)
+                            .foregroundStyle(Theme.muted)
+                            .monospacedDigit()
+                    }
+                    .font(.ticket(12, relativeTo: .footnote))
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                    Rectangle()
+                        .fill(Theme.brass)
+                        .frame(height: 2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .scaleEffect(x: max(line.share, 0.02), anchor: .leading)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(name): \(percent) de lo gastado")
+            }
+        }
+        .accessibilityIdentifier("en-que-se-va")
     }
 
     // MARK: Without a budget
