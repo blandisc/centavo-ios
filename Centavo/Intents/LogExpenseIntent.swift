@@ -10,7 +10,10 @@ struct LogExpenseIntent: AppIntent {
 
     // Titled «Importe» because that is what Atajos (in Spanish) calls the amount of a Wallet
     // transaction: the person matches the word in the action to the same word in the list.
-    @Parameter(title: "Importe", description: "El importe tal como lo envía Wallet, p. ej. $123.45")
+    // Connects itself to what comes before it (the Wallet payment) where Atajos allows it.
+    // Connecting the whole payment instead of its «Importe» works too: see `CaptureText`.
+    @Parameter(title: "Importe", description: "El importe tal como lo envía Wallet, p. ej. $123.45",
+               inputConnectionBehavior: .connectToPreviousIntentResult)
     var amount: String
 
     @Parameter(title: "Comercio")

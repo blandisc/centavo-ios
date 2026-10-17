@@ -26,7 +26,8 @@ enum ExpenseRecorder {
         in context: ModelContext,
         now: Date = .now
     ) throws -> CaptureOutcome {
-        guard let parsed = AmountParser.parse(amountText) else { return .unreadable }
+        // Usually just the amount; `CaptureText` also finds it when the whole payment came.
+        guard let parsed = CaptureText.amount(in: amountText) else { return .unreadable }
 
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))

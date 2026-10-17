@@ -106,3 +106,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Gastos:** SwiftData con CloudKit (base privada `iCloud.com.blandisc.centavo`). Para eso cada campo del gasto tiene un valor por omisión; no cambia lo que ya está guardado. **Presupuesto:** almacén clave-valor de iCloud.
 - **Requiere la cuenta de desarrollador de pago.** Con la gratuita no se puede firmar iCloud: se compila con `CODE_SIGN_ENTITLEMENTS=` vacío y la app guarda solo en el teléfono, como antes. Al reinstalar con la cuenta de pago, lo que ya había en el teléfono se sube solo.
 - **Sin iCloud en el teléfono (sesión cerrada), la app funciona igual** y guarda localmente.
+
+## 2026-10-15 — Captura tolerante
+- **Si llega el pago completo en vez del importe, se busca la cifra con moneda** (`CaptureText`): solo cuenta un número con signo o código de moneda real al lado. Un número sin moneda (la tarjeta, un folio) nunca se toma como monto; si no hay cifra con moneda, la acción falla como antes. Un texto que es solo un monto se lee exactamente igual que antes.
+- **El parámetro «Importe» se conecta solo a lo anterior** donde Atajos lo permite (`connectToPreviousIntentResult`). No verificado con el disparador de Wallet.
