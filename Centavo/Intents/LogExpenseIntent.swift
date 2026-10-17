@@ -34,7 +34,11 @@ struct LogExpenseIntent: AppIntent {
         switch try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
                                           in: container.mainContext) {
         case .unreadable:
-            throw $amount.needsValueError("No entendí el monto «\(amount)».")
+            // Seen for real: the whole Wallet payment connected here arrives as just the
+            // merchant's name. Say how to fix the automation, not only that it failed.
+            throw $amount.needsValueError(
+                "No llegó un monto, llegó «\(amount)». En Atajos, toca la burbuja de «Importe» y elige «Importe» del pago de Wallet (no el pago completo)."
+            )
         case .empty:
             // Wallet sometimes hands over an empty payment. Failing loudly makes Atajos
             // show it, instead of a silent $0 in the list.

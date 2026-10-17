@@ -8,6 +8,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Si la automatización manda el nombre del comercio en lugar del importe, ya no se guarda un monto inventado (se vio «501,501» en una moneda de letras): Atajos muestra cómo conectar «Importe».
 - Si en Atajos conectas el pago completo («Entrada del atajo») en vez de su «Importe», el gasto se anota igual con el monto correcto, y el número de la tarjeta nunca se confunde con el monto.
 - La guía para configurar el atajo tenía nombres que ya no existen en iOS 26 («Transacción», «Ejecutar inmediatamente») y no avisaba de la trampa más común: tocar «Centavo» en la lista de apps crea una automatización que no anota nada.
 - Al pasarte del presupuesto, su página ya no se sale de la pantalla: se cortaban «Gastado» y la línea del presupuesto, y la barra dorada se asomaba sobre el calendario.
@@ -28,6 +29,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- La guía del atajo tiene su versión para iOS 27, donde Atajos cambió: la automatización se arma en el editor con el bloque «Wallet», y avisa que «Entrada de atajo» ya no trae el pago.
 - «En qué se va»: bajo el presupuesto, tus tres categorías más grandes del mes como porcentaje de lo gastado.
 - «Oye Siri, anotar gasto en Centavo» (o el botón de Acción): pregunta cuánto y dónde, lo guarda sin abrir la app y te dice cuánto te queda. Para el efectivo y lo que Wallet no capture.
 - Debajo del presupuesto, una línea dice cuándo llegó el último pago de Wallet. Si pasan 3 días sin pagos, o si la automatización nunca se conectó, lo dice en dorado y te lleva a la guía.

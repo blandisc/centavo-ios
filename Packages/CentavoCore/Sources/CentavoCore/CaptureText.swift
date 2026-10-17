@@ -3,8 +3,9 @@ import Foundation
 /// Finds the amount in whatever text the Wallet automation hands over.
 ///
 /// Normally that is just the amount (`"$89.00"`). But in Atajos it is easy to connect the
-/// whole payment ("Entrada del atajo") instead of its «Importe», and then the text carries
-/// the merchant, the card and its digits too. Reading all of that as one number would save
+/// whole payment instead of its «Importe». On iOS 27 that arrives as the merchant's name
+/// alone (seen for real: "Oxxo Roble Mty 50ht1", twice), with no amount at all; other
+/// setups may carry the amount among other text. Reading all of that as one number would save
 /// a nonsense amount, so in a longer text only a figure with a currency next to it counts.
 public enum CaptureText {
     /// The amount in `text`, or `nil` when there is none to trust.

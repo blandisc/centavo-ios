@@ -67,6 +67,13 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().first?.amount, 89)
     }
 
+    /// What a real automation sent on 2026-10-15: the payment itself in the amount field, whose
+    /// text is only the merchant (twice). It once saved 501,501 in a "currency" of letters.
+    func testAMerchantNameInTheAmountIsRejectedNotSaved() throws {
+        XCTAssertEqual(try record("Oxxo Roble Mty 50ht1Oxxo Roble Mty 50ht1", nil), .unreadable)
+        XCTAssertEqual(try saved().count, 0)
+    }
+
     func testACardNumberIsNeverReadAsTheAmount() throws {
         XCTAssertEqual(try record("Oxxo BBVA 1234"), .unreadable)
         XCTAssertEqual(try saved().count, 0)

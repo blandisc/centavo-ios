@@ -283,8 +283,9 @@ final class FlowTests: XCTestCase {
         if fromMenu { app.buttons["Más"].tap() }
         app.buttons["Configurar atajo"].firstMatch.tap()
         let next = require(app.buttons["guia-siguiente"], "No abrió la guía paso a paso")
-        for _ in 0..<7 { next.tap() }
-        XCTAssertFalse(next.isEnabled, "Hay más pasos de los esperados")
+        // 8 steps on iOS 26, 7 on iOS 27: walk until the last one.
+        for _ in 0..<10 where next.isEnabled { next.tap() }
+        XCTAssertFalse(next.isEnabled, "La guía no tiene fin")
         return require(app.descendants(matching: .any)["guia-comprobacion"], "El último paso no comprueba la captura")
     }
 
