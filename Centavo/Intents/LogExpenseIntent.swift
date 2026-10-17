@@ -31,6 +31,8 @@ struct LogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // So "what is left" counts this month's rent even if the app was not opened.
+        try? RecurringExpenses.logDue(in: container.mainContext)
         switch try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
                                           in: container.mainContext) {
         case .unreadable:

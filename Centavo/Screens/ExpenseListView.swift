@@ -201,6 +201,8 @@ struct ExpenseListView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
             }
+            // Fixed expenses whose day came while the app was closed log themselves here.
+            .task(id: now) { try? RecurringExpenses.logDue(in: context, now: now) }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
                 now = .now
@@ -314,7 +316,8 @@ private struct LedgerRow: View {
     private var isRefund: Bool { expense.amount < 0 }
 
     private var meta: String? {
-        let parts = [isRefund ? "Devolución" : nil, expense.category, expense.card]
+        let parts = [isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
+                     expense.category, expense.card]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

@@ -17,6 +17,16 @@ final class Expense {
     var category: String?
     /// The amount text exactly as Wallet sent it, kept so a parsing bug is recoverable.
     var rawAmount: String?
+    /// A fixed expense (rent, a subscription) that logs itself again every month. Set on the
+    /// original only. Optional, so adding it is a lightweight migration.
+    var repeatsMonthly: Bool?
+    /// On the original: the last month already logged, so a copy deleted by hand stays gone.
+    var repeatsThrough: Date?
+    /// On a copy: logged by itself from a fixed expense.
+    var isRepeat: Bool?
+
+    /// Fixed: the original or one of its copies.
+    var isFixed: Bool { repeatsMonthly == true || isRepeat == true }
 
     init(amount: Decimal, currencyMarker: String? = nil, merchant: String,
          card: String? = nil, date: Date = .now, category: String? = nil,

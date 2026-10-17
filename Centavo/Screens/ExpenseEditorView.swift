@@ -19,6 +19,7 @@ struct ExpenseEditorView: View {
     @State private var card = ""
     @State private var category = ""
     @State private var date = Date.now
+    @State private var repeatsMonthly = false
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
 
@@ -109,8 +110,24 @@ struct ExpenseEditorView: View {
                     field("Tarjeta o efectivo (opcional)", text: $card,
                           prompt: "BBVA, Nu, efectivo…", identifier: "tarjeta")
                         .textInputAutocapitalization(.words)
+                    if expense?.isRepeat != true {
+                        Toggle(isOn: $repeatsMonthly) {
+                            Text("Se repite cada mes")
+                                .font(.ticket(12, relativeTo: .footnote))
+                                .tracking(1.2)
+                                .textCase(.uppercase)
+                        }
+                        .tint(Theme.brass)
+                        .accessibilityIdentifier("se-repite")
+                    }
                 } header: {
                     Text("Fecha y tarjeta").ticketCaption()
+                } footer: {
+                    if repeatsMonthly {
+                        hint("Renta, suscripciones, la luz: se anota sola el mismo día de cada mes.")
+                    } else if expense?.isRepeat == true {
+                        hint("Se anotó solo, de un gasto fijo. Para dejar de repetirlo, abre el original.")
+                    }
                 }
                 .listRowBackground(Theme.surface)
 
@@ -203,9 +220,23 @@ struct ExpenseEditorView: View {
         amountText = expense.amount.magnitude
             .formatted(.number.precision(.fractionLength(2)).grouping(.never))
         merchant = expense.merchant
+        repeatsMonthly = expense.repeatsMonthly == true
         card = expense.card ?? ""
         category = expense.category ?? ""
         date = expense.date
+    }
+
+    /// Turning it on starts counting from the expense's own month; turning it off stops it.
+    private func setRepeats(_ expense: Expense) {
+        if repeatsMonthly {
+            // From now on: marking an old expense must not backfill months already lived (and
+            // maybe already logged by hand).
+            if expense.repeatsMonthly != true { expense.repeatsThrough = max(date, Date.now) }
+            expense.repeatsMonthly = true
+        } else {
+            expense.repeatsMonthly = nil
+            expense.repeatsThrough = nil
+        }
     }
 
     private func save() {
@@ -225,15 +256,18 @@ struct ExpenseEditorView: View {
             expense.card = cardName.isEmpty ? nil : cardName
             expense.category = categoryName.isEmpty ? nil : categoryName
             expense.date = date
+            if expense.isRepeat != true { setRepeats(expense) }
         } else {
-            context.insert(Expense(
+            let new = Expense(
                 amount: value,
                 currencyMarker: currency,
                 merchant: name,
                 card: cardName.isEmpty ? nil : cardName,
                 date: date,
                 category: categoryName.isEmpty ? nil : categoryName
-            ))
+            )
+            setRepeats(new)
+            context.insert(new)
         }
         dismiss()
     }
