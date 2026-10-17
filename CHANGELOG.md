@@ -34,6 +34,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- «Hoy puedes gastar $X» en el presupuesto, en el aviso de cada pago y en Siri. La marca de la barra se llama «Ritmo».
 - Moneda principal a elegir (pesos, dólares o euros) desde «Más», y un selector MXN | USD | EUR al anotar un gasto. Siri entiende «dólares» y «euros».
 - La guía del atajo tiene su versión para iOS 27, donde Atajos cambió: la automatización se arma en el editor con el bloque «Wallet», y avisa que «Entrada de atajo» ya no trae el pago.
 - «En qué se va»: bajo el presupuesto, tus tres categorías más grandes del mes como porcentaje de lo gastado.

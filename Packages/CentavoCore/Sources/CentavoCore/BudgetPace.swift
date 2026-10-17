@@ -13,6 +13,11 @@ public struct BudgetPace: Equatable, Sendable {
     public let spentFraction: Double
     /// How much of the month has gone by, 0...1.
     public let paceFraction: Double
+    /// What is left spread over the days still to come, today included, in whole units:
+    /// "hoy puedes gastar $185". Zero once the budget is gone.
+    public let dailyAllowance: Decimal
+    /// Days left in the month, today included.
+    public let daysLeft: Int
 
     public var isOverBudget: Bool { spent > budget }
 
@@ -32,6 +37,17 @@ public struct BudgetPace: Equatable, Sendable {
         let ratio = NSDecimalNumber(decimal: spent / budget).doubleValue
         self.spentFraction = min(max(ratio, 0), 1)
         self.paceFraction = Double(day) / Double(days)
+        self.daysLeft = days - day + 1
+        let perDay = (budget - spent) / Decimal(days - day + 1)
+        self.dailyAllowance = perDay > 0 ? Self.whole(perDay) : 0
+    }
+
+    /// Rounded down: telling someone they can spend a peso more than they have is worse.
+    private static func whole(_ value: Decimal) -> Decimal {
+        var input = value
+        var output = Decimal()
+        NSDecimalRound(&output, &input, 0, .down)
+        return output
     }
 
     private static func cents(_ value: Decimal) -> Decimal {

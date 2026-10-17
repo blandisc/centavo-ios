@@ -121,7 +121,7 @@ struct BudgetPage: View {
         let isOver = pace.remaining < 0
         let markerX = barWidth * CGFloat(pace.paceFraction)
         let labelOnLeft = pace.paceFraction < 0.5
-        let todayText = "Hoy · " + wholeMoney(pace.expectedToDate)
+        let todayText = "Ritmo · " + wholeMoney(pace.expectedToDate)
         // A month where more came back than went out is 0 %, not "-5 %".
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         let remainingLabel = isOver ? "Te pasaste" : (isCurrentMonth ? "Te quedan" : "Te quedaron")
@@ -192,6 +192,15 @@ struct BudgetPage: View {
                 .tracking(1)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
+            // The one number to act on today: what is left, spread over the days to come.
+            if isCurrentMonth, !isOver {
+                Text("Hoy puedes gastar \(wholeMoney(pace.dailyAllowance))")
+                    .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                    .tracking(1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.brass)
+                    .padding(.top, 2)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("presupuesto-ticket")
@@ -200,7 +209,8 @@ struct BudgetPage: View {
             + "el \(share.formatted(.percent.precision(.fractionLength(0)))). "
             + (isOver ? "Te pasaste por \(remainingText). "
                       : (isCurrentMonth ? "Te quedan \(remainingText). " : "Te quedaron \(remainingText). "))
-            + (isCurrentMonth ? "A hoy podrías llevar \(money(pace.expectedToDate))." : "")
+            + (isCurrentMonth ? "A hoy podrías llevar \(money(pace.expectedToDate)). " : "")
+            + (isCurrentMonth && !isOver ? "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance))." : "")
         )
     }
 
