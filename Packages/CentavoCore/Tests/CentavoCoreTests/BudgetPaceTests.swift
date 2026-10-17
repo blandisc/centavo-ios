@@ -60,4 +60,23 @@ import Testing
         #expect(makePace(budget: 0, spent: 100, on: Self.day(2026, 10, 12)) == nil)
         #expect(makePace(budget: -500, spent: 100, on: Self.day(2026, 10, 12)) == nil)
     }
+
+    @Test func theRestSpreadsOverTheDaysLeftTodayIncluded() throws {
+        // October 12th: 20 days left (12…31). 6,906.50 / 20 = 345.33 → 345.
+        let pace = try #require(makePace(budget: 8000, spent: Decimal(string: "1093.50")!,
+                                         on: Self.day(2026, 10, 12)))
+        #expect(pace.daysLeft == 20)
+        #expect(pace.dailyAllowance == 345)
+    }
+
+    @Test func theLastDayGetsAllThatIsLeft() throws {
+        let pace = try #require(makePace(budget: 1000, spent: 400, on: Self.day(2026, 10, 31)))
+        #expect(pace.daysLeft == 1)
+        #expect(pace.dailyAllowance == 600)
+    }
+
+    @Test func aBlownBudgetLeavesNothingPerDay() throws {
+        let pace = try #require(makePace(budget: 1000, spent: 1500, on: Self.day(2026, 10, 5)))
+        #expect(pace.dailyAllowance == 0)
+    }
 }

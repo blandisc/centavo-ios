@@ -42,6 +42,7 @@ final class MonthStatusTests: XCTestCase {
         let line = try XCTUnwrap(budgetLine(500))
         XCTAssertTrue(line.hasPrefix("Te quedan"), line)
         XCTAssertTrue(line.contains("350.00"), line)
+        XCTAssertTrue(line.contains("al día"), "No dice cuánto por día: \(line)")
     }
 
     func testSaysByHowMuchTheBudgetWasBlown() throws {

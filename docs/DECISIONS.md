@@ -131,3 +131,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Lo anotado a mano se guarda con su código ISO, nunca con «$»**, para que no cambie de moneda si después se cambia la principal. Lo que llega de Wallet con «$» sigue significando la moneda principal.
 - **Siri entiende «dólares», «euros» y «pesos».**
 - **Anotar desde los avisos del banco queda como idea (CEN-58), no se hace por ahora:** la captura no supone integración con bancos de México.
+
+## 2026-10-16 — Hoy puedes gastar
+- **El presupuesto dice cuánto puedes gastar hoy:** lo que queda repartido entre los días que faltan, hoy incluido, redondeado hacia abajo (es peor prometer un peso de más). También lo dicen el aviso de cada pago y Siri («Te quedan $X del presupuesto: $345 al día»). No aparece si ya te pasaste ni en meses cerrados.
+- **La marca de la barra se llama «Ritmo»** (antes «Hoy»): es lo que llevarías gastando parejo a estas alturas, y junto a «Hoy puedes gastar» se confundía.
