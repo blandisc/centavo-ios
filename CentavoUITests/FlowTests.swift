@@ -59,7 +59,12 @@ final class FlowTests: XCTestCase {
         merchantField.tap()
         merchantField.typeText(merchant)
         if refund {
-            app.switches["devolucion"].coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+            // The keyboard may still be settling; make sure the switch really turned on.
+            let toggle = app.switches["devolucion"]
+            for _ in 0..<3 where (toggle.value as? String) != "1" {
+                toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+            }
+            XCTAssertEqual(toggle.value as? String, "1", "No se encendió «Es una devolución»")
         }
     }
 
