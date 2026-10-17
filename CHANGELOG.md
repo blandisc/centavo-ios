@@ -8,6 +8,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- La guía de iOS 27 ahora es una animación toque por toque, copiada de un iPhone real: la burbuja se llama «Transacción» y en «Obtener» hay que elegir «Cantidad» y «Comercio» (no «Importe»), y se guarda con la flecha de atrás.
 - La hoja de gasto pedía escribir «USD 20», pero el teclado de montos no tiene letras: ahora la moneda se elige con un selector.
 - Al estrenar un iPhone, el presupuesto ya no se puede borrar por subir a iCloud un «sin presupuesto» antes de que iCloud termine de bajar el tuyo.
 - Un renglón con una «moneda» basura ya no se sale de la pantalla.
