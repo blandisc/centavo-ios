@@ -89,3 +89,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 
 ## 2026-10-15 — El presupuesto va primero
 - **La pantalla principal abre en el presupuesto; el calendario pasa a la segunda página del carrusel.** Decisión del dueño. Reemplaza el orden «calendario, luego presupuesto» del 2026-10-12. Sin presupuesto fijado, la primera página es la invitación «Fijar presupuesto».
+
+## 2026-10-15 — Aviso al pagar
+- **El aviso que muestra Atajos después de un pago dice cuánto te queda del presupuesto** («Anotado: $47.50 en OXXO. Te quedan $5,586.50 del presupuesto.»), o por cuánto te pasaste. Es el momento en que más sirve y no pide permisos: es el mismo diálogo que la acción ya devolvía. Sin presupuesto, el aviso queda como antes.
+- **Si calcular el presupuesto falla, el pago se guarda igual** y el aviso dice menos. La captura nunca depende de eso.

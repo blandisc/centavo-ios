@@ -24,11 +24,7 @@ struct ExpenseListView: View {
     @State private var adding = false
     @State private var editing: Expense?
 
-    /// The currency the headline total is in, taken from the device. No setting for it:
-    /// changing it is changing your region.
-    private var primaryCurrency: String {
-        Locale.current.currency?.identifier ?? "MXN"
-    }
+    private var primaryCurrency: String { MonthStatus.primaryCurrency }
 
     var body: some View {
         let amounts = expenses.map {
