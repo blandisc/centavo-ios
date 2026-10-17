@@ -26,6 +26,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Pregúntale a Siri «¿Cuánto llevo en Centavo?» (o úsalo desde Atajos, Spotlight o el botón de Acción): dice el total del mes, las otras monedas aparte y cuánto te queda del presupuesto, sin abrir la app.
 - Al pagar con Wallet, el aviso de Atajos ahora dice cuánto te queda del presupuesto (o por cuánto te pasaste). La guía explica cómo activar ese aviso.
 - Ver meses anteriores: flechas junto al mes en el encabezado. Cada mes muestra su total, su calendario, su presupuesto (un mes cerrado se mide completo: «te quedaron») y sus pagos. Solo se puede ir hacia atrás hasta tu primer gasto. Anotar un gasto mientras ves un mes anterior lo pone en ese mes.
 - El ticket del presupuesto ahora dice de cuánto es el presupuesto.

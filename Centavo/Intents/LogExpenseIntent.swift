@@ -67,5 +67,15 @@ struct CentavoShortcuts: AppShortcutsProvider {
             shortTitle: "Registrar gasto",
             systemImageName: "creditcard"
         )
+        AppShortcut(
+            intent: MonthTotalIntent(),
+            phrases: [
+                "Cuánto llevo en \(.applicationName)",
+                "Cuánto he gastado en \(.applicationName)",
+                "Cuánto me queda en \(.applicationName)",
+            ],
+            shortTitle: "Cuánto llevo",
+            systemImageName: "sum"
+        )
     }
 }
