@@ -13,6 +13,7 @@ struct MonthTotalIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        try? RecurringExpenses.logDue(in: container.mainContext)
         let sentence = try MonthStatus.totalSentence(in: container.mainContext,
                                                      budget: MonthStatus.savedBudget)
         return .result(value: sentence, dialog: "\(sentence)")

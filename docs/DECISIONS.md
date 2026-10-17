@@ -135,3 +135,8 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-16 — Hoy puedes gastar
 - **El presupuesto dice cuánto puedes gastar hoy:** lo que queda repartido entre los días que faltan, hoy incluido, redondeado hacia abajo (es peor prometer un peso de más). También lo dicen el aviso de cada pago y Siri («Te quedan $X del presupuesto: $345 al día»). No aparece si ya te pasaste ni en meses cerrados.
 - **La marca de la barra se llama «Ritmo»** (antes «Hoy»): es lo que llevarías gastando parejo a estas alturas, y junto a «Hoy puedes gastar» se confundía.
+
+## 2026-10-16 — Gastos fijos
+- **Un gasto puede repetirse cada mes** (interruptor «Se repite cada mes» en la hoja). La copia se anota sola el mismo día del mes, o el último si el mes es más corto, en cuanto ese día llega; se revisa al abrir la app y antes de cada aviso de Wallet y de Siri.
+- **Esquema:** tres propiedades opcionales en `Expense` (`repeatsMonthly`, `repeatsThrough`, `isRepeat`), migración ligera y compatible con iCloud. Se decide sin consulta previa porque el dueño dio carta blanca el 2026-10-16.
+- **Al activarlo empieza a contar desde ahora:** marcar un gasto viejo no rellena meses pasados (podrían estar anotados a mano). Una copia borrada no regresa. Las copias se ven con «Fijo» y no generan más copias.

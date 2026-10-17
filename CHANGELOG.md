@@ -34,6 +34,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Gastos fijos: marca un gasto con «Se repite cada mes» (renta, suscripciones, la luz) y se anota solo cada mes; se ven con «Fijo».
 - «Hoy puedes gastar $X» en el presupuesto, en el aviso de cada pago y en Siri. La marca de la barra se llama «Ritmo».
 - Moneda principal a elegir (pesos, dólares o euros) desde «Más», y un selector MXN | USD | EUR al anotar un gasto. Siri entiende «dólares» y «euros».
 - La guía del atajo tiene su versión para iOS 27, donde Atajos cambió: la automatización se arma en el editor con el bloque «Wallet», y avisa que «Entrada de atajo» ya no trae el pago.

@@ -251,6 +251,22 @@ final class FlowTests: XCTestCase {
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
+    // MARK: Gastos fijos
+
+    func testUnGastoFijoSeMarcaComoFijo() {
+        let app = launch()
+        fillExpense(app, amount: "8500", merchant: "Renta")
+        let toggle = app.switches["se-repite"]
+        for _ in 0..<3 where !toggle.isHittable { app.swipeUp() }
+        require(toggle, "No ofrece repetir cada mes")
+        // The switch itself sits at the right edge; the middle of the row is its label.
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertEqual(toggle.value as? String, "1", "El interruptor no quedó encendido")
+        app.buttons["hoja-guardar"].tap()
+        require(row(app, containing: "Fijo"), "La lista no marca el gasto como fijo")
+        snap("flujo-gasto-fijo")
+    }
+
     // MARK: En qué se va
 
     func testElPresupuestoDiceEnQueSeVa() {
