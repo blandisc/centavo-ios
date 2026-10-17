@@ -99,7 +99,8 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["guia-siguiente"].tap(); sleep(1); snap("09b-guia-paso-2")
         app.buttons["guia-siguiente"].tap(); sleep(1); snap("09c-guia-paso-3")
         app.buttons["guia-siguiente"].tap(); app.buttons["guia-siguiente"].tap()
-        snap("09d-guia-paso-5-a"); sleep(2); snap("09e-guia-paso-5-b"); sleep(2); snap("09f-guia-paso-5-c")
+        // Step 5 plays five taps, one every 2.6 s: photograph each.
+        for frame in ["a", "b", "c", "d", "e"] { snap("09d-guia-paso-5-\(frame)"); usleep(2_600_000) }
         app.buttons["guia-siguiente"].tap()
         sleep(4)  // let the taps play out
         snap("14-guia-conectar-importe")

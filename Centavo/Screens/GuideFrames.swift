@@ -173,6 +173,18 @@ private struct FrameView: View {
                     Image(systemName: "creditcard")
                     Text("Transacción").font(.headline)
                 }
+                HStack(spacing: 8) {
+                    ForEach([("delete.left.fill", "Borrar variable"), ("keyboard", "Regresar")],
+                            id: \.1) { icon, title in
+                        VStack(spacing: 4) {
+                            Image(systemName: icon)
+                            Text(title).font(.caption2)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                }
                 Text("Obtener").font(.caption).foregroundStyle(Theme.Shortcuts.secondary)
                 VStack(spacing: 0) {
                     ForEach(["Transacción", "Tarjeta o pase", "Comercio", "Cantidad", "Nombre"],
@@ -180,6 +192,13 @@ private struct FrameView: View {
                         Text(option)
                             .padding(.horizontal, 12).padding(.vertical, 7)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .overlay(alignment: .trailing) {
+                                if option == pick {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(Theme.Shortcuts.blue)
+                                        .padding(.trailing, 12)
+                                }
+                            }
                             .ring(option == pick)
                     }
                 }
