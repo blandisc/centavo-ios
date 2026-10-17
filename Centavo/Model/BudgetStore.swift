@@ -20,38 +20,41 @@ enum BudgetStore {
     }
 }
 
-/// Keeps the budget in the person's iCloud key-value store as well, so it comes back after
-/// reinstalling or on a new phone. Without the iCloud entitlement that store never leaves
-/// the phone and none of this does any harm.
+/// Keeps the budget and the chosen currency in the person's iCloud key-value store as
+/// well, so they come back after reinstalling or on a new phone. Without the iCloud
+/// entitlement that store never leaves the phone and none of this does any harm.
 enum BudgetSync {
     private static var cloud: NSUbiquitousKeyValueStore { .default }
     private static var local: UserDefaults { .standard }
+    static let keys = [BudgetStore.key, CurrencyPreference.key]
 
-    /// At launch: take what iCloud has, or hand it the budget this phone already had.
+    /// At launch: take what iCloud has, or hand it what this phone already had.
     static func start() {
         NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: nil, queue: .main
-        ) { _ in adoptCloud() }
+        ) { _ in keys.forEach(adoptCloud) }
         cloud.synchronize()
-        if cloud.string(forKey: BudgetStore.key) == nil {
-            // On a new phone iCloud may not have arrived yet: handing it "no budget" here
-            // would wipe the real one. Only a budget this phone actually has goes up.
-            let mine = local.string(forKey: BudgetStore.key) ?? ""
-            if !mine.isEmpty { push(mine) }
-        } else {
-            adoptCloud()
+        for key in keys {
+            if cloud.string(forKey: key) == nil {
+                // On a new phone iCloud may not have arrived yet: handing it an empty value
+                // here would wipe the real one. Only what this phone actually has goes up.
+                let mine = local.string(forKey: key) ?? ""
+                if !mine.isEmpty { push(mine, for: key) }
+            } else {
+                adoptCloud(key)
+            }
         }
     }
 
     /// Every change on this phone, including clearing it.
-    static func push(_ stored: String) {
-        cloud.set(stored, forKey: BudgetStore.key)
+    static func push(_ value: String, for key: String = BudgetStore.key) {
+        cloud.set(value, forKey: key)
     }
 
-    private static func adoptCloud() {
-        guard let remote = cloud.string(forKey: BudgetStore.key),
-              remote != local.string(forKey: BudgetStore.key) else { return }
-        local.set(remote, forKey: BudgetStore.key)
+    private static func adoptCloud(_ key: String) {
+        guard let remote = cloud.string(forKey: key),
+              remote != local.string(forKey: key) else { return }
+        local.set(remote, forKey: key)
     }
 }

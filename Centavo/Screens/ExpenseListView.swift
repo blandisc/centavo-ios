@@ -25,6 +25,7 @@ struct ExpenseListView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(BudgetStore.key) private var storedBudget = ""
+    @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// "Now" for the whole screen. Refreshed when the app comes back and when the clock
     /// jumps (midnight, a time-zone change), so the month and "today" never go stale.
     @State private var now = Date.now
@@ -36,7 +37,7 @@ struct ExpenseListView: View {
     @State private var adding = false
     @State private var editing: Expense?
 
-    private var primaryCurrency: String { MonthStatus.primaryCurrency }
+    private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
     var body: some View {
         let amounts = expenses.map {
@@ -121,6 +122,9 @@ struct ExpenseListView: View {
             .onChange(of: storedBudget) { _, budget in
                 if Store.syncsBudget { BudgetSync.push(budget) }
             }
+            .onChange(of: storedCurrency) { _, code in
+                if Store.syncsBudget { BudgetSync.push(code, for: CurrencyPreference.key) }
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Centavo")
@@ -132,6 +136,15 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
+                        Picker(selection: Binding(get: { primaryCurrency },
+                                                  set: { storedCurrency = $0 })) {
+                            ForEach(CurrencyPreference.offered, id: \.self) { code in
+                                Text(CurrencyPreference.name(code)).tag(code)
+                            }
+                        } label: {
+                            Label("Moneda principal", systemImage: "dollarsign.circle")
+                        }
+                        .pickerStyle(.menu)
                         ShareLink(
                             item: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
                             preview: SharePreview("Gastos de Centavo")

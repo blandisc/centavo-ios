@@ -124,3 +124,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-15 — Guía para iOS 27
 - **La guía muestra los pasos de la versión de iOS del teléfono**: iOS 27 arma la automatización en el editor (Biblioteca → Automatización → «+» → «Editor» → categoría «Automatización» → «Wallet»). Verificado en el simulador de iOS 27 es-MX.
 - **En iOS 27 «Entrada de atajo» no es el pago** (agrega un bloque «Recibir… de Ningún lado»); la guía pide conectar la variable del bloque de Wallet. Esa última parte no se pudo ver en el simulador (no tiene tarjetas) y se confirma en el teléfono.
+
+## 2026-10-16 — Monedas
+- **Hay moneda principal elegible: pesos, dólares o euros** (menú «Más» → «Moneda principal»). Por omisión, la de la región si es una de esas tres; si no, pesos. Reemplaza «No hay ajuste de moneda» del 2026-10-11: el dueño quiere pesos sin depender de cómo esté la región del teléfono.
+- **Al anotar se elige la moneda con un selector MXN | USD | EUR.** El teclado de montos es numérico: la pista anterior («escribe USD 20») era imposible de seguir.
+- **Lo anotado a mano se guarda con su código ISO, nunca con «$»**, para que no cambie de moneda si después se cambia la principal. Lo que llega de Wallet con «$» sigue significando la moneda principal.
+- **Siri entiende «dólares», «euros» y «pesos».**
+- **Anotar desde los avisos del banco queda como idea (CEN-58), no se hace por ahora:** la captura no supone integración con bancos de México.

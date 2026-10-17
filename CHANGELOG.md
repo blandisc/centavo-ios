@@ -8,6 +8,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- La hoja de gasto pedía escribir «USD 20», pero el teclado de montos no tiene letras: ahora la moneda se elige con un selector.
 - Al estrenar un iPhone, el presupuesto ya no se puede borrar por subir a iCloud un «sin presupuesto» antes de que iCloud termine de bajar el tuyo.
 - Un renglón con una «moneda» basura ya no se sale de la pantalla.
 - Un mes con más devoluciones que gastos dice «Gastado · 0 %», no un porcentaje negativo.
@@ -33,6 +34,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Moneda principal a elegir (pesos, dólares o euros) desde «Más», y un selector MXN | USD | EUR al anotar un gasto. Siri entiende «dólares» y «euros».
 - La guía del atajo tiene su versión para iOS 27, donde Atajos cambió: la automatización se arma en el editor con el bloque «Wallet», y avisa que «Entrada de atajo» ya no trae el pago.
 - «En qué se va»: bajo el presupuesto, tus tres categorías más grandes del mes como porcentaje de lo gastado.
 - «Oye Siri, anotar gasto en Centavo» (o el botón de Acción): pregunta cuánto y dónde, lo guarda sin abrir la app y te dice cuánto te queda. Para el efectivo y lo que Wallet no capture.

@@ -5,11 +5,8 @@ import SwiftData
 /// This month in a sentence or two, for the places with no screen: the notice Atajos shows
 /// after a payment, and Siri. Lives apart from the intents so it can be tested.
 enum MonthStatus {
-    /// The currency the month is added up in, taken from the device. No setting for it:
-    /// changing it is changing your region.
-    static var primaryCurrency: String {
-        Locale.current.currency?.identifier ?? "MXN"
-    }
+    /// The currency the month is added up in (see `CurrencyPreference`).
+    static var primaryCurrency: String { CurrencyPreference.current }
 
     /// The saved budget, if there is one.
     static var savedBudget: Decimal? {
