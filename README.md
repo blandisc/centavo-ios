@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/blandisc/centavo-ios/actions/workflows/ci.yml/badge.svg)](https://github.com/blandisc/centavo-ios/actions/workflows/ci.yml)
 
-Un tracker de gastos minimalista para iOS. Cada pago con **Apple Wallet** se anota solo, mediante una automatización de **Atajos**. Todo vive en tu iPhone: sin cuenta, sin servidor, sin red.
+Un tracker de gastos minimalista para iOS. Cada pago con **Apple Wallet** se anota solo, mediante una automatización de **Atajos**. Tus gastos viven en tu iPhone y se respaldan en tu iCloud privado: sin cuenta de Centavo, sin servidor propio.
 
 ## Cómo funciona
 
@@ -43,6 +43,12 @@ Tools/verify.sh
 ```
 
 Requiere Xcode 27 y `xcodegen` (`brew install xcodegen`).
+
+La app sincroniza con iCloud, y eso solo se puede firmar con la cuenta de desarrollador de pago. Con una cuenta gratuita, compila sin el permiso de iCloud y la app guarda solo en el teléfono:
+
+```bash
+xcodebuild -scheme Centavo -destination 'platform=iOS,id=<tu iPhone>' -allowProvisioningUpdates DEVELOPMENT_TEAM=<tu equipo> CODE_SIGN_ENTITLEMENTS= build
+```
 
 En Linux solo corre el paquete (`Tools/verify.sh package`): la app necesita macOS.
 El build de iOS lo verifica la CI en un runner macOS en cada PR.

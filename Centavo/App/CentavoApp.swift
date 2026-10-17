@@ -5,6 +5,7 @@ import SwiftUI
 struct CentavoApp: App {
     init() {
         TicketFont.register()
+        if Store.syncsBudget { BudgetSync.start() }
     }
 
     var body: some Scene {

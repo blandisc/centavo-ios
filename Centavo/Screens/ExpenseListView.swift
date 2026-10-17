@@ -96,6 +96,9 @@ struct ExpenseListView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: storedBudget) { _, budget in
+                if Store.syncsBudget { BudgetSync.push(budget) }
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Centavo")

@@ -11,7 +11,7 @@ final class ExpenseRecorderTests: XCTestCase {
     override func setUpWithError() throws {
         container = try ModelContainer(
             for: Expense.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
         context = ModelContext(container)
     }

@@ -100,3 +100,9 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Los textos de la guía salen del Atajos real** (iOS 26, es-MX), no de supuestos. Detalle en `docs/research/atajos-wallet.md`.
 - **El campo «Monto» de «Registrar gasto» se llama «Importe»**, como lo llama Atajos en español. Solo cambia el título visible: las automatizaciones ya hechas siguen funcionando.
 - **El último paso comprueba que funciona:** detecta el primer pago que guardó la automatización (los únicos que guardan el texto original de Wallet).
+
+## 2026-10-15 — Respaldo en iCloud
+- **Los gastos y el presupuesto se sincronizan en el iCloud privado de la persona.** Decisión del dueño: guardar solo en el teléfono era frágil (borrar la app borraba todo y el CSV no se puede reimportar). Reemplaza «Offline y on-device» y la regla «Cero red» del arranque: sigue sin haber servidor propio, telemetría ni cuenta de Centavo, y la app no hace llamadas de red; sincroniza el sistema, con la cuenta de iCloud del teléfono.
+- **Gastos:** SwiftData con CloudKit (base privada `iCloud.com.blandisc.centavo`). Para eso cada campo del gasto tiene un valor por omisión; no cambia lo que ya está guardado. **Presupuesto:** almacén clave-valor de iCloud.
+- **Requiere la cuenta de desarrollador de pago.** Con la gratuita no se puede firmar iCloud: se compila con `CODE_SIGN_ENTITLEMENTS=` vacío y la app guarda solo en el teléfono, como antes. Al reinstalar con la cuenta de pago, lo que ya había en el teléfono se sube solo.
+- **Sin iCloud en el teléfono (sesión cerrada), la app funciona igual** y guarda localmente.

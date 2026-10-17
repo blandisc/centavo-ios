@@ -25,6 +25,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
+        # iCloud sync. A free developer account cannot sign it: build with
+        # CODE_SIGN_ENTITLEMENTS= (empty) and the app keeps everything on the phone only.
+        CODE_SIGN_ENTITLEMENTS: Centavo/Centavo.entitlements
+        INFOPLIST_KEY_UIBackgroundModes: remote-notification
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Centavo
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

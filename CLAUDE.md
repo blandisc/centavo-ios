@@ -21,7 +21,7 @@ La **estructura es nativa de Apple** (Human Interface Guidelines): `NavigationSt
 - Si una petición de diseño puede leerse de dos maneras, **pregunta antes de cambiar lo aprobado**. Detalle en [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Reglas
-- **Cero red.** Sin servidor, telemetría ni cuenta.
+- **Sin servidor propio.** Ni servidor, ni telemetría, ni cuenta de Centavo. La única red es el iCloud privado de la persona, que sincroniza el sistema (decisión del 2026-10-15); la app no hace llamadas por su cuenta.
 - **Minimalismo.** Antes de agregar una pantalla o un ajuste, pregunta si cabe en lo que ya existe.
 - **Componentes nativos** de SwiftUI y estilos del sistema (Dynamic Type, modo oscuro). Nada de tamaños de fuente fijos.
 - **Copy en es-MX**, sin suponer género.

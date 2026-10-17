@@ -12,7 +12,7 @@ final class MonthStatusTests: XCTestCase {
     override func setUpWithError() throws {
         let container = try ModelContainer(
             for: Expense.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
         context = ModelContext(container)
     }
