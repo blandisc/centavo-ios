@@ -133,7 +133,8 @@ struct BudgetPage: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             // The legend of the brass: what share of the budget is gone, past 100 % if need be.
-            Text("Gastado · " + share.formatted(.percent.precision(.fractionLength(0))))
+            Text("Gastado · " + (share > 9.99 ? "más de 999 %"
+                                 : share.formatted(.percent.precision(.fractionLength(0)))))
                 .font(.ticket(10, relativeTo: .caption2))
                 .tracking(1.2)
                 .textCase(.uppercase)
@@ -226,6 +227,9 @@ struct BudgetPage: View {
                 .font(.ticket(22, relativeTo: .title2))
                 .tracking(-0.5)
                 .foregroundStyle(Theme.ink)
+                // A huge figure shrinks instead of widening the page (it shifted the carousel).
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
         }
     }
 }

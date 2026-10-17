@@ -1,7 +1,7 @@
 import AppIntents
 import Foundation
 
-/// "¿Cuánto llevo en Centavo?": the month's total and what is left of the budget, out loud.
+/// "¿Cuánto llevo en Al día?": the month's total and what is left of the budget, out loud.
 /// Works from Siri, Shortcuts, Spotlight and the Action button without opening the app.
 struct MonthTotalIntent: AppIntent {
     static let title: LocalizedStringResource = "Cuánto llevo este mes"

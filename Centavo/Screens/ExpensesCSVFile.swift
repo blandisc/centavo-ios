@@ -22,7 +22,7 @@ struct ExpensesCSVFile: Transferable {
                 category: expense.category
             )
         })
-        suggestedName = "Centavo-\(now.formatted(.iso8601.year().month().day())).csv"
+        suggestedName = "AlDia-\(now.formatted(.iso8601.year().month().day())).csv"
     }
 
     static var transferRepresentation: some TransferRepresentation {

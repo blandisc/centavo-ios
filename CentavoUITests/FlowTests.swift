@@ -48,6 +48,16 @@ final class FlowTests: XCTestCase {
         add(attachment)
     }
 
+    /// Turns a switch on. Its knob sits at the right edge (the middle of the row is the label),
+    /// and the keyboard may still be settling, so it retries and checks.
+    private func turnOn(_ toggle: XCUIElement, _ name: String) {
+        for _ in 0..<4 where (toggle.value as? String) != "1" {
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            usleep(400_000)
+        }
+        XCTAssertEqual(toggle.value as? String, "1", "No se encendió «\(name)»")
+    }
+
     /// Opens the new-expense sheet and fills it in. Leaves the sheet open.
     private func fillExpense(_ app: XCUIApplication, amount: String, merchant: String,
                              refund: Bool = false) {
@@ -59,12 +69,7 @@ final class FlowTests: XCTestCase {
         merchantField.tap()
         merchantField.typeText(merchant)
         if refund {
-            // The keyboard may still be settling; make sure the switch really turned on.
-            let toggle = app.switches["devolucion"]
-            for _ in 0..<3 where (toggle.value as? String) != "1" {
-                toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
-            }
-            XCTAssertEqual(toggle.value as? String, "1", "No se encendió «Es una devolución»")
+            turnOn(app.switches["devolucion"], "Es una devolución")
         }
     }
 
@@ -256,6 +261,33 @@ final class FlowTests: XCTestCase {
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
+    // MARK: Intentar romperla
+
+    /// The worst a person can type, all in one month: nothing may leave the screen.
+    func testDatosExtremosNoRompenLaPantalla() {
+        let app = launch(budget: true)
+        let longName = String(repeating: "Farmacia del Ahorro Sucursal ", count: 5)
+        fillExpense(app, amount: "999999999999.99", merchant: longName)
+        app.buttons["hoja-guardar"].tap()
+        fillExpense(app, amount: "20", merchant: "Steam")
+        app.buttons["USD"].tap()
+        app.buttons["hoja-guardar"].tap()
+        fillExpense(app, amount: "30", merchant: "Devolución", refund: true)
+        app.buttons["hoja-guardar"].tap()
+        snap("extremos-principal")
+
+        let screen = app.windows.firstMatch.frame
+        for element in [app.staticTexts["total-mes"], row(app, containing: "Farmacia")] {
+            XCTAssertTrue(element.exists)
+            XCTAssertGreaterThanOrEqual(element.frame.minX, screen.minX - 1, "Se sale: \(element.frame)")
+            XCTAssertLessThanOrEqual(element.frame.maxX, screen.maxX + 1, "Se sale: \(element.frame)")
+        }
+        app.buttons["Calendario"].tap()
+        snap("extremos-calendario")
+        app.buttons["Mes anterior"].tap()
+        snap("extremos-mes-anterior")
+    }
+
     // MARK: Gastos fijos
 
     func testUnGastoFijoSeMarcaComoFijo() {
@@ -264,9 +296,7 @@ final class FlowTests: XCTestCase {
         let toggle = app.switches["se-repite"]
         for _ in 0..<3 where !toggle.isHittable { app.swipeUp() }
         require(toggle, "No ofrece repetir cada mes")
-        // The switch itself sits at the right edge; the middle of the row is its label.
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-        XCTAssertEqual(toggle.value as? String, "1", "El interruptor no quedó encendido")
+        turnOn(toggle, "Se repite cada mes")
         app.buttons["hoja-guardar"].tap()
         require(row(app, containing: "Fijo"), "La lista no marca el gasto como fijo")
         snap("flujo-gasto-fijo")

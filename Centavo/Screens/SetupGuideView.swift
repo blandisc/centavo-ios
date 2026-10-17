@@ -145,7 +145,7 @@ private struct GuideStep {
             title: "Abre Atajos",
             taps: ["Abre la app Atajos (viene con el iPhone).",
                    "Abajo, al centro, toca «Automatización»."],
-            note: "Atajos es la que corre una acción cada vez que pagas. Centavo no puede crear "
+            note: "Atajos es la que corre una acción cada vez que pagas. Al día no puede crear "
                 + "la automatización por ti: Apple no lo permite. Son 2 minutos y se hace una vez.",
             opensShortcuts: true,
             scene: .tabs
@@ -169,7 +169,7 @@ private struct GuideStep {
         GuideStep(
             title: "Toca «Crear nuevo atajo»",
             taps: ["Arriba, en «Empezar», toca «Crear nuevo atajo»."],
-            note: "Ojo: no toques Centavo en la lista de apps. Así la automatización se crea "
+            note: "Ojo: no toques Al día en la lista de apps. Así la automatización se crea "
                 + "sin el importe del pago y no anota nada. Si ya lo hiciste, ve a «Automatización», "
                 + "desliza esa automatización a la izquierda, bórrala y empieza de nuevo.",
             scene: .newShortcut
@@ -177,7 +177,7 @@ private struct GuideStep {
         GuideStep(
             title: "Agrega «Registrar gasto»",
             taps: ["Toca «Buscar acciones» y escribe «Registrar gasto».",
-                   "Toca «Registrar gasto», la de Centavo."],
+                   "Toca «Registrar gasto», la de Al día."],
             scene: .addAction
         ),
         GuideStep(
@@ -219,7 +219,7 @@ private struct GuideStep {
             taps: ["Abre la app Atajos.",
                    "Toca la flecha de arriba a la izquierda.",
                    "Toca «Automatización» y luego el «+» de abajo."],
-            note: "Centavo no puede crear la automatización por ti: Apple no lo permite. "
+            note: "Al día no puede crear la automatización por ti: Apple no lo permite. "
                 + "Son 2 minutos y se hace una vez.",
             opensShortcuts: true,
             scene: .frames(GuideFrame.openAutomation)
@@ -239,7 +239,7 @@ private struct GuideStep {
         GuideStep(
             title: "Agrega «Registrar gasto»",
             taps: ["Toca «Buscar» y escribe «Registrar gasto».",
-                   "Toca «Registrar gasto», la de Centavo."],
+                   "Toca «Registrar gasto», la de Al día."],
             scene: .frames(GuideFrame.addAction)
         ),
         GuideStep(
@@ -281,7 +281,7 @@ private struct GuideStep {
         "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. "
             + "Si un pago no aparece, anótalo tú.",
         "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo.",
-        "Para el efectivo, di «Oye Siri, anotar gasto en Centavo». También puedes ponerlo en el "
+        "Para el efectivo, di «Oye Siri, anotar gasto en Al día». También puedes ponerlo en el "
             + "botón de Acción (Ajustes › Botón de Acción › Atajo) o en el Centro de control.",
     ]
 }

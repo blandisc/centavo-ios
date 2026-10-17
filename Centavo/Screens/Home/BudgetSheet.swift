@@ -30,7 +30,7 @@ struct BudgetSheet: View {
                 } header: {
                     Text("Tope de gasto cada mes (\(currency))").ticketCaption()
                 } footer: {
-                    Text("Con esto Centavo te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
+                    Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
                         .font(.ticket(12, relativeTo: .footnote))
                         .foregroundStyle(Theme.muted)
                 }

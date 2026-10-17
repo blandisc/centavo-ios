@@ -174,7 +174,7 @@ struct ShortcutsDrawing: View {
             HStack(spacing: 10) {
                 AppGlyph()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Centavo")
+                    Text("Al día")
                     Text("Registrar gasto").font(.caption).foregroundStyle(Theme.Shortcuts.secondary)
                 }
                 Spacer()
@@ -194,7 +194,7 @@ struct ShortcutsDrawing: View {
             }
             .padding(10)
             .background(Theme.Shortcuts.card, in: Capsule())
-            Text("Centavo").font(.caption.bold()).foregroundStyle(Theme.Shortcuts.secondary)
+            Text("Al día").font(.caption.bold()).foregroundStyle(Theme.Shortcuts.secondary)
             HStack(spacing: 10) {
                 AppGlyph()
                 Text("Registrar gasto")
@@ -493,10 +493,17 @@ private struct AppGlyph: View {
         RoundedRectangle(cornerRadius: 5)
             .fill(Theme.background)
             .frame(width: 22, height: 22)
-            .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2).fill(Theme.brass)
-                    .frame(width: 8, height: 12).padding(.leading, 4)
+            .overlay {
+                // The app icon: days of the month, today in brass.
+                Grid(horizontalSpacing: 1.5, verticalSpacing: 1.5) {
+                    GridRow { cell(Theme.surface); cell(Theme.brassLow) }
+                    GridRow { cell(Theme.brass); cell(Theme.surface) }
+                }
             }
+    }
+
+    private func cell(_ color: Color) -> some View {
+        RoundedRectangle(cornerRadius: 1).fill(color).frame(width: 6, height: 6)
     }
 }
 
