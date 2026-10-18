@@ -177,7 +177,7 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
-                        Picker(selection: Binding(get: { primaryCurrency }, set: setPrimary)) {
+                        Picker(selection: Binding(get: { primaryCurrency }, set: { setPrimary($0) })) {
                             ForEach(CurrencyPreference.offered, id: \.self) { code in
                                 Text(CurrencyPreference.name(code)).tag(code)
                             }
