@@ -26,6 +26,8 @@ enum DemoData {
         // would leak into this one. `-monthlyBudget 8000` still applies (launch arguments
         // win over what is saved).
         UserDefaults.standard.removeObject(forKey: BudgetStore.key)
+        UserDefaults.standard.removeObject(forKey: CurrencyPreference.key)
+        UserDefaults.standard.removeObject(forKey: "onboarded")
         let container = try ModelContainer(
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)

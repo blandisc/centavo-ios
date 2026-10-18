@@ -31,4 +31,17 @@ public enum RecurringSchedule {
         }
         return dates
     }
+
+    /// Where a fixed expense set up today on `day` of the month starts: this month if that
+    /// day already came, last month otherwise, so this month's copy logs itself when the day
+    /// arrives and nothing is ever dated in the future.
+    public static func firstDate(day: Int, now: Date, calendar: Calendar = .current) -> Date {
+        let today = calendar.component(.day, from: now)
+        let month = day <= today ? now : (calendar.date(byAdding: .month, value: -1, to: now) ?? now)
+        let length = calendar.range(of: .day, in: .month, for: month)?.count ?? 28
+        var parts = calendar.dateComponents([.year, .month], from: month)
+        parts.day = min(max(day, 1), length)
+        parts.hour = 9
+        return calendar.date(from: parts) ?? now
+    }
 }

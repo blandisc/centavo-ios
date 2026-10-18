@@ -49,4 +49,22 @@ import Testing
         let rent = at(2026, 1, 1)
         #expect(due(anchor: rent, after: rent, now: at(2100, 1, 1)).count == 120)
     }
+
+    @Test func aDayThatCameStartsThisMonth() {
+        let first = RecurringSchedule.firstDate(day: 5, now: at(2026, 10, 18, hour: 12), calendar: Self.calendar)
+        #expect(first == at(2026, 10, 5))
+    }
+
+    @Test func aDayStillToComeStartsLastMonthAndLogsItselfWhenItArrives() {
+        let now = at(2026, 10, 18, hour: 12)
+        let first = RecurringSchedule.firstDate(day: 25, now: now, calendar: Self.calendar)
+        #expect(first == at(2026, 9, 25))
+        #expect(due(anchor: first, after: first, now: now).isEmpty)
+        #expect(due(anchor: first, after: first, now: at(2026, 10, 25, hour: 12)) == [at(2026, 10, 25)])
+    }
+
+    @Test func the31stStartsOnTheLastDayOfAShortMonth() {
+        let first = RecurringSchedule.firstDate(day: 31, now: at(2026, 3, 10, hour: 12), calendar: Self.calendar)
+        #expect(first == at(2026, 2, 28))
+    }
 }

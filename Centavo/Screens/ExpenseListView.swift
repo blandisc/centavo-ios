@@ -26,6 +26,10 @@ struct ExpenseListView: View {
     @Environment(\.modelContext) private var context
     @AppStorage(BudgetStore.key) private var storedBudget = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
+    /// The welcome runs once, and only on an empty app (someone who already has expenses
+    /// is not new).
+    @AppStorage("onboarded") private var onboarded = false
+    @State private var showingOnboarding = false
     /// "Now" for the whole screen. Refreshed when the app comes back and when the clock
     /// jumps (midnight, a time-zone change), so the month and "today" never go stale.
     @State private var now = Date.now
@@ -229,6 +233,19 @@ struct ExpenseListView: View {
             .modifier(Feedback(expenseCount: expenses.count, isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
+            .task {
+                guard !onboarded else { return }
+                if expenses.isEmpty && Onboarding.isAllowed { showingOnboarding = true } else { onboarded = true }
+            }
+            .fullScreenCover(isPresented: $showingOnboarding) {
+                OnboardingView { openGuide in
+                    onboarded = true
+                    showingOnboarding = false
+                    if openGuide {
+                        Task { try? await Task.sleep(for: .milliseconds(500)); showingSetup = true }
+                    }
+                }
+            }
         }
     }
 }
@@ -642,5 +659,18 @@ private struct DayFilterRow: View {
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("ver-todo-el-mes")
         }
+    }
+}
+
+/// Whether the welcome may show. The demo modes (screenshots and UI tests) skip it unless
+/// asked with `-centavo-onboarding`.
+enum Onboarding {
+    static var isAllowed: Bool {
+        #if DEBUG
+        if DemoData.isRequested {
+            return ProcessInfo.processInfo.arguments.contains("-centavo-onboarding")
+        }
+        #endif
+        return true
     }
 }
