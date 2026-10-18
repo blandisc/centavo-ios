@@ -193,15 +193,7 @@ struct BudgetPage: View {
                 .tracking(1)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
-            // The one number to act on today: what is left, spread over the days to come.
-            if isCurrentMonth, !isOver {
-                Text("Hoy puedes gastar \(wholeMoney(pace.dailyAllowance))")
-                    .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
-                    .tracking(1)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.brass)
-                    .padding(.top, 2)
-            }
+            // «Hoy puedes gastar» heads the screen now (HeroTotal); not repeated here.
         }
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("presupuesto-ticket")

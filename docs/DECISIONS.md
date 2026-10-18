@@ -156,3 +156,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Un aviso de Wallet que no es compra** (pase de abordar, Apple Cash sin monto) se ignora sin error.
 - **La guía pide borrar la automatización vieja de «Wallet»** para que cada compra se anote una vez.
 - Verificado en el simulador de iOS 27: «Al recibir una notificación de [App]» → Wallet; el campo «Notificación» de la acción no se conecta solo. Sin verificar (no hay notificaciones reales en el simulador): la burbuja «Notificación» arriba del teclado; la guía da la alternativa «Seleccionar variable».
+
+## 2026-10-18 — El número del día al frente
+- **En el mes actual, con presupuesto y sin pasarte, lo más grande de la pantalla es «Hoy puedes gastar $X»**, en latón; el total del mes queda en la línea de abajo. Sin presupuesto, pasado del presupuesto o en meses cerrados, el total sigue arriba como antes. El presupuesto ya no repite «Hoy puedes gastar».
+- **«Probar ahora» en la guía se descarta:** Al día no puede fabricar una notificación de Wallet, así que un botón de prueba no comprobaría la automatización y daría falsa confianza.
