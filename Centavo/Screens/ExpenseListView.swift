@@ -2,6 +2,7 @@ import CentavoCore
 import SwiftData
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 /// The only screen: a month's total, a swipeable calendar/budget, then that month's payments.
 ///
@@ -36,6 +37,8 @@ struct ExpenseListView: View {
     @State private var showingBudget = false
     @State private var adding = false
     @State private var editing: Expense?
+    @State private var importing = false
+    @State private var importMessage: String?
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
@@ -153,6 +156,7 @@ struct ExpenseListView: View {
                             Label("Exportar CSV", systemImage: "square.and.arrow.up")
                         }
                         .disabled(expenses.isEmpty)
+                        Button("Importar CSV", systemImage: "square.and.arrow.down") { importing = true }
                         Button("Configurar atajo", systemImage: "questionmark.circle") {
                             showingSetup = true
                         }
@@ -199,6 +203,16 @@ struct ExpenseListView: View {
             } message: { expense in
                 Text("\(expense.merchant) · \(ledgerAmount(for: expense, primary: primaryCurrency))")
             }
+            .fileImporter(isPresented: $importing,
+                          allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+                importMessage = importFile(result)
+            }
+            .alert("Importar CSV", isPresented: Binding(get: { importMessage != nil },
+                                                        set: { if !$0 { importMessage = nil } })) {
+                Button("Listo", role: .cancel) {}
+            } message: {
+                Text(importMessage ?? "")
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
             }
@@ -208,6 +222,29 @@ struct ExpenseListView: View {
                 for: UIApplication.significantTimeChangeNotification)) { _ in
                 now = .now
             }
+        }
+    }
+}
+
+private extension ExpenseListView {
+    /// Reads the chosen file and says plainly what happened.
+    func importFile(_ result: Result<URL, Error>) -> String {
+        guard case .success(let url) = result else { return "No se pudo abrir el archivo." }
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else {
+            return "No se pudo leer el archivo."
+        }
+        do {
+            let summary = try ExpenseImporter.importCSV(text, into: context)
+            var parts = ["Se agregaron \(summary.added) gastos."]
+            if summary.alreadyThere > 0 { parts.append("\(summary.alreadyThere) ya estaban.") }
+            if summary.unreadable > 0 { parts.append("\(summary.unreadable) renglones no se pudieron leer.") }
+            return parts.joined(separator: " ")
+        } catch CSVImporter.Failure.notOurFile {
+            return "Ese archivo no es un CSV exportado de Al día (le falta la fila Fecha, Comercio, Monto, Moneda)."
+        } catch {
+            return "No se pudo guardar lo importado. Intenta de nuevo."
         }
     }
 }
