@@ -97,10 +97,23 @@ jobs:
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
           xcrun simctl list devices available | head -40
 
+      # In a PR only what decides the merge runs: flows, the tap-target audit and the unit
+      # tests. The screenshots and the accessibility audits that only report are for looking,
+      # not approving, so they run on main. (Two simulators in parallel were tried: on these
+      # small runners the second one dropped out and nothing was gained.)
       - name: Correr las pruebas de interfaz
         run: |
+          skip=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            skip="-skip-testing:CentavoUITests/ScreenshotTests"
+            for t in testAuditarPrincipal testAuditarCalendario testAuditarPrimeraVez \
+                     testAuditarHojaDeGasto testAuditarGuia testAuditarLetraGrande; do
+              skip="$skip -skip-testing:CentavoUITests/AccessibilityAuditTests/$t"
+            done
+          fi
           xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
             -destination "id=${{ steps.sim.outputs.udid }}" \
+            $skip \
             -resultBundlePath build/result.xcresult \
             CODE_SIGNING_ALLOWED=NO -jobs 4
 
