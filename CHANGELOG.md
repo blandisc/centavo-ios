@@ -2,7 +2,6 @@
 
 ## [Unreleased]
 ### Changed
-- Al escribir el presupuesto (en la bienvenida o en «Más») ya se ve «Con eso, hoy puedes gastar $402», con lo gastado del mes contado.
 - Al deslizar entre presupuesto y calendario ya hay aire entre los dos; el mes de la barra inferior tiene más espacio.
 - «Hoy puedes gastar» es ahora lo más grande de la pantalla; el total del mes va debajo.
 - La app se llama **Al día** y estrena ícono: los días del mes con el de hoy en latón. Siri: «Oye Siri, anotar gasto en Al día».
@@ -71,3 +70,4 @@
 - Agregar un gasto a mano con «+» y editar o borrar cualquier gasto tocándolo (CEN-2).
 - CI en GitHub Actions: corre las pruebas de CentavoCore y el build de iOS en cada PR (CEN-5).
 - Esqueleto inicial: acción «Registrar gasto» para la automatización Transacción de Atajos, parser de montos multi-formato, lista con total del mes y guía de configuración.
+- Al escribir el presupuesto (en la bienvenida o en «Más») ya se ve «Con eso, hoy puedes gastar $402», con lo gastado del mes contado.
