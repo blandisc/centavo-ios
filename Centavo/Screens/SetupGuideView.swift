@@ -213,6 +213,10 @@ private struct GuideStep {
     // list with an «Automatización» category holding «Wallet» («Cuando se use»). «Entrada de
     // atajo» is NOT the payment there: inserting it adds «Recibir… de Ningún lado».
     // Not verifiable without cards in Wallet: the variable picked from the Wallet block.
+    // iOS 27: one «Notificación» automation on Wallet's notifications catches every purchase,
+    // online or contactless (Wallet notifies each one once). Checked in the iOS 27 simulator
+    // (es-MX, 2026-10-17): «Al recibir una notificación de [App]», pick Wallet; the action's
+    // «Notificación» field does not connect by itself.
     static let ios27: [GuideStep] = [
         GuideStep(
             title: "Abre Atajos",
@@ -231,53 +235,57 @@ private struct GuideStep {
             scene: .frames(GuideFrame.openEditor)
         ),
         GuideStep(
-            title: "Agrega «Wallet»",
+            title: "Elige «Notificación»",
             taps: ["Abajo, toca la categoría «Automatización».",
-                   "Toca «Wallet». Arriba queda «Cuando se use Cualquier tarjeta»."],
-            scene: .frames(GuideFrame.addWallet)
+                   "Toca «Notificación»."],
+            note: "«Notificación» captura todas tus compras, en línea y acercando el teléfono, "
+                + "porque Wallet te avisa de cada una. «Wallet» solo captura las de acercar el teléfono.",
+            scene: .frames(GuideFrame.pickNotification)
         ),
         GuideStep(
-            title: "Agrega «Registrar gasto»",
-            taps: ["Toca «Buscar» y escribe «Registrar gasto».",
-                   "Toca «Registrar gasto», la de Al día."],
-            scene: .frames(GuideFrame.addAction)
+            title: "Elige la app Wallet",
+            taps: ["En el bloque, toca «App».",
+                   "Busca «Wallet» y elígela."],
+            scene: .frames(GuideFrame.pickWalletApp)
         ),
         GuideStep(
-            title: "Conecta la cantidad",
-            taps: ["Toca «Importe».",
-                   "Arriba del teclado toca «Transacción».",
-                   "Toca la burbuja «Transacción» otra vez.",
-                   "En «Obtener», elige «Cantidad»."],
-            note: "Si ves «Cantidad» con palomita, ya quedó. Si en «Importe» dice «Transacción» y no "
-                + "«Cantidad», el gasto no se anota: toca la burbuja y elige «Cantidad».",
-            scene: .frames(GuideFrame.connectAmount)
+            title: "Agrega la acción de Al día",
+            taps: ["Toca «Buscar» y escribe «Registrar aviso».",
+                   "Toca «Registrar aviso de Wallet»."],
+            scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
-            title: "Conecta el comercio",
-            taps: ["Toca «Comercio».",
-                   "Arriba del teclado toca «Transacción».",
-                   "Toca la burbuja otra vez y elige «Comercio»."],
-            scene: .frames(GuideFrame.connectMerchant)
+            title: "Conecta la notificación",
+            taps: ["Toca «Notificación».",
+                   "Arriba del teclado, toca «Notificación». Si no aparece, toca «Seleccionar "
+                   + "variable» y luego el bloque de arriba."],
+            note: "Debe quedar una burbuja azul que diga «Notificación». Al día saca solo la tarjeta, "
+                + "el comercio y el monto; los avisos de Wallet que no son compras se ignoran.",
+            scene: .frames(GuideFrame.connectNotice)
         ),
         GuideStep(
             title: "Guárdala",
-            taps: ["Toca la flecha de arriba a la izquierda. Se guarda sola y aparece en "
-                   + "«Automatización», en «Personal»."],
-            note: "Si al pagar Atajos te pide confirmar, abre esa automatización y elige "
+            taps: ["Toca la flecha de arriba a la izquierda. Se guarda sola.",
+                   "Si tenías la automatización vieja de «Wallet», bórrala: desliza a la izquierda "
+                   + "y toca «Eliminar». Así cada compra se anota una vez."],
+            note: "Si al pagar Atajos te pide confirmar, abre la automatización y elige "
                 + "«Ejecutar de inmediato».",
-            scene: .frames(GuideFrame.save)
+            scene: .frames(GuideFrame.saveNotice)
         ),
         GuideStep(
             title: "Pruébalo",
-            taps: ["Paga algo acercando el iPhone o el reloj a la terminal.",
+            taps: ["Compra algo, en línea o acercando el teléfono.",
                    "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
             scene: .finished
         ),
     ]
 
     static let notes = [
-        "Solo se anotan los pagos en los que acercas el iPhone o el reloj a la terminal. "
-            + "Las compras en línea y dentro de apps anótalas tú con «+».",
+        ShortcutsVersion.isIOS27
+            ? "Se anota todo lo que Wallet te avisa: compras en línea y acercando el teléfono. "
+                + "El efectivo y las tarjetas que no están en Wallet anótalos tú con «+»."
+            : "Solo se anotan los pagos en los que acercas el iPhone o el reloj a la terminal. "
+                + "Las compras en línea y dentro de apps anótalas tú con «+».",
         "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. "
             + "Si un pago no aparece, anótalo tú.",
         "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo.",
@@ -314,7 +322,7 @@ private struct CaptureCheck: View {
                         .font(.ticket(14, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Theme.ink)
                     Text(ShortcutsVersion.isIOS27
-                         ? "Si pagaste y no llega en un par de minutos, revisa los pasos 5 y 6."
+                         ? "Si pagaste y no llega en un par de minutos, revisa los pasos 4 y 6."
                          : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
                         .font(.ticket(12, relativeTo: .footnote))
                         .foregroundStyle(Theme.muted)

@@ -36,6 +36,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- En iOS 27 se capturan también las compras en línea: una automatización con la notificación de Wallet anota tarjeta, comercio y monto de cada compra, en línea o acercando el teléfono. La guía tiene los pasos nuevos.
 - Gastos fijos: marca un gasto con «Se repite cada mes» (renta, suscripciones, la luz) y se anota solo cada mes; se ven con «Fijo».
 - «Hoy puedes gastar $X» en el presupuesto, en el aviso de cada pago y en Siri. La marca de la barra se llama «Ritmo».
 - Moneda principal a elegir (pesos, dólares o euros) desde «Más», y un selector MXN | USD | EUR al anotar un gasto. Siri entiende «dólares» y «euros».

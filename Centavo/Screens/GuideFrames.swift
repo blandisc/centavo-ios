@@ -23,6 +23,14 @@ struct GuideFrame: Identifiable {
         case keyboardBar(field: String)
         case obtain(pick: String)
         case saved
+        // The «Notificación» automation (iOS 27)
+        case triggerList(pick: String)
+        case noticeTrigger(app: String?)
+        case appPicker
+        case noticeSearch
+        case noticeAction(token: Token, ring: Bool)
+        case noticeKeyboardBar
+        case savedNotice
     }
 
     enum Token: Equatable {
@@ -204,6 +212,82 @@ private struct FrameView: View {
                 }
                 .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
             }
+        case .triggerList(let pick):
+            VStack(alignment: .leading, spacing: 8) {
+                row("Wallet", "wallet.pass.fill").ring(pick == "Wallet")
+                row("Captura de pantalla", "camera.viewfinder")
+                row("Notificación", "bell.badge.fill").ring(pick == "Notificación")
+            }
+        case .noticeTrigger(let app):
+            VStack(alignment: .leading, spacing: 10) {
+                noticeTrigger(app: app, ringApp: app == nil)
+            }
+        case .appPicker:
+            VStack(alignment: .leading, spacing: 10) {
+                Text("App").font(.headline)
+                searchField("Wallet")
+                row("Wallet", "wallet.pass.fill").ring()
+            }
+        case .noticeSearch:
+            VStack(alignment: .leading, spacing: 10) {
+                noticeTrigger(app: "Wallet", ringApp: false)
+                searchField("Registrar aviso")
+                HStack(spacing: 10) {
+                    AppGlyph27()
+                    Text("Registrar aviso de Wallet")
+                    Spacer()
+                }
+                .padding(10)
+                .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
+                .ring()
+            }
+        case .noticeAction(let token, let ring):
+            VStack(alignment: .leading, spacing: 10) {
+                noticeTrigger(app: "Wallet", ringApp: false)
+                HStack(spacing: 6) {
+                    AppGlyph27()
+                    Text("Registrar").fixedSize()
+                    self.token(token).ring(ring)
+                    Spacer()
+                }
+                .font(.footnote)
+                .padding(10)
+                .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
+            }
+        case .noticeKeyboardBar:
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    AppGlyph27()
+                    Text("Registrar").fixedSize()
+                    token(.placeholder("Notificación"))
+                    Spacer()
+                }
+                .font(.footnote)
+                .padding(10)
+                .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
+                HStack(spacing: 6) {
+                    chip("Notificación", icon: "bell.badge").ring()
+                    chip("Seleccionar variable")
+                }
+                Text("Si no ves «Notificación», toca «Seleccionar variable» y luego el bloque "
+                     + "«Al recibir una notificación» de arriba.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Shortcuts.secondary)
+            }
+        case .savedNotice:
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: "chevron.left")
+                    .frame(width: 34, height: 34)
+                    .background(Theme.Shortcuts.card, in: Circle())
+                    .ring()
+                Text("Personal").font(.headline)
+                HStack(spacing: 10) {
+                    Image(systemName: "bell.badge.fill").foregroundStyle(Theme.Shortcuts.blue)
+                    Text("Al recibir una notificación de Wallet").font(.caption)
+                }
+                .padding(10)
+                .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
+            }
         case .saved:
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: "chevron.left")
@@ -223,6 +307,30 @@ private struct FrameView: View {
     }
 
     // MARK: Pieces
+
+    private func noticeTrigger(app: String?, ringApp: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "bell.badge.fill").foregroundStyle(.red)
+                Text("Al recibir una notificación de")
+            }
+            Group {
+                if let app {
+                    Label(app, systemImage: "wallet.pass.fill").foregroundStyle(Theme.Shortcuts.blue)
+                } else {
+                    Text("App")
+                        .foregroundStyle(Theme.Shortcuts.text)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Theme.Shortcuts.blue, in: RoundedRectangle(cornerRadius: 6))
+                }
+            }
+            .ring(ringApp)
+        }
+        .font(.footnote)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 12))
+    }
 
     private var walletTrigger: some View {
         HStack(spacing: 6) {
@@ -386,5 +494,34 @@ extension GuideFrame {
     ]
     static let save: [GuideFrame] = [
         GuideFrame(caption: "Toca la flecha de arriba a la izquierda: se guarda sola", screen: .saved),
+    ]
+}
+
+// MARK: - The «Notificación» automation, frame by frame (iOS 27)
+
+extension GuideFrame {
+    static let pickNotification: [GuideFrame] = [
+        GuideFrame(caption: "1 · Abajo, toca la categoría «Automatización»", screen: .categories),
+        GuideFrame(caption: "2 · Toca «Notificación» (no «Wallet»)", screen: .triggerList(pick: "Notificación")),
+    ]
+    static let pickWalletApp: [GuideFrame] = [
+        GuideFrame(caption: "1 · En el bloque, toca «App»", screen: .noticeTrigger(app: nil)),
+        GuideFrame(caption: "2 · Busca y elige «Wallet»", screen: .appPicker),
+        GuideFrame(caption: "Listo: «Al recibir una notificación de Wallet»", screen: .noticeTrigger(app: "Wallet")),
+    ]
+    static let addNoticeAction: [GuideFrame] = [
+        GuideFrame(caption: "Busca «Registrar aviso de Wallet» y tócalo", screen: .noticeSearch),
+        GuideFrame(caption: "Queda debajo del bloque",
+                   screen: .noticeAction(token: .placeholder("Notificación"), ring: false)),
+    ]
+    static let connectNotice: [GuideFrame] = [
+        GuideFrame(caption: "1 · Toca «Notificación»",
+                   screen: .noticeAction(token: .placeholder("Notificación"), ring: true)),
+        GuideFrame(caption: "2 · Arriba del teclado, toca «Notificación»", screen: .noticeKeyboardBar),
+        GuideFrame(caption: "Listo: la burbuja azul «Notificación»",
+                   screen: .noticeAction(token: .bubble("Notificación"), ring: false)),
+    ]
+    static let saveNotice: [GuideFrame] = [
+        GuideFrame(caption: "Toca la flecha de arriba: se guarda sola", screen: .savedNotice),
     ]
 }
