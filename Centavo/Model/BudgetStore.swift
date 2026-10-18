@@ -1,3 +1,4 @@
+import CentavoCore
 import Foundation
 
 /// The monthly budget, one amount in the primary currency.
@@ -23,6 +24,19 @@ enum BudgetStore {
 /// Keeps the budget and the chosen currency in the person's iCloud key-value store as
 /// well, so they come back after reinstalling or on a new phone. Without the iCloud
 /// entitlement that store never leaves the phone and none of this does any harm.
+extension BudgetStore {
+    /// What a budget means today, said while it is typed: the same «Hoy puedes gastar» the
+    /// main screen will show with it, counting what this month already spent.
+    static func dailyPreview(_ amount: Decimal, spent: Decimal = 0, currency: String,
+                             now: Date = .now) -> String {
+        guard let pace = BudgetPace(budget: amount, spent: spent, on: now), pace.remaining > 0 else {
+            return "Este mes ya gastaste más que eso."
+        }
+        let figure = pace.dailyAllowance.formatted(.currency(code: currency).precision(.fractionLength(0)))
+        return "Con eso, hoy puedes gastar \(figure)."
+    }
+}
+
 enum BudgetSync {
     private static var cloud: NSUbiquitousKeyValueStore { .default }
     private static var local: UserDefaults { .standard }
