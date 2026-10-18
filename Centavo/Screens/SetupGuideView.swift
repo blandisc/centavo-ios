@@ -9,9 +9,15 @@ import SwiftUI
 struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
     /// Payments the automation saved (only it keeps the raw Wallet text): proof that it works.
-    @Query(filter: #Predicate<Expense> { $0.rawAmount != nil },
-           sort: \Expense.date, order: .reverse)
-    private var captured: [Expense]
+    @Query(Self.latestCapture) private var captured: [Expense]
+
+    /// Only the newest capture is ever shown.
+    private static var latestCapture: FetchDescriptor<Expense> {
+        var descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.rawAmount != nil },
+                                                  sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 1
+        return descriptor
+    }
     @State private var step = 0
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all

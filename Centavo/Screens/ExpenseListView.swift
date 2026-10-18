@@ -106,7 +106,8 @@ struct ExpenseListView: View {
                         pace: pace,
                         isCurrentMonth: isCurrent,
                         shares: CategoryShare.top(summary.categories),
-                        onSetBudget: { showingBudget = true }
+                        onSetBudget: { showingBudget = true },
+                        currency: primaryCurrency
                     )
                     // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                     // between them instead of two pages touching.
@@ -253,7 +254,8 @@ struct ExpenseListView: View {
             }
             // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
             .onChange(of: viewed) { _, _ in selectedDay = nil }
-            .modifier(Feedback(expenseCount: expenses.count, isOver: isCurrent && isOver(pace)))
+            .modifier(Feedback(expenseCount: expenses.count, newest: expenses.first?.date,
+                               isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
@@ -339,11 +341,16 @@ private struct BudgetCurrencyCheck: ViewModifier {
 /// A soft tap when an expense lands; a warning the moment the budget is blown.
 private struct Feedback: ViewModifier {
     let expenseCount: Int
+    /// The latest expense's date. Only one dated just now is a payment that just landed;
+    /// an import, an undo, a fixed expense's copy or one arriving from iCloud is older.
+    let newest: Date?
     let isOver: Bool
 
     func body(content: Content) -> some View {
         content
-            .sensoryFeedback(.success, trigger: expenseCount) { old, new in new > old }
+            .sensoryFeedback(.success, trigger: expenseCount) { old, new in
+                new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
+            }
             .sensoryFeedback(.warning, trigger: isOver) { old, new in !old && new }
     }
 }

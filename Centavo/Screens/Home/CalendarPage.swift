@@ -8,7 +8,11 @@ struct CalendarPage: View {
     var selectedDay: Int?
     var onSelectDay: (Int?) -> Void = { _ in }
 
-    @ScaledMetric(relativeTo: .caption2) private var cellHeight: CGFloat = 32
+    /// The month's currency, so VoiceOver says "$310.00" and not a bare number.
+    var currency = CurrencyPreference.fallback
+
+    /// 44 pt: Apple's minimum for something to tap.
+    @ScaledMetric(relativeTo: .caption2) private var cellHeight: CGFloat = 44
 
     private var rows: [[MonthCalendar.Cell]] {
         var cells = model.cells
@@ -40,7 +44,7 @@ struct CalendarPage: View {
                                 Button {
                                     onSelectDay(selectedDay == day.number ? nil : day.number)
                                 } label: {
-                                    DayCell(day: day, height: cellHeight,
+                                    DayCell(day: day, height: cellHeight, currency: currency,
                                             isSelected: selectedDay == day.number)
                                 }
                                 .buttonStyle(.plain)
@@ -60,6 +64,7 @@ struct CalendarPage: View {
 private struct DayCell: View {
     let day: MonthCalendar.Day
     let height: CGFloat
+    let currency: String
     var isSelected = false
 
     private var fill: Color {
@@ -84,8 +89,8 @@ private struct DayCell: View {
         switch day.state {
         case .future: "todavía no llega"
         case .empty: "sin gastos"
-        case .refund: "devolvieron \(day.total.magnitude.formatted(.number.precision(.fractionLength(2))))"
-        case .spent: "gastaste \(day.total.formatted(.number.precision(.fractionLength(2))))"
+        case .refund: "devolvieron \(day.total.magnitude.formatted(currencyStyle(currency)))"
+        case .spent: "gastaste \(day.total.formatted(currencyStyle(currency)))"
         }
     }
 
