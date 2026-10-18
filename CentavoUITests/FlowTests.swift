@@ -131,6 +131,41 @@ final class FlowTests: XCTestCase {
         snap("flujo-otra-moneda")
     }
 
+    /// The owner's case: the main currency ended up in dollars while the payments are pesos.
+    /// The screen offers to add up in pesos, and one tap fixes it.
+    func testSiLosPagosSonEnPesosOfreceSumarEnPesos() {
+        let app = launch(budget: true)
+        app.buttons["Más"].tap()
+        require(app.buttons["Moneda principal"], "No está la moneda en «Más»").tap()
+        require(app.buttons["Dólares (USD)"], "No ofrece dólares").tap()
+        require(app.buttons["Así está bien"], "No preguntó por el presupuesto al cambiar de moneda").tap()
+
+        for (amount, merchant) in [("100", "Oxxo"), ("200", "Soriana")] {
+            fillExpense(app, amount: amount, merchant: merchant)
+            app.buttons["MXN"].tap()
+            app.buttons["hoja-guardar"].tap()
+        }
+        require(app.buttons["sumar-en-moneda"], "No ofreció sumar en pesos")
+        snap("flujo-sumar-en-pesos")
+        app.buttons["sumar-en-moneda"].tap()
+        require(app.buttons["Así está bien"], "No preguntó por el presupuesto").tap()
+        expectTotal(app, "$300.00", "No quedó sumando en pesos")
+        XCTAssertFalse(app.staticTexts["otras-monedas"].exists, "Los pesos siguen aparte")
+        XCTAssertFalse(app.buttons["sumar-en-moneda"].exists, "La sugerencia no se fue")
+    }
+
+    /// A phone set to the US region still adds up in pesos unless told otherwise.
+    func testConRegionDeEstadosUnidosSumaEnPesos() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "en_US",
+                               "-centavo-sin-animaciones", "-centavo-demo"]
+        app.launch()
+        let total = require(app.staticTexts["total-mes"], "No abrió", timeout: 20)
+        XCTAssertTrue(total.label.hasPrefix("$"), "El total dice \(total.label)")
+        let others = require(app.staticTexts["otras-monedas"], "Los dólares no salieron aparte")
+        XCTAssertTrue(others.label.contains("USD"), "Aparte dice \(others.label)")
+    }
+
     func testEscribirPesosNoSacaElGastoDelTotal() {
         let app = launch()
         fillExpense(app, amount: "89 pesos", merchant: "Oxxo")
