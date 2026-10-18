@@ -334,9 +334,14 @@ private extension ExpenseListView {
         }
         do {
             let summary = try ExpenseImporter.importCSV(text, into: context)
-            var parts = ["Se agregaron \(summary.added) gastos."]
-            if summary.alreadyThere > 0 { parts.append("\(summary.alreadyThere) ya estaban.") }
-            if summary.unreadable > 0 { parts.append("\(summary.unreadable) renglones no se pudieron leer.") }
+            var parts = [summary.added == 1 ? "Se agregó 1 gasto." : "Se agregaron \(summary.added) gastos."]
+            if summary.alreadyThere > 0 {
+                parts.append(summary.alreadyThere == 1 ? "1 ya estaba." : "\(summary.alreadyThere) ya estaban.")
+            }
+            if summary.unreadable > 0 {
+                parts.append(summary.unreadable == 1 ? "1 renglón no se pudo leer."
+                             : "\(summary.unreadable) renglones no se pudieron leer.")
+            }
             return parts.joined(separator: " ")
         } catch CSVImporter.Failure.notOurFile {
             return "Ese archivo no es un CSV exportado de Al día (le falta la fila Fecha, Comercio, Monto, Moneda)."

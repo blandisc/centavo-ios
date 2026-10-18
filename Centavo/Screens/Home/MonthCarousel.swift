@@ -43,7 +43,7 @@ struct MonthCarousel: View {
                         withAnimation { page = index }
                     } label: {
                         Capsule()
-                            .fill(page == index ? Theme.ink : Color(hex: 0x4A4742))
+                            .fill(page == index ? Theme.ink : Theme.dimmed)
                             .frame(width: page == index ? 18 : 6, height: 6)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())

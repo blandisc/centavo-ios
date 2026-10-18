@@ -25,6 +25,17 @@ struct ExpenseEditorView: View {
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
 
+    /// Whether something was typed or changed since the sheet opened.
+    private var hasChanges: Bool {
+        guard let expense else {
+            return !(amountText + merchant + card + category).trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        return parsed?.value != expense.amount.magnitude || isRefund != (expense.amount < 0)
+            || merchant != expense.merchant || card != (expense.card ?? "")
+            || category != (expense.category ?? "") || date != expense.date
+            || repeatsMonthly != (expense.repeatsMonthly == true)
+    }
+
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
     /// The offered currencies, plus this expense's own if it came in another (Wallet abroad).
     private var currencies: [String] {
@@ -109,7 +120,10 @@ struct ExpenseEditorView: View {
 
                 Section {
                     DatePicker(selection: $date, in: ...Date.now) {
-                        Text("Fecha").font(.ticket(13, relativeTo: .footnote)).tracking(1.2)
+                        Text("Fecha")
+                            .font(.ticket(12, relativeTo: .footnote))
+                            .tracking(1.2)
+                            .textCase(.uppercase)
                     }
                     field("Tarjeta o efectivo (opcional)", text: $card,
                           prompt: "BBVA, Nu, efectivo…", identifier: "tarjeta")
@@ -174,10 +188,13 @@ struct ExpenseEditorView: View {
             }
         }
         .onAppear(perform: load)
+        // Swiping the sheet away must not throw away what was typed.
+        .interactiveDismissDisabled(hasChanges)
         .onChange(of: merchant) { _, new in
             // Change the merchant and the category you last used for it fills in,
-            // but only while the field is empty — never overwrite a typed one.
-            guard category.trimmingCharacters(in: .whitespaces).isEmpty,
+            // but only while the field is empty — never overwrite a typed one. Only for a new
+            // expense: opening an uncategorized one must not quietly file it.
+            guard expense == nil, category.trimmingCharacters(in: .whitespaces).isEmpty,
                   let remembered = MerchantCatalog.suggestion(for: new, history: pastExpenses)
             else { return }
             category = remembered
