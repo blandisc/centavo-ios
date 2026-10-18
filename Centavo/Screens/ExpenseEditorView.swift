@@ -7,6 +7,8 @@ struct ExpenseEditorView: View {
     let expense: Expense?
     /// Where a new expense's date starts (the end of the month being browsed); `nil` is now.
     var initialDate: Date?
+    /// How the list deletes, so «Deshacer» works from here too. Without it, a plain delete.
+    var onDelete: ((Expense) -> Void)?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -162,7 +164,9 @@ struct ExpenseEditorView: View {
             .confirmationDialog("¿Borrar este gasto?", isPresented: $confirmingDelete,
                                 titleVisibility: .visible) {
                 Button("Borrar", role: .destructive) {
-                    if let expense { context.delete(expense) }
+                    if let expense {
+                        if let onDelete { onDelete(expense) } else { context.delete(expense) }
+                    }
                     dismiss()
                 }
             }

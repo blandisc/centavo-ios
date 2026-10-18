@@ -4,6 +4,9 @@ import SwiftUI
 /// Second page of the carousel: the month as a calendar, each day tinted by how much was spent.
 struct CalendarPage: View {
     let model: MonthCalendar
+    /// The day whose expenses the list shows, if one was tapped.
+    var selectedDay: Int?
+    var onSelectDay: (Int?) -> Void = { _ in }
 
     @ScaledMetric(relativeTo: .caption2) private var cellHeight: CGFloat = 32
 
@@ -34,7 +37,14 @@ struct CalendarPage: View {
                             case .padding:
                                 Color.clear.frame(maxWidth: .infinity, minHeight: cellHeight)
                             case .day(let day):
-                                DayCell(day: day, height: cellHeight)
+                                Button {
+                                    onSelectDay(selectedDay == day.number ? nil : day.number)
+                                } label: {
+                                    DayCell(day: day, height: cellHeight,
+                                            isSelected: selectedDay == day.number)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Muestra los gastos de ese día")
                             }
                         }
                     }
@@ -47,6 +57,7 @@ struct CalendarPage: View {
 private struct DayCell: View {
     let day: MonthCalendar.Day
     let height: CGFloat
+    var isSelected = false
 
     private var fill: Color {
         switch day.state {
@@ -96,7 +107,12 @@ private struct DayCell: View {
                 }
             }
             .overlay {
-                if day.isToday {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 6).stroke(Theme.brass, lineWidth: 2).padding(-3)
+                }
+            }
+            .overlay {
+                if day.isToday && !isSelected {
                     RoundedRectangle(cornerRadius: 6).stroke(Theme.ink, lineWidth: 1.5).padding(-3)
                 }
             }

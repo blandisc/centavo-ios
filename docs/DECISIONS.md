@@ -164,3 +164,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-18 — Importar CSV
 - **«Más» → «Importar CSV» carga el mismo archivo que exporta la app**, para recuperar gastos sin iCloud. Columnas por nombre (Fecha, Comercio, Monto, Moneda obligatorias; Tarjeta y Categoría opcionales), así que un archivo reordenado en una hoja de cálculo sirve.
 - **No duplica:** mismo segundo, monto y comercio (sin mayúsculas ni acentos) se toma como el mismo gasto. Renglones ilegibles se cuentan y se avisan, nunca se adivinan. Un CSV que no es de Al día se rechaza con explicación.
+
+## 2026-10-18 — Tocar un día y deshacer
+- **Tocar un día del calendario filtra la lista a ese día**, con «Día 12 · 2 gastos · Ver todo el mes» arriba; se limpia al cambiar de mes. Sin pantalla nueva.
+- **Después de borrar un gasto aparece «Deshacer» seis segundos** (desde la lista o desde la hoja), y lo regresa igual que estaba, con su categoría y si era fijo. La barra usa Liquid Glass en iOS 26+.

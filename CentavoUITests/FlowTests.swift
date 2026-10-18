@@ -178,6 +178,32 @@ final class FlowTests: XCTestCase {
                       "El gasto sigue en la lista")
     }
 
+    func testDeshacerRegresaElGastoBorrado() {
+        let app = launch(demo: true)
+        require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
+        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        require(app.buttons["Borrar"], "No pidió confirmación").tap()
+        let undo = require(app.buttons["deshacer-borrado"], "No ofreció deshacer", timeout: 4)
+        snap("flujo-deshacer")
+        undo.tap()
+        require(row(app, containing: "Cinépolis"), "Deshacer no regresó el gasto")
+        expectTotal(app, "$2,366.00", "El total no volvió a ser el de antes")
+    }
+
+    func testTocarUnDiaMuestraSoloSusGastos() {
+        let app = launch(demo: true)
+        app.buttons["Calendario"].tap()
+        let day12 = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Día 12'")).firstMatch
+        require(day12, "No se puede tocar el día 12").tap()
+        require(app.buttons["ver-todo-el-mes"], "No dice que está filtrado")
+        require(row(app, containing: "Cinépolis"), "No muestra el gasto del día 12")
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Liverpool'")).firstMatch.exists,
+                       "Muestra gastos de otros días")
+        snap("flujo-dia-filtrado")
+        app.buttons["ver-todo-el-mes"].tap()
+        require(row(app, containing: "Liverpool"), "No regresó a todo el mes")
+    }
+
     func testCancelarLaConfirmacionNoBorra() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
