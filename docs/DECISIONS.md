@@ -189,3 +189,8 @@ Registro de decisiones. Se revierten solo de forma explícita.
 
 ## 2026-10-18 · Pruebas de interfaz sin animaciones
 Las pruebas de flujo abren la app con `-centavo-sin-animaciones` (solo en Debug): XCTest espera a que cada animación termine y sin ellas cada paso es más corto (medido: 326 s → 205 s en seis pruebas). Las capturas siguen con animaciones. La prueba de 5,000 gastos mide tiempos y solo se lee comparando corridas, así que corre en main y no en los PR.
+
+## 2026-10-18 · Avisos de Wallet que no son gasto y día de los fijos
+- Un aviso de Wallet con «reembolso», «devolución», «reverso» o «cancelado» se anota en negativo (resta); uno de dinero recibido («recibiste», «te enviaron») no se anota. El texto exacto de Wallet para estos casos no está verificado en un iPhone real; si llega distinto, se ajustan las palabras.
+- Un gasto fijo guarda el día que se pidió (`repeatDay`, opcional: migración ligera y compatible con CloudKit). Antes, un fijo del 31 que empezaba en un mes de 30 días se quedaba en el 30 para siempre.
+- Las copias de un fijo se anotan una por comercio, monto y mes, aunque dos iPhones con el mismo iCloud las generen a la vez.

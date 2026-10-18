@@ -61,6 +61,18 @@ enum BudgetSync {
         }
     }
 
+    /// Set once the welcome is done, so a new or reinstalled phone on the same iCloud does
+    /// not show it again (and have rent and the rest typed in twice).
+    static func markOnboarded() { cloud.set("1", forKey: "onboarded") }
+
+    /// Whether this iCloud already has someone's setup: the welcome was done, or a budget or
+    /// currency is there. The expenses themselves may still be on their way.
+    static var hasSetupElsewhere: Bool {
+        cloud.synchronize()
+        return cloud.string(forKey: "onboarded") == "1"
+            || keys.contains { !(cloud.string(forKey: $0) ?? "").isEmpty }
+    }
+
     /// Every change on this phone, including clearing it.
     static func push(_ value: String, for key: String = BudgetStore.key) {
         cloud.set(value, forKey: key)

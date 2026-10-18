@@ -44,7 +44,10 @@ struct CalendarPage: View {
                                             isSelected: selectedDay == day.number)
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityHint("Muestra los gastos de ese día")
+                                // A day that has not come has nothing to show.
+                                .disabled(day.state == .future)
+                                .accessibilityAddTraits(selectedDay == day.number ? .isSelected : [])
+                                .accessibilityHint(day.state == .future ? "" : "Muestra los gastos de ese día")
                             }
                         }
                     }

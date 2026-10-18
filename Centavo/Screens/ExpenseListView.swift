@@ -38,6 +38,7 @@ struct ExpenseListView: View {
     @State private var pendingDelete: Expense?
     @State private var showingSetup = false
     @State private var showingBudget = false
+    @State private var currencyChanged = false
     @State private var adding = false
     @State private var editing: Expense?
     @State private var importing = false
@@ -160,8 +161,14 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
-                        Picker(selection: Binding(get: { primaryCurrency },
-                                                  set: { storedCurrency = $0 })) {
+                        Picker(selection: Binding(get: { primaryCurrency }, set: { code in
+                            // The budget is a bare number: 8,000 pesos would quietly become
+                            // 8,000 dollars, so ask.
+                            if code != primaryCurrency, BudgetStore.amount(from: storedBudget) != nil {
+                                currencyChanged = true
+                            }
+                            storedCurrency = code
+                        })) {
                             ForEach(CurrencyPreference.offered, id: \.self) { code in
                                 Text(CurrencyPreference.name(code)).tag(code)
                             }
@@ -235,23 +242,49 @@ struct ExpenseListView: View {
             } message: {
                 Text(importMessage ?? "")
             }
-            .onChange(of: offset) { _, _ in selectedDay = nil }
+            // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
+            .onChange(of: viewed) { _, _ in selectedDay = nil }
             .modifier(Feedback(expenseCount: expenses.count, isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
+            .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
+                                          onReview: { showingBudget = true }))
             .task {
                 guard !onboarded else { return }
-                if expenses.isEmpty && Onboarding.isAllowed { showingOnboarding = true } else { onboarded = true }
+                // A reinstall or a new phone: the expenses are still coming from iCloud.
+                let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere
+                if expenses.isEmpty && Onboarding.isAllowed && !setUpElsewhere {
+                    showingOnboarding = true
+                } else {
+                    onboarded = true
+                }
             }
             .fullScreenCover(isPresented: $showingOnboarding) {
                 OnboardingView { openGuide in
                     onboarded = true
+                    if Store.syncsBudget { BudgetSync.markOnboarded() }
                     showingOnboarding = false
                     if openGuide {
                         Task { try? await Task.sleep(for: .milliseconds(500)); showingSetup = true }
                     }
                 }
             }
+        }
+    }
+}
+
+/// After the main currency changes: the budget stays the same number, so offer to fix it.
+private struct BudgetCurrencyCheck: ViewModifier {
+    @Binding var isPresented: Bool
+    let currency: String
+    let onReview: () -> Void
+
+    func body(content: Content) -> some View {
+        content.alert("¿Y tu presupuesto?", isPresented: $isPresented) {
+            Button("Cambiarlo", action: onReview)
+            Button("Así está bien", role: .cancel) {}
+        } message: {
+            Text("Sigue siendo el mismo número, ahora en \(CurrencyPreference.name(currency)).")
         }
     }
 }
@@ -337,9 +370,14 @@ private extension ExpenseListView {
         }
         do {
             let summary = try ExpenseImporter.importCSV(text, into: context)
-            var parts = ["Se agregaron \(summary.added) gastos."]
-            if summary.alreadyThere > 0 { parts.append("\(summary.alreadyThere) ya estaban.") }
-            if summary.unreadable > 0 { parts.append("\(summary.unreadable) renglones no se pudieron leer.") }
+            var parts = [summary.added == 1 ? "Se agregó 1 gasto." : "Se agregaron \(summary.added) gastos."]
+            if summary.alreadyThere > 0 {
+                parts.append(summary.alreadyThere == 1 ? "1 ya estaba." : "\(summary.alreadyThere) ya estaban.")
+            }
+            if summary.unreadable > 0 {
+                parts.append(summary.unreadable == 1 ? "1 renglón no se pudo leer."
+                             : "\(summary.unreadable) renglones no se pudieron leer.")
+            }
             return parts.joined(separator: " ")
         } catch CSVImporter.Failure.notOurFile {
             return "Ese archivo no es un CSV exportado de Al día (le falta la fila Fecha, Comercio, Monto, Moneda)."

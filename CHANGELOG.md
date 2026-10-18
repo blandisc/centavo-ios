@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Changed
+- La bienvenida avanza solo con sus botones: ya no puede quedarse en una página mientras el contador dice otra. Un gasto fijo escrito sin tocar «Agregar» también se guarda.
+- Al abrir, la pantalla de arranque ya es del color de la app en vez de negra.
+- Con letra grande, la cifra de «Te quedan» ya no queda cortada por la línea de «Ritmo».
+- Deslizar hacia abajo una hoja con cambios ya no los tira.
+- Los días que no han llegado en el calendario no se pueden tocar.
 - Al deslizar entre presupuesto y calendario ya hay aire entre los dos; el mes de la barra inferior tiene más espacio.
 - «Hoy puedes gastar» es ahora lo más grande de la pantalla; el total del mes va debajo.
 - La app se llama **Al día** y estrena ícono: los días del mes con el de hoy en latón. Siri: «Oye Siri, anotar gasto en Al día».
@@ -11,6 +16,10 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Importar de nuevo un CSV exportado ya no duplica gastos; un monto ilegible en el CSV se descarta en vez de leerse a medias («1,234.56» ya no entra como 1).
+- Un aviso de Wallet con el monto agrupado con espacios («MXN 1 234,56») ya no se guarda como 1.00. Un reembolso resta y el dinero recibido no cuenta como gasto.
+- Un gasto fijo del día 31 vuelve al 31 en los meses que lo tienen, y nunca queda con fecha futura.
+- Al cambiar de mes (también a medianoche del día 1) se quita el filtro de día.
 - La guía de iOS 27 ahora es una animación toque por toque, copiada de un iPhone real: la burbuja se llama «Transacción» y en «Obtener» hay que elegir «Cantidad» y «Comercio» (no «Importe»), y se guarda con la flecha de atrás.
 - La hoja de gasto pedía escribir «USD 20», pero el teclado de montos no tiene letras: ahora la moneda se elige con un selector.
 - Al estrenar un iPhone, el presupuesto ya no se puede borrar por subir a iCloud un «sin presupuesto» antes de que iCloud termine de bajar el tuyo.
@@ -36,6 +45,10 @@
 - La pantalla se actualiza sola al cambiar de día, en vez de quedarse en el mes anterior.
 - No se puede guardar un gasto de $0 a mano.
 - Borrar un gasto ahora pide confirmación.
+- En un iPhone nuevo o tras reinstalar con el mismo iCloud, ya no aparece la bienvenida otra vez (ni se duplican la renta y los demás fijos).
+- Al cambiar la moneda principal con un presupuesto fijado, Al día pregunta si quieres cambiarlo.
+- La guía solo dice «Ya funciona» si llegó un pago en los últimos 3 días.
+- Desde cualquier copia de un gasto fijo se puede «Dejar de repetir cada mes».
 
 ### Added
 - Primera vez guiada: moneda, presupuesto, gastos fijos y conectar Wallet en cinco pantallas que se pueden omitir.

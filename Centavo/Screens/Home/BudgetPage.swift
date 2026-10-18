@@ -130,7 +130,9 @@ struct BudgetPage: View {
         // The type is monospaced (0.6 em a character), so its width is predictable. If the
         // figure would run over the brass, it goes under the bar instead.
         let neededWidth = CGFloat(remainingText.count) * 0.6 * figureSize + 28
-        let remainingInside = barWidth > 0 && barWidth * CGFloat(1 - pace.spentFraction) >= neededWidth
+        // It also has to clear the white «Ritmo» line, or the line cuts through the figure.
+        let occupied = max(pace.spentFraction, isCurrentMonth ? pace.paceFraction : 0)
+        let remainingInside = barWidth > 0 && barWidth * CGFloat(1 - occupied) >= neededWidth
 
         return VStack(alignment: .leading, spacing: 8) {
             // The legend of the brass: what share of the budget is gone, past 100 % if need be.

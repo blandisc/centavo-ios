@@ -300,9 +300,16 @@ private struct GuideStep {
 private struct CaptureCheck: View {
     let latest: Expense?
 
+    /// Proof only if it is recent: a capture from days ago says nothing about the automation
+    /// someone came here to fix.
+    private var recent: Expense? {
+        guard let latest, Date.now.timeIntervalSince(latest.date) < 3 * 24 * 3600 else { return nil }
+        return latest
+    }
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            if let latest {
+            if let latest = recent {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.brass)
                 VStack(alignment: .leading, spacing: 4) {

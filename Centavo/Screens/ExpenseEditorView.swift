@@ -25,6 +25,17 @@ struct ExpenseEditorView: View {
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
 
+    /// Whether something was typed or changed since the sheet opened.
+    private var hasChanges: Bool {
+        guard let expense else {
+            return !(amountText + merchant + card + category).trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        return parsed?.value != expense.amount.magnitude || isRefund != (expense.amount < 0)
+            || merchant != expense.merchant || card != (expense.card ?? "")
+            || category != (expense.category ?? "") || date != expense.date
+            || repeatsMonthly != (expense.repeatsMonthly == true)
+    }
+
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
     /// The offered currencies, plus this expense's own if it came in another (Wallet abroad).
     private var currencies: [String] {
@@ -109,7 +120,10 @@ struct ExpenseEditorView: View {
 
                 Section {
                     DatePicker(selection: $date, in: ...Date.now) {
-                        Text("Fecha").font(.ticket(13, relativeTo: .footnote)).tracking(1.2)
+                        Text("Fecha")
+                            .font(.ticket(12, relativeTo: .footnote))
+                            .tracking(1.2)
+                            .textCase(.uppercase)
                     }
                     field("Tarjeta o efectivo (opcional)", text: $card,
                           prompt: "BBVA, Nu, efectivo…", identifier: "tarjeta")
@@ -130,10 +144,24 @@ struct ExpenseEditorView: View {
                     if repeatsMonthly {
                         hint("Renta, suscripciones, la luz: se anota sola el mismo día de cada mes.")
                     } else if expense?.isRepeat == true {
-                        hint("Se anotó solo, de un gasto fijo. Para dejar de repetirlo, abre el original.")
+                        hint("Se anotó solo, de un gasto fijo.")
                     }
                 }
                 .listRowBackground(Theme.surface)
+
+                if expense?.isRepeat == true, original != nil {
+                    Section {
+                        Button("Dejar de repetir cada mes") { stopRepeating() }
+                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                            .tracking(1.6)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.brass)
+                            .accessibilityIdentifier("dejar-de-repetir")
+                    } footer: {
+                        hint("Los meses ya anotados se quedan; el siguiente ya no llega.")
+                    }
+                    .listRowBackground(Theme.surface)
+                }
 
                 if expense != nil {
                     Section {
@@ -174,10 +202,13 @@ struct ExpenseEditorView: View {
             }
         }
         .onAppear(perform: load)
+        // Swiping the sheet away must not throw away what was typed.
+        .interactiveDismissDisabled(hasChanges)
         .onChange(of: merchant) { _, new in
             // Change the merchant and the category you last used for it fills in,
-            // but only while the field is empty — never overwrite a typed one.
-            guard category.trimmingCharacters(in: .whitespaces).isEmpty,
+            // but only while the field is empty — never overwrite a typed one. Only for a new
+            // expense: opening an uncategorized one must not quietly file it.
+            guard expense == nil, category.trimmingCharacters(in: .whitespaces).isEmpty,
                   let remembered = MerchantCatalog.suggestion(for: new, history: pastExpenses)
             else { return }
             category = remembered
@@ -212,6 +243,24 @@ struct ExpenseEditorView: View {
         }
     }
 
+    /// The fixed expense a copy came from: same merchant and amount, still repeating.
+    private var original: Expense? {
+        guard let expense, expense.isRepeat == true else { return nil }
+        let merchant = expense.merchant, amount = expense.amount
+        let candidates = try? context.fetch(FetchDescriptor<Expense>(predicate: #Predicate {
+            $0.repeatsMonthly == true && $0.merchant == merchant
+        }))
+        return candidates?.first { $0.amount == amount }
+    }
+
+    private func stopRepeating() {
+        guard let original else { return }
+        original.repeatsMonthly = nil
+        original.repeatsThrough = nil
+        original.repeatDay = nil
+        dismiss()
+    }
+
     private func load() {
         guard let expense else {
             if let initialDate { date = initialDate }
@@ -239,9 +288,11 @@ struct ExpenseEditorView: View {
             // maybe already logged by hand).
             if expense.repeatsMonthly != true { expense.repeatsThrough = max(date, Date.now) }
             expense.repeatsMonthly = true
+            expense.repeatDay = Calendar.current.component(.day, from: date)
         } else {
             expense.repeatsMonthly = nil
             expense.repeatsThrough = nil
+            expense.repeatDay = nil
         }
     }
 
