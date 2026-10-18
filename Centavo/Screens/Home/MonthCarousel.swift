@@ -22,12 +22,12 @@ struct MonthCarousel: View {
                 HStack(alignment: .top, spacing: 0) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
                                shares: shares, onSetBudget: onSetBudget)
+                        .padding(.horizontal, Theme.horizontalPadding)
                         .containerRelativeFrame(.horizontal)
                         .id(0)
-                    // A little inset: today's ring sits 3 pt outside its cell and, on the first
-                    // column, peeked into the budget page.
+                    // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay)
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, Theme.horizontalPadding)
                         .containerRelativeFrame(.horizontal)
                         .id(1)
                 }
