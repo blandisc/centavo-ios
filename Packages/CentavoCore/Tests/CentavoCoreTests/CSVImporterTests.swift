@@ -44,4 +44,13 @@ import Testing
         #expect(throws: CSVImporter.Failure.notOurFile) { try CSVImporter.records(from: "Nombre,Edad\nAna,30\n") }
         #expect(throws: CSVImporter.Failure.notOurFile) { try CSVImporter.records(from: "") }
     }
+
+    /// A re-saved spreadsheet: grouping is read, junk is refused instead of half-read.
+    @Test func amountsAreReadWholeOrNotAtAll() {
+        #expect(CSVImporter.number("1,234.56") == Decimal(string: "1234.56"))
+        #expect(CSVImporter.number("-230.00") == -230)
+        #expect(CSVImporter.number("0.125") == Decimal(string: "0.125"))
+        #expect(CSVImporter.number("12abc") == nil)
+        #expect(CSVImporter.number("$12") == nil)
+    }
 }

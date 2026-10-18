@@ -65,4 +65,25 @@ final class RecurringExpensesTests: XCTestCase {
         netflix.repeatsMonthly = nil
         XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(12, 31)), 0)
     }
+
+    /// Another phone on the same iCloud already logged October before this one heard of it.
+    func testACopyFromAnotherDeviceIsNotRepeated() throws {
+        _ = addNetflix()
+        let fromOtherPhone = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(10, 24))
+        fromOtherPhone.isRepeat = true
+        context.insert(fromOtherPhone)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 1, "Solo septiembre")
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.count, 2)
+    }
+
+    /// Asked for the 31st, started on the 30th: October still lands on the 31st.
+    func testTheDayAskedForIsKept() throws {
+        let rent = Expense(amount: 9500, currencyMarker: "MXN", merchant: "Renta", date: at(9, 30))
+        rent.repeatsMonthly = true
+        rent.repeatsThrough = rent.date
+        rent.repeatDay = 31
+        context.insert(rent)
+        try RecurringExpenses.logDue(in: context, now: at(10, 31).addingTimeInterval(3600))
+        XCTAssertEqual(try all().last?.date, at(10, 31))
+    }
 }

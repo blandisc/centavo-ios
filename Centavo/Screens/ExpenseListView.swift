@@ -232,7 +232,8 @@ struct ExpenseListView: View {
             } message: {
                 Text(importMessage ?? "")
             }
-            .onChange(of: offset) { _, _ in selectedDay = nil }
+            // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
+            .onChange(of: viewed) { _, _ in selectedDay = nil }
             .modifier(Feedback(expenseCount: expenses.count, isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))

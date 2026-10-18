@@ -17,12 +17,17 @@ public struct WalletNotice: Equatable, Sendable {
     public let card: String?
 
     /// `nil` when there is no amount with a currency: a boarding pass, a top-up reminder, any
-    /// Wallet notice that is not a charge.
+    /// Wallet notice that is not a charge, or money that came in (someone paid you).
+    /// A refund comes back negative, so it subtracts instead of counting as spending.
     public static func parse(_ text: String) -> WalletNotice? {
         let lines = text
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        let folded = lines.joined(separator: " ")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
+        if received.contains(where: folded.contains) { return nil }
+        let isRefund = refunds.contains(where: folded.contains)
         guard let index = lines.firstIndex(where: { line in
             CaptureText.amount(in: line).map { $0.currencyMarker != nil } ?? false
         }), let amount = CaptureText.amount(in: lines[index]) else { return nil }
@@ -35,16 +40,42 @@ public struct WalletNotice: Equatable, Sendable {
             .trimmingCharacters(in: .whitespaces.union(.punctuationCharacters))
         if !leftover.isEmpty { others.insert(leftover, at: index) }
 
+        // The word that told it apart is not the merchant: "Reembolso de Liverpool" is Liverpool.
+        if isRefund { others = others.compactMap(withoutRefundWord) }
         let card = others.count >= 2 ? others.first : nil
         let merchant = others.count >= 2 ? others[1] : others.first
-        return WalletNotice(amount: amount, amountText: amountPattern(in: lines[index]) ?? lines[index],
+        let figure = amountPattern(in: lines[index]) ?? lines[index]
+        guard isRefund else {
+            return WalletNotice(amount: amount, amountText: figure, merchant: merchant, card: card)
+        }
+        let negative = ParsedAmount(value: -amount.value.magnitude, currencyMarker: amount.currencyMarker)
+        return WalletNotice(amount: negative, amountText: figure.hasPrefix("-") ? figure : "-" + figure,
                             merchant: merchant, card: card)
     }
+
+    private static func withoutRefundWord(_ line: String) -> String? {
+        let folded = line.folding(options: [.caseInsensitive, .diacriticInsensitive],
+                                  locale: Locale(identifier: "es_MX"))
+        guard let word = refunds.first(where: { folded.hasPrefix($0) }) else { return line }
+        var rest = String(line.dropFirst(word.count)).trimmingCharacters(in: .whitespaces.union(.punctuationCharacters))
+        for joiner in ["de ", "en "] where rest.lowercased().hasPrefix(joiner) {
+            rest = String(rest.dropFirst(joiner.count))
+        }
+        return rest.isEmpty ? nil : rest
+    }
+
+    /// Money back from a purchase: it is logged, as a refund.
+    static let refunds = ["reembolso", "devolucion", "reverso", "reversion", "cargo cancelado",
+                          "compra cancelada"]
+    /// Money that came in from someone: not spending at all.
+    static let received = ["recibiste", "te enviaron", "te envio", "te mando", "deposito recibido"]
 
     /// The currency figure inside a line ("MXN 319.00" in "Google MXN 319.00").
     private static func amountPattern(in line: String) -> String? {
         let regex = try? NSRegularExpression(pattern:
-            #"[-−]?(?:[A-Z]{1,2}\$|\b[A-Z]{3}\b|[$€£¥₱₩₹])\s?[-−]?\d[\d.,]*|[-−]?\d[\d.,]*\s?(?:[$€£¥₱₩₹]|\b[A-Z]{3}\b)"#)
+            // Digits may be grouped with spaces ("MXN 1 234,56"): a space counts only before a
+            // group of exactly three.
+            #"[-−]?(?:[A-Z]{1,2}\$|\b[A-Z]{3}\b|[$€£¥₱₩₹])\s?[-−]?\d(?:[\d.,]| (?=\d{3}(?!\d)))*|[-−]?\d(?:[\d.,]| (?=\d{3}(?!\d)))*\s?(?:[$€£¥₱₩₹]|\b[A-Z]{3}\b)"#)
         guard let match = regex?.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
               let range = Range(match.range, in: line) else { return nil }
         return String(line[range])

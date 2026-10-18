@@ -16,6 +16,10 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Importar de nuevo un CSV exportado ya no duplica gastos; un monto ilegible en el CSV se descarta en vez de leerse a medias («1,234.56» ya no entra como 1).
+- Un aviso de Wallet con el monto agrupado con espacios («MXN 1 234,56») ya no se guarda como 1.00. Un reembolso resta y el dinero recibido no cuenta como gasto.
+- Un gasto fijo del día 31 vuelve al 31 en los meses que lo tienen, y nunca queda con fecha futura.
+- Al cambiar de mes (también a medianoche del día 1) se quita el filtro de día.
 - La guía de iOS 27 ahora es una animación toque por toque, copiada de un iPhone real: la burbuja se llama «Transacción» y en «Obtener» hay que elegir «Cantidad» y «Comercio» (no «Importe»), y se guarda con la flecha de atrás.
 - La hoja de gasto pedía escribir «USD 20», pero el teclado de montos no tiene letras: ahora la moneda se elige con un selector.
 - Al estrenar un iPhone, el presupuesto ya no se puede borrar por subir a iCloud un «sin presupuesto» antes de que iCloud termine de bajar el tuyo.

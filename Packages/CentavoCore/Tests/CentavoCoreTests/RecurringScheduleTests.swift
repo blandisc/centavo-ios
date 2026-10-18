@@ -67,4 +67,18 @@ import Testing
         let first = RecurringSchedule.firstDate(day: 31, now: at(2026, 3, 10, hour: 12), calendar: Self.calendar)
         #expect(first == at(2026, 2, 28))
     }
+
+    /// Set up for the 31st while September (30 days) was the start: October still gets the 31st.
+    @Test func theDayAskedForSurvivesAShortFirstMonth() {
+        let start = RecurringSchedule.firstDate(day: 31, now: at(2026, 10, 18), calendar: Self.calendar)
+        #expect(start == at(2026, 9, 30))
+        let dates = RecurringSchedule.dueDates(anchor: start, day: 31, after: start,
+                                               now: at(2026, 12, 31, hour: 12), calendar: Self.calendar)
+        #expect(dates == [at(2026, 10, 31), at(2026, 11, 30), at(2026, 12, 31)])
+    }
+
+    @Test func theFirstDateIsNeverAheadOfNow() {
+        let early = at(2026, 10, 18, hour: 7)
+        #expect(RecurringSchedule.firstDate(day: 18, now: early, calendar: Self.calendar) == early)
+    }
 }

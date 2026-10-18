@@ -36,7 +36,7 @@ public enum CSVImporter {
             }
             guard let dateText = field(date), let parsedDate = parseDate(dateText),
                   let amountText = field(amount),
-                  let value = Decimal(string: amountText, locale: Locale(identifier: "en_US_POSIX")),
+                  let value = number(amountText),
                   let currencyText = field(currency) else {
                 result.skipped += 1
                 continue
@@ -100,5 +100,16 @@ public enum CSVImporter {
         }
         if !field.isEmpty || !row.isEmpty { row.append(field); rows.append(row) }
         return rows
+    }
+
+    /// Only a number: "12abc" is a broken row, not 12. A spreadsheet may have re-saved it
+    /// with grouping ("1,234.56"), which `AmountParser` reads.
+    static func number(_ text: String) -> Decimal? {
+        // Our own export: a plain decimal, read exactly as written.
+        if text.range(of: #"^-?\d+(\.\d+)?$"#, options: .regularExpression) != nil {
+            return Decimal(string: text, locale: Locale(identifier: "en_US_POSIX"))
+        }
+        guard text.range(of: #"^[-−]?[\d.,]+$"#, options: .regularExpression) != nil else { return nil }
+        return AmountParser.parse(text)?.value
     }
 }

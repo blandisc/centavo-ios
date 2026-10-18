@@ -45,4 +45,15 @@ final class ExpenseImporterTests: XCTestCase {
                        .init(added: 0, alreadyThere: 1, unreadable: 0))
         XCTAssertEqual(try all().count, 1)
     }
+
+    /// A Wallet capture carries fractions of a second; the export drops them. Re-importing
+    /// the export must still recognize it (rounding put :20.7 at :21 and duplicated it).
+    func testAFractionOfASecondDoesNotDuplicate() throws {
+        let date = Date(timeIntervalSince1970: 1_792_000_020.7)
+        context.insert(Expense(amount: 89, currencyMarker: "MXN", merchant: "Oxxo", date: date))
+        try context.save()
+        let csv = CSVExporter.csv(from: [ExpenseRecord(date: date, merchant: "Oxxo", amount: 89, currency: "MXN")])
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context),
+                       .init(added: 0, alreadyThere: 1, unreadable: 0))
+    }
 }

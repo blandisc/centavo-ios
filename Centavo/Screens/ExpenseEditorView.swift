@@ -256,9 +256,11 @@ struct ExpenseEditorView: View {
             // maybe already logged by hand).
             if expense.repeatsMonthly != true { expense.repeatsThrough = max(date, Date.now) }
             expense.repeatsMonthly = true
+            expense.repeatDay = Calendar.current.component(.day, from: date)
         } else {
             expense.repeatsMonthly = nil
             expense.repeatsThrough = nil
+            expense.repeatDay = nil
         }
     }
 
