@@ -33,6 +33,8 @@ enum Theme {
     /// Dashed outline of a blank ticket (the budget, the empty state). A line, not text, so
     /// the 3:1 that graphics need is enough.
     static var outline: Color { Color(hex: 0x6E6A62) }
+    /// Something present but not current, like the carousel's other page dot.
+    static var dimmed: Color { Color(hex: 0x4A4742) }
     /// Text on a brass fill.
     static var onBrass: Color { Color(hex: 0x131211) }
     /// The one destructive action: deleting an expense. 6:1 on `background`.

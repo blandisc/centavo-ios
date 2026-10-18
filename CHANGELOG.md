@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Changed
+- La bienvenida avanza solo con sus botones: ya no puede quedarse en una página mientras el contador dice otra. Un gasto fijo escrito sin tocar «Agregar» también se guarda.
+- Al abrir, la pantalla de arranque ya es del color de la app en vez de negra.
+- Con letra grande, la cifra de «Te quedan» ya no queda cortada por la línea de «Ritmo».
+- Deslizar hacia abajo una hoja con cambios ya no los tira.
+- Los días que no han llegado en el calendario no se pueden tocar.
 - Al deslizar entre presupuesto y calendario ya hay aire entre los dos; el mes de la barra inferior tiene más espacio.
 - «Hoy puedes gastar» es ahora lo más grande de la pantalla; el total del mes va debajo.
 - La app se llama **Al día** y estrena ícono: los días del mes con el de hoy en latón. Siri: «Oye Siri, anotar gasto en Al día».

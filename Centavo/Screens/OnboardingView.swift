@@ -12,6 +12,8 @@ struct OnboardingView: View {
     @AppStorage(BudgetStore.key) private var storedBudget = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     @State private var page = 0
+    /// Which way the last move went, so the pages slide the right way.
+    @State private var forward = true
     @State private var currency = CurrencyPreference.current
     @State private var budgetText = ""
     @State private var fixed: [FixedDraft] = []
@@ -25,14 +27,23 @@ struct OnboardingView: View {
 
     var body: some View {
         NavigationStack {
-            TabView(selection: $page) {
-                welcome.tag(0)
-                currencyPage.tag(1)
-                budgetPage.tag(2)
-                fixedPage.tag(3)
-                walletPage.tag(4)
+            // One page at a time, moved only by the buttons. A swipeable TabView let a tap in
+            // the middle of its animation leave it on one page while the counter said another.
+            Group {
+                switch page {
+                case 0: welcome
+                case 1: currencyPage
+                case 2: budgetPage
+                case 3: fixedPage
+                default: walletPage
+                }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
+            .id(page)
+            .transition(.asymmetric(
+                insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
+                removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .clipped()
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle("Bienvenida")
@@ -49,13 +60,16 @@ struct OnboardingView: View {
                     Spacer()
                     Button("Siguiente") {
                         focused = nil
-                        if page < pages - 1 { withAnimation { page += 1 } }
+                        go(to: page + 1)
                     }
                     .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
                     .accessibilityIdentifier("teclado-siguiente")
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
-                    Button("Anterior", systemImage: "chevron.left") { withAnimation { page -= 1 } }
+                    Button("Anterior", systemImage: "chevron.left") {
+                        focused = nil
+                        go(to: page - 1)
+                    }
                         .disabled(page == 0)
                     Spacer()
                     Text("\(page + 1) de \(pages)")
@@ -63,10 +77,12 @@ struct OnboardingView: View {
                         .tracking(2)
                         .textCase(.uppercase)
                         .fixedSize()
+                        .padding(.horizontal, 14)
+                        .accessibilityLabel("Paso \(page + 1) de \(pages)")
                     Spacer()
                     Button("Siguiente", systemImage: "chevron.right") {
                         focused = nil
-                        withAnimation { page += 1 }
+                        go(to: page + 1)
                     }
                     .disabled(page == pages - 1)
                     .accessibilityIdentifier("bienvenida-siguiente")
@@ -76,6 +92,12 @@ struct OnboardingView: View {
         .interactiveDismissDisabled()
     }
 
+    private func go(to target: Int) {
+        guard (0..<pages).contains(target), target != page else { return }
+        forward = target > page
+        withAnimation(.snappy(duration: 0.3)) { page = target }
+    }
+
     // MARK: Pages
 
     private var welcome: some View {
@@ -83,7 +105,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 14) {
                 point("wallet.pass", "Cada compra con Wallet se anota sola: en línea o acercando el teléfono.")
                 point("calendar", "Reparte tu presupuesto entre los días que quedan del mes.")
-                point("lock", "Todo se queda en tu iPhone. Sin cuenta ni servidor.")
+                point("lock", "Sin cuenta ni servidor: tus gastos viven en tu iPhone y en tu iCloud.")
             }
         }
     }
@@ -253,6 +275,8 @@ struct OnboardingView: View {
 
     /// Whatever was filled in is kept, even when the rest is skipped.
     private func save() {
+        // A fixed expense typed in but never «Agregar»-ed still counts.
+        if draftValue != nil, !draftName.trimmingCharacters(in: .whitespaces).isEmpty { addFixed() }
         storedCurrency = currency
         if let value = AmountParser.parse(budgetText)?.value, value > 0 {
             storedBudget = BudgetStore.stored(value)

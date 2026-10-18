@@ -30,7 +30,7 @@ struct BudgetSheet: View {
                 } header: {
                     Text("Tope de gasto cada mes (\(currency))").ticketCaption()
                 } footer: {
-                    Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
+                    Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency).")
                         .font(.ticket(12, relativeTo: .footnote))
                         .foregroundStyle(Theme.muted)
                 }
@@ -68,6 +68,9 @@ struct BudgetSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        // A typed number is not thrown away by a stray swipe down.
+        .interactiveDismissDisabled(text != (BudgetStore.amount(from: stored)?
+            .formatted(.number.precision(.fractionLength(0...2)).grouping(.never)) ?? ""))
         .onAppear {
             if let current = BudgetStore.amount(from: stored) {
                 text = current.formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
