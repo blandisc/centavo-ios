@@ -130,10 +130,24 @@ struct ExpenseEditorView: View {
                     if repeatsMonthly {
                         hint("Renta, suscripciones, la luz: se anota sola el mismo día de cada mes.")
                     } else if expense?.isRepeat == true {
-                        hint("Se anotó solo, de un gasto fijo. Para dejar de repetirlo, abre el original.")
+                        hint("Se anotó solo, de un gasto fijo.")
                     }
                 }
                 .listRowBackground(Theme.surface)
+
+                if expense?.isRepeat == true, original != nil {
+                    Section {
+                        Button("Dejar de repetir cada mes") { stopRepeating() }
+                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                            .tracking(1.6)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.brass)
+                            .accessibilityIdentifier("dejar-de-repetir")
+                    } footer: {
+                        hint("Los meses ya anotados se quedan; el siguiente ya no llega.")
+                    }
+                    .listRowBackground(Theme.surface)
+                }
 
                 if expense != nil {
                     Section {
@@ -210,6 +224,23 @@ struct ExpenseEditorView: View {
                 }
             }
         }
+    }
+
+    /// The fixed expense a copy came from: same merchant and amount, still repeating.
+    private var original: Expense? {
+        guard let expense, expense.isRepeat == true else { return nil }
+        let merchant = expense.merchant, amount = expense.amount
+        let candidates = try? context.fetch(FetchDescriptor<Expense>(predicate: #Predicate {
+            $0.repeatsMonthly == true && $0.merchant == merchant
+        }))
+        return candidates?.first { $0.amount == amount }
+    }
+
+    private func stopRepeating() {
+        guard let original else { return }
+        original.repeatsMonthly = nil
+        original.repeatsThrough = nil
+        dismiss()
     }
 
     private func load() {

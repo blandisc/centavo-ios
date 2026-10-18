@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Changed
+- En un iPhone nuevo o tras reinstalar con el mismo iCloud, ya no aparece la bienvenida otra vez (ni se duplican la renta y los demás fijos).
+- Al cambiar la moneda principal con un presupuesto fijado, Al día pregunta si quieres cambiarlo.
+- La guía solo dice «Ya funciona» si llegó un pago en los últimos 3 días.
+- Desde cualquier copia de un gasto fijo se puede «Dejar de repetir cada mes».
 - Al deslizar entre presupuesto y calendario ya hay aire entre los dos; el mes de la barra inferior tiene más espacio.
 - «Hoy puedes gastar» es ahora lo más grande de la pantalla; el total del mes va debajo.
 - La app se llama **Al día** y estrena ícono: los días del mes con el de hoy en latón. Siri: «Oye Siri, anotar gasto en Al día».
