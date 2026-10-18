@@ -96,16 +96,20 @@ jobs:
           ")"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
           xcrun simctl list devices available | head -40
+          # Boot it now so it is ready while the app compiles, instead of after.
+          xcrun simctl boot "$udid" || true
 
       # In a PR only what decides the merge runs: flows, the tap-target audit and the unit
       # tests. The screenshots and the accessibility audits that only report are for looking,
-      # not approving, so they run on main. (Two simulators in parallel were tried: on these
+      # not approving, so they run on main, and so does the 5,000-expense timing, which only
+      # tells something when compared run to run. (Two simulators in parallel were tried: on these
       # small runners the second one dropped out and nothing was gained.)
       - name: Correr las pruebas de interfaz
         run: |
           skip=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             skip="-skip-testing:CentavoUITests/ScreenshotTests"
+            skip="$skip -skip-testing:CentavoUITests/FlowTests/testConCincoMilGastosLaPantallaAbreYRespondeDeprisa"
             for t in testAuditarPrincipal testAuditarCalendario testAuditarPrimeraVez \
                      testAuditarHojaDeGasto testAuditarGuia testAuditarLetraGrande; do
               skip="$skip -skip-testing:CentavoUITests/AccessibilityAuditTests/$t"

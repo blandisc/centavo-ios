@@ -1,11 +1,18 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 @main
 struct CentavoApp: App {
     init() {
         TicketFont.register()
         if Store.syncsBudget { BudgetSync.start() }
+        #if DEBUG
+        // The UI tests wait for every animation to settle; without them each step is quicker.
+        if ProcessInfo.processInfo.arguments.contains("-centavo-sin-animaciones") {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
     }
 
     var body: some Scene {
