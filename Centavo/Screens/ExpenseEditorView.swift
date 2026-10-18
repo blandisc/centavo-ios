@@ -48,7 +48,11 @@ struct ExpenseEditorView: View {
         return !merchant.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    private var pastExpenses: [CategorizedExpense] {
+    /// Read once when the sheet opens: rebuilding it from the whole history on every key
+    /// typed was felt with thousands of expenses.
+    @State private var pastExpenses: [CategorizedExpense] = []
+
+    private var allPastExpenses: [CategorizedExpense] {
         history.map {
             CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
         }
@@ -262,6 +266,7 @@ struct ExpenseEditorView: View {
     }
 
     private func load() {
+        pastExpenses = allPastExpenses
         guard let expense else {
             if let initialDate { date = initialDate }
             amountFocused = true

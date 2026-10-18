@@ -11,6 +11,7 @@ struct MonthCarousel: View {
     let isCurrentMonth: Bool
     var shares: [CategoryShare] = []
     let onSetBudget: () -> Void
+    var currency = CurrencyPreference.fallback
 
     @State private var page: Int? = 0
 
@@ -26,7 +27,8 @@ struct MonthCarousel: View {
                         .containerRelativeFrame(.horizontal)
                         .id(0)
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
-                    CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay)
+                    CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
+                                 currency: currency)
                         .padding(.horizontal, Theme.horizontalPadding)
                         .containerRelativeFrame(.horizontal)
                         .id(1)

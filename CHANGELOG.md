@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- Los días del calendario son más fáciles de tocar (44 pt) y VoiceOver dice su monto con moneda. La vibración de «gasto anotado» ya no suena por importaciones, deshacer, gastos fijos o lo que llega de iCloud.
 - La moneda principal ya no depende de la región del iPhone (con región de EE. UU. el presupuesto salía en dólares y los pagos en pesos quedaban aparte): es pesos, salvo que elijas otra o tus pagos estén en otra. Si casi todos los pagos del mes están en otra moneda, la pantalla ofrece «Sumar en pesos» con un toque. El dinero se escribe como en México en cualquier región («$402», no «MXN 402»).
 - La bienvenida avanza solo con sus botones: ya no puede quedarse en una página mientras el contador dice otra. Un gasto fijo escrito sin tocar «Agregar» también se guarda.
 - Al abrir, la pantalla de arranque ya es del color de la app en vez de negra.
