@@ -180,6 +180,11 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(capture.category, "Despensa")
     }
 
+    func testAKnownMexicanMerchantGetsASuggestedCategory() throws {
+        try record("$120.00", "UBER *TRIP")
+        XCTAssertEqual(try saved().first?.category, "Transporte")
+    }
+
     func testAMerchantNeverSeenBeforeHasNoCategory() throws {
         try record("$89.00", "Un lugar nuevo")
         XCTAssertNil(try saved().first?.category)

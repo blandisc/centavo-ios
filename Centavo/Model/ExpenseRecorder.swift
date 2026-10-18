@@ -112,9 +112,10 @@ enum ExpenseRecorder {
     private static func rememberedCategory(for merchant: String, in context: ModelContext) -> String? {
         let descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
         guard let history = try? context.fetch(descriptor) else { return nil }
-        return CategoryMemory.category(
+        // What you filed this merchant under before; failing that, the catalog's guess.
+        return MerchantCatalog.suggestion(
             for: merchant,
-            in: history.map {
+            history: history.map {
                 CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
             }
         )

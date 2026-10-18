@@ -101,6 +101,8 @@ struct ExpenseEditorView: View {
                 } footer: {
                     if let remembered = CategoryMemory.category(for: merchant, in: pastExpenses) {
                         hint("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
+                    } else if let suggested = MerchantCatalog.category(for: merchant) {
+                        hint("Sugerida para \(merchant.trimmingCharacters(in: .whitespaces)): \(suggested). Cámbiala si no te queda.")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -176,7 +178,7 @@ struct ExpenseEditorView: View {
             // Change the merchant and the category you last used for it fills in,
             // but only while the field is empty — never overwrite a typed one.
             guard category.trimmingCharacters(in: .whitespaces).isEmpty,
-                  let remembered = CategoryMemory.category(for: new, in: pastExpenses)
+                  let remembered = MerchantCatalog.suggestion(for: new, history: pastExpenses)
             else { return }
             category = remembered
         }
