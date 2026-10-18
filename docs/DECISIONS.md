@@ -184,4 +184,5 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **El teclado numérico tapa la barra de abajo:** las pantallas con monto llevan «Siguiente» arriba del teclado.
 ## 2026-10-18 — CI más rápida
 - **En un PR no corren las pruebas de capturas** (`ScreenshotTests`): solo sirven para ver el diseño y no deciden el merge. Corren cuando algo entra a `main`, que sigue publicando el artefacto `capturas`. Las de flujo, accesibilidad y unitarias siguen bloqueando cada PR.
-- **Las pruebas de interfaz corren en dos simuladores a la vez.** Con 46 pruebas, un PR tardaba casi media hora en las máquinas de GitHub.
+- **Tampoco corren en un PR las auditorías de accesibilidad que solo informan**; la de zonas táctiles, que sí bloquea, sigue. Con 46 pruebas, un PR tardaba casi media hora en las máquinas de GitHub, sobre todo por abrir la app en cada prueba.
+- Se probó correr en dos simuladores a la vez: en los runners de GitHub el segundo se desconectó y casi no hubo ahorro, así que se quitó.
