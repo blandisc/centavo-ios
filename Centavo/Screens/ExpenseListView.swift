@@ -24,7 +24,6 @@ struct ExpenseListView: View {
         return descriptor
     }
     @Environment(\.modelContext) private var context
-    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(BudgetStore.key) private var storedBudget = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// "Now" for the whole screen. Refreshed when the app comes back and when the clock
@@ -209,8 +208,7 @@ struct ExpenseListView: View {
             }
             .confirmationDialog(
                 "¿Borrar este gasto?",
-                isPresented: Binding(get: { pendingDelete != nil },
-                                     set: { if !$0 { pendingDelete = nil } }),
+                isPresented: deleteDialogShown,
                 titleVisibility: .visible,
                 presenting: pendingDelete
             ) { expense in
@@ -222,44 +220,79 @@ struct ExpenseListView: View {
                           allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
                 importMessage = importFile(result)
             }
-            .alert("Importar CSV", isPresented: Binding(get: { importMessage != nil },
-                                                        set: { if !$0 { importMessage = nil } })) {
+            .alert("Importar CSV", isPresented: importAlertShown) {
                 Button("Listo", role: .cancel) {}
             } message: {
                 Text(importMessage ?? "")
             }
             .onChange(of: offset) { _, _ in selectedDay = nil }
-            // A soft tap when an expense lands; a warning the moment the budget is blown.
-            .sensoryFeedback(.success, trigger: expenses.count) { old, new in new > old }
-            .sensoryFeedback(.warning, trigger: pace.map { $0.remaining < 0 } ?? false) { old, new in
-                isCurrent && !old && new
-            }
-            .overlay(alignment: .bottom) {
-                if let deleted = lastDeleted {
-                    UndoBar(text: "Borraste \(deleted.merchant)") { restore(deleted) }
-                        .padding(.horizontal, Theme.horizontalPadding)
-                        .padding(.bottom, 76)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task(id: deleted.id) {
-                            try? await Task.sleep(for: .seconds(6))
-                            withAnimation { if lastDeleted?.id == deleted.id { lastDeleted = nil } }
-                        }
-                }
-            }
+            .modifier(Feedback(expenseCount: expenses.count, isOver: isCurrent && isOver(pace)))
+            .overlay(alignment: .bottom) { undoOverlay }
+            .modifier(KeepsTime(now: $now, context: context))
+        }
+    }
+}
+
+/// A soft tap when an expense lands; a warning the moment the budget is blown.
+private struct Feedback: ViewModifier {
+    let expenseCount: Int
+    let isOver: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .sensoryFeedback(.success, trigger: expenseCount) { old, new in new > old }
+            .sensoryFeedback(.warning, trigger: isOver) { old, new in !old && new }
+    }
+}
+
+/// Keeps "now" fresh (coming back, midnight, a time-zone change) and logs the fixed expenses
+/// whose day came while the app was closed.
+private struct KeepsTime: ViewModifier {
+    @Binding var now: Date
+    let context: ModelContext
+    @Environment(\.scenePhase) private var scenePhase
+
+    func body(content: Content) -> some View {
+        content
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
             }
-            // Fixed expenses whose day came while the app was closed log themselves here.
             .task(id: now) { try? RecurringExpenses.logDue(in: context, now: now) }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
                 now = .now
             }
-        }
     }
 }
 
 private extension ExpenseListView {
+    // Pulled out of `body`: the CI's compiler gave up type-checking it all in one expression.
+    var deleteDialogShown: Binding<Bool> {
+        Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })
+    }
+
+    var importAlertShown: Binding<Bool> {
+        Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })
+    }
+
+    func isOver(_ pace: BudgetPace?) -> Bool {
+        guard let pace else { return false }
+        return pace.remaining < 0
+    }
+
+    @ViewBuilder var undoOverlay: some View {
+        if let deleted = lastDeleted {
+            UndoBar(text: "Borraste \(deleted.merchant)") { restore(deleted) }
+                .padding(.horizontal, Theme.horizontalPadding)
+                .padding(.bottom, 76)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .task(id: deleted.id) {
+                    try? await Task.sleep(for: .seconds(6))
+                    withAnimation { if lastDeleted?.id == deleted.id { lastDeleted = nil } }
+                }
+        }
+    }
+
     func delete(_ expense: Expense) {
         let snapshot = DeletedExpense(expense)
         context.delete(expense)
