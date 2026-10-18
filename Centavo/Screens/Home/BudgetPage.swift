@@ -30,7 +30,7 @@ struct BudgetPage: View {
     /// "$3,871": a rough mark, so no cents, but still money like every other figure.
     private func wholeMoney(_ amount: Decimal) -> String {
         if let isoCode = spent.isoCode {
-            return amount.formatted(.currency(code: isoCode).precision(.fractionLength(0)))
+            return amount.formatted(currencyStyle(isoCode).precision(.fractionLength(0)))
         }
         return spent.label + amount.formatted(.number.precision(.fractionLength(0)))
     }

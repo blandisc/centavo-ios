@@ -194,3 +194,6 @@ Las pruebas de flujo abren la app con `-centavo-sin-animaciones` (solo en Debug)
 - Un aviso de Wallet con «reembolso», «devolución», «reverso» o «cancelado» se anota en negativo (resta); uno de dinero recibido («recibiste», «te enviaron») no se anota. El texto exacto de Wallet para estos casos no está verificado en un iPhone real; si llega distinto, se ajustan las palabras.
 - Un gasto fijo guarda el día que se pidió (`repeatDay`, opcional: migración ligera y compatible con CloudKit). Antes, un fijo del 31 que empezaba en un mes de 30 días se quedaba en el 30 para siempre.
 - Las copias de un fijo se anotan una por comercio, monto y mes, aunque dos iPhones con el mismo iCloud las generen a la vez.
+
+## 2026-10-18 · La moneda principal sale de los pagos, no de la región
+Antes, sin elección explícita, la moneda principal era la de la región del iPhone; una región de EE. UU. dejó el presupuesto en dólares con todos los pagos de Wallet en pesos. Ahora: lo elegido (bienvenida o «Más»); si no hay, la moneda de la mayoría de los pagos; si no, pesos. Se fija una vez y no vuelve a moverse sola. Si la mayoría de los pagos del mes está en otra moneda ofrecida, se sugiere cambiar con un toque (y se pregunta por el presupuesto). El dinero se formatea con la convención de México en cualquier región.

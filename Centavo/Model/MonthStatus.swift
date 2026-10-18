@@ -23,7 +23,7 @@ enum MonthStatus {
         }
         let left = money(pace.remaining.magnitude, summary.primary)
         if pace.remaining < 0 { return "Te pasaste del presupuesto por \(left)." }
-        let perDay = pace.dailyAllowance.formatted(.currency(code: summary.primary.isoCode ?? primary)
+        let perDay = pace.dailyAllowance.formatted(currencyStyle(summary.primary.isoCode ?? primary)
                                                     .precision(.fractionLength(0)))
         return "Te quedan \(left) del presupuesto: \(perDay) al día."
     }

@@ -50,6 +50,15 @@ struct ExpenseListView: View {
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
+    /// Changes the currency the month adds up in. The budget is a bare number, and 8,000
+    /// pesos must not quietly become 8,000 dollars, so it asks about it.
+    private func setPrimary(_ code: String) {
+        if code != primaryCurrency, BudgetStore.amount(from: storedBudget) != nil {
+            currencyChanged = true
+        }
+        storedCurrency = code
+    }
+
     var body: some View {
         let amounts = expenses.map {
             ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
@@ -76,6 +85,13 @@ struct ExpenseListView: View {
                 HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                           pace: pace)
                     .ticketRow(bottom: 20)
+
+                if isCurrent, let code = CurrencySuggestion.switchTo(
+                    markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
+                    offered: CurrencyPreference.offered) {
+                    CurrencySuggestionRow(code: code) { setPrimary(code) }
+                        .ticketRow(bottom: 20)
+                }
 
                 if expenses.isEmpty {
                     EmptyTicket { showingSetup = true }
@@ -161,14 +177,7 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
-                        Picker(selection: Binding(get: { primaryCurrency }, set: { code in
-                            // The budget is a bare number: 8,000 pesos would quietly become
-                            // 8,000 dollars, so ask.
-                            if code != primaryCurrency, BudgetStore.amount(from: storedBudget) != nil {
-                                currencyChanged = true
-                            }
-                            storedCurrency = code
-                        })) {
+                        Picker(selection: Binding(get: { primaryCurrency }, set: { setPrimary($0) })) {
                             ForEach(CurrencyPreference.offered, id: \.self) { code in
                                 Text(CurrencyPreference.name(code)).tag(code)
                             }
@@ -250,6 +259,14 @@ struct ExpenseListView: View {
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
                                           onReview: { showingBudget = true }))
             .task {
+                // Never chosen: settle it once, from what the payments are in (pesos if none),
+                // so it cannot drift with the phone's settings.
+                if !CurrencyPreference.offered.contains(storedCurrency) {
+                    storedCurrency = CurrencySuggestion.dominant(
+                        markers: expenses.prefix(100).map(\.currencyMarker),
+                        primary: CurrencyPreference.fallback,
+                        offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
+                }
                 guard !onboarded else { return }
                 // A reinstall or a new phone: the expenses are still coming from iCloud.
                 let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere
@@ -273,6 +290,36 @@ struct ExpenseListView: View {
     }
 }
 
+/// Most of this month's payments are in another currency than the one the month adds up in:
+/// one tap to add up in theirs.
+private struct CurrencySuggestionRow: View {
+    let code: String
+    let apply: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text("Casi todos tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
+                .font(.ticket(12, relativeTo: .footnote))
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Sumar en \(CurrencyPreference.spoken(code))", action: apply)
+                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Theme.onBrass)
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.brass)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("sumar-en-moneda")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .overlay {
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+        }
+    }
+}
+
 /// After the main currency changes: the budget stays the same number, so offer to fix it.
 private struct BudgetCurrencyCheck: ViewModifier {
     @Binding var isPresented: Bool
@@ -284,7 +331,7 @@ private struct BudgetCurrencyCheck: ViewModifier {
             Button("Cambiarlo", action: onReview)
             Button("Así está bien", role: .cancel) {}
         } message: {
-            Text("Sigue siendo el mismo número, ahora en \(CurrencyPreference.name(currency)).")
+            Text("Sigue siendo el mismo número, ahora en \(CurrencyPreference.spoken(currency)).")
         }
     }
 }
@@ -418,7 +465,7 @@ private struct HeroTotal: View {
     private var allowanceText: String {
         let amount = allowance ?? 0
         if let iso = summary.primary.isoCode {
-            return amount.formatted(.currency(code: iso).precision(.fractionLength(0)))
+            return amount.formatted(currencyStyle(iso).precision(.fractionLength(0)))
         }
         return summary.primary.label + amount.formatted(.number.precision(.fractionLength(0)))
     }

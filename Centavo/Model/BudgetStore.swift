@@ -32,7 +32,7 @@ extension BudgetStore {
         guard let pace = BudgetPace(budget: amount, spent: spent, on: now), pace.remaining > 0 else {
             return "Este mes ya gastaste más que eso."
         }
-        let figure = pace.dailyAllowance.formatted(.currency(code: currency).precision(.fractionLength(0)))
+        let figure = pace.dailyAllowance.formatted(currencyStyle(currency).precision(.fractionLength(0)))
         return "Con eso, hoy puedes gastar \(figure)."
     }
 }
