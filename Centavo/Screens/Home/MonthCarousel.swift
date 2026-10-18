@@ -4,6 +4,8 @@ import SwiftUI
 /// The swipeable middle of the main screen: budget first, then the calendar.
 struct MonthCarousel: View {
     let calendarModel: MonthCalendar
+    var selectedDay: Int?
+    var onSelectDay: (Int?) -> Void = { _ in }
     let spent: MoneyTotal
     let pace: BudgetPace?
     let isCurrentMonth: Bool
@@ -24,7 +26,7 @@ struct MonthCarousel: View {
                         .id(0)
                     // A little inset: today's ring sits 3 pt outside its cell and, on the first
                     // column, peeked into the budget page.
-                    CalendarPage(model: calendarModel)
+                    CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay)
                         .padding(.horizontal, 4)
                         .containerRelativeFrame(.horizontal)
                         .id(1)

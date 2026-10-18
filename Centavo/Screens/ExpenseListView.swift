@@ -38,6 +38,10 @@ struct ExpenseListView: View {
     @State private var adding = false
     @State private var editing: Expense?
     @State private var importing = false
+    /// A tapped calendar day narrows the list to it.
+    @State private var selectedDay: Int?
+    /// What was just deleted, kept a few seconds so it can come back.
+    @State private var lastDeleted: DeletedExpense?
     @State private var importMessage: String?
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
@@ -54,6 +58,9 @@ struct ExpenseListView: View {
         let isCurrent = offset == 0
         let viewed = MonthNavigator.month(offsetBy: offset, from: now)
         let monthExpenses = expenses.filter { MonthNavigator.isSameMonth($0.date, as: viewed) }
+        let shownExpenses = selectedDay.map { day in
+            monthExpenses.filter { Calendar.current.component(.day, from: $0.date) == day }
+        } ?? monthExpenses
         let summary = MonthSummarizer.summarize(amounts, inMonthOf: viewed, primary: primaryCurrency)
         // A month that is over is measured at its last second: all of the budget was due.
         let pace = BudgetPace(budget: BudgetStore.amount(from: storedBudget),
@@ -73,6 +80,8 @@ struct ExpenseListView: View {
                     MonthCarousel(
                         calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
                                                           primary: primaryCurrency, today: now),
+                        selectedDay: selectedDay,
+                        onSelectDay: { day in withAnimation(.snappy) { selectedDay = day } },
                         spent: summary.primary,
                         pace: pace,
                         isCurrentMonth: isCurrent,
@@ -90,6 +99,12 @@ struct ExpenseListView: View {
                         .ticketRow(bottom: 12)
                     }
 
+                    if let day = selectedDay {
+                        DayFilterRow(day: day, count: shownExpenses.count) {
+                            withAnimation(.snappy) { selectedDay = nil }
+                        }
+                        .ticketRow()
+                    }
                     if monthExpenses.isEmpty {
                         Text("Sin gastos este mes")
                             .font(.ticket(13, relativeTo: .footnote))
@@ -100,7 +115,7 @@ struct ExpenseListView: View {
                             .overlay(alignment: .top) { Perforation() }
                             .ticketRow()
                     }
-                    ForEach(monthExpenses) { expense in
+                    ForEach(shownExpenses) { expense in
                         Button { editing = expense } label: {
                             LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
                         }
@@ -188,7 +203,7 @@ struct ExpenseListView: View {
                 ExpenseEditorView(expense: nil,
                                   initialDate: isCurrent ? nil : MonthNavigator.closingMoment(of: viewed))
             }
-            .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
+            .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
             .sheet(isPresented: $showingBudget) {
                 BudgetSheet(stored: $storedBudget, currency: primaryCurrency)
             }
@@ -199,7 +214,7 @@ struct ExpenseListView: View {
                 titleVisibility: .visible,
                 presenting: pendingDelete
             ) { expense in
-                Button("Borrar", role: .destructive) { context.delete(expense) }
+                Button("Borrar", role: .destructive) { delete(expense) }
             } message: { expense in
                 Text("\(expense.merchant) · \(ledgerAmount(for: expense, primary: primaryCurrency))")
             }
@@ -212,6 +227,19 @@ struct ExpenseListView: View {
                 Button("Listo", role: .cancel) {}
             } message: {
                 Text(importMessage ?? "")
+            }
+            .onChange(of: offset) { _, _ in selectedDay = nil }
+            .overlay(alignment: .bottom) {
+                if let deleted = lastDeleted {
+                    UndoBar(text: "Borraste \(deleted.merchant)") { restore(deleted) }
+                        .padding(.horizontal, Theme.horizontalPadding)
+                        .padding(.bottom, 76)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task(id: deleted.id) {
+                            try? await Task.sleep(for: .seconds(6))
+                            withAnimation { if lastDeleted?.id == deleted.id { lastDeleted = nil } }
+                        }
+                }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
@@ -227,6 +255,17 @@ struct ExpenseListView: View {
 }
 
 private extension ExpenseListView {
+    func delete(_ expense: Expense) {
+        let snapshot = DeletedExpense(expense)
+        context.delete(expense)
+        withAnimation(.snappy) { lastDeleted = snapshot }
+    }
+
+    func restore(_ deleted: DeletedExpense) {
+        context.insert(deleted.make())
+        withAnimation(.snappy) { lastDeleted = nil }
+    }
+
     /// Reads the chosen file and says plainly what happened.
     func importFile(_ result: Result<URL, Error>) -> String {
         guard case .success(let url) = result else { return "No se pudo abrir el archivo." }
@@ -482,4 +521,86 @@ private struct LedgerRow: View {
                            date: .now.addingTimeInterval(-86_400), category: "Ropa"))
     context.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam", card: "BBVA"))
     return ExpenseListView().modelContainer(container).preferredColorScheme(.dark)
+}
+
+/// Everything needed to bring a deleted expense back exactly as it was.
+private struct DeletedExpense: Identifiable {
+    let id = UUID()
+    let amount: Decimal, currencyMarker: String?, merchant: String, card: String?
+    let date: Date, category: String?, rawAmount: String?
+    let repeatsMonthly: Bool?, repeatsThrough: Date?, isRepeat: Bool?
+
+    init(_ e: Expense) {
+        amount = e.amount; currencyMarker = e.currencyMarker; merchant = e.merchant; card = e.card
+        date = e.date; category = e.category; rawAmount = e.rawAmount
+        repeatsMonthly = e.repeatsMonthly; repeatsThrough = e.repeatsThrough; isRepeat = e.isRepeat
+    }
+
+    func make() -> Expense {
+        let e = Expense(amount: amount, currencyMarker: currencyMarker, merchant: merchant, card: card,
+                        date: date, category: category, rawAmount: rawAmount)
+        e.repeatsMonthly = repeatsMonthly; e.repeatsThrough = repeatsThrough; e.isRepeat = isRepeat
+        return e
+    }
+}
+
+/// "Borraste Oxxo · Deshacer", for a few seconds after a delete.
+private struct UndoBar: View {
+    let text: String
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(text)
+                .font(.ticket(12, relativeTo: .footnote))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Deshacer", action: undo)
+                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                .textCase(.uppercase)
+                .tracking(1.2)
+                .foregroundStyle(Theme.brass)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("deshacer-borrado")
+        }
+        .padding(.horizontal, 16)
+        .modifier(UndoBarSurface())
+    }
+}
+
+/// Liquid Glass where the system has it (iOS 26+), the ticket's surface before that.
+private struct UndoBarSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content
+                .background(Theme.surface, in: Capsule())
+                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+        }
+    }
+}
+
+/// "Día 12 · 2 gastos · Ver todo el mes" over the list while a day is picked.
+private struct DayFilterRow: View {
+    let day: Int
+    let count: Int
+    let clear: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("Día \(day) · \(count) \(count == 1 ? "gasto" : "gastos")")
+                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+            Spacer()
+            Button("Ver todo el mes", action: clear)
+                .font(.ticket(12, relativeTo: .footnote))
+                .foregroundStyle(Theme.muted)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("ver-todo-el-mes")
+        }
+    }
 }
