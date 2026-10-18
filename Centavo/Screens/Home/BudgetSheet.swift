@@ -5,6 +5,8 @@ import SwiftUI
 struct BudgetSheet: View {
     @Binding var stored: String
     let currency: String
+    /// What this month already spent in `currency`, so the preview matches the main screen.
+    var spent: Decimal = 0
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
@@ -30,9 +32,17 @@ struct BudgetSheet: View {
                 } header: {
                     Text("Tope de gasto cada mes (\(currency))").ticketCaption()
                 } footer: {
-                    Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
-                        .font(.ticket(12, relativeTo: .footnote))
-                        .foregroundStyle(Theme.muted)
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let amount {
+                            Text(BudgetStore.dailyPreview(amount, spent: spent, currency: currency))
+                                .font(.ticket(13, relativeTo: .footnote))
+                                .foregroundStyle(Theme.brass)
+                                .accessibilityIdentifier("presupuesto-al-dia")
+                        }
+                        Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency) y se queda en tu iPhone.")
+                            .font(.ticket(12, relativeTo: .footnote))
+                            .foregroundStyle(Theme.muted)
+                    }
                 }
                 .listRowBackground(Theme.surface)
 

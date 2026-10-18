@@ -132,7 +132,15 @@ struct OnboardingView: View {
                     .padding(14)
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityIdentifier("bienvenida-presupuesto")
-                hint("Puedes dejarlo vacío y fijarlo después en «Más».")
+                if let value = AmountParser.parse(budgetText)?.value, value > 0 {
+                    Text(BudgetStore.dailyPreview(value, currency: currency))
+                        .font(.ticket(13, relativeTo: .footnote))
+                        .foregroundStyle(Theme.brass)
+                        .contentTransition(.numericText())
+                        .animation(.snappy, value: budgetText)
+                } else {
+                    hint("Puedes dejarlo vacío y fijarlo después en «Más».")
+                }
             }
         }
     }
