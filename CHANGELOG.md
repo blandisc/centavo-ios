@@ -37,6 +37,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- Primera vez guiada: moneda, presupuesto, gastos fijos y conectar Wallet en cinco pantallas que se pueden omitir.
 - Categorías sugeridas para comercios comunes de México (Oxxo, Uber, Netflix, CFE, Liverpool…) cuando nunca has categorizado ese comercio.
 - La barra del presupuesto y las cifras se animan al cambiar, con vibración suave al anotar y una advertencia al pasarte del presupuesto.
 - Toca un día del calendario para ver solo sus gastos.

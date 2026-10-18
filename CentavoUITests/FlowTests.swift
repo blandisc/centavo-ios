@@ -287,6 +287,48 @@ final class FlowTests: XCTestCase {
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
     }
 
+    // MARK: Primera vez
+
+    func testLaPrimeraVezDejaTodoListo() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-empty", "-centavo-onboarding"]
+        app.launch()
+        let next = require(app.buttons["bienvenida-siguiente"], "No apareció la bienvenida", timeout: 20)
+        snap("bienvenida-1")
+        next.tap()
+        require(app.buttons["moneda-MXN"], "No ofrece pesos").tap()
+        snap("bienvenida-2")
+        next.tap()
+        let budget = require(app.textFields["bienvenida-presupuesto"], "No pide presupuesto")
+        budget.tap(); budget.typeText("9000")
+        snap("bienvenida-3")
+        require(app.buttons["teclado-siguiente"], "El teclado tapa «Siguiente» y no hay otro").tap()
+        let name = require(app.textFields["bienvenida-fijo-nombre"], "No pide gastos fijos")
+        name.tap(); name.typeText("Renta")
+        let amount = app.textFields["bienvenida-fijo-monto"]
+        amount.tap(); amount.typeText("6500")
+        app.buttons["bienvenida-fijo-agregar"].tap()
+        snap("bienvenida-4")
+        if app.buttons["teclado-siguiente"].exists { app.buttons["teclado-siguiente"].tap() } else { next.tap() }
+        snap("bienvenida-5")
+        require(app.buttons["bienvenida-despues"], "No ofrece conectar después").tap()
+
+        require(app.staticTexts["hoy-puedes-gastar"], "No quedó el presupuesto", timeout: 10)
+        require(row(app, containing: "Renta"), "No se anotó la renta")
+        XCTAssertTrue(row(app, containing: "Fijo").exists, "La renta no quedó como fija")
+        snap("bienvenida-listo")
+    }
+
+    func testSinBienvenidaSiYaHayGastos() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-demo", "-centavo-onboarding"]
+        app.launch()
+        require(app.buttons["Anotar gasto"], "La pantalla principal no abrió", timeout: 20)
+        XCTAssertFalse(app.buttons["bienvenida-siguiente"].exists, "Mostró la bienvenida con gastos")
+    }
+
     // MARK: Intentar romperla
 
     /// The worst a person can type, all in one month: nothing may leave the screen.

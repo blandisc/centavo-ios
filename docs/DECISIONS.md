@@ -176,3 +176,9 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **Un comercio que nunca categorizaste recibe una categoría sugerida** de un catálogo de marcas comunes en México (Oxxo → Despensa, Uber → Transporte, Uber Eats → Comida, Netflix → Suscripciones, CFE → Servicios…). Lo que tú elegiste para ese comercio siempre manda.
 - **Marca como palabras completas dentro del nombre** («OXXO ROBLE MTY 1234» es Oxxo; «Boxxon» no). No contradice la regla de 2026-10-11 de no adivinar que dos sucursales son el mismo comercio: aquí no se unen comercios, solo se propone una categoría que se puede cambiar. Se dejaron fuera palabras ambiguas como «Max».
 - La hoja de gasto dice «Sugerida para Oxxo: Despensa. Cámbiala si no te queda.»
+
+## 2026-10-18 — Primera vez guiada
+- **Al abrir la app vacía por primera vez, cinco pantallas cortas:** qué hace, moneda, presupuesto, gastos fijos (nombre, monto y día del mes) y conectar Wallet (lleva a la guía). Todas se pueden omitir; lo llenado se guarda aunque se omita el resto.
+- **Solo una vez y solo sin gastos:** quien ya tiene gastos no la ve (se marca como vista sin mostrarla). Los modos de prueba la saltan salvo `-centavo-onboarding`.
+- **Un gasto fijo del día que aún no llega empieza el mes pasado** (`RecurringSchedule.firstDate`), para que la copia de este mes se anote sola ese día y nada quede con fecha futura.
+- **El teclado numérico tapa la barra de abajo:** las pantallas con monto llevan «Siguiente» arriba del teclado.
