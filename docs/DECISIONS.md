@@ -149,3 +149,10 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **El nombre definitivo es «Al día»** (antes «Centavo», provisional). Elegido por el dueño entre cinco opciones: va con «Hoy puedes gastar» y con lo que hace la app, tenerte al día con tu dinero.
 - **Ícono:** la cuadrícula de días del mes con el de hoy en latón y días anteriores en tonos de latón, sobre el papel casi negro.
 - **Solo cambia lo que se ve:** nombre en el iPhone, textos, Siri («anotar gasto en Al día»), CSV («AlDia-fecha.csv»). El identificador `com.blandisc.centavo`, el repo, el código y el tablero siguen como «Centavo»: cambiar el identificador haría que el iPhone lo tomara como otra app y se perderían gastos y automatizaciones.
+
+## 2026-10-17 — Capturar desde la notificación de Wallet
+- **En iOS 27 la captura usa el disparador «Notificación» sobre la app Wallet**, con la acción nueva «Registrar aviso de Wallet». Wallet manda una notificación por compra, en línea o sin contacto (lo confirmó el dueño), así que una sola automatización cubre ambas; el disparador «Wallet» solo dispara con pagos sin contacto. En iOS 26 sigue la guía con «Wallet».
+- **No es integración con bancos** (eso sigue fuera, CEN-58): la notificación es de Wallet. Formato visto en el iPhone del dueño: título = tarjeta («American Express México»), luego comercio («Google») y monto con moneda («MXN 319.00»). `WalletNotice` lo lee por renglones, venga junto o separado.
+- **Un aviso de Wallet que no es compra** (pase de abordar, Apple Cash sin monto) se ignora sin error.
+- **La guía pide borrar la automatización vieja de «Wallet»** para que cada compra se anote una vez.
+- Verificado en el simulador de iOS 27: «Al recibir una notificación de [App]» → Wallet; el campo «Notificación» de la acción no se conecta solo. Sin verificar (no hay notificaciones reales en el simulador): la burbuja «Notificación» arriba del teclado; la guía da la alternativa «Seleccionar variable».

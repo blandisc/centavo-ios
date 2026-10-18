@@ -1,3 +1,4 @@
+import CentavoCore
 import SwiftData
 import XCTest
 @testable import Centavo
@@ -79,6 +80,17 @@ final class ExpenseRecorderTests: XCTestCase {
         let expense = Expense(amount: 501_501, currencyMarker: "OxxoRobleMtyhtOxxoRobleMtyht",
                               merchant: "Sin comercio")
         XCTAssertEqual(ledgerAmount(for: expense, primary: "MXN"), "Oxxo 501,501.00")
+    }
+
+    /// The Wallet notification of an online purchase, read and saved.
+    func testAWalletNoticeSavesCardMerchantAndAmount() throws {
+        let notice = try XCTUnwrap(WalletNotice.parse("American Express México\nGoogle\nMXN 319.00"))
+        XCTAssertEqual(try record(notice.amountText, notice.merchant, card: notice.card), .saved(merchant: "Google"))
+        let expense = try XCTUnwrap(saved().first)
+        XCTAssertEqual(expense.amount, 319)
+        XCTAssertEqual(expense.currencyMarker, "MXN")
+        XCTAssertEqual(expense.card, "American Express México")
+        XCTAssertEqual(expense.rawAmount, "MXN 319.00")
     }
 
     func testACardNumberIsNeverReadAsTheAmount() throws {
