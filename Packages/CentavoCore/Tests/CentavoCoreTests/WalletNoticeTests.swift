@@ -38,4 +38,28 @@ import Testing
     func aNoticeWithoutACharge(text: String) {
         #expect(WalletNotice.parse(text) == nil)
     }
+
+    /// A space may group thousands; it used to cut the figure at "MXN 1".
+    @Test func digitsGroupedWithSpaces() throws {
+        let notice = try #require(WalletNotice.parse("Google\nMXN 1 234,56"))
+        #expect(notice.amount.value == Decimal(string: "1234.56"))
+        #expect(notice.amountText == "MXN 1 234,56")
+        #expect(notice.merchant == "Google")
+        #expect(notice.card == nil)
+    }
+
+    @Test func aRefundSubtracts() throws {
+        let notice = try #require(WalletNotice.parse("BBVA\nReembolso de Liverpool\nMXN 230.00"))
+        #expect(notice.amount.value == -230)
+        #expect(notice.amountText == "-MXN 230.00")
+        #expect(notice.merchant == "Liverpool")
+        #expect(notice.card == "BBVA")
+        // The intent re-reads this text: the sign has to survive.
+        #expect(CaptureText.amount(in: notice.amountText)?.value == -230)
+    }
+
+    @Test(arguments: ["Apple Cash\nRecibiste $200.00 de Ana", "Te enviaron MXN 500.00"])
+    func moneyThatCameInIsNotSpending(text: String) {
+        #expect(WalletNotice.parse(text) == nil)
+    }
 }

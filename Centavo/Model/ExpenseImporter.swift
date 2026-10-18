@@ -32,6 +32,8 @@ enum ExpenseImporter {
     private static func key(_ date: Date, _ amount: Decimal, _ merchant: String) -> String {
         let name = merchant.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             .trimmingCharacters(in: .whitespaces)
-        return "\(Int(date.timeIntervalSince1970.rounded()))|\(amount)|\(name)"
+        // Whole seconds, floored like the export writes them: rounding put 12:00:20.7 at :21
+        // while the file said :20, and the same expense came in twice.
+        return "\(Int(date.timeIntervalSince1970.rounded(.down)))|\(amount)|\(name)"
     }
 }

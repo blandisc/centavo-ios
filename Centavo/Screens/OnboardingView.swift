@@ -263,6 +263,7 @@ struct OnboardingView: View {
                                   date: date, category: MerchantCatalog.category(for: item.name))
             expense.repeatsMonthly = true
             expense.repeatsThrough = date
+            expense.repeatDay = item.day
             context.insert(expense)
         }
         try? context.save()

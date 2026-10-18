@@ -22,6 +22,9 @@ final class Expense {
     var repeatsMonthly: Bool?
     /// On the original: the last month already logged, so a copy deleted by hand stays gone.
     var repeatsThrough: Date?
+    /// On the original: the day of the month it repeats on, when the original's own date had
+    /// to fall earlier (set up on the 31st in a 30-day month).
+    var repeatDay: Int?
     /// On a copy: logged by itself from a fixed expense.
     var isRepeat: Bool?
 

@@ -10,10 +10,12 @@ public enum RecurringSchedule {
     ///
     /// - Parameters:
     ///   - anchor: the original expense's date; its day of the month is the one that repeats.
+    ///   - day: the day asked for, when it differs from the anchor's: a fixed expense on the
+    ///     31st that started in a 30-day month is still on the 31st where the month has one.
     ///   - after: the last month already logged (the original's own month at first).
-    public static func dueDates(anchor: Date, after: Date, now: Date,
+    public static func dueDates(anchor: Date, day: Int? = nil, after: Date, now: Date,
                                 calendar: Calendar = .current) -> [Date] {
-        let day = calendar.component(.day, from: anchor)
+        let day = day ?? calendar.component(.day, from: anchor)
         let time = calendar.dateComponents([.hour, .minute], from: anchor)
         guard let start = calendar.dateInterval(of: .month, for: after)?.start,
               var month = calendar.date(byAdding: .month, value: 1, to: start) else { return [] }
@@ -42,6 +44,7 @@ public enum RecurringSchedule {
         var parts = calendar.dateComponents([.year, .month], from: month)
         parts.day = min(max(day, 1), length)
         parts.hour = 9
-        return calendar.date(from: parts) ?? now
+        // Today before 9:00 would be a moment that has not come yet.
+        return min(calendar.date(from: parts) ?? now, now)
     }
 }

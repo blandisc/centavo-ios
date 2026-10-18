@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Changed
+- Importar de nuevo un CSV exportado ya no duplica gastos; un monto ilegible en el CSV se descarta en vez de leerse a medias («1,234.56» ya no entra como 1).
+- Un aviso de Wallet con el monto agrupado con espacios («MXN 1 234,56») ya no se guarda como 1.00. Un reembolso resta y el dinero recibido no cuenta como gasto.
+- Un gasto fijo del día 31 vuelve al 31 en los meses que lo tienen, y nunca queda con fecha futura.
+- Al cambiar de mes (también a medianoche del día 1) se quita el filtro de día.
 - Al deslizar entre presupuesto y calendario ya hay aire entre los dos; el mes de la barra inferior tiene más espacio.
 - «Hoy puedes gastar» es ahora lo más grande de la pantalla; el total del mes va debajo.
 - La app se llama **Al día** y estrena ícono: los días del mes con el de hoy en latón. Siri: «Oye Siri, anotar gasto en Al día».
