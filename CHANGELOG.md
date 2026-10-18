@@ -45,6 +45,10 @@
 - La pantalla se actualiza sola al cambiar de día, en vez de quedarse en el mes anterior.
 - No se puede guardar un gasto de $0 a mano.
 - Borrar un gasto ahora pide confirmación.
+- En un iPhone nuevo o tras reinstalar con el mismo iCloud, ya no aparece la bienvenida otra vez (ni se duplican la renta y los demás fijos).
+- Al cambiar la moneda principal con un presupuesto fijado, Al día pregunta si quieres cambiarlo.
+- La guía solo dice «Ya funciona» si llegó un pago en los últimos 3 días.
+- Desde cualquier copia de un gasto fijo se puede «Dejar de repetir cada mes».
 
 ### Added
 - Primera vez guiada: moneda, presupuesto, gastos fijos y conectar Wallet en cinco pantallas que se pueden omitir.
