@@ -160,3 +160,7 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-18 — El número del día al frente
 - **En el mes actual, con presupuesto y sin pasarte, lo más grande de la pantalla es «Hoy puedes gastar $X»**, en latón; el total del mes queda en la línea de abajo. Sin presupuesto, pasado del presupuesto o en meses cerrados, el total sigue arriba como antes. El presupuesto ya no repite «Hoy puedes gastar».
 - **«Probar ahora» en la guía se descarta:** Al día no puede fabricar una notificación de Wallet, así que un botón de prueba no comprobaría la automatización y daría falsa confianza.
+
+## 2026-10-18 — Importar CSV
+- **«Más» → «Importar CSV» carga el mismo archivo que exporta la app**, para recuperar gastos sin iCloud. Columnas por nombre (Fecha, Comercio, Monto, Moneda obligatorias; Tarjeta y Categoría opcionales), así que un archivo reordenado en una hoja de cálculo sirve.
+- **No duplica:** mismo segundo, monto y comercio (sin mayúsculas ni acentos) se toma como el mismo gasto. Renglones ilegibles se cuentan y se avisan, nunca se adivinan. Un CSV que no es de Al día se rechaza con explicación.
