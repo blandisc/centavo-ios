@@ -171,3 +171,8 @@ Registro de decisiones. Se revierten solo de forma explícita.
 
 ## 2026-10-18 — Animaciones y hápticos
 - **Con intención y pocas:** la barra del presupuesto crece hasta el nuevo gasto con un resorte corto; las cifras grandes cambian con transición numérica; vibración de éxito al entrar un gasto y de advertencia al pasarte del presupuesto en el mes actual. Con «Reducir movimiento» no hay animaciones.
+
+## 2026-10-18 — Categorías sugeridas
+- **Un comercio que nunca categorizaste recibe una categoría sugerida** de un catálogo de marcas comunes en México (Oxxo → Despensa, Uber → Transporte, Uber Eats → Comida, Netflix → Suscripciones, CFE → Servicios…). Lo que tú elegiste para ese comercio siempre manda.
+- **Marca como palabras completas dentro del nombre** («OXXO ROBLE MTY 1234» es Oxxo; «Boxxon» no). No contradice la regla de 2026-10-11 de no adivinar que dos sucursales son el mismo comercio: aquí no se unen comercios, solo se propone una categoría que se puede cambiar. Se dejaron fuera palabras ambiguas como «Max».
+- La hoja de gasto dice «Sugerida para Oxxo: Despensa. Cámbiala si no te queda.»
