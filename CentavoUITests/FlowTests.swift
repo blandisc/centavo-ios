@@ -15,7 +15,7 @@ final class FlowTests: XCTestCase {
                         extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
-                         ]
+                         "-centavo-sin-animaciones"]
         arguments += [demo ? "-centavo-demo" : "-centavo-empty"]
         if budget { arguments += ["-monthlyBudget", "8000"] }
         app.launchArguments = arguments + extra
@@ -81,6 +81,14 @@ final class FlowTests: XCTestCase {
         for _ in 0..<4 where !element.exists { app.swipeUp() }
         for _ in 0..<8 where !element.exists { app.swipeDown() }
         return element
+    }
+
+    /// Whether a payment is in the list, without the long search `row` does when it is not:
+    /// these months are short, so two swipes reach the bottom.
+    private func hasRow(_ app: XCUIApplication, containing text: String) -> Bool {
+        let element = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
+        for _ in 0..<2 where !element.exists { app.swipeUp() }
+        return element.exists
     }
 
     // MARK: Anotar
@@ -433,7 +441,7 @@ final class FlowTests: XCTestCase {
         // Last month in the demo data: 880 + 2,400 + 150 + 399.
         expectTotal(app, "$3,829.00", "El total del mes anterior no es el esperado")
         require(row(app, containing: "Renta"), "El mes anterior no muestra sus pagos")
-        XCTAssertFalse(row(app, containing: "Cinépolis").exists,
+        XCTAssertFalse(hasRow(app, containing: "Cinépolis"),
                        "Los pagos de este mes aparecen en el mes anterior")
         XCTAssertFalse(app.buttons["Mes anterior"].isEnabled,
                        "Dejó ir más atrás del primer gasto")
@@ -462,7 +470,7 @@ final class FlowTests: XCTestCase {
 
         app.buttons["Mes siguiente"].tap()
         require(row(app, containing: "Cinépolis"), "No regresó al mes actual")
-        XCTAssertFalse(row(app, containing: "Retroactivo").exists,
+        XCTAssertFalse(hasRow(app, containing: "Retroactivo"),
                        "El gasto del mes pasado aparece en este mes")
     }
 

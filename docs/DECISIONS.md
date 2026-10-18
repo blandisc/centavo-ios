@@ -186,3 +186,6 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **En un PR no corren las pruebas de capturas** (`ScreenshotTests`): solo sirven para ver el diseño y no deciden el merge. Corren cuando algo entra a `main`, que sigue publicando el artefacto `capturas`. Las de flujo, accesibilidad y unitarias siguen bloqueando cada PR.
 - **Tampoco corren en un PR las auditorías de accesibilidad que solo informan**; la de zonas táctiles, que sí bloquea, sigue. Con 46 pruebas, un PR tardaba casi media hora en las máquinas de GitHub, sobre todo por abrir la app en cada prueba.
 - Se probó correr en dos simuladores a la vez: en los runners de GitHub el segundo se desconectó y casi no hubo ahorro, así que se quitó.
+
+## 2026-10-18 · Pruebas de interfaz sin animaciones
+Las pruebas de flujo abren la app con `-centavo-sin-animaciones` (solo en Debug): XCTest espera a que cada animación termine y sin ellas cada paso es más corto (medido: 326 s → 205 s en seis pruebas). Las capturas siguen con animaciones. La prueba de 5,000 gastos mide tiempos y solo se lee comparando corridas, así que corre en main y no en los PR.
