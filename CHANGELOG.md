@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- Al deslizar entre presupuesto y calendario ya hay aire entre los dos; el mes de la barra inferior tiene más espacio.
 - «Hoy puedes gastar» es ahora lo más grande de la pantalla; el total del mes va debajo.
 - La app se llama **Al día** y estrena ícono: los días del mes con el de hoy en latón. Siri: «Oye Siri, anotar gasto en Al día».
 - La pantalla principal abre en el presupuesto; el calendario queda en la segunda página del carrusel.

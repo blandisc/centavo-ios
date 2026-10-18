@@ -91,7 +91,9 @@ struct ExpenseListView: View {
                         shares: CategoryShare.top(summary.categories),
                         onSetBudget: { showingBudget = true }
                     )
-                    .ticketRow(bottom: isCurrent ? 4 : 20)
+                    // Edge to edge: each page keeps its own margin, so a swipe shows a gap
+                    // between them instead of two pages touching.
+                    .ticketRow(bottom: isCurrent ? 4 : 20, horizontal: 0)
 
                     if isCurrent {
                         CaptureHealthRow(
@@ -195,6 +197,7 @@ struct ExpenseListView: View {
                         .textCase(.uppercase)
                         .lineLimit(1)
                         .fixedSize()
+                        .padding(.horizontal, 14)
                     Spacer()
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
@@ -345,12 +348,12 @@ private extension ExpenseListView {
 
 private extension View {
     /// A list row that looks like part of the ticket: no card, no separator, side margins.
-    func ticketRow(bottom: CGFloat = 0) -> some View {
+    func ticketRow(bottom: CGFloat = 0, horizontal: CGFloat = Theme.horizontalPadding) -> some View {
         self
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: Theme.horizontalPadding,
-                                      bottom: bottom, trailing: Theme.horizontalPadding))
+            .listRowInsets(EdgeInsets(top: 0, leading: horizontal,
+                                      bottom: bottom, trailing: horizontal))
     }
 }
 
