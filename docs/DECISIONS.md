@@ -168,3 +168,6 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-18 — Tocar un día y deshacer
 - **Tocar un día del calendario filtra la lista a ese día**, con «Día 12 · 2 gastos · Ver todo el mes» arriba; se limpia al cambiar de mes. Sin pantalla nueva.
 - **Después de borrar un gasto aparece «Deshacer» seis segundos** (desde la lista o desde la hoja), y lo regresa igual que estaba, con su categoría y si era fijo. La barra usa Liquid Glass en iOS 26+.
+
+## 2026-10-18 — Animaciones y hápticos
+- **Con intención y pocas:** la barra del presupuesto crece hasta el nuevo gasto con un resorte corto; las cifras grandes cambian con transición numérica; vibración de éxito al entrar un gasto y de advertencia al pasarte del presupuesto en el mes actual. Con «Reducir movimiento» no hay animaciones.

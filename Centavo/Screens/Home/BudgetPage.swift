@@ -18,6 +18,7 @@ struct BudgetPage: View {
     /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
     @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = 22
     @State private var barWidth: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Grows a little with the text, but a bar the size of the screen helps nobody.
     private var barHeight: CGFloat { min(scaledBarHeight, 132) }
@@ -157,6 +158,9 @@ struct BudgetPage: View {
                     )
                     .fill(Theme.brass)
                     .frame(width: barWidth * CGFloat(pace.spentFraction))
+                    // The brass fills up to the new spend, like a register ticking.
+                    .animation(reduceMotion ? nil : .spring(duration: 0.6, bounce: 0.15),
+                               value: pace.spentFraction)
                 }
                 .overlay(alignment: .trailing) {
                     if remainingInside {
@@ -216,6 +220,7 @@ struct BudgetPage: View {
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
             Text(amount)
+                .contentTransition(.numericText())
                 .font(.ticket(22, relativeTo: .title2))
                 .tracking(-0.5)
                 .foregroundStyle(Theme.ink)
