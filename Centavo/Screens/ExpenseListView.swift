@@ -59,7 +59,8 @@ struct ExpenseListView: View {
 
         NavigationStack {
             List {
-                HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent)
+                HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
+                          pace: pace)
                     .ticketRow(bottom: 20)
 
                 if expenses.isEmpty {
@@ -229,6 +230,22 @@ private struct HeroTotal: View {
     let viewed: Date
     let now: Date
     let isCurrentMonth: Bool
+    let pace: BudgetPace?
+
+    /// This month, with a budget not yet blown, the figure to decide by is what can still go
+    /// today; the month's total becomes the line under it.
+    private var allowance: Decimal? {
+        guard isCurrentMonth, let pace, pace.remaining >= 0 else { return nil }
+        return pace.dailyAllowance
+    }
+
+    private var allowanceText: String {
+        let amount = allowance ?? 0
+        if let iso = summary.primary.isoCode {
+            return amount.formatted(.currency(code: iso).precision(.fractionLength(0)))
+        }
+        return summary.primary.label + amount.formatted(.number.precision(.fractionLength(0)))
+    }
 
     /// "TOTAL MXN AL 13/10" this month; "TOTAL MXN · SEP 2026" for one that is over.
     private var caption: String {
@@ -259,14 +276,41 @@ private struct HeroTotal: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: caption).ticketCaption()
-            Text(totalText)
-                .accessibilityIdentifier("total-mes")
-                .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
-                .tracking(-2)
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
+            if allowance != nil {
+                Text("Hoy puedes gastar")
+                    .font(.ticket(11, weight: .semibold, relativeTo: .caption))
+                    .tracking(1.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.brass)
+                Text(allowanceText)
+                    .accessibilityIdentifier("hoy-puedes-gastar")
+                    .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
+                    .tracking(-2)
+                    .foregroundStyle(Theme.brass)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: allowance)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: caption).ticketCaption()
+                    Text(totalText)
+                        .accessibilityIdentifier("total-mes")
+                        .font(.ticket(17, weight: .medium, relativeTo: .headline))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                }
+            } else {
+                Text(verbatim: caption).ticketCaption()
+                Text(totalText)
+                    .accessibilityIdentifier("total-mes")
+                    .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
+                    .tracking(-2)
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .contentTransition(.numericText())
+            }
             if !summary.others.isEmpty {
                 // Adding currencies together would be a lie, so they ride along separately.
                 Text(verbatim: "+ \(othersText) aparte")

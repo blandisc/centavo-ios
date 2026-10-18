@@ -22,7 +22,10 @@ struct MonthCarousel: View {
                                shares: shares, onSetBudget: onSetBudget)
                         .containerRelativeFrame(.horizontal)
                         .id(0)
+                    // A little inset: today's ring sits 3 pt outside its cell and, on the first
+                    // column, peeked into the budget page.
                     CalendarPage(model: calendarModel)
+                        .padding(.horizontal, 4)
                         .containerRelativeFrame(.horizontal)
                         .id(1)
                 }
