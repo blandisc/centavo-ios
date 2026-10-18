@@ -37,6 +37,7 @@
 - Borrar un gasto ahora pide confirmación.
 
 ### Added
+- La barra del presupuesto y las cifras se animan al cambiar, con vibración suave al anotar y una advertencia al pasarte del presupuesto.
 - Toca un día del calendario para ver solo sus gastos.
 - «Deshacer» unos segundos después de borrar un gasto.
 - «Importar CSV» en el menú «Más»: recupera tus gastos desde un archivo exportado, sin duplicar los que ya tienes.

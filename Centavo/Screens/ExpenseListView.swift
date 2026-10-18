@@ -229,6 +229,11 @@ struct ExpenseListView: View {
                 Text(importMessage ?? "")
             }
             .onChange(of: offset) { _, _ in selectedDay = nil }
+            // A soft tap when an expense lands; a warning the moment the budget is blown.
+            .sensoryFeedback(.success, trigger: expenses.count) { old, new in new > old }
+            .sensoryFeedback(.warning, trigger: pace.map { $0.remaining < 0 } ?? false) { old, new in
+                isCurrent && !old && new
+            }
             .overlay(alignment: .bottom) {
                 if let deleted = lastDeleted {
                     UndoBar(text: "Borraste \(deleted.merchant)") { restore(deleted) }
@@ -307,6 +312,7 @@ private struct HeroTotal: View {
     let now: Date
     let isCurrentMonth: Bool
     let pace: BudgetPace?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// This month, with a budget not yet blown, the figure to decide by is what can still go
     /// today; the month's total becomes the line under it.
@@ -366,7 +372,7 @@ private struct HeroTotal: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
-                    .animation(.snappy, value: allowance)
+                    .animation(reduceMotion ? nil : .snappy, value: allowance)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: caption).ticketCaption()
                     Text(totalText)
@@ -386,6 +392,7 @@ private struct HeroTotal: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : .snappy, value: summary.primary.amount)
             }
             if !summary.others.isEmpty {
                 // Adding currencies together would be a lie, so they ride along separately.
