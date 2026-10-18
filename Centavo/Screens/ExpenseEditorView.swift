@@ -257,6 +257,7 @@ struct ExpenseEditorView: View {
         guard let original else { return }
         original.repeatsMonthly = nil
         original.repeatsThrough = nil
+        original.repeatDay = nil
         dismiss()
     }
 

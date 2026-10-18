@@ -6,11 +6,15 @@ import UniformTypeIdentifiers
 /// The whole expense history as a `.csv` the share sheet can hand to Archivos,
 /// Mail, Numbers or anything else. Built in memory; nothing touches the network.
 struct ExpensesCSVFile: Transferable {
-    let text: String
+    /// Plain values, copied from the models; the CSV text itself is only written when the file
+    /// is actually shared, not every time the main screen redraws its menu.
+    let records: [ExpenseRecord]
     let suggestedName: String
 
+    var text: String { CSVExporter.csv(from: records) }
+
     init(expenses: [Expense], primaryCurrency: String, now: Date = .now) {
-        text = CSVExporter.csv(from: expenses.map { expense in
+        records = expenses.map { expense in
             ExpenseRecord(
                 date: expense.date,
                 merchant: expense.merchant,
@@ -21,7 +25,7 @@ struct ExpensesCSVFile: Transferable {
                 card: expense.card,
                 category: expense.category
             )
-        })
+        }
         suggestedName = "AlDia-\(now.formatted(.iso8601.year().month().day())).csv"
     }
 

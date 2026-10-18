@@ -218,7 +218,10 @@ struct ExpenseListView: View {
             }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
             .sheet(isPresented: $showingBudget) {
-                BudgetSheet(stored: $storedBudget, currency: primaryCurrency)
+                BudgetSheet(stored: $storedBudget, currency: primaryCurrency,
+                            spent: isCurrent ? summary.primary.amount
+                                : MonthSummarizer.summarize(amounts, inMonthOf: now,
+                                                            primary: primaryCurrency).primary.amount)
             }
             .confirmationDialog(
                 "¿Borrar este gasto?",

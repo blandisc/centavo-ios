@@ -83,3 +83,4 @@
 - Agregar un gasto a mano con «+» y editar o borrar cualquier gasto tocándolo (CEN-2).
 - CI en GitHub Actions: corre las pruebas de CentavoCore y el build de iOS en cada PR (CEN-5).
 - Esqueleto inicial: acción «Registrar gasto» para la automatización Transacción de Atajos, parser de montos multi-formato, lista con total del mes y guía de configuración.
+- Al escribir el presupuesto (en la bienvenida o en «Más») ya se ve «Con eso, hoy puedes gastar $402», con lo gastado del mes contado.
