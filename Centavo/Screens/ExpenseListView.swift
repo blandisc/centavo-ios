@@ -127,7 +127,7 @@ struct ExpenseListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Centavo")
+                    Text("Al día")
                         .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
                         .tracking(2)
                         .textCase(.uppercase)
@@ -147,7 +147,7 @@ struct ExpenseListView: View {
                         .pickerStyle(.menu)
                         ShareLink(
                             item: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
-                            preview: SharePreview("Gastos de Centavo")
+                            preview: SharePreview("Gastos de Al día")
                         ) {
                             Label("Exportar CSV", systemImage: "square.and.arrow.up")
                         }
@@ -330,7 +330,9 @@ private struct LedgerRow: View {
     }
 
     private var merchantText: some View {
+        // Up to three lines; the full name is in the expense sheet.
         Text(expense.merchant)
+            .lineLimit(3)
             .font(.ticket(15, weight: .medium, relativeTo: .body))
             .tracking(0.4)
             .textCase(.uppercase)

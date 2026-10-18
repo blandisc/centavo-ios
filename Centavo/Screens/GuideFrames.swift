@@ -308,10 +308,17 @@ private struct AppGlyph27: View {
         RoundedRectangle(cornerRadius: 5)
             .fill(Theme.background)
             .frame(width: 20, height: 20)
-            .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2).fill(Theme.brass)
-                    .frame(width: 7, height: 11).padding(.leading, 4)
+            .overlay {
+                // The app icon: days of the month, today in brass.
+                Grid(horizontalSpacing: 1.5, verticalSpacing: 1.5) {
+                    GridRow { cell(Theme.surface); cell(Theme.brassLow) }
+                    GridRow { cell(Theme.brass); cell(Theme.surface) }
+                }
             }
+    }
+
+    private func cell(_ color: Color) -> some View {
+        RoundedRectangle(cornerRadius: 1).fill(color).frame(width: 5.5, height: 5.5)
     }
 }
 

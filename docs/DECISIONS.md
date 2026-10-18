@@ -144,3 +144,8 @@ Registro de decisiones. Se revierten solo de forma explícita.
 ## 2026-10-17 — Guía animada
 - **Cada paso de la guía de iOS 27 es una animación de sus toques**, uno por uno con subtítulo, en bucle (quieta y desplegada con «Reducir movimiento»). El dueño no pudo seguirla con dibujos fijos.
 - **Fuente: la pantalla real del iPhone del dueño (iOS 27).** La burbuja del pago se llama «Transacción»; al tocarla, «Obtener» ofrece Transacción, Tarjeta o pase, Comercio, **Cantidad** y Nombre. El monto es «Cantidad».
+
+## 2026-10-17 — Se llama «Al día»
+- **El nombre definitivo es «Al día»** (antes «Centavo», provisional). Elegido por el dueño entre cinco opciones: va con «Hoy puedes gastar» y con lo que hace la app, tenerte al día con tu dinero.
+- **Ícono:** la cuadrícula de días del mes con el de hoy en latón y días anteriores en tonos de latón, sobre el papel casi negro.
+- **Solo cambia lo que se ve:** nombre en el iPhone, textos, Siri («anotar gasto en Al día»), CSV («AlDia-fecha.csv»). El identificador `com.blandisc.centavo`, el repo, el código y el tablero siguen como «Centavo»: cambiar el identificador haría que el iPhone lo tomara como otra app y se perderían gastos y automatizaciones.

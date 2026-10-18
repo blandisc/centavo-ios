@@ -30,7 +30,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Centavo/Centavo.entitlements
         INFOPLIST_KEY_UIBackgroundModes: remote-notification
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Centavo
+        INFOPLIST_KEY_CFBundleDisplayName: "Al día"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark

@@ -3,7 +3,7 @@
 Guía para agentes que trabajan en este repo.
 
 ## Qué es
-Centavo: tracker de gastos minimalista para iOS. Captura cada pago de Apple Wallet con la automatización «Transacción» de Atajos, que llama al App Intent `LogExpenseIntent`. Offline y on-device. Decisiones en [docs/DECISIONS.md](docs/DECISIONS.md): léelas antes de proponer algo que las toque y agrega las nuevas en el mismo PR.
+Centavo (en el iPhone se llama **Al día**; decisión del 2026-10-17): tracker de gastos minimalista para iOS. El identificador y el código siguen como Centavo. Captura cada pago de Apple Wallet con la automatización «Transacción» de Atajos, que llama al App Intent `LogExpenseIntent`. Offline y on-device. Decisiones en [docs/DECISIONS.md](docs/DECISIONS.md): léelas antes de proponer algo que las toque y agrega las nuevas en el mismo PR.
 
 ## Arquitectura
 - `Packages/CentavoCore` — lógica pura (Foundation). Todo lo que se pueda probar sin app va aquí, con `swift test`.

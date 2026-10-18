@@ -1,4 +1,6 @@
-# Centavo
+# Al día
+
+_En el código y el repo sigue llamándose Centavo._
 
 [![CI](https://github.com/blandisc/centavo-ios/actions/workflows/ci.yml/badge.svg)](https://github.com/blandisc/centavo-ios/actions/workflows/ci.yml)
 

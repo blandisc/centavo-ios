@@ -5,7 +5,7 @@ import Foundation
 /// It runs in the background, never opens the app, and saves on-device only.
 struct LogExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "Registrar gasto"
-    static let description = IntentDescription("Guarda un pago de Apple Wallet en Centavo.")
+    static let description = IntentDescription("Guarda un pago de Apple Wallet en Al día.")
     static let openAppWhenRun = false
 
     // Titled «Importe» because that is what Atajos (in Spanish) calls the amount of a Wallet
@@ -64,8 +64,8 @@ enum CaptureError: Error, CustomLocalizedStringResourceConvertible {
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
-        case .empty: "Wallet mandó el pago sin monto. Agrégalo a mano con «+» en Centavo."
-        case .storeUnavailable: "Centavo no pudo abrir su base de datos. Abre la app para ver qué pasó."
+        case .empty: "Wallet mandó el pago sin monto. Agrégalo a mano con «+» en Al día."
+        case .storeUnavailable: "Al día no pudo abrir su base de datos. Abre la app para ver qué pasó."
         }
     }
 }
