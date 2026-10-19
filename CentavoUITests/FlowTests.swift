@@ -64,7 +64,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         let amountField = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amountField.tap()
-        amountField.typeText(amount)
+        amountField.typeAmount(amount)
         let merchantField = app.textFields["comercio"]
         merchantField.tap()
         merchantField.typeText(merchant)
@@ -189,7 +189,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amount.tap()
-        amount.typeText("12500")
+        amount.typeAmount("12500")
         XCTAssertEqual(amount.value as? String, "12,500", "No puso la coma de los miles")
 
         app.textFields["comercio"].tap()
@@ -234,7 +234,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amount.tap()
-        amount.typeText("350")
+        amount.typeAmount("350")
         app.textFields["comercio"].tap()
         app.textFields["comercio"].typeText("Veterinaria")
         // Out of the way: on a smaller phone the keyboard covers the tiles.
@@ -279,7 +279,7 @@ final class FlowTests: XCTestCase {
         require(app.textFields["monto"], "No abrió la hoja de gasto")
         XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled)
         app.textFields["monto"].tap()
-        app.textFields["monto"].typeText("10")
+        app.textFields["monto"].typeAmount("10")
         XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled, "Dejó guardar sin comercio")
     }
 
@@ -361,7 +361,7 @@ final class FlowTests: XCTestCase {
         require(app.buttons["fijar-presupuesto"], "No ofrece fijar el presupuesto").tap()
         let field = require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
         field.tap()
-        field.typeText("5000")
+        field.typeAmount("5000")
         app.buttons["hoja-guardar"].tap()
 
         let ticket = require(app.otherElements["presupuesto-ticket"],
@@ -381,7 +381,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Presupuesto del mes"].tap()
         let field = require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
         field.tap()
-        field.typeText("100")
+        field.typeAmount("100")
         app.buttons["hoja-guardar"].tap()
 
         fillExpense(app, amount: "250", merchant: "Antojo")
@@ -432,13 +432,13 @@ final class FlowTests: XCTestCase {
         snap("bienvenida-2")
         next.tap()
         let budget = require(app.textFields["bienvenida-presupuesto"], "No pide presupuesto")
-        budget.tap(); budget.typeText("9000")
+        budget.tap(); budget.typeAmount("9000")
         snap("bienvenida-3")
         require(app.buttons["teclado-siguiente"], "El teclado tapa «Siguiente» y no hay otro").tap()
         let name = require(app.textFields["bienvenida-fijo-nombre"], "No pide gastos fijos")
         name.tap(); name.typeText("Renta")
         let amount = app.textFields["bienvenida-fijo-monto"]
-        amount.tap(); amount.typeText("6500")
+        amount.tap(); amount.typeAmount("6500")
         app.buttons["bienvenida-fijo-agregar"].tap()
         snap("bienvenida-4")
         if app.buttons["teclado-siguiente"].exists { app.buttons["teclado-siguiente"].tap() } else { next.tap() }
@@ -659,6 +659,15 @@ final class FlowTests: XCTestCase {
 }
 
 private extension XCUIElement {
+    /// Types an amount at a person's pace. The field puts the thousands' commas in as you
+    /// type; a test typing every 10 ms can outrun that, a person (150 ms or more) cannot.
+    func typeAmount(_ text: String) {
+        for character in text {
+            typeText(String(character))
+            usleep(150_000)
+        }
+    }
+
     /// Replaces whatever is in the field.
     func clearAndType(_ text: String) {
         guard let current = value as? String, !current.isEmpty else {
@@ -666,7 +675,7 @@ private extension XCUIElement {
             return
         }
         typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
-        typeText(text)
+        typeAmount(text)
     }
 }
 
