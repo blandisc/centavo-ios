@@ -10,8 +10,13 @@ struct GuideFrame: Identifiable {
     let id = UUID()
     let caption: String
     let screen: Screen
+    /// «Así debe verse»: what it looks like once done, not something to tap.
+    var isResult = false
 
     enum Screen {
+        /// A real screenshot of Atajos (iOS 27, es-MX), taken by `GuideScreenshotsTests`,
+        /// with the ring already drawn on it.
+        case photo(String)
         case allShortcuts
         case library
         case automationEmpty
@@ -41,25 +46,39 @@ struct GuideFrame: Identifiable {
     enum Ring { case importe, comercio }
 }
 
-/// Plays a step's frames one after another, on a loop, like a short video. With Reduce
-/// Motion it shows them all, one under the other, so nothing is lost.
-struct GuideFrameAnimation: View {
+/// A step's pictures, one under the other, each with its instruction right above it: a
+/// still picture per action reads better than a loop that moves on before you are done.
+struct GuideFrameSequence: View {
     let frames: [GuideFrame]
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let interval: TimeInterval = 2.6
 
     var body: some View {
-        if reduceMotion {
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(frames) { frame in FrameView(frame: frame) }
-            }
-        } else {
-            TimelineView(.periodic(from: .now, by: interval)) { context in
-                let index = Int(context.date.timeIntervalSinceReferenceDate / interval) % frames.count
-                FrameView(frame: frames[index])
-                    .id(index)
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.25), value: index)
+        VStack(alignment: .leading, spacing: 22) {
+            ForEach(Array(frames.enumerated()), id: \.element.id) { index, frame in
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        if frame.isResult {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Theme.brass)
+                                .accessibilityHidden(true)
+                        } else if frames.filter({ !$0.isResult }).count > 1 {
+                            Text("\(index + 1)")
+                                .font(.ticket(15, weight: .semibold, relativeTo: .body))
+                                .foregroundStyle(Theme.onBrass)
+                                .frame(minWidth: 26, minHeight: 26)
+                                .background(Theme.brass, in: Circle())
+                                .accessibilityHidden(true)
+                        }
+                        Text(frame.caption)
+                            .font(.ticket(15, weight: frame.isResult ? .regular : .semibold, relativeTo: .body))
+                            .foregroundStyle(frame.isResult ? Theme.muted : Theme.ink)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    // A picture of another app: it grows a little with the text, then stops.
+                    FrameView(frame: frame)
+                        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                        .accessibilityHidden(true)
+                }
             }
         }
     }
@@ -69,23 +88,32 @@ private struct FrameView: View {
     let frame: GuideFrame
 
     var body: some View {
+        if case .photo(let name) = frame.screen {
+            Image(name)
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.hairline, lineWidth: 1) }
+        } else {
+            drawn
+        }
+    }
+
+    private var drawn: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(frame.caption)
-                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
-                .foregroundStyle(Theme.brass)
-                .fixedSize(horizontal: false, vertical: true)
             screen
                 .font(.subheadline)
                 .foregroundStyle(Theme.Shortcuts.text)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 250, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Theme.Shortcuts.screen, in: RoundedRectangle(cornerRadius: 18))
         .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.hairline, lineWidth: 1) }
     }
 
     @ViewBuilder private var screen: some View {
         switch frame.screen {
+        case .photo: EmptyView()
         case .allShortcuts:
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: "chevron.left")
@@ -446,14 +474,6 @@ private extension View {
 // MARK: - The iOS 27 steps, frame by frame
 
 extension GuideFrame {
-    static let openAutomation: [GuideFrame] = [
-        GuideFrame(caption: "1 · En Atajos, toca la flecha de arriba", screen: .allShortcuts),
-        GuideFrame(caption: "2 · Toca «Automatización»", screen: .library),
-        GuideFrame(caption: "3 · Toca el «+» de abajo", screen: .automationEmpty),
-    ]
-    static let openEditor: [GuideFrame] = [
-        GuideFrame(caption: "No escribas nada: toca «Editor» arriba a la derecha", screen: .describe),
-    ]
     static let addWallet: [GuideFrame] = [
         GuideFrame(caption: "1 · Abajo, toca la categoría «Automatización»", screen: .categories),
         GuideFrame(caption: "2 · Toca «Wallet»", screen: .walletBlock),
@@ -500,28 +520,43 @@ extension GuideFrame {
 // MARK: - The «Notificación» automation, frame by frame (iOS 27)
 
 extension GuideFrame {
+    // iOS 27, from real screenshots (see GuideScreenshotsTests).
+    static let newShortcut: [GuideFrame] = [
+        GuideFrame(caption: "Abre la app Atajos y toca el botón «+» de abajo. Si antes aparece "
+                   + "«Novedades de Atajos», toca «Continuar».", screen: .photo("guia27-01-mas")),
+        GuideFrame(caption: "Si se abre «Describir un atajo», no escribas nada: toca «Editar», arriba a la derecha.",
+                   screen: .photo("guia27-01b-editar")),
+    ]
     static let pickNotification: [GuideFrame] = [
-        GuideFrame(caption: "1 · Abajo, toca la categoría «Automatización»", screen: .categories),
-        GuideFrame(caption: "2 · Toca «Notificación» (no «Wallet»)", screen: .triggerList(pick: "Notificación")),
+        GuideFrame(caption: "Abajo, toca «Automatización».", screen: .photo("guia27-02-automatizacion")),
+        GuideFrame(caption: "Baja hasta la sección «Apps», a media lista, y toca «Notificación», la de la campana roja. "
+                   + "No elijas «Wallet».", screen: .photo("guia27-03-notificacion")),
     ]
     static let pickWalletApp: [GuideFrame] = [
-        GuideFrame(caption: "1 · En el bloque, toca «App»", screen: .noticeTrigger(app: nil)),
-        GuideFrame(caption: "2 · Busca y elige «Wallet»", screen: .appPicker),
-        GuideFrame(caption: "Listo: «Al recibir una notificación de Wallet»", screen: .noticeTrigger(app: "Wallet")),
+        GuideFrame(caption: "Toca la palabra «App», en azul tenue, justo debajo de «Al recibir una notificación de».",
+                   screen: .photo("guia27-04-app")),
+        GuideFrame(caption: "Baja casi hasta el final de la lista y toca «Wallet».", screen: .photo("guia27-05-wallet")),
+        GuideFrame(caption: "Así debe verse: «Al recibir una notificación de Wallet».",
+                   screen: .photo("guia27-06-con-wallet"), isResult: true),
     ]
     static let addNoticeAction: [GuideFrame] = [
-        GuideFrame(caption: "Busca «Registrar aviso de Wallet» y tócalo", screen: .noticeSearch),
-        GuideFrame(caption: "Queda debajo del bloque",
-                   screen: .noticeAction(token: .placeholder("Notificación"), ring: false)),
+        GuideFrame(caption: "Abajo, toca «Buscar», escribe «Registrar aviso» y toca «Registrar aviso de Wallet». "
+                   + "(Si sale un aviso del teclado, toca «Continuar».)",
+                   screen: .photo("guia27-07-accion")),
     ]
     static let connectNotice: [GuideFrame] = [
-        GuideFrame(caption: "1 · Toca «Notificación»",
-                   screen: .noticeAction(token: .placeholder("Notificación"), ring: true)),
-        GuideFrame(caption: "2 · Arriba del teclado, toca «Notificación»", screen: .noticeKeyboardBar),
-        GuideFrame(caption: "Listo: la burbuja azul «Notificación»",
-                   screen: .noticeAction(token: .bubble("Notificación"), ring: false)),
+        GuideFrame(caption: "La palabra «Notificación» en gris es solo un ejemplo: todavía no está conectada. Tócala.",
+                   screen: .photo("guia27-08-campo")),
+        GuideFrame(caption: "Arriba del teclado sale una barra. Deslízala hacia la izquierda varias veces, hasta "
+                   + "que veas «Notificación» con una campana.", screen: .photo("guia27-09a-barra")),
+        GuideFrame(caption: "Toca «Notificación», la de la campana. En la acción queda «Notificación» con su "
+                   + "campana. Luego toca ✓, la tecla azul del teclado (no la X).", screen: .photo("guia27-09-variable")),
     ]
     static let saveNotice: [GuideFrame] = [
-        GuideFrame(caption: "Toca la flecha de arriba: se guarda sola", screen: .savedNotice),
+        GuideFrame(caption: "No hay botón de guardar: toca la flecha de arriba a la izquierda y ya queda guardado.",
+                   screen: .photo("guia27-10-guardar")),
+        GuideFrame(caption: "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet» (el color "
+                   + "de la tarjeta puede ser otro). No tienes que activar nada más.",
+                   screen: .photo("guia27-11-listo"), isResult: true),
     ]
 }

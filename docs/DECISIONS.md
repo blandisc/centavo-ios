@@ -200,3 +200,6 @@ Antes, sin elección explícita, la moneda principal era la de la región del iP
 
 ## 2026-10-19 · Tarjetas y categorías propias
 A pedido del dueño: una pantalla nueva en «Más» (Tarjetas y categorías) con las fuentes de pago (nombre, ícono, una predeterminada) y categorías propias (nombre, ícono). Se guardan como JSON en los mismos ajustes que el presupuesto y se sincronizan igual (`BudgetSync`); los gastos siguen guardando solo el nombre, así que borrar una no toca gastos. La predeterminada solo aplica a lo anotado a mano: lo de Wallet trae su propia tarjeta.
+
+## 2026-10-19 · La guía de iOS 27 usa capturas reales
+Las imágenes de la guía salen de `GuideScreenshotsTests`, que recorre Atajos de verdad en un simulador recién borrado (es-MX, oscuro) y guarda cada pantalla; un script les dibuja el aro de latón. Cuando Apple cambie Atajos se vuelven a sacar con `TEST_RUNNER_CENTAVO_GUIA=1`. En iOS 27 el «+» abre el editor directo o «Describir un atajo» (con Apple Intelligence; se sale con «Editar»), y la automatización queda con «Automatización» encendida y «Notificar» apagado: corre sin preguntar.

@@ -79,23 +79,30 @@ struct SetupGuideView: View {
                         .accessibilityAddTraits(.isHeader)
                 }
 
-                // A picture of another app: it grows a little with the text, then stops. The
-                // numbered steps under it carry the words and scale all the way.
-                ShortcutsDrawing(scene: guide.scene)
-                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
-                    .accessibilityHidden(true)
+                if case .frames(let frames) = guide.scene {
+                    // One real screenshot per action, its instruction right above it.
+                    GuideFrameSequence(frames: frames)
+                } else {
+                    // A picture of another app: it grows a little with the text, then stops. The
+                    // numbered steps under it carry the words and scale all the way.
+                    ShortcutsDrawing(scene: guide.scene)
+                        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                        .accessibilityHidden(true)
+                }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(Array(guide.taps.enumerated()), id: \.offset) { index, tap in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text("\(index + 1)")
-                                .foregroundStyle(Theme.brass)
-                                .frame(minWidth: 16, alignment: .leading)
-                            Text(tap).foregroundStyle(Theme.ink)
+                if !guide.taps.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(guide.taps.enumerated()), id: \.offset) { index, tap in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text("\(index + 1)")
+                                    .foregroundStyle(Theme.brass)
+                                    .frame(minWidth: 16, alignment: .leading)
+                                Text(tap).foregroundStyle(Theme.ink)
+                            }
+                            .font(.ticket(15, relativeTo: .body))
+                            .lineSpacing(3)
+                            .accessibilityElement(children: .combine)
                         }
-                        .font(.ticket(14, relativeTo: .body))
-                        .lineSpacing(3)
-                        .accessibilityElement(children: .combine)
                     }
                 }
 
@@ -228,64 +235,50 @@ private struct GuideStep {
     // «Notificación» field does not connect by itself.
     static let ios27: [GuideStep] = [
         GuideStep(
-            title: "Abre Atajos",
-            taps: ["Abre la app Atajos.",
-                   "Toca la flecha de arriba a la izquierda.",
-                   "Toca «Automatización» y luego el «+» de abajo."],
-            note: "Al día no puede crear la automatización por ti: Apple no lo permite. "
-                + "Son 2 minutos y se hace una vez.",
+            title: "Crea un atajo nuevo",
+            taps: [],
+            note: "Al día no puede crearlo por ti: Apple no lo permite. Toma 2 minutos y se hace una sola vez.",
             opensShortcuts: true,
-            scene: .frames(GuideFrame.openAutomation)
+            scene: .frames(GuideFrame.newShortcut)
         ),
         GuideStep(
-            title: "Abre el editor",
-            taps: ["Se abre «Describir un atajo». No escribas nada.",
-                   "Toca «Editor» arriba a la derecha."],
-            scene: .frames(GuideFrame.openEditor)
-        ),
-        GuideStep(
-            title: "Elige «Notificación»",
-            taps: ["Abajo, toca la categoría «Automatización».",
-                   "Toca «Notificación»."],
-            note: "«Notificación» captura todas tus compras, en línea y acercando el teléfono, "
-                + "porque Wallet te avisa de cada una. «Wallet» solo captura las de acercar el teléfono.",
+            title: "Que se active con una notificación",
+            taps: [],
+            note: "«Notificación» anota todas tus compras con Wallet: en línea y acercando el teléfono.",
+            opensShortcuts: true,
             scene: .frames(GuideFrame.pickNotification)
         ),
         GuideStep(
-            title: "Elige la app Wallet",
-            taps: ["En el bloque, toca «App».",
-                   "Busca «Wallet» y elígela."],
+            title: "Que sea la de Wallet",
+            taps: [],
+            opensShortcuts: true,
             scene: .frames(GuideFrame.pickWalletApp)
         ),
         GuideStep(
-            title: "Agrega la acción de Al día",
-            taps: ["Toca «Buscar» y escribe «Registrar aviso».",
-                   "Toca «Registrar aviso de Wallet»."],
+            title: "Agrega a Al día",
+            taps: [],
+            note: "Si no aparece, abre Al día una vez y vuelve a buscar: Atajos solo conoce las apps que ya abriste.",
+            opensShortcuts: true,
             scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
-            title: "Conecta la notificación",
-            taps: ["Toca «Notificación».",
-                   "Arriba del teclado, toca «Notificación». Si no aparece, toca «Seleccionar "
-                   + "variable» y luego el bloque de arriba."],
-            note: "Debe quedar una burbuja azul que diga «Notificación». Al día saca solo la tarjeta, "
-                + "el comercio y el monto; los avisos de Wallet que no son compras se ignoran.",
+            title: "Conéctalos",
+            taps: [],
+            note: "Así Al día recibe el aviso completo: la tarjeta, el comercio y el monto.",
+            opensShortcuts: true,
             scene: .frames(GuideFrame.connectNotice)
         ),
         GuideStep(
-            title: "Guárdala",
-            taps: ["Toca la flecha de arriba a la izquierda. Se guarda sola.",
-                   "Si tenías la automatización vieja de «Wallet», bórrala: desliza a la izquierda "
-                   + "y toca «Eliminar». Así cada compra se anota una vez."],
-            note: "Si al pagar Atajos te pide confirmar, abre la automatización y elige "
-                + "«Ejecutar de inmediato».",
+            title: "Guárdalo",
+            taps: [],
+            opensShortcuts: true,
             scene: .frames(GuideFrame.saveNotice)
         ),
         GuideStep(
             title: "Pruébalo",
             taps: ["Compra algo, en línea o acercando el teléfono.",
                    "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
-            scene: .finished
+            scene: .frames([])
         ),
     ]
 
@@ -338,7 +331,8 @@ private struct CaptureCheck: View {
                         .font(.ticket(14, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Theme.ink)
                     Text(ShortcutsVersion.isIOS27
-                         ? "Si pagaste y no llega en un par de minutos, revisa los pasos 4 y 6."
+                         ? "Si pagaste y no llega en un par de minutos, revisa el paso 5: la acción debe decir "
+                           + "«Registrar» y «Notificación» con campana, en azul."
                          : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
                         .font(.ticket(12, relativeTo: .footnote))
                         .foregroundStyle(Theme.muted)
