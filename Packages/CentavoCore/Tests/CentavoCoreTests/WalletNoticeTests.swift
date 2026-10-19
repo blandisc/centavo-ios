@@ -62,4 +62,32 @@ import Testing
     func moneyThatCameInIsNotSpending(text: String) {
         #expect(WalletNotice.parse(text) == nil)
     }
+
+    /// Atajos can hand over the app's name first: the bank must stay the card, and the
+    /// concept above the amount the merchant (the owner's first notice saved the bank).
+    @Test func anExtraFirstLineDoesNotShiftTheMerchant() throws {
+        let notice = try #require(WalletNotice.parse("Wallet\nAmerican Express México\nGoogle\nMXN 319.00"))
+        #expect(notice.merchant == "Google")
+        #expect(notice.card == "American Express México")
+        #expect(notice.amount.value == 319)
+    }
+
+    @Test func anyLinesAboveTheCardAreIgnored() throws {
+        let notice = try #require(WalletNotice.parse("Ahora\nBBVA\nOxxo Roble\n$47.50"))
+        #expect(notice.merchant == "Oxxo Roble")
+        #expect(notice.card == "BBVA")
+    }
+
+    @Test func theConceptAfterTheAmountStillCounts() throws {
+        let notice = try #require(WalletNotice.parse("MXN 99.00\nSpotify"))
+        #expect(notice.merchant == "Spotify")
+        #expect(notice.card == nil)
+    }
+
+    @Test func aConceptThatLooksLikeMoneyIsNotTheAmount() throws {
+        let notice = try #require(WalletNotice.parse("BBVA\nOXXO 123 MTY\nMXN 47.50"))
+        #expect(notice.amount.value == Decimal(string: "47.5"))
+        #expect(notice.merchant == "OXXO 123 MTY")
+        #expect(notice.card == "BBVA")
+    }
 }
