@@ -218,3 +218,6 @@ Decisión del dueño después del spike (`docs/research/modelo-local.md`).
 - **La foto del ticket se pospone** (decisión del dueño).
 - **La búsqueda es el campo nativo** que aparece al bajar la lista, y busca en todos los meses.
 - **La nota del mes** es la última línea del ticket del presupuesto, solo en el mes actual.
+
+## 2026-10-19 · El simulador no frena los PR
+Decisión del dueño (opción 2 de tres): en un PR solo corren el build y las pruebas unitarias (unos 2 min). Las pruebas de interfaz en el simulador (flujos, zonas táctiles y capturas, unos 25 min) corren en cada push a `main`, a mano («Run workflow») y en un PR solo si lleva la etiqueta `ci-app`. Revierte la regla del 2026-10-13 de que las pruebas de interfaz corran y bloqueen cada PR. A cambio, un error de pantalla puede llegar a `main`: se ve en la corrida de `main` y se arregla ahí. Un PR que toca pantallas o flujos lleva `ci-app`.

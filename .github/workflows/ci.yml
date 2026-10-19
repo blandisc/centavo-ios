@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    # «labeled» so that putting `ci-app` on a PR runs the simulator right away.
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -61,8 +64,12 @@ jobs:
 
   # Corre la app en el simulador y le toma una captura a cada pantalla, para poder
   # revisar el diseño sin una Mac a la mano. No bloquea el PR: es para ver, no para aprobar.
+  # The simulator (flows, tap targets, screenshots) takes ~25 min, so a PR doesn't wait for it:
+  # it runs on every push to main, by hand, and on a PR only with the `ci-app` label (decision
+  # of 2026-10-19). The build and the unit tests above still gate every PR.
   interfaz:
     name: Capturas en simulador
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci-app')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
