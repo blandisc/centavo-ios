@@ -237,6 +237,9 @@ final class FlowTests: XCTestCase {
         amount.typeText("350")
         app.textFields["comercio"].tap()
         app.textFields["comercio"].typeText("Veterinaria")
+        // Out of the way: on a smaller phone the keyboard covers the tiles.
+        if app.keyboards.count > 0 { app.keyboards.buttons.element(boundBy: app.keyboards.buttons.count - 1).tap() }
+        if app.keyboards.count > 0 { app.swipeDown() }
         // Below the categories: on any phone it takes a scroll.
         let cash = app.buttons["tarjeta-Efectivo"]
         for _ in 0..<4 where !cash.isHittable { app.swipeUp() }
