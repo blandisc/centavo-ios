@@ -39,6 +39,7 @@ struct ExpenseListView: View {
     @State private var showingSetup = false
     @State private var showingBudget = false
     @State private var currencyChanged = false
+    @State private var showingCatalogs = false
     @State private var adding = false
     @State private var editing: Expense?
     @State private var importing = false
@@ -178,6 +179,7 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
+                        Button("Tarjetas y categorías", systemImage: "creditcard") { showingCatalogs = true }
                         Picker(selection: Binding(get: { primaryCurrency }, set: { setPrimary($0) })) {
                             ForEach(CurrencyPreference.offered, id: \.self) { code in
                                 Text(CurrencyPreference.name(code)).tag(code)
@@ -258,6 +260,7 @@ struct ExpenseListView: View {
                                isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
+            .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
                                           onReview: { showingBudget = true }))
             .task {
@@ -319,6 +322,26 @@ private struct CurrencySuggestionRow: View {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
         }
+    }
+}
+
+/// «Tarjetas y categorías», and pushing what changes there to iCloud like the budget.
+private struct CatalogsSheet: ViewModifier {
+    @Binding var isPresented: Bool
+    @AppStorage(UserCatalog.sourcesKey) private var sources = ""
+    @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
+    @AppStorage(UserCatalog.categoriesKey) private var categories = ""
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $isPresented) { CatalogSettingsView() }
+            .onChange(of: sources) { _, value in push(value, UserCatalog.sourcesKey) }
+            .onChange(of: defaultSource) { _, value in push(value, UserCatalog.defaultSourceKey) }
+            .onChange(of: categories) { _, value in push(value, UserCatalog.categoriesKey) }
+    }
+
+    private func push(_ value: String, _ key: String) {
+        if Store.syncsBudget { BudgetSync.push(value, for: key) }
     }
 }
 

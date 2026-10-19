@@ -206,6 +206,52 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "12,500.00"), "El gasto no se guardó con su monto")
     }
 
+    /// Owner's request: set up how you pay (one by default) and categories of your own, each
+    /// with an icon, and find them ready when writing an expense down.
+    func testTarjetasYCategoriasPropias() {
+        let app = launch(demo: true)
+        app.buttons["Más"].tap()
+        require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
+
+        func create(_ add: String, _ name: String, icon: String) {
+            require(app.buttons[add], "No se puede agregar").tap()
+            let field = require(app.textFields["nombre-nuevo"], "No pide el nombre")
+            field.tap()
+            field.typeText(name)
+            app.buttons[icon].tap()
+            app.buttons["guardar-nuevo"].tap()
+        }
+        create("agregar-fuente", "Nu", icon: "creditcard.fill")
+        create("agregar-fuente", "Efectivo", icon: "banknote")
+        create("agregar-categoria", "Mascotas", icon: "pawprint")
+        let cashRow = require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Efectivo")).firstMatch,
+                              "No aparece el efectivo")
+        cashRow.swipeRight()
+        require(app.buttons["Predeterminada"], "No deja elegir la predeterminada").tap()
+        snap("flujo-tarjetas-y-categorias")
+        app.buttons["Listo"].tap()
+
+        app.buttons["Anotar gasto"].tap()
+        let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
+        amount.tap()
+        amount.typeText("350")
+        app.textFields["comercio"].tap()
+        app.textFields["comercio"].typeText("Veterinaria")
+        // Below the categories: on any phone it takes a scroll.
+        let cash = app.buttons["tarjeta-Efectivo"]
+        for _ in 0..<4 where !cash.isHittable { app.swipeUp() }
+        XCTAssertTrue(require(cash, "No ofrece el efectivo").isSelected,
+                      "La predeterminada no vino elegida")
+        let pets = app.buttons["categoria-Mascotas"]
+        for _ in 0..<4 where !pets.isHittable { app.swipeDown() }
+        require(pets, "No ofrece la categoría propia").tap()
+        snap("flujo-gasto-con-tarjeta-y-categoria")
+        app.buttons["hoja-guardar"].tap()
+        let saved = require(row(app, containing: "Veterinaria"), "No se guardó")
+        XCTAssertTrue(saved.label.localizedCaseInsensitiveContains("Mascotas"), "Dice: \(saved.label)")
+        XCTAssertTrue(saved.label.localizedCaseInsensitiveContains("Efectivo"), "Dice: \(saved.label)")
+    }
+
     func testNoSePuedeGuardarCeroNiUnMontoAbsurdo() {
         let app = launch()
         fillExpense(app, amount: "0", merchant: "Nada")

@@ -28,6 +28,9 @@ enum DemoData {
         UserDefaults.standard.removeObject(forKey: BudgetStore.key)
         UserDefaults.standard.removeObject(forKey: CurrencyPreference.key)
         UserDefaults.standard.removeObject(forKey: "onboarded")
+        for key in [UserCatalog.categoriesKey, UserCatalog.sourcesKey, UserCatalog.defaultSourceKey] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
         let container = try ModelContainer(
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
