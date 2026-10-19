@@ -209,7 +209,7 @@ struct ExpenseListView: View {
                         .disabled(offset <= earliest)
                     Spacer()
                     Text(viewed, format: .dateTime.month(.abbreviated).year())
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(15, weight: .medium, relativeTo: .body))
                         .tracking(2)
                         .textCase(.uppercase)
                         .lineLimit(1)

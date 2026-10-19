@@ -48,12 +48,15 @@ struct SetupGuideView: View {
                     .disabled(step == 0)
                     .accessibilityIdentifier("guia-anterior")
                     Spacer()
+                    // Big enough to read at a glance while switching back from Atajos.
                     Text("\(step + 1) de \(steps.count)")
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(15, weight: .medium, relativeTo: .body))
                         .tracking(2)
                         .textCase(.uppercase)
                         .monospacedDigit()
                         .fixedSize()
+                        .padding(.horizontal, 16)
+                        .accessibilityLabel("Paso \(step + 1) de \(steps.count)")
                     Spacer()
                     Button("Paso siguiente", systemImage: "chevron.right") {
                         withAnimation { step += 1 }

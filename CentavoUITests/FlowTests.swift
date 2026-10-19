@@ -173,6 +173,30 @@ final class FlowTests: XCTestCase {
         expectTotal(app, "$89.00", "«89 pesos» no contó en el total")
     }
 
+    /// Owner's feedback: the thousands go in by themselves, a place already visited is one
+    /// tap, and its category comes with it.
+    func testComasSolasComercioSugeridoYCategoriaConUnToque() {
+        let app = launch(demo: true)
+        app.buttons["Anotar gasto"].tap()
+        let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
+        amount.tap()
+        amount.typeText("12500")
+        XCTAssertEqual(amount.value as? String, "12,500", "No puso la coma de los miles")
+
+        app.textFields["comercio"].tap()
+        require(app.buttons["Oxxo"], "No sugirió un comercio ya visitado").tap()
+        XCTAssertEqual(app.textFields["comercio"].value as? String, "Oxxo")
+        let despensa = require(app.buttons["categoria-Despensa"], "No hay categorías con un toque")
+        XCTAssertTrue(despensa.isSelected, "No tomó la categoría de la última vez")
+        snap("flujo-captura-rapida")
+
+        app.buttons["categoria-Comida"].tap()
+        XCTAssertTrue(app.buttons["categoria-Comida"].isSelected, "No cambió de categoría con un toque")
+        XCTAssertFalse(app.buttons["categoria-Despensa"].isSelected)
+        app.buttons["hoja-guardar"].tap()
+        require(row(app, containing: "12,500.00"), "El gasto no se guardó con su monto")
+    }
+
     func testNoSePuedeGuardarCeroNiUnMontoAbsurdo() {
         let app = launch()
         fillExpense(app, amount: "0", merchant: "Nada")
