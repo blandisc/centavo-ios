@@ -206,6 +206,21 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "12,500.00"), "El gasto no se guardó con su monto")
     }
 
+    /// Owner's request: the whole expense in one sentence fills the sheet (plain rules; the
+    /// on-device model is off in the demo modes, so this is the same on every machine).
+    func testDiloEnUnaFraseLlenaLaHoja() {
+        let app = launch(demo: true)
+        app.buttons["Anotar gasto"].tap()
+        require(app.textFields["monto"], "No abrió la hoja de gasto")
+        require(app.buttons["en-una-frase"], "No está «Dilo en una frase»").tap()
+        let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
+        sentence.tap()
+        sentence.typeText("230 de tacos ayer, en efectivo")
+        app.alerts.buttons["Llenar"].tap()
+        XCTAssertEqual(app.textFields["monto"].value as? String, "230", "No tomó el monto de la frase")
+        XCTAssertEqual(app.textFields["comercio"].value as? String, "Tacos", "No tomó el comercio de la frase")
+    }
+
     /// Owner's request: set up how you pay (one by default) and categories of your own, each
     /// with an icon, and find them ready when writing an expense down.
     func testTarjetasYCategoriasPropias() {

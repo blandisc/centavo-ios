@@ -116,7 +116,22 @@ struct ExpenseEditorView: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("moneda")
                 } header: {
-                    Text("Monto").ticketCaption()
+                    HStack {
+                        Text("Monto").ticketCaption()
+                        Spacer()
+                        // The whole expense in one sentence, written or dictated. Here, in the
+                        // header, it covers nothing and moves nothing.
+                        if expense == nil {
+                            Button("Dilo en una frase", systemImage: "text.bubble") { askingSentence = true }
+                                .labelStyle(.titleAndIcon)
+                                .font(.ticket(11, relativeTo: .caption))
+                                .textCase(nil)
+                                .foregroundStyle(Theme.brass)
+                                .disabled(readingSentence)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("en-una-frase")
+                        }
+                    }
                 }
                 .listRowBackground(Theme.surface)
 
@@ -226,17 +241,6 @@ struct ExpenseEditorView: View {
                     Button("Cancelar") { dismiss() }
                         .font(.ticket(13, relativeTo: .footnote))
                         .accessibilityIdentifier("hoja-cancelar")
-                }
-                // Above the keyboard, where the sheet opens: the whole expense in one sentence.
-                ToolbarItemGroup(placement: .keyboard) {
-                    if expense == nil {
-                        Spacer()
-                        Button("Dilo en una frase", systemImage: "text.bubble") { askingSentence = true }
-                            .labelStyle(.titleAndIcon)
-                            .font(.ticket(13, relativeTo: .footnote))
-                            .disabled(readingSentence)
-                            .accessibilityIdentifier("en-una-frase")
-                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar", action: save)
