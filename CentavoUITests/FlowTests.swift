@@ -219,6 +219,10 @@ final class FlowTests: XCTestCase {
         sentence.tap()
         sentence.typeText("230 de tacos ayer, en efectivo")
         app.alerts.buttons["Llenar"].tap()
+        // Back up to the amount. Give the fill a moment first: with changes in it, the sheet
+        // can't be swiped away; without them, swiping down would close it.
+        Thread.sleep(forTimeInterval: 2)
+        for _ in 0..<4 where !app.textFields["monto"].isHittable { app.swipeDown() }
         // The sheet fills a moment after «Llenar» (the sentence is read off the main thread).
         let filled = expectation(for: NSPredicate(format: "value == %@", "230"),
                                  evaluatedWith: app.textFields["monto"])
