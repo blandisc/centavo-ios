@@ -46,6 +46,19 @@ enum MonthStatus {
         return sentence
     }
 
+    /// "Llevas $1,240.00 en Café este mes." The category's share of the month's total, in the
+    /// main currency like everything else on the screen.
+    static func categorySentence(_ category: String, in context: ModelContext, now: Date = .now,
+                                 primary: String = primaryCurrency) throws -> String {
+        let summary = try summarize(in: context, now: now, primary: primary)
+        let wanted = UserCatalog.fold(category)
+        let match = summary.categories.first { $0.category.map(UserCatalog.fold) == wanted }
+        guard let match, match.amount != 0, let name = match.category else {
+            return "Este mes no llevas nada en \(category)."
+        }
+        return "Llevas \(money(match.amount, summary.primary)) en \(name) este mes."
+    }
+
     private static func summarize(in context: ModelContext, now: Date,
                                   primary: String) throws -> MonthSummary {
         // Only this month's rows: the notice runs at every payment and should stay quick.

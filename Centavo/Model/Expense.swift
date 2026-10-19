@@ -1,3 +1,4 @@
+import CentavoCore
 import Foundation
 import SwiftData
 
@@ -27,9 +28,35 @@ final class Expense {
     var repeatDay: Int?
     /// On a copy: logged by itself from a fixed expense.
     var isRepeat: Bool?
+    /// How the merchant reads on screen («Taquería El Güero» for «CLIP*MX TAQ GUERO 02»).
+    /// Only for showing: `merchant` keeps what Wallet sent, for the CSV and the memory.
+    var displayName: String?
+    /// Where `category` came from when nobody chose it: `suggestedCategory` for the on-device
+    /// model's guess. `nil` is a category someone chose (or one from before this existed).
+    var categorySource: String?
+
+    static let suggestedCategory = "sugerida"
 
     /// Fixed: the original or one of its copies.
     var isFixed: Bool { repeatsMonthly == true || isRepeat == true }
+
+    /// The name the screen shows.
+    var shownName: String { displayName ?? merchant }
+
+    /// A category the model suggested and nobody confirmed yet.
+    var hasSuggestedCategory: Bool { category != nil && categorySource == Self.suggestedCategory }
+
+    /// As a search sees it.
+    var searchable: SearchableExpense {
+        SearchableExpense(merchant: merchant, readableName: displayName, category: category,
+                          card: card, amount: amount, date: date)
+    }
+
+    /// As the category rule sees it: a suggestion is shown but never remembered as a choice.
+    var categorized: CategorizedExpense {
+        CategorizedExpense(merchant: merchant, category: category, date: date,
+                           isSuggested: hasSuggestedCategory)
+    }
 
     init(amount: Decimal, currencyMarker: String? = nil, merchant: String,
          card: String? = nil, date: Date = .now, category: String? = nil,
@@ -41,6 +68,7 @@ final class Expense {
         self.date = date
         self.category = category
         self.rawAmount = rawAmount
+        self.displayName = MerchantName.readable(merchant)
     }
 }
 

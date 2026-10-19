@@ -42,15 +42,18 @@ enum ExpenseRecorder {
         case .save: break
         }
 
-        context.insert(Expense(
+        let before = remembered(for: merchantName, in: context)
+        let expense = Expense(
             amount: parsed.value,
             currencyMarker: parsed.currencyMarker,
             merchant: merchantName,
             card: cleanCard,
             date: now,
-            category: rememberedCategory(for: merchantName, in: context),
+            category: before.category,
             rawAmount: amountText
-        ))
+        )
+        before.apply(to: expense)
+        context.insert(expense)
         try context.save()
         return .saved(merchant: merchantName)
     }
@@ -63,6 +66,7 @@ enum ExpenseRecorder {
     static func recordByHand(
         amountText: String,
         merchant: String,
+        card: String? = nil,
         in context: ModelContext,
         primary: String = CurrencyPreference.current,
         now: Date = .now
@@ -71,13 +75,17 @@ enum ExpenseRecorder {
         guard parsed.value != 0 else { return .empty }
         let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
-        context.insert(Expense(
+        let before = remembered(for: merchantName, in: context)
+        let expense = Expense(
             amount: parsed.value,
             currencyMarker: spokenCurrency(parsed.currencyMarker, primary: primary),
             merchant: merchantName,
+            card: card,
             date: now,
-            category: rememberedCategory(for: merchantName, in: context)
-        ))
+            category: before.category
+        )
+        before.apply(to: expense)
+        context.insert(expense)
         try context.save()
         return .saved(merchant: merchantName)
     }
@@ -107,17 +115,33 @@ enum ExpenseRecorder {
         }
     }
 
-    /// Whatever this merchant was filed under last time, so a captured payment lands
-    /// in the right place without anyone touching the app.
-    private static func rememberedCategory(for merchant: String, in context: ModelContext) -> String? {
+    /// What a merchant was filed and shown as before, so a captured payment lands in the
+    /// right place without anyone touching the app.
+    struct Remembered {
+        var category: String?
+        /// The category is the model's suggestion from last time, still unconfirmed.
+        var isSuggested = false
+        /// The readable name it was shown with last time.
+        var name: String?
+
+        func apply(to expense: Expense) {
+            if isSuggested { expense.categorySource = Expense.suggestedCategory }
+            if let name { expense.displayName = name }
+        }
+    }
+
+    private static func remembered(for merchant: String, in context: ModelContext) -> Remembered {
         let descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        guard let history = try? context.fetch(descriptor) else { return nil }
+        guard let history = try? context.fetch(descriptor) else { return Remembered() }
+        let key = UserCatalog.fold(merchant)
+        let sameMerchant = history.filter { UserCatalog.fold($0.merchant) == key }
+        let name = sameMerchant.first?.displayName
         // What you filed this merchant under before; failing that, the catalog's guess.
-        return MerchantCatalog.suggestion(
-            for: merchant,
-            history: history.map {
-                CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
-            }
-        )
+        if let category = MerchantCatalog.suggestion(for: merchant, history: history.map(\.categorized)) {
+            return Remembered(category: category, name: name)
+        }
+        // Failing both, what the on-device model suggested last time, still as a suggestion.
+        let suggested = sameMerchant.first { $0.hasSuggestedCategory }
+        return Remembered(category: suggested?.category, isSuggested: suggested != nil, name: name)
     }
 }

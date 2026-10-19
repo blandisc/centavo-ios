@@ -12,6 +12,8 @@ struct BudgetPage: View {
     let isCurrentMonth: Bool
     /// Where the month's money went, biggest first. Empty when nothing is filed.
     var shares: [CategoryShare] = []
+    /// One thing worth knowing about the month (see `MonthNote`), this month only.
+    var note: String?
     let onSetBudget: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = 84
@@ -47,7 +49,29 @@ struct BudgetPage: View {
             if !shares.isEmpty {
                 whereItGoes
             }
+            if let note {
+                noteLine(note)
+            }
         }
+    }
+
+    // MARK: Note
+
+    /// «Nota · Comida va 40 % arriba de lo normal…», the last line of the ticket.
+    private func noteLine(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Nota")
+                .font(.ticket(10, relativeTo: .caption2))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+            Text(text)
+                .font(.ticket(12, relativeTo: .footnote))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("nota-del-mes")
     }
 
     // MARK: Where it goes

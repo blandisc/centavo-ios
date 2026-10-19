@@ -29,6 +29,10 @@ struct ExpenseEditorView: View {
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @State private var creating: Creating?
+    /// «230 de unos tacos ayer, en efectivo»: fills the sheet from one sentence.
+    @State private var sentence = ""
+    @State private var askingSentence = false
+    @State private var readingSentence = false
 
     private enum Creating: String, Identifiable { case category, source; var id: String { rawValue } }
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
@@ -64,9 +68,7 @@ struct ExpenseEditorView: View {
     @State private var pastExpenses: [CategorizedExpense] = []
 
     private var allPastExpenses: [CategorizedExpense] {
-        history.map {
-            CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
-        }
+        history.map(\.categorized)
     }
 
     private func field(_ title: String, text: Binding<String>, prompt: String,
@@ -128,6 +130,10 @@ struct ExpenseEditorView: View {
                     }
                 } header: {
                     Text("Comercio").ticketCaption()
+                } footer: {
+                    if let shown = expense?.displayName, merchant == expense?.merchant {
+                        hint("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
+                    }
                 }
                 .listRowBackground(Theme.surface)
 
@@ -136,7 +142,9 @@ struct ExpenseEditorView: View {
                 } header: {
                     Text("Categoría (opcional)").ticketCaption()
                 } footer: {
-                    if let remembered = CategoryMemory.category(for: merchant, in: pastExpenses) {
+                    if let expense, expense.hasSuggestedCategory, category == expense.category {
+                        hint("Sugerida por Al día con tus gastos de ejemplo. Elige otra si no te queda; la que elijas se recuerda.")
+                    } else if let remembered = CategoryMemory.category(for: merchant, in: pastExpenses) {
                         hint("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
                     } else if let suggested = MerchantCatalog.category(for: merchant) {
                         hint("Sugerida para \(merchant.trimmingCharacters(in: .whitespaces)): \(suggested). Cámbiala si no te queda.")
@@ -219,12 +227,31 @@ struct ExpenseEditorView: View {
                         .font(.ticket(13, relativeTo: .footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
+                // Above the keyboard, where the sheet opens: the whole expense in one sentence.
+                ToolbarItemGroup(placement: .keyboard) {
+                    if expense == nil {
+                        Spacer()
+                        Button("Dilo en una frase", systemImage: "text.bubble") { askingSentence = true }
+                            .labelStyle(.titleAndIcon)
+                            .font(.ticket(13, relativeTo: .footnote))
+                            .disabled(readingSentence)
+                            .accessibilityIdentifier("en-una-frase")
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar", action: save)
                         .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
                         .disabled(!canSave)
                         .accessibilityIdentifier("hoja-guardar")
                 }
+            }
+            .alert("Dilo en una frase", isPresented: $askingSentence) {
+                TextField("230 de tacos ayer, en efectivo", text: $sentence)
+                    .accessibilityIdentifier("frase")
+                Button("Llenar") { Task { await fillFromSentence() } }
+                Button("Cancelar", role: .cancel) { sentence = "" }
+            } message: {
+                Text("Cuánto, dónde, qué día y cómo pagaste. Revisa lo que llené antes de guardar.")
             }
             .confirmationDialog("¿Borrar este gasto?", isPresented: $confirmingDelete,
                                 titleVisibility: .visible) {
@@ -409,6 +436,28 @@ struct ExpenseEditorView: View {
         date = expense.date
     }
 
+    /// Fills the fields from `sentence`: the plain reading first, then the on-device model's
+    /// where it is there and agrees with what was said. Nothing is saved until «Guardar».
+    private func fillFromSentence() async {
+        let text = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !readingSentence else { return }
+        readingSentence = true
+        defer { readingSentence = false }
+        let sources = paymentSources.map(\.name)
+        guard let entry = await QuickExpense.read(text, sources: sources) else {
+            amountFocused = true
+            return
+        }
+        if let parsed = AmountParser.parse(entry.amountText) {
+            amountText = parsed.value.magnitude.formatted(.number.precision(.fractionLength(0...2)))
+            currency = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: CurrencyPreference.current)
+        }
+        if let name = entry.merchant { merchant = name }
+        date = min(entry.date, .now)
+        if let source = entry.source { card = source }
+        sentence = ""
+    }
+
     /// Turning it on starts counting from the expense's own month; turning it off stops it.
     private func setRepeats(_ expense: Expense) {
         if repeatsMonthly {
@@ -437,8 +486,12 @@ struct ExpenseEditorView: View {
             let before = CurrencyResolver.isoCode(for: expense.currencyMarker,
                                                   primary: CurrencyPreference.current)
             if before != currency { expense.currencyMarker = currency }
+            // A name typed here is how it reads; Wallet's gets its readable one again.
+            if name != expense.merchant { expense.displayName = MerchantName.readable(name) }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
+            // Another category is a choice; keeping the suggested one leaves it a suggestion.
+            if categoryName != (expense.category ?? "") { expense.categorySource = nil }
             expense.category = categoryName.isEmpty ? nil : categoryName
             expense.date = date
             if expense.isRepeat != true { setRepeats(expense) }
