@@ -91,6 +91,15 @@ final class FlowTests: XCTestCase {
         return element.exists
     }
 
+    /// «Borrar gasto» sits at the bottom of the sheet, under the categories: on a smaller
+    /// phone it has to be scrolled to.
+    private func deleteButton(_ app: XCUIApplication) -> XCUIElement {
+        let button = app.buttons["borrar-gasto"]
+        require(app.textFields["monto"], "No abrió el gasto")
+        for _ in 0..<4 where !button.isHittable { app.swipeUp() }
+        return require(button, "No hay botón de borrar")
+    }
+
     // MARK: Anotar
 
     func testAnotarUnGastoLoSumaAlTotalYApareceEnLaLista() {
@@ -236,7 +245,7 @@ final class FlowTests: XCTestCase {
     func testBorrarPideConfirmacionYLuegoQuitaElGasto() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
-        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        deleteButton(app).tap()
 
         let confirm = require(app.buttons["Borrar"], "No pidió confirmación")
         snap("flujo-confirmar-borrado")
@@ -248,7 +257,7 @@ final class FlowTests: XCTestCase {
     func testDeshacerRegresaElGastoBorrado() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
-        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        deleteButton(app).tap()
         require(app.buttons["Borrar"], "No pidió confirmación").tap()
         let undo = require(app.buttons["deshacer-borrado"], "No ofreció deshacer", timeout: 4)
         snap("flujo-deshacer")
@@ -274,7 +283,7 @@ final class FlowTests: XCTestCase {
     func testCancelarLaConfirmacionNoBorra() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
-        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        deleteButton(app).tap()
         require(app.buttons["Borrar"], "No pidió confirmación")
         // On iOS 26 the dialog is a popover with no Cancel of its own: tapping outside dismisses it.
         let dialogCancel = app.buttons.matching(NSPredicate(
