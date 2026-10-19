@@ -145,13 +145,24 @@ struct ExpenseEditorView: View {
                 .listRowBackground(Theme.surface)
 
                 Section {
+                    sourceGrid
+                } header: {
+                    Text("¿Con qué pagaste? (opcional)").ticketCaption()
+                } footer: {
+                    if paymentSources.isEmpty {
+                        hint("Agrega tus tarjetas una vez (BBVA, Nu…). La que marques como predeterminada "
+                             + "en «Más › Tarjetas y categorías» ya vendrá elegida.")
+                    }
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
                     DatePicker(selection: $date, in: ...Date.now) {
                         Text("Fecha")
                             .font(.ticket(12, relativeTo: .footnote))
                             .tracking(1.2)
                             .textCase(.uppercase)
                     }
-                    sourceGrid
                     if expense?.isRepeat != true {
                         Toggle(isOn: $repeatsMonthly) {
                             Text("Se repite cada mes")
@@ -162,8 +173,6 @@ struct ExpenseEditorView: View {
                         .tint(Theme.brass)
                         .accessibilityIdentifier("se-repite")
                     }
-                } header: {
-                    Text("Fecha y cómo pagaste").ticketCaption()
                 } footer: {
                     if repeatsMonthly {
                         hint("Renta, suscripciones, la luz: se anota sola el mismo día de cada mes.")
@@ -199,7 +208,9 @@ struct ExpenseEditorView: View {
                 }
             }
             .ticketForm()
-            .scrollDismissesKeyboard(.interactively)
+            // The number pad has no key to close it and covers half the sheet: scrolling down to
+            // the categories or the card closes it.
+            .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(expense == nil ? "Nuevo gasto" : "Editar gasto")
             .toolbar {
@@ -290,7 +301,7 @@ struct ExpenseEditorView: View {
                     category = category == name ? "" : name
                 }
             }
-            categoryChip("Nueva", icon: "plus", selected: false) { creating = .category }
+            categoryChip("Nueva categoría", icon: "plus", selected: false) { creating = .category }
         }
         .padding(.vertical, 6)
     }
@@ -299,18 +310,21 @@ struct ExpenseEditorView: View {
     /// with (Wallet names the card). The default one is already chosen on a new expense.
     private var sourceGrid: some View {
         let sources = paymentSources
+        // Cash needs no setting up: it is always one tap away.
         var names = sources.map(\.name)
+        if !names.contains(where: { UserCatalog.same($0, "Efectivo") }) { names.append("Efectivo") }
         for name in knownCards + [card] where !name.isEmpty && !names.contains(where: { UserCatalog.same($0, name) }) {
             names.append(name)
         }
         return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
             ForEach(names, id: \.self) { name in
-                let icon = sources.first { UserCatalog.same($0.name, name) }?.icon ?? "creditcard"
+                let icon = sources.first { UserCatalog.same($0.name, name) }?.icon
+                    ?? (UserCatalog.same(name, "Efectivo") ? "banknote" : "creditcard")
                 categoryChip(name, icon: icon, selected: UserCatalog.same(card, name), kind: "tarjeta") {
                     card = UserCatalog.same(card, name) ? "" : name
                 }
             }
-            categoryChip("Agregar", icon: "plus", selected: false, kind: "tarjeta") { creating = .source }
+            categoryChip("Agregar tarjeta", icon: "plus", selected: false, kind: "tarjeta") { creating = .source }
         }
         .padding(.vertical, 6)
         .accessibilityIdentifier("tarjetas")

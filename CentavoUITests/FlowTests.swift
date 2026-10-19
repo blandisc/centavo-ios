@@ -259,6 +259,26 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(saved.label.localizedCaseInsensitiveContains("Efectivo"), "Dice: \(saved.label)")
     }
 
+    /// Owner's feedback: with no cards set up, the payment part was a lone tile that said
+    /// nothing. Cash is always there, the button says what it adds, and scrolling closes
+    /// the number pad that covered it.
+    func testElMetodoDePagoSeEntiendeSinTarjetas() {
+        let app = launch()
+        app.buttons["Anotar gasto"].tap()
+        require(app.textFields["monto"], "No abrió la hoja de gasto")
+        XCTAssertTrue(app.keyboards.count > 0, "El monto no abrió el teclado")
+        let cash = app.buttons["tarjeta-Efectivo"]
+        for _ in 0..<4 where !cash.isHittable { app.swipeUp() }
+        XCTAssertEqual(app.keyboards.count, 0, "Al bajar no se cerró el teclado")
+        require(cash, "No ofrece efectivo sin configurar nada")
+        XCTAssertTrue(app.buttons["tarjeta-Agregar tarjeta"].exists, "El botón no dice qué agrega")
+        XCTAssertTrue(app.staticTexts["¿Con qué pagaste? (opcional)"].exists
+                      || app.staticTexts["¿CON QUÉ PAGASTE? (OPCIONAL)"].exists, "Falta el título de la sección")
+        snap("flujo-metodo-de-pago-sin-tarjetas")
+        cash.tap()
+        XCTAssertTrue(cash.isSelected, "No se eligió el efectivo")
+    }
+
     func testNoSePuedeGuardarCeroNiUnMontoAbsurdo() {
         let app = launch()
         fillExpense(app, amount: "0", merchant: "Nada")

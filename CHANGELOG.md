@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- Al anotar a mano, «¿Con qué pagaste?» tiene su propia sección: «Efectivo» siempre a un toque, tus tarjetas, y un botón «Agregar tarjeta» que dice lo que hace (antes era un «+» suelto). Las categorías nuevas se crean desde «Nueva categoría». Al bajar en la hoja se cierra el teclado numérico, que tapaba la mitad.
 - La guía para conectar Wallet (iOS 27) se rehizo siguiendo Atajos en un iPhone nuevo: una captura real por paso con lo que hay que tocar marcado, y el flujo actual (el «+» abre el editor; si sale «Describir un atajo», «Editar»; la variable «Notificación» está al final de la barra, deslizándola). Sin animaciones ni pasos de la automatización vieja.
 - Nuevo en «Más»: **Tarjetas y categorías**. Da de alta tus tarjetas y el efectivo con su ícono y marca una como predeterminada: ya viene elegida al anotar a mano. Crea las categorías que quieras, cada una con su ícono; también desde «Nueva» al anotar un gasto.
 - Al escribir montos (gasto, presupuesto, gastos fijos) la coma de los miles se pone sola: «12,500».
