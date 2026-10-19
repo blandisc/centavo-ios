@@ -243,8 +243,12 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(require(cash, "No ofrece el efectivo").isSelected,
                       "La predeterminada no vino elegida")
         let pets = app.buttons["categoria-Mascotas"]
-        for _ in 0..<4 where !pets.isHittable { app.swipeDown() }
-        require(pets, "No ofrece la categoría propia").tap()
+        for _ in 0..<4 where !pets.isSelected {
+            if !pets.isHittable { app.swipeDown() }
+            require(pets, "No ofrece la categoría propia").tap()
+            usleep(400_000)
+        }
+        XCTAssertTrue(pets.isSelected, "No se eligió la categoría propia")
         snap("flujo-gasto-con-tarjeta-y-categoria")
         app.buttons["hoja-guardar"].tap()
         let saved = require(row(app, containing: "Veterinaria"), "No se guardó")
