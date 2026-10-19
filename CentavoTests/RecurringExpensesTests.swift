@@ -1,3 +1,4 @@
+import CentavoCore
 import SwiftData
 import XCTest
 @testable import Centavo
