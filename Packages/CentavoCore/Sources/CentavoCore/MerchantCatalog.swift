@@ -74,7 +74,7 @@ public enum MerchantCatalog {
         return folded.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
     }
 
-    private static func contains(_ words: [String], _ phrase: [String]) -> Bool {
+    static func contains(_ words: [String], _ phrase: [String]) -> Bool {
         guard phrase.count <= words.count else { return false }
         return (0...(words.count - phrase.count)).contains { start in
             Array(words[start..<(start + phrase.count)]) == phrase

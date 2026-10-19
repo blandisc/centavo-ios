@@ -69,6 +69,30 @@ public struct WalletNotice: Equatable, Sendable {
                             merchant: merchant, card: card)
     }
 
+    /// A notice `parse` could not read (a bank or format it doesn't know), as the on-device
+    /// model read it. Trusted only when the amount is literally in the notice with a real
+    /// currency, the merchant is too, and it is not money coming in.
+    public static func rescue(_ text: String, merchant: String?, card: String?,
+                              amountFragment: String) -> WalletNotice? {
+        let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
+        if received.contains(where: folded.contains) { return nil }
+        let figure = amountFragment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !figure.isEmpty, text.contains(figure),
+              let amount = CaptureText.amount(in: figure), amount.value != 0,
+              let marker = amount.currencyMarker, CaptureText.isCurrency(marker) else { return nil }
+        func inNotice(_ part: String?) -> String? {
+            guard let part = part?.trimmingCharacters(in: .whitespacesAndNewlines), !part.isEmpty,
+                  part != figure, text.range(of: part, options: [.caseInsensitive]) != nil else { return nil }
+            return part
+        }
+        guard let shop = inNotice(merchant) else { return nil }
+        let isRefund = refunds.contains(where: folded.contains)
+        let value = isRefund ? -amount.value.magnitude : amount.value
+        return WalletNotice(amount: ParsedAmount(value: value, currencyMarker: amount.currencyMarker),
+                            amountText: isRefund && !figure.hasPrefix("-") ? "-" + figure : figure,
+                            merchant: shop, card: inNotice(card))
+    }
+
     private static func withoutRefundWord(_ line: String) -> String? {
         let folded = line.folding(options: [.caseInsensitive, .diacriticInsensitive],
                                   locale: Locale(identifier: "es_MX"))
