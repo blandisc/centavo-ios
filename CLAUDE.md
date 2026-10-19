@@ -12,6 +12,7 @@ Centavo (en el iPhone se llama **Al día**; decisión del 2026-10-17): tracker d
 
 ## Verificar
 `Tools/verify.sh` antes de terminar cualquier cambio Swift (`package` = solo el paquete; `app` = solo el build). Builds con `-jobs 4` y nunca en paralelo con otro build en la Mac.
+En un PR la CI corre solo el build y las pruebas unitarias; el simulador (flujos, zonas táctiles, capturas) corre en `main` y en los PR con la etiqueta **`ci-app`**: ponla en todo PR que toque pantallas o flujos.
 
 ## Diseño
 Estilo **«Noche ticket»** aprobado por el dueño: modo oscuro forzado, acento latón, tipografía de ticket (IBM Plex Mono). Colores y tipografía viven en `Centavo/Theme/`; nunca se escriben sueltos en una pantalla.
