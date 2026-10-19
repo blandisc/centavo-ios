@@ -77,7 +77,7 @@ public struct WalletNotice: Equatable, Sendable {
         let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
         if received.contains(where: folded.contains) { return nil }
         let figure = amountFragment.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !figure.isEmpty, text.contains(figure),
+        guard !figure.isEmpty, containsWhole(figure, in: text),
               let amount = CaptureText.amount(in: figure), amount.value != 0,
               let marker = amount.currencyMarker, CaptureText.isCurrency(marker) else { return nil }
         func inNotice(_ part: String?) -> String? {
@@ -93,6 +93,19 @@ public struct WalletNotice: Equatable, Sendable {
         return WalletNotice(amount: ParsedAmount(value: value, currencyMarker: amount.currencyMarker),
                             amountText: isRefund && !figure.hasPrefix("-") ? "-" + figure : figure,
                             merchant: shop, card: inNotice(card))
+    }
+
+    /// `figure` in `text` as a whole amount: «$45» is not in «$450.00».
+    private static func containsWhole(_ figure: String, in text: String) -> Bool {
+        var start = text.startIndex
+        while let found = text.range(of: figure, range: start..<text.endIndex) {
+            let before = found.lowerBound > text.startIndex ? text[text.index(before: found.lowerBound)] : " "
+            let after = text[found.upperBound...].prefix(2)
+            let runsOn = after.first.map { $0.isNumber || (",.".contains($0) && after.dropFirst().first?.isNumber == true) } ?? false
+            if !before.isNumber && !runsOn { return true }
+            start = text.index(after: found.lowerBound)
+        }
+        return false
     }
 
     private static func withoutRefundWord(_ line: String) -> String? {

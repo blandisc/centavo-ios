@@ -211,7 +211,8 @@ Decisión del dueño después del spike (`docs/research/modelo-local.md`).
 - **El modelo no suma ni inventa.** Elige de una lista (tus categorías o «Ninguna»), copia las palabras que se dijeron o redacta un hecho ya calculado. `CentavoCore` revisa todo antes de tocar un gasto: el nombre nuevo tiene que ser el mismo comercio (`MerchantName.isFaithful`), la categoría tiene que estar en la lista, el monto tiene que estar literal en lo dicho y una nota no puede traer cifras que la app no calculó (`FactCheck`).
 - **Esquema: dos propiedades opcionales en `Expense`**, `displayName` y `categorySource`. Migración ligera y compatible con iCloud. Aprobado por el dueño.
 - **El nombre legible es solo para mostrar.** El CSV, la memoria por comercio y los repetidos usan el nombre que mandó Wallet; dos sucursales siguen siendo dos comercios. El modelo solo renombra lo que llegó de Wallet, nunca un nombre que alguien escribió.
-- **Una categoría sugerida no es memoria.** Se ve igual, la hoja dice que es sugerida y no cuenta como «lo que elegiste» para el siguiente pago. Elegir otra la vuelve tuya.
+- **Una categoría sugerida no es memoria.** Se ve igual, la hoja dice que es sugerida y no cuenta como «lo que elegiste» para el siguiente pago. Elegir otra la vuelve tuya; quitarla la deja sin categoría y no se vuelve a sugerir. El CSV no exporta sugerencias sin confirmar, para que al importarlo no parezcan elecciones.
+- **Un nombre que escribes es el que se ve**, y el modelo ya no lo toca. Las marcas conocidas tampoco se reescriben.
 - **No corre durante la captura de Wallet**, que es en segundo plano y donde Apple raciona el modelo: los comercios se revisan al abrir la app, ocho a la vez. Única excepción: un aviso de Wallet con monto que el lector no entendió.
 - **Siri en dos pasos:** «Anota esto en Al día» y luego la frase. Apple no deja texto libre en la frase que arranca Siri.
 - **La foto del ticket se pospone** (decisión del dueño).

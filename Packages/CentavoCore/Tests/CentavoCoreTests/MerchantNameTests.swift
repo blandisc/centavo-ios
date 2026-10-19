@@ -19,6 +19,11 @@ import Testing
         ("SQ *CAFE CENTRAL", "Cafe Central"),
         ("FARMACIA 24 HORAS", "Farmacia 24 Horas"),
         ("GASOLINERA G500 LOS ANGELES", "Gasolinera los Angeles"),
+        ("GOOGLE *DUOLINGO", "Duolingo"),
+        ("GOOGLE *YouTube Premium", "YouTube"),
+        ("DISNEY STORE", "Disney Store"),
+        ("STEAM CAR WASH", "Steam Car Wash"),
+        ("DISNEY PLUS", "Disney+"),
     ] as [(String, String)])
     func readsWalletNames(raw: String, readable: String) {
         #expect(MerchantName.readable(raw) == readable, "«\(raw)»")
@@ -26,7 +31,7 @@ import Testing
 
     /// A name someone wrote, or one Wallet already sends readable, stays as it is.
     @Test(arguments: ["Tacos Don Beto", "Oxxo", "Sin comercio", "", "Café Avellaneda", "Netflix",
-                      "CLIP*MX 77812", "MERPAGO*12345"])
+                      "CLIP*MX 77812", "MERPAGO*12345", "SA DE CV", "Mx Café", "GOOGLE"])
     func leavesReadableNamesAlone(raw: String) {
         #expect(MerchantName.readable(raw) == nil, "«\(raw)»")
     }
@@ -47,6 +52,9 @@ import Testing
         ("Oxxo 999", "OXXO ROBLE MTY 1234"),
         ("", "OXXO"),
         ("La de la esquina, donde siempre compro las tortillas los domingos", "TORTILLERIA"),
+        ("Uber", "UBER EATS"), ("Clip", "CLIP*MX TAQ GUERO 02"), ("Merpago", "MERPAGO*ESTETICAVALE"),
+        ("Star", "STARBUCKS COFFEE"), ("Guadalajara", "FARMACIAS GUADALAJARA SUC 12"),
+        ("Taquilla", "CLIP*MX TAQ GUERO 02"), ("Suc", "TACOS PACO SUC 3"),
     ] as [(String, String)])
     func rejectsAnotherPlace(candidate: String, original: String) {
         #expect(!MerchantName.isFaithful(candidate, to: original), "«\(candidate)» ← «\(original)»")

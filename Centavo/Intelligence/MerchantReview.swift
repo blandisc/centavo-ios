@@ -39,34 +39,40 @@ enum MerchantReview {
             groups[key, default: []].append(expense)
         }
 
-        for key in order.prefix(perRun) {
+        var asked = 0
+        for key in order where asked < perRun {
             guard let group = groups[key], let merchant = group.first?.merchant else { continue }
-            // Names only for what Wallet sent: a name someone typed is theirs, as they wrote it.
-            let fromWallet = group.contains { $0.rawAmount != nil }
-            // Categories only where neither you nor the catalog has one.
-            let needsCategory = group.contains { $0.category == nil }
-                && MerchantCatalog.suggestion(for: merchant, history: history) == nil
-            reviewed.insert(key)
-            guard fromWallet || needsCategory else { continue }
+            // Names only for what Wallet sent and nobody renamed (a typed name is theirs, as
+            // written), and never for a brand, which already reads as itself.
+            let renamable = group.filter { $0.rawAmount != nil && $0.displayName != $0.merchant }
+            let wantsName = !renamable.isEmpty && MerchantName.brand(for: merchant) == nil
+            // Categories only where neither you nor the catalog has one, and nobody took it off.
+            let open = group.filter { $0.category == nil && $0.categorySource != Expense.clearedCategory }
+            let wantsCategory = !open.isEmpty && MerchantCatalog.suggestion(for: merchant, history: history) == nil
+            // Nothing to ask is not «reviewed»: a later Wallet charge may need it.
+            guard wantsName || wantsCategory else { continue }
 
+            asked += 1
             let plain = MerchantName.readable(merchant)
-            guard let reading = await LocalModel.readMerchant(merchant, readable: plain,
-                                                              candidates: candidates, examples: examples)
-            else {
-                // The model went away (turned off, still downloading): look again next time.
-                // While it is there, no answer for this name (a guardrail) means leave it be.
-                if !LocalModel.isReady { reviewed.remove(key); break }
-                continue
-            }
-            if fromWallet, let name = reading.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+            let reading = await LocalModel.readMerchant(merchant, readable: plain,
+                                                        candidates: candidates, examples: examples)
+            // The screen moved on (a payment came in, a delete) or the model went away (turned
+            // off, still downloading): look again next time.
+            if Task.isCancelled || !LocalModel.isReady { break }
+            reviewed.insert(key)
+            // No answer while the model is there (a guardrail): leave this one be.
+            guard let reading else { continue }
+            // Rows deleted while the model was thinking are gone; never write to them.
+            let alive: (Expense) -> Bool = { !$0.isDeleted && $0.modelContext != nil }
+            if wantsName, let name = reading.name?.trimmingCharacters(in: .whitespacesAndNewlines),
                name != merchant, MerchantName.isFaithful(name, to: merchant) {
-                for expense in group where expense.rawAmount != nil
+                for expense in renamable where alive(expense)
                     && (expense.displayName == nil || expense.displayName == plain) {
                     expense.displayName = name
                 }
             }
-            if needsCategory, let category = CategoryPick.validate(reading.category, among: candidates) {
-                for expense in group where expense.category == nil {
+            if wantsCategory, let category = CategoryPick.validate(reading.category, among: candidates) {
+                for expense in open where alive(expense) && expense.category == nil {
                     expense.category = category
                     expense.categorySource = Expense.suggestedCategory
                 }

@@ -97,6 +97,10 @@ import Testing
         ("gasté 300 en 2 cosas", "300"),
         ("2 cafés por 90", "90"),
         ("3 boletos 450 pesos", "450 pesos"),
+        ("3 tacos 60", "60"),
+        ("Farmacia 24 horas 180", "180"),
+        ("Oxxo 2 aguas 30", "30"),
+        ("hace 90 días 200 de super", "200"),
     ] as [(String, String)])
     func picksTheAmountNotACount(sentence: String, amount: String) {
         #expect(parse(sentence)?.amountText == amount, "«\(sentence)»")
@@ -108,6 +112,20 @@ import Testing
         let refined = QuickEntryParser.refine(base, sentence: sentence, amount: "45", merchant: nil, when: nil,
                                               payment: nil, sources: [], now: Self.now, calendar: Self.calendar)
         #expect(refined.amountText == "450")
+    }
+
+    @Test func aSurePlainAmountStandsAgainstTheModel() throws {
+        let sentence = "5 tacos de 20"
+        let base = try #require(parse(sentence))
+        let refined = QuickEntryParser.refine(base, sentence: sentence, amount: "5", merchant: nil, when: nil,
+                                              payment: nil, sources: [], now: Self.now, calendar: Self.calendar)
+        #expect(refined.amountText == "20")
+        // An unsure one (no currency, no «de») is the model's to settle.
+        let unsure = "3 tacos 60 y 2 refrescos"
+        let plain = try #require(parse(unsure))
+        let settled = QuickEntryParser.refine(plain, sentence: unsure, amount: "60", merchant: nil, when: nil,
+                                              payment: nil, sources: [], now: Self.now, calendar: Self.calendar)
+        #expect(settled.amountText == "60")
     }
 
     @Test func thePlainDayAndCardWinOverTheModels() throws {

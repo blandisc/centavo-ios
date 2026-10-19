@@ -43,6 +43,26 @@ import Testing
         #expect(fact.line.contains("Pemex"))
     }
 
+    @Test func twoBranchesAreNotOneDoubleCharge() {
+        let facts = detect([
+            SpendingRecord(amount: 45, currencyMarker: "$", merchant: "OXXO SUC CENTRO", displayName: "Oxxo",
+                           date: Self.day(18, hour: 9)),
+            SpendingRecord(amount: 45, currencyMarker: "$", merchant: "OXXO SUC NORTE", displayName: "Oxxo",
+                           date: Self.day(18, hour: 9, minute: 10)),
+        ])
+        #expect(!facts.contains { $0.kind == .doubleCharge })
+    }
+
+    @Test func aDoubleChargeIsSaidByItsReadableName() throws {
+        let facts = detect([
+            SpendingRecord(amount: 650, currencyMarker: "$", merchant: "PEMEX ES 1234", displayName: "Pemex",
+                           date: Self.day(18, hour: 9)),
+            SpendingRecord(amount: 650, currencyMarker: "$", merchant: "PEMEX ES 1234", displayName: "Pemex",
+                           date: Self.day(18, hour: 9, minute: 8)),
+        ])
+        #expect(try #require(facts.first).line.contains("en Pemex con"))
+    }
+
     @Test func twoCoffeesInADayAreNotADoubleCharge() {
         let facts = detect([
             record(65, "Starbucks", Self.day(18, hour: 9)),
@@ -141,6 +161,16 @@ import Testing
         // Leaving the figures out is saying something else.
         #expect(!FactCheck.accepts("Ojo: este mes vas por encima del presupuesto.", for: fact))
         #expect(!FactCheck.accepts("Vas para cerrar en $18,500.", for: fact))
+        // Same figures, turned around.
+        #expect(!FactCheck.accepts("A este ritmo cierras en $3,500, $18,500 arriba del presupuesto.", for: fact))
+        #expect(!FactCheck.accepts("Cierras en $18,500, $3,500 abajo del presupuesto.", for: fact))
+        #expect(!FactCheck.accepts("No cierras en $18,500 ni $3,500 arriba.", for: fact))
+
+        let double = SpendingFact(kind: .doubleCharge, key: "doble|pemex|650",
+                                  line: "Hay dos cargos de $650.00 en Pemex con poco tiempo de diferencia. Revisa que no sea un cobro doble.",
+                                  figures: ["$650.00"])
+        #expect(!FactCheck.accepts("Hay tres cargos de $650 en Pemex.", for: double))
+        #expect(FactCheck.accepts("Ojo: se repitió un cargo de $650 en Pemex en minutos; revisa con tu banco.", for: double))
         #expect(!FactCheck.accepts(String(repeating: "a", count: 200), for: fact))
     }
 }

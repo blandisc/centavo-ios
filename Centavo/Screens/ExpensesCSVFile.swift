@@ -23,7 +23,9 @@ struct ExpensesCSVFile: Transferable {
                                                    primary: primaryCurrency)
                     ?? expense.currencyMarker ?? primaryCurrency,
                 card: expense.card,
-                category: expense.category
+                // A suggestion nobody confirmed is not a category: imported back, it would be
+                // taken for a choice.
+                category: expense.hasSuggestedCategory ? nil : expense.category
             )
         }
         suggestedName = "AlDia-\(now.formatted(.iso8601.year().month().day())).csv"

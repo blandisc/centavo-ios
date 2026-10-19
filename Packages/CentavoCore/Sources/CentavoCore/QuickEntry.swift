@@ -42,8 +42,10 @@ public enum QuickEntryParser {
         let said = Words(sentence)
         var plain = said
         let plainDate = takeDate(&plain, now: now, calendar: calendar)
+        // The plain amount stands when it was sure (one number, a currency, «de 20»).
+        let plainAmountSure = amountChoice(in: plain)?.certain ?? false
         let plainSource = takeSource(&plain, among: sources)
-        if let amount, said.contains(amount) {
+        if !plainAmountSure, let amount, said.contains(amount) {
             var words = Words(amount)
             if let found = takeAmount(&words) { entry.amountText = found }
         }
@@ -197,22 +199,31 @@ public enum QuickEntryParser {
         "de", "por", "fue", "fueron", "son", "pague", "gaste", "costo", "costaron", "anota", "apunta",
     ]
 
-    /// The amount: a number with a currency first, then one right after «de», «por», «gasté»…,
-    /// else the first number left (after the date took its own).
-    private static func takeAmount(_ words: inout Words) -> String? {
-        var candidates: [Int] = []
+    /// The amount: a number with a currency first, then one right after «de», «por», «gasté»…;
+    /// with neither, the biggest number, since a count is smaller than a price («3 tacos 60»,
+    /// «Farmacia 24 horas 180»). `certain` is false in that last case: the model may know better.
+    private static func amountChoice(in words: Words) -> (index: Int, certain: Bool)? {
+        var candidates: [(index: Int, value: Decimal)] = []
         for index in words.folded.indices where words.free(index) {
             let word = words.original[index]
             guard word.contains(where: \.isNumber),
                   word.allSatisfy({ $0.isNumber || ".,$".contains($0) }),
                   let parsed = AmountParser.parse(word), parsed.value > 0 else { continue }
-            candidates.append(index)
+            candidates.append((index, parsed.value))
         }
-        let withCurrency = candidates.first { index in
-            words.original[index].contains("$") || words.word(index + 1).map(currencyWords.contains) == true
+        if let marked = candidates.first(where: { candidate in
+            words.original[candidate.index].contains("$")
+                || words.word(candidate.index + 1).map(currencyWords.contains) == true
+        }) { return (marked.index, true) }
+        if let led = candidates.first(where: { words.word($0.index - 1).map(amountLeads.contains) == true }) {
+            return (led.index, true)
         }
-        let led = candidates.first { words.word($0 - 1).map(amountLeads.contains) == true }
-        guard let index = withCurrency ?? led ?? candidates.first else { return nil }
+        guard let biggest = candidates.max(by: { $0.value < $1.value }) else { return nil }
+        return (biggest.index, candidates.count == 1)
+    }
+
+    private static func takeAmount(_ words: inout Words) -> String? {
+        guard let index = amountChoice(in: words)?.index else { return nil }
         if let next = words.word(index + 1), currencyWords.contains(next) {
             words.use(index...(index + 1))
             return words.original[index] + " " + words.original[index + 1]

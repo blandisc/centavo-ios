@@ -52,7 +52,7 @@ enum ExpenseRecorder {
             category: before.category,
             rawAmount: amountText
         )
-        before.apply(to: expense)
+        before.apply(to: expense, withName: true)
         // Only what Wallet sends gets a cleaner reading: a name someone typed is theirs.
         if expense.displayName == nil { expense.displayName = MerchantName.readable(merchantName) }
         context.insert(expense)
@@ -86,7 +86,7 @@ enum ExpenseRecorder {
             date: now,
             category: before.category
         )
-        before.apply(to: expense)
+        before.apply(to: expense, withName: false)
         context.insert(expense)
         try context.save()
         return .saved(merchant: merchantName)
@@ -126,9 +126,10 @@ enum ExpenseRecorder {
         /// The readable name it was shown with last time.
         var name: String?
 
-        func apply(to expense: Expense) {
+        /// `withName` only for what Wallet sends: a name someone typed or said reads as they wrote it.
+        func apply(to expense: Expense, withName: Bool) {
             if isSuggested { expense.categorySource = Expense.suggestedCategory }
-            if let name { expense.displayName = name }
+            if withName, let name { expense.displayName = name }
         }
     }
 

@@ -4,18 +4,23 @@ import Foundation
 public struct SpendingRecord: Equatable, Sendable {
     public var amount: Decimal
     public var currencyMarker: String?
-    /// The name to say it by (the readable one when there is).
+    /// The merchant as Wallet sent it: what tells two branches apart.
     public var merchant: String
+    /// The name to say it by, when there is a readable one.
+    public var displayName: String?
     public var category: String?
     public var date: Date
     /// A fixed expense or one of its copies.
     public var isFixed: Bool
 
-    public init(amount: Decimal, currencyMarker: String? = nil, merchant: String,
+    public var name: String { displayName ?? merchant }
+
+    public init(amount: Decimal, currencyMarker: String? = nil, merchant: String, displayName: String? = nil,
                 category: String? = nil, date: Date, isFixed: Bool = false) {
         self.amount = amount
         self.currencyMarker = currencyMarker
         self.merchant = merchant
+        self.displayName = displayName
         self.category = category
         self.date = date
         self.isFixed = isFixed
@@ -89,7 +94,7 @@ public enum SpendingFacts {
             guard !facts.contains(where: { $0.key == id }) else { continue }
             facts.append(SpendingFact(
                 kind: .doubleCharge, key: id,
-                line: "Hay dos cargos de \(figure) en \(record.merchant) con poco tiempo de diferencia. "
+                line: "Hay dos cargos de \(figure) en \(record.name) con poco tiempo de diferencia. "
                     + "Revisa que no sea un cobro doble.",
                 figures: [figure]
             ))
@@ -121,7 +126,7 @@ public enum SpendingFacts {
             let figure = money(latest.amount)
             facts.append(SpendingFact(
                 kind: .subscription, key: "fijo|\(merchantKey)",
-                line: "\(latest.merchant) se cobra cada mes (\(figure)). Márcalo como fijo y se anotará solo.",
+                line: "\(latest.name) se cobra cada mes (\(figure)). Márcalo como fijo y se anotará solo.",
                 figures: [figure]
             ))
         }
@@ -209,12 +214,35 @@ public enum FactCheck {
     public static func accepts(_ text: String, for fact: SpendingFact) -> Bool {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean.count <= maxLength else { return false }
-        let allowed = Set(numbers(in: fact.line) + fact.figures.flatMap(numbers))
         let said = numbers(in: clean)
-        // Nothing new, and nothing left out: a note without its figures is another note.
-        return said.allSatisfy(allowed.contains)
-            && fact.figures.flatMap(numbers).allSatisfy(said.contains)
+        // The same figures, in the same order: swapping the total and the excess is a lie.
+        guard said == numbers(in: fact.line) else { return false }
+        let words = Set(clean.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .components(separatedBy: CharacterSet.letters.inverted).filter { !$0.isEmpty })
+        // Numbers in words are figures nobody checked («tres cargos»), and a «no» turns it around.
+        guard words.isDisjoint(with: numberWords), words.isDisjoint(with: negations),
+              words.isDisjoint(with: contradictions[fact.kind] ?? []) else { return false }
+        // And it still says what the fact says.
+        return !words.isDisjoint(with: keywords[fact.kind] ?? [])
     }
+
+    static let numberWords: Set<String> = [
+        "uno", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez",
+        "once", "doce", "veinte", "treinta", "cien", "cientos", "mil", "millon", "millones",
+    ]
+    static let negations: Set<String> = ["no", "nunca", "ni", "sin", "tampoco", "jamas"]
+    /// Words each kind of note can't do without.
+    static let keywords: [SpendingFact.Kind: Set<String>] = [
+        .doubleCharge: ["cargos", "cobros", "cobro", "cargo", "repetido", "repetidos", "duplicado", "duplicados"],
+        .subscription: ["mes", "mensual", "cada"],
+        .projection: ["arriba", "mas", "pasarte", "pasaras", "encima", "excede", "rebasa"],
+        .categoryUp: ["arriba", "mas", "encima"],
+    ]
+    /// Words that say the opposite of a note that something went up.
+    static let contradictions: [SpendingFact.Kind: Set<String>] = [
+        .projection: ["abajo", "debajo", "bajo", "menos"],
+        .categoryUp: ["abajo", "debajo", "bajo", "menos"],
+    ]
 
     /// Each figure as plain digits: «$1,234.00» → «1234», «40 %» → «40».
     static func numbers(in text: String) -> [String] {

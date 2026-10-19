@@ -12,8 +12,10 @@ enum MonthNote {
     static func facts(_ expenses: [Expense], now: Date, primary: String, budget: Decimal?) -> [SpendingFact] {
         let since = Calendar.current.date(byAdding: .month, value: -4, to: now) ?? now
         let records = expenses.lazy.filter { $0.date >= since }.map {
-            SpendingRecord(amount: $0.amount, currencyMarker: $0.currencyMarker, merchant: $0.shownName,
-                           category: $0.category, date: $0.date, isFixed: $0.isFixed)
+            // By Wallet's name, so two branches stay two; said by the readable one.
+            SpendingRecord(amount: $0.amount, currencyMarker: $0.currencyMarker, merchant: $0.merchant,
+                           displayName: $0.displayName, category: $0.category, date: $0.date,
+                           isFixed: $0.isFixed)
         }
         return SpendingFacts.detect(Array(records), now: now, primary: primary, budget: budget,
                                     money: { formatMoney($0, isoCode: primary, label: primary) })

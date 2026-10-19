@@ -36,6 +36,8 @@ final class Expense {
     var categorySource: String?
 
     static let suggestedCategory = "sugerida"
+    /// Someone took the category off on purpose: nothing suggests one again.
+    static let clearedCategory = "ninguna"
 
     /// Fixed: the original or one of its copies.
     var isFixed: Bool { repeatsMonthly == true || isRepeat == true }

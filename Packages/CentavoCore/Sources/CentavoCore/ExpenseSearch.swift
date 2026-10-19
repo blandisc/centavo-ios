@@ -8,8 +8,12 @@ public struct SearchQuery: Equatable, Sendable {
     public var category: String?
     public var minAmount: Decimal?
     public var maxAmount: Decimal?
+    /// Whether the bounds count themselves: «desde 200» and «hasta 100» do, «más de 200» doesn't.
+    public var inclusive = false
     /// The month asked for, the last one of that name that already came.
     public var interval: DateInterval?
+    /// The month as it was said: «Don Julio» is a taquería as much as a month.
+    public var monthWord: String?
 
     public init(words: [String] = [], category: String? = nil, minAmount: Decimal? = nil,
                 maxAmount: Decimal? = nil, interval: DateInterval? = nil) {
@@ -58,16 +62,21 @@ public enum ExpenseSearch {
             let word = words[index]
             if let month = months.firstIndex(of: word) {
                 query.interval = lastMonth(named: month + 1, now: now, calendar: calendar)
+                query.monthWord = word
                 index += 1
                 continue
             }
             if let (bound, length) = bound(at: index, in: words) {
                 let amount = AmountParser.parse(words[index + length])?.value
                 if bound == .min { query.minAmount = amount } else { query.maxAmount = amount }
+                if ["desde", "hasta"].contains(word) { query.inclusive = true }
                 index += length + 1
                 continue
             }
-            if !stopWords.contains(word) { query.words.append(word) }
+            // «1,250» is how the amount is written, not how it is kept.
+            let plain = word.allSatisfy({ $0.isNumber || ",.".contains($0) })
+                ? AmountParser.parse(word).map { "\($0.value)" } ?? word : word
+            if !stopWords.contains(word) { query.words.append(plain) }
             index += 1
         }
         return query
@@ -75,16 +84,18 @@ public enum ExpenseSearch {
 
     public static func matches(_ expense: SearchableExpense, _ query: SearchQuery) -> Bool {
         let amount = expense.amount.magnitude
-        if let min = query.minAmount, amount <= min { return false }
-        if let max = query.maxAmount, amount >= max { return false }
-        if let interval = query.interval, !interval.contains(expense.date) { return false }
+        if let min = query.minAmount, query.inclusive ? amount < min : amount <= min { return false }
+        if let max = query.maxAmount, query.inclusive ? amount > max : amount >= max { return false }
+        // The amount too, so «230» finds the 230.00 one.
+        let haystack = fold([expense.merchant, expense.readableName, expense.category, expense.card,
+                             "\(amount)"].compactMap { $0 }.joined(separator: " "))
+        // A month name is the month, unless the expense itself is called that («Don Julio»).
+        if let interval = query.interval, !interval.contains(expense.date),
+           !(query.monthWord.map(haystack.contains) ?? false) { return false }
         if let category = query.category {
             guard let own = expense.category, fold(own) == fold(category) else { return false }
             return true
         }
-        // The amount too, so «230» finds the 230.00 one.
-        let haystack = fold([expense.merchant, expense.readableName, expense.category, expense.card,
-                             "\(amount)"].compactMap { $0 }.joined(separator: " "))
         return query.words.allSatisfy(haystack.contains)
     }
 

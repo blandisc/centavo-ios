@@ -131,7 +131,7 @@ struct ExpenseEditorView: View {
                 } header: {
                     Text("Comercio").ticketCaption()
                 } footer: {
-                    if let shown = expense?.displayName, merchant == expense?.merchant {
+                    if let shown = expense?.displayName, shown != expense?.merchant, merchant == expense?.merchant {
                         hint("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
                     }
                 }
@@ -486,12 +486,15 @@ struct ExpenseEditorView: View {
             let before = CurrencyResolver.isoCode(for: expense.currencyMarker,
                                                   primary: CurrencyPreference.current)
             if before != currency { expense.currencyMarker = currency }
-            // A name typed here is how it reads, as typed.
-            if name != expense.merchant { expense.displayName = nil }
+            // A name typed here reads as typed, and the model leaves it alone.
+            if name != expense.merchant { expense.displayName = name }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
-            // Another category is a choice; keeping the suggested one leaves it a suggestion.
-            if categoryName != (expense.category ?? "") { expense.categorySource = nil }
+            // Another category is a choice; keeping the suggested one leaves it a suggestion,
+            // and taking it off means none, not «suggest another».
+            if categoryName != (expense.category ?? "") {
+                expense.categorySource = categoryName.isEmpty ? Expense.clearedCategory : nil
+            }
             expense.category = categoryName.isEmpty ? nil : categoryName
             expense.date = date
             if expense.isRepeat != true { setRepeats(expense) }
@@ -505,7 +508,7 @@ struct ExpenseEditorView: View {
                 category: categoryName.isEmpty ? nil : categoryName
             )
             // A place picked from the suggestions reads as it did before.
-            new.displayName = history.first { UserCatalog.same($0.merchant, name) }?.displayName
+            new.displayName = history.first { $0.merchant == name }?.displayName
             setRepeats(new)
             context.insert(new)
         }
