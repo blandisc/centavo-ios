@@ -28,22 +28,38 @@ public struct WalletNotice: Equatable, Sendable {
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
         if received.contains(where: folded.contains) { return nil }
         let isRefund = refunds.contains(where: folded.contains)
-        guard let index = lines.firstIndex(where: { line in
+        // The last line with money: a concept like "OXXO 123 MTY" can look like an amount too.
+        guard let index = lines.lastIndex(where: { line in
             CaptureText.amount(in: line).map { $0.currencyMarker != nil } ?? false
         }), let amount = CaptureText.amount(in: lines[index]) else { return nil }
 
-        var others = lines
-        others.remove(at: index)
+        // Read from the amount up, not from the top: the concept sits right above the amount
+        // and the card above that. Atajos may add lines first (the app's name, «Wallet»), and
+        // counting from the top then took the bank for the merchant (seen on the owner's iPhone).
+        let clean: (String) -> String? = { line in
+            let folded = line.folding(options: [.caseInsensitive, .diacriticInsensitive],
+                                      locale: Locale(identifier: "es_MX"))
+            if appLabels.contains(folded) { return nil }
+            return isRefund ? withoutRefundWord(line) : line
+        }
+        let before = lines[..<index].compactMap(clean)
+        let after = lines[(index + 1)...].compactMap(clean)
         // The amount may share its line with the merchant ("Google MXN 319.00").
         let leftover = lines[index]
             .replacingOccurrences(of: amountPattern(in: lines[index]) ?? lines[index], with: "")
             .trimmingCharacters(in: .whitespaces.union(.punctuationCharacters))
-        if !leftover.isEmpty { others.insert(leftover, at: index) }
-
-        // The word that told it apart is not the merchant: "Reembolso de Liverpool" is Liverpool.
-        if isRefund { others = others.compactMap(withoutRefundWord) }
-        let card = others.count >= 2 ? others.first : nil
-        let merchant = others.count >= 2 ? others[1] : others.first
+        let merchant: String?
+        let card: String?
+        if let own = clean(leftover), !own.isEmpty {
+            merchant = own
+            card = before.last
+        } else if let concept = before.last {
+            merchant = concept
+            card = before.dropLast().last
+        } else {
+            merchant = after.first
+            card = nil
+        }
         let figure = amountPattern(in: lines[index]) ?? lines[index]
         guard isRefund else {
             return WalletNotice(amount: amount, amountText: figure, merchant: merchant, card: card)
@@ -63,6 +79,9 @@ public struct WalletNotice: Equatable, Sendable {
         }
         return rest.isEmpty ? nil : rest
     }
+
+    /// Lines that name the app, not the purchase.
+    static let appLabels: Set<String> = ["wallet", "apple wallet", "apple pay", "cartera"]
 
     /// Money back from a purchase: it is logged, as a refund.
     static let refunds = ["reembolso", "devolucion", "reverso", "reversion", "cargo cancelado",
