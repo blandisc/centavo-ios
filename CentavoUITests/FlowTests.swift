@@ -212,7 +212,9 @@ final class FlowTests: XCTestCase {
         let app = launch(demo: true)
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
-        require(app.buttons["en-una-frase"], "No está «Dilo en una frase»").tap()
+        let button = app.buttons["en-una-frase"]
+        for _ in 0..<4 where !button.isHittable { app.swipeUp() }
+        require(button, "No está «Dilo en una frase»").tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
         sentence.typeText("230 de tacos ayer, en efectivo")

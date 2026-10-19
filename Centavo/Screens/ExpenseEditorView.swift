@@ -116,22 +116,7 @@ struct ExpenseEditorView: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("moneda")
                 } header: {
-                    HStack {
-                        Text("Monto").ticketCaption()
-                        Spacer()
-                        // The whole expense in one sentence, written or dictated. Here, in the
-                        // header, it covers nothing and moves nothing.
-                        if expense == nil {
-                            Button("Dilo en una frase", systemImage: "text.bubble") { askingSentence = true }
-                                .labelStyle(.titleAndIcon)
-                                .font(.ticket(11, relativeTo: .caption))
-                                .textCase(nil)
-                                .foregroundStyle(Theme.brass)
-                                .disabled(readingSentence)
-                                .frame(minHeight: 44)
-                                .accessibilityIdentifier("en-una-frase")
-                        }
-                    }
+                    Text("Monto").ticketCaption()
                 }
                 .listRowBackground(Theme.surface)
 
@@ -204,6 +189,22 @@ struct ExpenseEditorView: View {
                     }
                 }
                 .listRowBackground(Theme.surface)
+
+                // The whole expense in one sentence, written or dictated. Last, so it covers and
+                // moves nothing of the sheet as it was; a full row is a full tap target.
+                if expense == nil {
+                    Section {
+                        Button("Dilo en una frase", systemImage: "text.bubble") { askingSentence = true }
+                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                            .foregroundStyle(Theme.brass)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .disabled(readingSentence)
+                            .accessibilityIdentifier("en-una-frase")
+                    } footer: {
+                        hint("«230 de tacos ayer, en efectivo» llena el monto, el comercio, el día y cómo pagaste.")
+                    }
+                    .listRowBackground(Theme.surface)
+                }
 
                 if expense?.isRepeat == true, original != nil {
                     Section {
