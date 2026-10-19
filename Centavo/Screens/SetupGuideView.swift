@@ -245,28 +245,33 @@ private struct GuideStep {
             title: "Que se active con una notificación",
             taps: [],
             note: "«Notificación» anota todas tus compras con Wallet: en línea y acercando el teléfono.",
+            opensShortcuts: true,
             scene: .frames(GuideFrame.pickNotification)
         ),
         GuideStep(
             title: "Que sea la de Wallet",
             taps: [],
+            opensShortcuts: true,
             scene: .frames(GuideFrame.pickWalletApp)
         ),
         GuideStep(
             title: "Agrega a Al día",
             taps: [],
             note: "Si no aparece, abre Al día una vez y vuelve a buscar: Atajos solo conoce las apps que ya abriste.",
+            opensShortcuts: true,
             scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
             title: "Conéctalos",
             taps: [],
             note: "Así Al día recibe el aviso completo: la tarjeta, el comercio y el monto.",
+            opensShortcuts: true,
             scene: .frames(GuideFrame.connectNotice)
         ),
         GuideStep(
             title: "Guárdalo",
             taps: [],
+            opensShortcuts: true,
             scene: .frames(GuideFrame.saveNotice)
         ),
         GuideStep(
@@ -326,7 +331,8 @@ private struct CaptureCheck: View {
                         .font(.ticket(14, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Theme.ink)
                     Text(ShortcutsVersion.isIOS27
-                         ? "Si pagaste y no llega en un par de minutos, revisa los pasos 4 y 6."
+                         ? "Si pagaste y no llega en un par de minutos, revisa el paso 5: la acción debe decir "
+                           + "«Registrar» y «Notificación» con campana, en azul."
                          : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
                         .font(.ticket(12, relativeTo: .footnote))
                         .foregroundStyle(Theme.muted)

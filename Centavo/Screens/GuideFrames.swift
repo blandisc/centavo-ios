@@ -529,31 +529,34 @@ extension GuideFrame {
     ]
     static let pickNotification: [GuideFrame] = [
         GuideFrame(caption: "Abajo, toca «Automatización».", screen: .photo("guia27-02-automatizacion")),
-        GuideFrame(caption: "Baja hasta la sección «Apps» y toca «Notificación», la de la campana roja. "
+        GuideFrame(caption: "Baja hasta la sección «Apps», a media lista, y toca «Notificación», la de la campana roja. "
                    + "No elijas «Wallet».", screen: .photo("guia27-03-notificacion")),
     ]
     static let pickWalletApp: [GuideFrame] = [
-        GuideFrame(caption: "Toca la palabra azul «App».", screen: .photo("guia27-04-app")),
+        GuideFrame(caption: "Toca la palabra «App», en azul tenue, justo debajo de «Al recibir una notificación de».",
+                   screen: .photo("guia27-04-app")),
         GuideFrame(caption: "Baja casi hasta el final de la lista y toca «Wallet».", screen: .photo("guia27-05-wallet")),
         GuideFrame(caption: "Así debe verse: «Al recibir una notificación de Wallet».",
                    screen: .photo("guia27-06-con-wallet"), isResult: true),
     ]
     static let addNoticeAction: [GuideFrame] = [
-        GuideFrame(caption: "Abajo, toca «Buscar», escribe «Registrar aviso» y toca «Registrar aviso de Wallet».",
+        GuideFrame(caption: "Abajo, toca «Buscar», escribe «Registrar aviso» y toca «Registrar aviso de Wallet». "
+                   + "(Si sale un aviso del teclado, toca «Continuar».)",
                    screen: .photo("guia27-07-accion")),
     ]
     static let connectNotice: [GuideFrame] = [
-        GuideFrame(caption: "Toca la palabra «Notificación» que está en azul claro.", screen: .photo("guia27-08-campo")),
-        GuideFrame(caption: "Arriba del teclado sale una barra. Deslízala hacia la izquierda hasta el final.",
-                   screen: .photo("guia27-09a-barra")),
-        GuideFrame(caption: "Toca «Notificación», la de la campana. En la acción queda «Notificación» con su campana.",
-                   screen: .photo("guia27-09-variable")),
+        GuideFrame(caption: "La palabra «Notificación» en gris es solo un ejemplo: todavía no está conectada. Tócala.",
+                   screen: .photo("guia27-08-campo")),
+        GuideFrame(caption: "Arriba del teclado sale una barra. Deslízala hacia la izquierda varias veces, hasta "
+                   + "que veas «Notificación» con una campana.", screen: .photo("guia27-09a-barra")),
+        GuideFrame(caption: "Toca «Notificación», la de la campana. En la acción queda «Notificación» con su "
+                   + "campana. Luego toca ✓, la tecla azul del teclado (no la X).", screen: .photo("guia27-09-variable")),
     ]
     static let saveNotice: [GuideFrame] = [
-        GuideFrame(caption: "Arriba a la izquierda, toca la flecha para regresar. Se guarda solo. "
-                   + "(«Automatización» queda encendida y «Notificar» apagado: así corre sin preguntarte.)",
+        GuideFrame(caption: "No hay botón de guardar: toca la flecha de arriba a la izquierda y ya queda guardado.",
                    screen: .photo("guia27-10-guardar")),
-        GuideFrame(caption: "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet».",
+        GuideFrame(caption: "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet» (el color "
+                   + "de la tarjeta puede ser otro). No tienes que activar nada más.",
                    screen: .photo("guia27-11-listo"), isResult: true),
     ]
 }
