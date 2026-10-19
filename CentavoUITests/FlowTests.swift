@@ -64,7 +64,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         let amountField = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amountField.tap()
-        amountField.typeText(amount)
+        amountField.typeAmount(amount)
         let merchantField = app.textFields["comercio"]
         merchantField.tap()
         merchantField.typeText(merchant)
@@ -189,7 +189,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amount.tap()
-        amount.typeText("12500")
+        amount.typeAmount("12500")
         XCTAssertEqual(amount.value as? String, "12,500", "No puso la coma de los miles")
 
         app.textFields["comercio"].tap()
@@ -204,6 +204,59 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["categoria-Despensa"].isSelected)
         app.buttons["hoja-guardar"].tap()
         require(row(app, containing: "12,500.00"), "El gasto no se guardó con su monto")
+    }
+
+    /// Owner's request: set up how you pay (one by default) and categories of your own, each
+    /// with an icon, and find them ready when writing an expense down.
+    func testTarjetasYCategoriasPropias() {
+        let app = launch(demo: true)
+        app.buttons["Más"].tap()
+        require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
+
+        func create(_ add: String, _ name: String, icon: String) {
+            require(app.buttons[add], "No se puede agregar").tap()
+            let field = require(app.textFields["nombre-nuevo"], "No pide el nombre")
+            field.tap()
+            field.typeText(name)
+            app.buttons[icon].tap()
+            app.buttons["guardar-nuevo"].tap()
+        }
+        create("agregar-fuente", "Nu", icon: "creditcard.fill")
+        create("agregar-fuente", "Efectivo", icon: "banknote")
+        create("agregar-categoria", "Mascotas", icon: "pawprint")
+        let cashRow = require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Efectivo")).firstMatch,
+                              "No aparece el efectivo")
+        cashRow.swipeRight()
+        require(app.buttons["Predeterminada"], "No deja elegir la predeterminada").tap()
+        snap("flujo-tarjetas-y-categorias")
+        app.buttons["Listo"].tap()
+
+        app.buttons["Anotar gasto"].tap()
+        let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
+        amount.tap()
+        amount.typeAmount("350")
+        app.textFields["comercio"].tap()
+        app.textFields["comercio"].typeText("Veterinaria")
+        // Out of the way: on a smaller phone the keyboard covers the tiles.
+        if app.keyboards.count > 0 { app.keyboards.buttons.element(boundBy: app.keyboards.buttons.count - 1).tap() }
+        if app.keyboards.count > 0 { app.swipeDown() }
+        // Below the categories: on any phone it takes a scroll.
+        let cash = app.buttons["tarjeta-Efectivo"]
+        for _ in 0..<4 where !cash.isHittable { app.swipeUp() }
+        XCTAssertTrue(require(cash, "No ofrece el efectivo").isSelected,
+                      "La predeterminada no vino elegida")
+        let pets = app.buttons["categoria-Mascotas"]
+        for _ in 0..<4 where !pets.isSelected {
+            if !pets.isHittable { app.swipeDown() }
+            require(pets, "No ofrece la categoría propia").tap()
+            usleep(400_000)
+        }
+        XCTAssertTrue(pets.isSelected, "No se eligió la categoría propia")
+        snap("flujo-gasto-con-tarjeta-y-categoria")
+        app.buttons["hoja-guardar"].tap()
+        let saved = require(row(app, containing: "Veterinaria"), "No se guardó")
+        XCTAssertTrue(saved.label.localizedCaseInsensitiveContains("Mascotas"), "Dice: \(saved.label)")
+        XCTAssertTrue(saved.label.localizedCaseInsensitiveContains("Efectivo"), "Dice: \(saved.label)")
     }
 
     func testNoSePuedeGuardarCeroNiUnMontoAbsurdo() {
@@ -226,7 +279,7 @@ final class FlowTests: XCTestCase {
         require(app.textFields["monto"], "No abrió la hoja de gasto")
         XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled)
         app.textFields["monto"].tap()
-        app.textFields["monto"].typeText("10")
+        app.textFields["monto"].typeAmount("10")
         XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled, "Dejó guardar sin comercio")
     }
 
@@ -308,7 +361,7 @@ final class FlowTests: XCTestCase {
         require(app.buttons["fijar-presupuesto"], "No ofrece fijar el presupuesto").tap()
         let field = require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
         field.tap()
-        field.typeText("5000")
+        field.typeAmount("5000")
         app.buttons["hoja-guardar"].tap()
 
         let ticket = require(app.otherElements["presupuesto-ticket"],
@@ -328,7 +381,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Presupuesto del mes"].tap()
         let field = require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
         field.tap()
-        field.typeText("100")
+        field.typeAmount("100")
         app.buttons["hoja-guardar"].tap()
 
         fillExpense(app, amount: "250", merchant: "Antojo")
@@ -379,13 +432,13 @@ final class FlowTests: XCTestCase {
         snap("bienvenida-2")
         next.tap()
         let budget = require(app.textFields["bienvenida-presupuesto"], "No pide presupuesto")
-        budget.tap(); budget.typeText("9000")
+        budget.tap(); budget.typeAmount("9000")
         snap("bienvenida-3")
         require(app.buttons["teclado-siguiente"], "El teclado tapa «Siguiente» y no hay otro").tap()
         let name = require(app.textFields["bienvenida-fijo-nombre"], "No pide gastos fijos")
         name.tap(); name.typeText("Renta")
         let amount = app.textFields["bienvenida-fijo-monto"]
-        amount.tap(); amount.typeText("6500")
+        amount.tap(); amount.typeAmount("6500")
         app.buttons["bienvenida-fijo-agregar"].tap()
         snap("bienvenida-4")
         if app.buttons["teclado-siguiente"].exists { app.buttons["teclado-siguiente"].tap() } else { next.tap() }
@@ -606,6 +659,15 @@ final class FlowTests: XCTestCase {
 }
 
 private extension XCUIElement {
+    /// Types an amount at a person's pace. The field puts the thousands' commas in as you
+    /// type; a test typing every 10 ms can outrun that, a person (150 ms or more) cannot.
+    func typeAmount(_ text: String) {
+        for character in text {
+            typeText(String(character))
+            usleep(150_000)
+        }
+    }
+
     /// Replaces whatever is in the field.
     func clearAndType(_ text: String) {
         guard let current = value as? String, !current.isEmpty else {
@@ -613,7 +675,7 @@ private extension XCUIElement {
             return
         }
         typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
-        typeText(text)
+        typeAmount(text)
     }
 }
 

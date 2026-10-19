@@ -197,3 +197,6 @@ Las pruebas de flujo abren la app con `-centavo-sin-animaciones` (solo en Debug)
 
 ## 2026-10-18 · La moneda principal sale de los pagos, no de la región
 Antes, sin elección explícita, la moneda principal era la de la región del iPhone; una región de EE. UU. dejó el presupuesto en dólares con todos los pagos de Wallet en pesos. Ahora: lo elegido (bienvenida o «Más»); si no hay, la moneda de la mayoría de los pagos; si no, pesos. Se fija una vez y no vuelve a moverse sola. Si la mayoría de los pagos del mes está en otra moneda ofrecida, se sugiere cambiar con un toque (y se pregunta por el presupuesto). El dinero se formatea con la convención de México en cualquier región.
+
+## 2026-10-19 · Tarjetas y categorías propias
+A pedido del dueño: una pantalla nueva en «Más» (Tarjetas y categorías) con las fuentes de pago (nombre, ícono, una predeterminada) y categorías propias (nombre, ícono). Se guardan como JSON en los mismos ajustes que el presupuesto y se sincronizan igual (`BudgetSync`); los gastos siguen guardando solo el nombre, así que borrar una no toca gastos. La predeterminada solo aplica a lo anotado a mano: lo de Wallet trae su propia tarjeta.

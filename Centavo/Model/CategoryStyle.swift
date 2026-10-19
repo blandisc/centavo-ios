@@ -17,17 +17,23 @@ enum CategoryStyle {
         ("Compras", "bag"),
     ]
 
-    static func icon(for category: String) -> String {
+    static func icon(for category: String, custom: [LabeledIcon] = []) -> String {
+        if let own = custom.first(where: { UserCatalog.same($0.name, category) }) { return own.icon }
         let wanted = fold(category)
         if wanted == fold("Casa") || wanted == fold("Renta") { return "house" }
         return common.first { fold($0.name) == wanted }?.icon ?? "tag"
     }
 
-    /// The common ones plus every other category already used, most used first.
-    static func offered(known: [String]) -> [String] {
-        let commonNames = common.map(\.name)
-        let extra = known.filter { name in !commonNames.contains { fold($0) == fold(name) } }
-        return commonNames + extra
+    /// The common ones, then the ones someone made, then any other already used (most used
+    /// first), each name once.
+    static func offered(known: [String], custom: [LabeledIcon] = [], current: String = "") -> [String] {
+        var names: [String] = []
+        for name in common.map(\.name) + custom.map(\.name) + known + [current]
+        where !name.trimmingCharacters(in: .whitespaces).isEmpty
+            && !names.contains(where: { UserCatalog.same($0, name) }) {
+            names.append(name)
+        }
+        return names
     }
 
     private static func fold(_ text: String) -> String {

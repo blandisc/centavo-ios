@@ -25,14 +25,21 @@ struct ExpenseEditorView: View {
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
     @FocusState private var merchantFocused: Bool
-    @FocusState private var categoryFocused: Bool
-    @State private var writingCategory = false
+    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
+    @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
+    @State private var creating: Creating?
+
+    private enum Creating: String, Identifiable { case category, source; var id: String { rawValue } }
+    private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
+    private var paymentSources: [LabeledIcon] { UserCatalog.decode(storedSources) }
     @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = 22
 
     /// Whether something was typed or changed since the sheet opened.
     private var hasChanges: Bool {
         guard let expense else {
-            return !(amountText + merchant + card + category).trimmingCharacters(in: .whitespaces).isEmpty
+            let changedCard = UserCatalog.same(card, defaultSource) ? "" : card
+            return !(amountText + merchant + changedCard + category).trimmingCharacters(in: .whitespaces).isEmpty
         }
         return parsed?.value != expense.amount.magnitude || isRefund != (expense.amount < 0)
             || merchant != expense.merchant || card != (expense.card ?? "")
@@ -126,14 +133,6 @@ struct ExpenseEditorView: View {
 
                 Section {
                     categoryGrid
-                    // A name of its own: typed after «Otra», or one that came that way.
-                    if writingCategory || !(category.isEmpty || CategoryStyle.offered(
-                        known: Array(CategoryMemory.known(in: pastExpenses).prefix(8))).contains(category)) {
-                        field("Categoría", text: $category, prompt: "Nombre de la categoría",
-                              identifier: "categoria")
-                            .textInputAutocapitalization(.words)
-                            .focused($categoryFocused)
-                    }
                 } header: {
                     Text("Categoría (opcional)").ticketCaption()
                 } footer: {
@@ -152,9 +151,7 @@ struct ExpenseEditorView: View {
                             .tracking(1.2)
                             .textCase(.uppercase)
                     }
-                    field("Tarjeta o efectivo (opcional)", text: $card,
-                          prompt: "BBVA, Nu, efectivo…", identifier: "tarjeta")
-                        .textInputAutocapitalization(.words)
+                    sourceGrid
                     if expense?.isRepeat != true {
                         Toggle(isOn: $repeatsMonthly) {
                             Text("Se repite cada mes")
@@ -166,7 +163,7 @@ struct ExpenseEditorView: View {
                         .accessibilityIdentifier("se-repite")
                     }
                 } header: {
-                    Text("Fecha y tarjeta").ticketCaption()
+                    Text("Fecha y cómo pagaste").ticketCaption()
                 } footer: {
                     if repeatsMonthly {
                         hint("Renta, suscripciones, la luz: se anota sola el mismo día de cada mes.")
@@ -229,6 +226,24 @@ struct ExpenseEditorView: View {
             }
         }
         .onAppear(perform: load)
+        .sheet(item: $creating) { kind in
+            switch kind {
+            case .category:
+                LabeledIconSheet(title: "Nueva categoría", prompt: "Mascotas, Gimnasio…",
+                                 icons: UserCatalog.categoryIcons,
+                                 taken: customCategories.map(\.name) + CategoryStyle.common.map(\.name)) { saved in
+                    storedCategories = UserCatalog.encode(customCategories + [saved])
+                    category = saved.name
+                }
+            case .source:
+                LabeledIconSheet(title: "Nueva tarjeta", prompt: "BBVA, Nu, Efectivo…",
+                                 icons: UserCatalog.sourceIcons, taken: paymentSources.map(\.name)) { saved in
+                    storedSources = UserCatalog.encode(paymentSources + [saved])
+                    if defaultSource.isEmpty { defaultSource = saved.name }
+                    card = saved.name
+                }
+            }
+        }
         // Swiping the sheet away must not throw away what was typed.
         .interactiveDismissDisabled(hasChanges)
         .onChange(of: merchant) { _, new in
@@ -266,23 +281,52 @@ struct ExpenseEditorView: View {
     /// The usual categories with their icons, plus any other already used; one tap picks
     /// one, another tap clears it. «Otra» writes a new one.
     private var categoryGrid: some View {
-        let names = CategoryStyle.offered(known: Array(CategoryMemory.known(in: pastExpenses).prefix(8)))
+        let names = CategoryStyle.offered(known: Array(CategoryMemory.known(in: pastExpenses).prefix(8)),
+                                          custom: customCategories, current: category)
         return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
             ForEach(names, id: \.self) { name in
-                categoryChip(name, icon: CategoryStyle.icon(for: name), selected: category == name) {
+                categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
+                             selected: category == name) {
                     category = category == name ? "" : name
-                    writingCategory = false
                 }
             }
-            categoryChip("Otra", icon: "plus", selected: writingCategory) {
-                writingCategory.toggle()
-                if writingCategory { category = ""; categoryFocused = true }
-            }
+            categoryChip("Nueva", icon: "plus", selected: false) { creating = .category }
         }
         .padding(.vertical, 6)
     }
 
-    private func categoryChip(_ name: String, icon: String, selected: Bool,
+    /// The cards and cash set up in «Tarjetas y categorías», plus any other a payment came
+    /// with (Wallet names the card). The default one is already chosen on a new expense.
+    private var sourceGrid: some View {
+        let sources = paymentSources
+        var names = sources.map(\.name)
+        for name in knownCards + [card] where !name.isEmpty && !names.contains(where: { UserCatalog.same($0, name) }) {
+            names.append(name)
+        }
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+            ForEach(names, id: \.self) { name in
+                let icon = sources.first { UserCatalog.same($0.name, name) }?.icon ?? "creditcard"
+                categoryChip(name, icon: icon, selected: UserCatalog.same(card, name), kind: "tarjeta") {
+                    card = UserCatalog.same(card, name) ? "" : name
+                }
+            }
+            categoryChip("Agregar", icon: "plus", selected: false, kind: "tarjeta") { creating = .source }
+        }
+        .padding(.vertical, 6)
+        .accessibilityIdentifier("tarjetas")
+    }
+
+    /// Cards from past payments, most used first.
+    private var knownCards: [String] {
+        var counts: [String: (name: String, count: Int)] = [:]
+        for expense in history.prefix(300) {
+            guard let name = expense.card?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { continue }
+            counts[UserCatalog.fold(name), default: (name, 0)].count += 1
+        }
+        return counts.values.sorted { $0.count > $1.count }.prefix(4).map(\.name)
+    }
+
+    private func categoryChip(_ name: String, icon: String, selected: Bool, kind: String = "categoria",
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 5) {
@@ -308,7 +352,7 @@ struct ExpenseEditorView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .accessibilityIdentifier("categoria-\(name)")
+        .accessibilityIdentifier("\(kind)-\(name)")
     }
 
     /// The fixed expense a copy came from: same merchant and amount, still repeating.
@@ -333,6 +377,7 @@ struct ExpenseEditorView: View {
         pastExpenses = allPastExpenses
         guard let expense else {
             if let initialDate { date = initialDate }
+            card = defaultSource
             amountFocused = true
             return
         }
