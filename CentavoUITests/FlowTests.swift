@@ -217,6 +217,10 @@ final class FlowTests: XCTestCase {
         sentence.tap()
         sentence.typeText("230 de tacos ayer, en efectivo")
         app.alerts.buttons["Llenar"].tap()
+        // The sheet fills a moment after «Llenar» (the sentence is read off the main thread).
+        let filled = expectation(for: NSPredicate(format: "value == %@", "230"),
+                                 evaluatedWith: app.textFields["monto"])
+        wait(for: [filled], timeout: 10)
         XCTAssertEqual(app.textFields["monto"].value as? String, "230", "No tomó el monto de la frase")
         XCTAssertEqual(app.textFields["comercio"].value as? String, "Tacos", "No tomó el comercio de la frase")
     }
