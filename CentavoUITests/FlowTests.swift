@@ -214,7 +214,9 @@ final class FlowTests: XCTestCase {
         let amount = app.textFields["monto"]
         amount.tap()
         amount.clearAndType("1234567890123")
-        XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled, "Dejó guardar un monto de 13 dígitos")
+        // The field stops at 12 digits, the most an amount can have: a 13th is not typed.
+        let digits = (amount.value as? String ?? "").filter(\.isNumber)
+        XCTAssertLessThanOrEqual(digits.count, 12, "Dejó escribir un monto de \(digits.count) dígitos")
         snap("flujo-monto-invalido")
     }
 

@@ -17,6 +17,10 @@ import Testing
         #expect(AmountTyping.grouped("8000,5", decimalSeparator: ",") == "8,000.5")
     }
 
+    @Test func stopsAtTheMostDigitsAnAmountCanHave() {
+        #expect(AmountTyping.grouped("1234567890123") == "123,456,789,012")
+    }
+
     @Test func whatIsShownReadsBackTheSame() {
         #expect(AmountParser.parse(AmountTyping.grouped("1234567.89"))?.value == Decimal(string: "1234567.89"))
     }

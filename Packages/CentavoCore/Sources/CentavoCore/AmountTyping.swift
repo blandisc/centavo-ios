@@ -12,7 +12,8 @@ public enum AmountTyping {
             if character.isNumber, character.isASCII {
                 if fraction != nil {
                     if fraction!.count < 2 { fraction!.append(character) }
-                } else {
+                } else if integer.count < AmountParser.maxIntegerDigits {
+                    // Past the most an amount can have, more digits are not typed at all.
                     integer.append(character)
                 }
             } else if character == "." || String(character) == decimalSeparator {
