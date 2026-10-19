@@ -235,15 +235,25 @@ struct BudgetPage: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("presupuesto-ticket")
-        .accessibilityLabel(
-            "Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)), "
-            + "el \(share.formatted(.percent.precision(.fractionLength(0)))). "
-            + (isOver ? "Te pasaste por \(remainingText). "
-                      : (isCurrentMonth ? "Te quedan \(remainingText). " : "Te quedaron \(remainingText). "))
-            + (isCurrentMonth ? "A hoy podrías llevar \(money(pace.expectedToDate)). " : "")
-            + (isCurrentMonth && pace.reserved > 0 ? "Se apartan \(money(pace.reserved)) de gastos fijos por venir. " : "")
-            + (isCurrentMonth && !isOver ? "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance))." : "")
-        )
+        .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver, remainingText: remainingText))
+    }
+
+    /// What VoiceOver reads for the ticket, sentence by sentence (one expression was too much
+    /// for the compiler).
+    private func spokenTicket(_ pace: BudgetPace, share: Double, isOver: Bool, remainingText: String) -> String {
+        var parts = ["Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)), "
+                     + "el \(share.formatted(.percent.precision(.fractionLength(0))))."]
+        if isOver {
+            parts.append("Te pasaste por \(remainingText).")
+        } else {
+            parts.append((isCurrentMonth ? "Te quedan " : "Te quedaron ") + "\(remainingText).")
+        }
+        if isCurrentMonth {
+            parts.append("A hoy podrías llevar \(money(pace.expectedToDate)).")
+            if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
+            if !isOver { parts.append("Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).") }
+        }
+        return parts.joined(separator: " ")
     }
 
     private func remainingBlock(_ label: String, _ amount: String,
