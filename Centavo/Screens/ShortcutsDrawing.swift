@@ -33,7 +33,7 @@ struct ShortcutsDrawing: View {
 
     var body: some View {
         if case .frames(let frames) = scene {
-            GuideFrameAnimation(frames: frames)
+            GuideFrameSequence(frames: frames)
         } else {
             drawing
         }
