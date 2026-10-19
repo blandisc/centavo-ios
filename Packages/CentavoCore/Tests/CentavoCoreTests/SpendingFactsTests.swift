@@ -46,7 +46,7 @@ import Testing
     @Test func twoCoffeesInADayAreNotADoubleCharge() {
         let facts = detect([
             record(65, "Starbucks", Self.day(18, hour: 9)),
-            record(65, "Starbucks", Self.day(18, hour: 17)),
+            record(65, "Starbucks", Self.day(18, hour: 10)),
             record(650, "Pemex", Self.day(10, hour: 9)),
             record(650, "Pemex", Self.day(10, hour: 9, minute: 5)),   // too long ago
         ])
@@ -132,13 +132,15 @@ import Testing
 
     @Test func acceptsARewordingWithTheSameFigures() {
         #expect(FactCheck.accepts("Vas para cerrar en $18,500, unos $3,500 más de lo que planeaste.", for: fact))
-        #expect(FactCheck.accepts("Ojo: este mes vas por encima del presupuesto.", for: fact))
     }
 
     @Test func rejectsAFigureThatIsNotThere() {
         #expect(!FactCheck.accepts("A este ritmo cierras en $19,000.", for: fact))
         #expect(!FactCheck.accepts("Te pasarás 23 % del presupuesto.", for: fact))
         #expect(!FactCheck.accepts("", for: fact))
+        // Leaving the figures out is saying something else.
+        #expect(!FactCheck.accepts("Ojo: este mes vas por encima del presupuesto.", for: fact))
+        #expect(!FactCheck.accepts("Vas para cerrar en $18,500.", for: fact))
         #expect(!FactCheck.accepts(String(repeating: "a", count: 200), for: fact))
     }
 }

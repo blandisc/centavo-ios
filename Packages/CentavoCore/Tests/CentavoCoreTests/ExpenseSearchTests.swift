@@ -48,6 +48,7 @@ import Testing
         #expect(found("transporte septiembre") == [300])
         #expect(found("nu menos de 200") == [120])
         #expect(found("rappi").isEmpty)
+        #expect(found("250") == [250])
     }
 
     @Test func aMonthStillToComeIsLastYears() {
@@ -78,6 +79,8 @@ import Testing
         #expect(WalletNotice.rescue(notice, merchant: "FARMACIA SAN JORGE", card: nil, amountFragment: "MXN 254.00") == nil)
         #expect(WalletNotice.rescue(notice, merchant: "Farmacias Guadalajara", card: nil, amountFragment: "MXN 245.00") == nil)
         #expect(WalletNotice.rescue(notice, merchant: "FARMACIA SAN JORGE", card: nil, amountFragment: "245") == nil)
+        // The card named as the shop is the old mix-up.
+        #expect(WalletNotice.rescue(notice, merchant: "Banco Azteca", card: "Banco Azteca", amountFragment: "MXN 245.00") == nil)
         let incoming = "Recibiste MXN 500.00 de Ana López"
         #expect(WalletNotice.rescue(incoming, merchant: "Ana López", card: nil, amountFragment: "MXN 500.00") == nil)
     }

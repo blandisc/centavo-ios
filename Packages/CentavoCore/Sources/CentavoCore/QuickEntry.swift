@@ -33,21 +33,25 @@ public enum QuickEntryParser {
     }
 
     /// What the model read, checked against the sentence: each part is used only when it is
-    /// really in what was said, otherwise the plain reading stays.
+    /// really in what was said, as whole words («45» is not in «450»). The plain reading of
+    /// the day and the card wins when it found one: «antes de ayer» must not become «ayer».
     public static func refine(_ base: QuickEntry, sentence: String, amount: String?, merchant: String?,
                               when: String?, payment: String?, sources: [String], now: Date,
                               calendar: Calendar = .current) -> QuickEntry {
         var entry = base
-        let said = fold(sentence)
-        if let amount, said.contains(fold(amount)) {
+        let said = Words(sentence)
+        var plain = said
+        let plainDate = takeDate(&plain, now: now, calendar: calendar)
+        let plainSource = takeSource(&plain, among: sources)
+        if let amount, said.contains(amount) {
             var words = Words(amount)
             if let found = takeAmount(&words) { entry.amountText = found }
         }
-        if let when, said.contains(fold(when)) {
+        if plainDate == nil, let when, said.contains(when) {
             var words = Words(when)
             if let date = takeDate(&words, now: now, calendar: calendar) { entry.date = date }
         }
-        if let payment, said.contains(fold(payment)) {
+        if plainSource == nil, let payment, said.contains(payment) {
             var words = Words(payment)
             if let source = takeSource(&words, among: sources) { entry.source = source }
         }
@@ -55,13 +59,21 @@ public enum QuickEntryParser {
             let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
             let saidWords = Set(MerchantCatalog.tokens(sentence))
             let nameWords = MerchantCatalog.tokens(name)
+            // The day or the card is not the place: «Tacos ayer en efectivo» is «Tacos».
+            let notAName = notMerchantWords.union(sources.flatMap(MerchantCatalog.tokens))
             if !nameWords.isEmpty, name.count <= 60, nameWords.allSatisfy(saidWords.contains),
-               !nameWords.contains(where: { $0.contains(where: \.isNumber) }) {
+               !nameWords.contains(where: { $0.contains(where: \.isNumber) || notAName.contains($0) }) {
                 entry.merchant = capitalized(name)
             }
         }
         return entry
     }
+
+    /// Words that say when or how, never where.
+    private static let notMerchantWords: Set<String> = Set(weekdays).union([
+        "hoy", "ayer", "antier", "anteayer", "hace", "semana", "pasada", "pasado", "dia", "dias",
+        "efectivo", "cash", "tarjeta",
+    ])
 
     /// «ayer», «el viernes», «el 3», «hace 2 días»: the day it means, never in the future.
     public static func date(from phrase: String, now: Date, calendar: Calendar = .current) -> Date? {
@@ -83,6 +95,15 @@ public enum QuickEntryParser {
                 .filter { !$0.isEmpty }
             folded = original.map(QuickEntryParser.fold)
             used = original.map { _ in false }
+        }
+
+        /// Whether `phrase` is in these words, whole and in order.
+        func contains(_ phrase: String) -> Bool {
+            let wanted = Words(phrase).folded
+            guard !wanted.isEmpty, wanted.count <= folded.count else { return false }
+            return (0...(folded.count - wanted.count)).contains { start in
+                Array(folded[start..<(start + wanted.count)]) == wanted
+            }
         }
 
         func free(_ index: Int) -> Bool { index >= 0 && index < folded.count && !used[index] }
@@ -170,21 +191,34 @@ public enum QuickEntryParser {
         "peso", "pesos", "dolar", "dolares", "dls", "dlls", "euro", "euros", "usd", "mxn", "eur",
     ]
 
-    /// The first number left (after the date took its own), with a currency word after it.
+    /// Words that put the amount right after them: «5 tacos de 20» is 20, «gasté 300 en 2 cosas»
+    /// is 300.
+    private static let amountLeads: Set<String> = [
+        "de", "por", "fue", "fueron", "son", "pague", "gaste", "costo", "costaron", "anota", "apunta",
+    ]
+
+    /// The amount: a number with a currency first, then one right after «de», «por», «gasté»…,
+    /// else the first number left (after the date took its own).
     private static func takeAmount(_ words: inout Words) -> String? {
+        var candidates: [Int] = []
         for index in words.folded.indices where words.free(index) {
             let word = words.original[index]
             guard word.contains(where: \.isNumber),
                   word.allSatisfy({ $0.isNumber || ".,$".contains($0) }),
                   let parsed = AmountParser.parse(word), parsed.value > 0 else { continue }
-            if let next = words.word(index + 1), currencyWords.contains(next) {
-                words.use(index...(index + 1))
-                return word + " " + words.original[index + 1]
-            }
-            words.use(index...index)
-            return word
+            candidates.append(index)
         }
-        return nil
+        let withCurrency = candidates.first { index in
+            words.original[index].contains("$") || words.word(index + 1).map(currencyWords.contains) == true
+        }
+        let led = candidates.first { words.word($0 - 1).map(amountLeads.contains) == true }
+        guard let index = withCurrency ?? led ?? candidates.first else { return nil }
+        if let next = words.word(index + 1), currencyWords.contains(next) {
+            words.use(index...(index + 1))
+            return words.original[index] + " " + words.original[index + 1]
+        }
+        words.use(index...index)
+        return words.original[index]
     }
 
     private static func takeSource(_ words: inout Words, among sources: [String]) -> String? {

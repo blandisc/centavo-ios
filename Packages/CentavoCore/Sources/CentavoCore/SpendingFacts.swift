@@ -70,8 +70,9 @@ public enum SpendingFacts {
             + categoriesUp(mine, now: now, calendar: calendar)
     }
 
-    /// How far apart two identical charges can be and still look like one charged twice.
-    static let doubleChargeWindow: TimeInterval = 2 * 60 * 60
+    /// How far apart two identical charges can be and still look like one charged twice. Short:
+    /// two coffees or two metro rides in a morning are not a bank's mistake.
+    static let doubleChargeWindow: TimeInterval = 30 * 60
 
     static func doubleCharges(_ records: [SpendingRecord], now: Date,
                               money: (Decimal) -> String) -> [SpendingFact] {
@@ -209,7 +210,10 @@ public enum FactCheck {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean.count <= maxLength else { return false }
         let allowed = Set(numbers(in: fact.line) + fact.figures.flatMap(numbers))
-        return numbers(in: clean).allSatisfy(allowed.contains)
+        let said = numbers(in: clean)
+        // Nothing new, and nothing left out: a note without its figures is another note.
+        return said.allSatisfy(allowed.contains)
+            && fact.figures.flatMap(numbers).allSatisfy(said.contains)
     }
 
     /// Each figure as plain digits: «$1,234.00» → «1234», «40 %» → «40».

@@ -180,7 +180,7 @@ struct ExpenseListView: View {
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic),
                         prompt: "Uber de octubre arriba de 200")
             .task(id: searchText) { await understandSearch() }
-            .task(id: fact?.key) { if let fact { await MonthNote.reword(fact) } }
+            .task(id: fact.map(MonthNote.identity)) { if let fact { await MonthNote.reword(fact) } }
             .task(id: expenses.count) { await MerchantReview.run(in: context) }
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
@@ -475,7 +475,7 @@ private extension ExpenseListView {
 
     @ViewBuilder var undoOverlay: some View {
         if let deleted = lastDeleted {
-            UndoBar(text: "Borraste \(deleted.merchant)") { restore(deleted) }
+            UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
                 .padding(.horizontal, Theme.horizontalPadding)
                 .padding(.bottom, 76)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

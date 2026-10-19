@@ -91,4 +91,43 @@ import Testing
         #expect(invented.date == base.date)
         #expect(invented.source == nil)
     }
+
+    @Test(arguments: [
+        ("5 tacos de 20", "20"),
+        ("gasté 300 en 2 cosas", "300"),
+        ("2 cafés por 90", "90"),
+        ("3 boletos 450 pesos", "450 pesos"),
+    ] as [(String, String)])
+    func picksTheAmountNotACount(sentence: String, amount: String) {
+        #expect(parse(sentence)?.amountText == amount, "«\(sentence)»")
+    }
+
+    @Test func aModelNumberMustBeAWholeWordOfTheSentence() throws {
+        let sentence = "450 en Liverpool"
+        let base = try #require(parse(sentence))
+        let refined = QuickEntryParser.refine(base, sentence: sentence, amount: "45", merchant: nil, when: nil,
+                                              payment: nil, sources: [], now: Self.now, calendar: Self.calendar)
+        #expect(refined.amountText == "450")
+    }
+
+    @Test func thePlainDayAndCardWinOverTheModels() throws {
+        let sentence = "120 de pan antes de ayer en efectivo"
+        let base = try #require(parse(sentence))
+        #expect(base.date == Self.day(17))
+        let refined = QuickEntryParser.refine(base, sentence: sentence, amount: nil, merchant: nil, when: "ayer",
+                                              payment: "en efectivo", sources: [], now: Self.now,
+                                              calendar: Self.calendar)
+        #expect(refined.date == Self.day(17))
+        #expect(refined.source == "Efectivo")
+    }
+
+    @Test func theDayOrTheCardIsNotTheMerchant() throws {
+        let sentence = "230 de tacos ayer en efectivo con la Nu"
+        let base = try #require(parse(sentence))
+        for wrong in ["tacos ayer en efectivo", "la Nu", "ayer"] {
+            let refined = QuickEntryParser.refine(base, sentence: sentence, amount: nil, merchant: wrong, when: nil,
+                                                  payment: nil, sources: ["Nu"], now: Self.now, calendar: Self.calendar)
+            #expect(refined.merchant == base.merchant, "«\(wrong)»")
+        }
+    }
 }

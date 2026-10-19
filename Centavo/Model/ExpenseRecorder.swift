@@ -53,6 +53,8 @@ enum ExpenseRecorder {
             rawAmount: amountText
         )
         before.apply(to: expense)
+        // Only what Wallet sends gets a cleaner reading: a name someone typed is theirs.
+        if expense.displayName == nil { expense.displayName = MerchantName.readable(merchantName) }
         context.insert(expense)
         try context.save()
         return .saved(merchant: merchantName)

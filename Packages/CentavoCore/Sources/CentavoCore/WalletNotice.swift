@@ -85,7 +85,9 @@ public struct WalletNotice: Equatable, Sendable {
                   part != figure, text.range(of: part, options: [.caseInsensitive]) != nil else { return nil }
             return part
         }
-        guard let shop = inNotice(merchant) else { return nil }
+        // The bank or card is not the shop: that mix-up is exactly what `parse` had to learn.
+        guard let shop = inNotice(merchant),
+              shop.caseInsensitiveCompare(card ?? "") != .orderedSame else { return nil }
         let isRefund = refunds.contains(where: folded.contains)
         let value = isRefund ? -amount.value.magnitude : amount.value
         return WalletNotice(amount: ParsedAmount(value: value, currencyMarker: amount.currencyMarker),

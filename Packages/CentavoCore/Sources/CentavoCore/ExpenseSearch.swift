@@ -82,8 +82,9 @@ public enum ExpenseSearch {
             guard let own = expense.category, fold(own) == fold(category) else { return false }
             return true
         }
-        let haystack = fold([expense.merchant, expense.readableName, expense.category, expense.card]
-            .compactMap { $0 }.joined(separator: " "))
+        // The amount too, so «230» finds the 230.00 one.
+        let haystack = fold([expense.merchant, expense.readableName, expense.category, expense.card,
+                             "\(amount)"].compactMap { $0 }.joined(separator: " "))
         return query.words.allSatisfy(haystack.contains)
     }
 

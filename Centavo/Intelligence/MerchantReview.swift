@@ -52,7 +52,12 @@ enum MerchantReview {
             let plain = MerchantName.readable(merchant)
             guard let reading = await LocalModel.readMerchant(merchant, readable: plain,
                                                               candidates: candidates, examples: examples)
-            else { continue }
+            else {
+                // The model went away (turned off, still downloading): look again next time.
+                // While it is there, no answer for this name (a guardrail) means leave it be.
+                if !LocalModel.isReady { reviewed.remove(key); break }
+                continue
+            }
             if fromWallet, let name = reading.name?.trimmingCharacters(in: .whitespacesAndNewlines),
                name != merchant, MerchantName.isFaithful(name, to: merchant) {
                 for expense in group where expense.rawAmount != nil

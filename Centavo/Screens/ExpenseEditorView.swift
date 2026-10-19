@@ -486,8 +486,8 @@ struct ExpenseEditorView: View {
             let before = CurrencyResolver.isoCode(for: expense.currencyMarker,
                                                   primary: CurrencyPreference.current)
             if before != currency { expense.currencyMarker = currency }
-            // A name typed here is how it reads; Wallet's gets its readable one again.
-            if name != expense.merchant { expense.displayName = MerchantName.readable(name) }
+            // A name typed here is how it reads, as typed.
+            if name != expense.merchant { expense.displayName = nil }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
             // Another category is a choice; keeping the suggested one leaves it a suggestion.
@@ -504,6 +504,8 @@ struct ExpenseEditorView: View {
                 date: date,
                 category: categoryName.isEmpty ? nil : categoryName
             )
+            // A place picked from the suggestions reads as it did before.
+            new.displayName = history.first { UserCatalog.same($0.merchant, name) }?.displayName
             setRepeats(new)
             context.insert(new)
         }

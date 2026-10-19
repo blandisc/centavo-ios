@@ -20,15 +20,20 @@ public enum MerchantName {
             .split(whereSeparator: \.isWhitespace)
             .map { $0.trimmingCharacters(in: edgePunctuation) }
             .filter { !$0.isEmpty }
-        // A branch number, a terminal, a folio: «02», «1234», «50HT1».
-        words.removeAll { $0.contains(where: \.isNumber) }
+        // A folio or terminal mixes letters and digits («50HT1», «G500»); a branch number
+        // trails («02»). A number inside a name stays: «Farmacia 24 Horas».
+        words.removeAll { $0.contains(where: \.isNumber) && $0.contains(where: \.isLetter) }
+        while let last = words.last, last.contains(where: \.isNumber) { words.removeLast() }
         if let branch = words.firstIndex(where: { branchWords.contains(fold($0)) }) {
             words.removeSubrange(branch...)
         }
         words = withoutLegalSuffix(words)
         while words.count > 1, let first = words.first, places.contains(fold(first)) { words.removeFirst() }
         while words.count > 1, let last = words.last, places.contains(fold(last)) { words.removeLast() }
-        guard !words.isEmpty else { return nil }
+        // Nothing left but numbers or a city code («CLIP*MX 77812»): no name to show.
+        guard words.contains(where: { !places.contains(fold($0)) && $0.contains(where: \.isLetter) }) else {
+            return nil
+        }
 
         // Wallet shouts («TAQ GUERO»); a name that already has lowercase letters was written
         // by someone and keeps its case.

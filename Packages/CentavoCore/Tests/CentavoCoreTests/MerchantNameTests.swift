@@ -17,13 +17,16 @@ import Testing
         ("REFACCIONARIA LOPEZ SA DE CV", "Refaccionaria Lopez"),
         ("PANADERIA LA ESPIGA S.A. de C.V.", "Panaderia la Espiga"),
         ("SQ *CAFE CENTRAL", "Cafe Central"),
+        ("FARMACIA 24 HORAS", "Farmacia 24 Horas"),
+        ("GASOLINERA G500 LOS ANGELES", "Gasolinera los Angeles"),
     ] as [(String, String)])
     func readsWalletNames(raw: String, readable: String) {
         #expect(MerchantName.readable(raw) == readable, "«\(raw)»")
     }
 
     /// A name someone wrote, or one Wallet already sends readable, stays as it is.
-    @Test(arguments: ["Tacos Don Beto", "Oxxo", "Sin comercio", "", "Café Avellaneda", "Netflix"])
+    @Test(arguments: ["Tacos Don Beto", "Oxxo", "Sin comercio", "", "Café Avellaneda", "Netflix",
+                      "CLIP*MX 77812", "MERPAGO*12345"])
     func leavesReadableNamesAlone(raw: String) {
         #expect(MerchantName.readable(raw) == nil, "«\(raw)»")
     }

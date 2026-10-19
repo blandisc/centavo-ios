@@ -13,6 +13,10 @@ import FoundationModels
 /// touches an expense; it never adds anything up.
 enum LocalModel {
     static var isReady: Bool {
+        #if DEBUG
+        // The demo modes (UI tests, screenshots) must look the same on every machine.
+        if DemoData.isRequested { return false }
+        #endif
         #if canImport(FoundationModels)
         if #available(iOS 26, *) { return OnDevice.isReady }
         #endif
@@ -164,7 +168,7 @@ private enum OnDevice {
     static func category(for words: String, candidates: [String]) async -> String? {
         guard isReady, !candidates.isEmpty else { return nil }
         do {
-            let schema = try GenerationSchema(type: String.self, description: nil,
+            let schema = GenerationSchema(type: String.self, description: nil,
                                           anyOf: candidates + [CategoryPick.none])
             let session = makeSession("""
                 Pick the spending category these words refer to, from the list. \

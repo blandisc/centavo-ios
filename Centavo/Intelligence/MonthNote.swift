@@ -19,23 +19,31 @@ enum MonthNote {
                                     money: { formatMoney($0, isoCode: primary, label: primary) })
     }
 
+    /// Which fact a wording was written for, figures included: the pace changes with every
+    /// payment, and a wording kept from yesterday would say yesterday's numbers.
+    static func identity(_ fact: SpendingFact) -> String {
+        ([fact.key] + fact.figures).joined(separator: "·")
+    }
+
     /// What to show for `fact`: the kept wording if it was written for it, else the plain line.
     static func text(for fact: SpendingFact, stored: String) -> String {
-        guard stored.hasPrefix(fact.key + "|") else { return fact.line }
-        return String(stored.dropFirst(fact.key.count + 1))
+        let prefix = identity(fact) + "|"
+        guard stored.hasPrefix(prefix) else { return fact.line }
+        let text = String(stored.dropFirst(prefix.count))
+        return FactCheck.accepts(text, for: fact) ? text : fact.line
     }
 
     /// Asks the model for a wording of `fact`, once, and keeps it if it says the same.
     static func reword(_ fact: SpendingFact) async {
         let defaults = UserDefaults.standard
-        guard LocalModel.isReady,
-              !(defaults.string(forKey: storedKey) ?? "").hasPrefix(fact.key + "|") else { return }
+        let prefix = identity(fact) + "|"
+        guard LocalModel.isReady, !(defaults.string(forKey: storedKey) ?? "").hasPrefix(prefix) else { return }
         guard let text = await LocalModel.reword(fact)?.trimmingCharacters(in: .whitespacesAndNewlines),
               FactCheck.accepts(text, for: fact) else {
             // Not usable: keep the plain line for this fact rather than asking again.
-            defaults.set(fact.key + "|" + fact.line, forKey: storedKey)
+            defaults.set(prefix + fact.line, forKey: storedKey)
             return
         }
-        defaults.set(fact.key + "|" + text, forKey: storedKey)
+        defaults.set(prefix + text, forKey: storedKey)
     }
 }

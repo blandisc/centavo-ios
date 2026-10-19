@@ -68,7 +68,6 @@ final class Expense {
         self.date = date
         self.category = category
         self.rawAmount = rawAmount
-        self.displayName = MerchantName.readable(merchant)
     }
 }
 
