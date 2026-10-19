@@ -18,7 +18,10 @@ enum MonthStatus {
     static func budgetSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
                                primary: String = primaryCurrency) throws -> String? {
         let summary = try summarize(in: context, now: now, primary: primary)
-        guard let pace = BudgetPace(budget: budget, spent: summary.primary.amount, on: now) else {
+        // The fixed expenses still to come are set apart, as on the screen.
+        let originals = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.repeatsMonthly == true }))
+        let reserved = FixedOutlook.reserved(originals: originals, plans: FixedPlan.saved, primary: primary, now: now)
+        guard let pace = BudgetPace(budget: budget, spent: summary.primary.amount, reserved: reserved, on: now) else {
             return nil
         }
         let left = money(pace.remaining.magnitude, summary.primary)

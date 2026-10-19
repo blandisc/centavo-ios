@@ -26,6 +26,9 @@ final class Expense {
     /// On the original: the day of the month it repeats on, when the original's own date had
     /// to fall earlier (set up on the 31st in a 30-day month).
     var repeatDay: Int?
+    /// On the original: how often it comes back (`RepeatRule.stored`). `nil` is every month,
+    /// which is what every fixed expense from before this existed is.
+    var repeatRule: String?
     /// On a copy: logged by itself from a fixed expense.
     var isRepeat: Bool?
     /// How the merchant reads on screen («Taquería El Güero» for «CLIP*MX TAQ GUERO 02»).
@@ -41,6 +44,10 @@ final class Expense {
 
     /// Fixed: the original or one of its copies.
     var isFixed: Bool { repeatsMonthly == true || isRepeat == true }
+
+    /// How often a fixed expense comes back. `repeatsMonthly` keeps its old name: it means
+    /// «repeats», at whatever rule this says.
+    var rule: RepeatRule { RepeatRule(stored: repeatRule) }
 
     /// The name the screen shows.
     var shownName: String { displayName ?? merchant }

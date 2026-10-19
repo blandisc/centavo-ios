@@ -546,6 +546,26 @@ final class FlowTests: XCTestCase {
         snap("flujo-gasto-fijo")
     }
 
+    /// Owner's request: «todos los lunes me cobran 500»: set up once in «Más › Gastos fijos».
+    func testUnGastoFijoSemanalDesdeGastosFijos() {
+        let app = launch()
+        app.buttons["Más"].tap()
+        require(app.buttons["Gastos fijos"], "No está «Gastos fijos» en «Más»").tap()
+        require(app.buttons["agregar-fijo"], "No se puede agregar un gasto fijo").tap()
+        let amount = require(app.textFields["fijo-monto"], "No abrió la hoja del gasto fijo")
+        amount.tap()
+        amount.typeAmount("500")
+        app.textFields["fijo-nombre"].tap()
+        app.textFields["fijo-nombre"].typeText("Limpieza")
+        app.segmentedControls["frecuencia"].buttons["Semana"].tap()
+        app.buttons["hoja-guardar"].tap()
+        require(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Limpieza")).firstMatch,
+                "No aparece en la lista de fijos")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "cada ")).firstMatch.exists,
+                      "No dice cada cuándo se repite")
+        snap("flujo-gastos-fijos")
+    }
+
     // MARK: En qué se va
 
     func testElPresupuestoDiceEnQueSeVa() {

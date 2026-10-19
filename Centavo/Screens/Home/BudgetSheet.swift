@@ -7,6 +7,8 @@ struct BudgetSheet: View {
     let currency: String
     /// What this month already spent in `currency`, so the preview matches the main screen.
     var spent: Decimal = 0
+    /// Fixed expenses still to come this month, set apart as on the main screen.
+    var reserved: Decimal = 0
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
@@ -35,7 +37,7 @@ struct BudgetSheet: View {
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if let amount {
-                            Text(BudgetStore.dailyPreview(amount, spent: spent, currency: currency))
+                            Text(BudgetStore.dailyPreview(amount, spent: spent, reserved: reserved, currency: currency))
                                 .font(.ticket(13, relativeTo: .footnote))
                                 .foregroundStyle(Theme.brass)
                                 .accessibilityIdentifier("presupuesto-al-dia")

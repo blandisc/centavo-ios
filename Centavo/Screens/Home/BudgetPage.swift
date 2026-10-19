@@ -223,6 +223,14 @@ struct BudgetPage: View {
                 .tracking(1)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
+            // Set apart from «Hoy puedes gastar»: they are coming, just not yet.
+            if isCurrentMonth, pace.reserved > 0 {
+                Text("Fijos por venir · \(money(pace.reserved))")
+                    .font(.ticket(10, relativeTo: .caption2))
+                    .tracking(1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.muted)
+            }
             // «Hoy puedes gastar» heads the screen now (HeroTotal); not repeated here.
         }
         .accessibilityElement(children: .ignore)
@@ -233,6 +241,7 @@ struct BudgetPage: View {
             + (isOver ? "Te pasaste por \(remainingText). "
                       : (isCurrentMonth ? "Te quedan \(remainingText). " : "Te quedaron \(remainingText). "))
             + (isCurrentMonth ? "A hoy podrías llevar \(money(pace.expectedToDate)). " : "")
+            + (isCurrentMonth && pace.reserved > 0 ? "Se apartan \(money(pace.reserved)) de gastos fijos por venir. " : "")
             + (isCurrentMonth && !isOver ? "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance))." : "")
         )
     }
