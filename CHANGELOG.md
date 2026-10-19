@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Changed
+- Al escribir montos (gasto, presupuesto, gastos fijos) la coma de los miles se pone sola: «12,500».
+- Anotar a mano es más rápido: al tocar «Comercio» salen los lugares donde más pagas, y la categoría se elige con un toque en una cuadrícula con íconos (o «Otra» para escribir una nueva). Elegir un comercio conocido marca su categoría de la última vez.
+- El contador de pasos de la guía, de la bienvenida y el mes de la barra son más grandes.
 - Los días del calendario son más fáciles de tocar (44 pt) y VoiceOver dice su monto con moneda. La vibración de «gasto anotado» ya no suena por importaciones, deshacer, gastos fijos o lo que llega de iCloud.
 - La moneda principal ya no depende de la región del iPhone (con región de EE. UU. el presupuesto salía en dólares y los pagos en pesos quedaban aparte): es pesos, salvo que elijas otra o tus pagos estén en otra. Si casi todos los pagos del mes están en otra moneda, la pantalla ofrece «Sumar en pesos» con un toque. El dinero se escribe como en México en cualquier región («$402», no «MXN 402»).
 - La bienvenida avanza solo con sus botones: ya no puede quedarse en una página mientras el contador dice otra. Un gasto fijo escrito sin tocar «Agregar» también se guarda.

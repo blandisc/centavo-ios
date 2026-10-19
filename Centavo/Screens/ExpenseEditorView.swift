@@ -24,6 +24,10 @@ struct ExpenseEditorView: View {
     @State private var repeatsMonthly = false
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
+    @FocusState private var merchantFocused: Bool
+    @FocusState private var categoryFocused: Bool
+    @State private var writingCategory = false
+    @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = 22
 
     /// Whether something was typed or changed since the sheet opened.
     private var hasChanges: Bool {
@@ -85,6 +89,7 @@ struct ExpenseEditorView: View {
                         .foregroundStyle(Theme.ink)
                         .keyboardType(.decimalPad)
                         .focused($amountFocused)
+                        .groupsThousands($amountText)
                         .accessibilityIdentifier("monto")
                     // The decimal pad has no minus key, so a refund is a switch rather than a sign.
                     Toggle(isOn: $isRefund) {
@@ -110,9 +115,27 @@ struct ExpenseEditorView: View {
                     field("Comercio", text: $merchant, prompt: "Nombre del comercio",
                           identifier: "comercio")
                         .textInputAutocapitalization(.words)
-                    categoryRow
+                        .focused($merchantFocused)
+                    if merchantFocused, !MerchantSuggestions.matches(for: merchant, history: pastExpenses).isEmpty {
+                        merchantSuggestions
+                    }
                 } header: {
-                    Text("Comercio y categoría").ticketCaption()
+                    Text("Comercio").ticketCaption()
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
+                    categoryGrid
+                    // A name of its own: typed after «Otra», or one that came that way.
+                    if writingCategory || !(category.isEmpty || CategoryStyle.offered(
+                        known: Array(CategoryMemory.known(in: pastExpenses).prefix(8))).contains(category)) {
+                        field("Categoría", text: $category, prompt: "Nombre de la categoría",
+                              identifier: "categoria")
+                            .textInputAutocapitalization(.words)
+                            .focused($categoryFocused)
+                    }
+                } header: {
+                    Text("Categoría (opcional)").ticketCaption()
                 } footer: {
                     if let remembered = CategoryMemory.category(for: merchant, in: pastExpenses) {
                         hint("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
@@ -219,32 +242,73 @@ struct ExpenseEditorView: View {
         }
     }
 
-    /// Free-text field, plus the categories already in use so they stay spelled
-    /// one way instead of fragmenting into near-duplicates.
-    private var categoryRow: some View {
-        let known = CategoryMemory.known(in: pastExpenses)
-        return HStack {
-            field("Categoría (opcional)", text: $category, prompt: "Despensa, transporte…",
-                  identifier: "categoria")
-                .textInputAutocapitalization(.words)
-            if !known.isEmpty {
-                Menu {
-                    ForEach(known, id: \.self) { name in
-                        Button(name) { category = name }
-                    }
-                    if !category.isEmpty {
-                        Divider()
-                        Button("Quitar categoría", role: .destructive) { category = "" }
-                    }
-                } label: {
-                    Label("Categorías usadas", systemImage: "chevron.up.chevron.down")
-                        .labelStyle(.iconOnly)
-                        .foregroundStyle(Theme.muted)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+    /// Places already paid at, one tap away while the name is typed.
+    private var merchantSuggestions: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(MerchantSuggestions.matches(for: merchant, history: pastExpenses), id: \.self) { name in
+                    Button(name) { merchant = name }
+                        .font(.ticket(13, relativeTo: .footnote))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(Theme.background, in: Capsule())
+                        .overlay { Capsule().strokeBorder(Theme.hairline) }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Usa este comercio")
                 }
             }
         }
+        .scrollIndicators(.hidden)
+        .accessibilityIdentifier("comercios-sugeridos")
+    }
+
+    /// The usual categories with their icons, plus any other already used; one tap picks
+    /// one, another tap clears it. «Otra» writes a new one.
+    private var categoryGrid: some View {
+        let names = CategoryStyle.offered(known: Array(CategoryMemory.known(in: pastExpenses).prefix(8)))
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+            ForEach(names, id: \.self) { name in
+                categoryChip(name, icon: CategoryStyle.icon(for: name), selected: category == name) {
+                    category = category == name ? "" : name
+                    writingCategory = false
+                }
+            }
+            categoryChip("Otra", icon: "plus", selected: writingCategory) {
+                writingCategory.toggle()
+                if writingCategory { category = ""; categoryFocused = true }
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func categoryChip(_ name: String, icon: String, selected: Bool,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.body)
+                    // Every icon in the same box, so the names line up.
+                    .frame(height: iconHeight)
+                    .foregroundStyle(selected ? Theme.onBrass : Theme.brass)
+                    .accessibilityHidden(true)
+                Text(name)
+                    .font(.ticket(11, relativeTo: .caption))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .foregroundStyle(selected ? Theme.onBrass : Theme.ink)
+            }
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .padding(.horizontal, 4)
+                .background(selected ? Theme.brass : Theme.background, in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    if !selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline) }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("categoria-\(name)")
     }
 
     /// The fixed expense a copy came from: same merchant and amount, still repeating.

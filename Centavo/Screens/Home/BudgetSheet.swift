@@ -28,6 +28,7 @@ struct BudgetSheet: View {
                         .foregroundStyle(Theme.ink)
                         .keyboardType(.decimalPad)
                         .focused($focused)
+                        .groupsThousands($text)
                         .accessibilityIdentifier("presupuesto-monto")
                 } header: {
                     Text("Tope de gasto cada mes (\(currency))").ticketCaption()
@@ -79,8 +80,7 @@ struct BudgetSheet: View {
         }
         .presentationDetents([.medium, .large])
         // A typed number is not thrown away by a stray swipe down.
-        .interactiveDismissDisabled(text != (BudgetStore.amount(from: stored)?
-            .formatted(.number.precision(.fractionLength(0...2)).grouping(.never)) ?? ""))
+        .interactiveDismissDisabled(amount != BudgetStore.amount(from: stored))
         .onAppear {
             if let current = BudgetStore.amount(from: stored) {
                 text = current.formatted(.number.precision(.fractionLength(0...2)).grouping(.never))

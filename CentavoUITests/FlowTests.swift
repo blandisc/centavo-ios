@@ -91,6 +91,15 @@ final class FlowTests: XCTestCase {
         return element.exists
     }
 
+    /// «Borrar gasto» sits at the bottom of the sheet, under the categories: on a smaller
+    /// phone it has to be scrolled to.
+    private func deleteButton(_ app: XCUIApplication) -> XCUIElement {
+        let button = app.buttons["borrar-gasto"]
+        require(app.textFields["monto"], "No abrió el gasto")
+        for _ in 0..<4 where !button.isHittable { app.swipeUp() }
+        return require(button, "No hay botón de borrar")
+    }
+
     // MARK: Anotar
 
     func testAnotarUnGastoLoSumaAlTotalYApareceEnLaLista() {
@@ -173,6 +182,30 @@ final class FlowTests: XCTestCase {
         expectTotal(app, "$89.00", "«89 pesos» no contó en el total")
     }
 
+    /// Owner's feedback: the thousands go in by themselves, a place already visited is one
+    /// tap, and its category comes with it.
+    func testComasSolasComercioSugeridoYCategoriaConUnToque() {
+        let app = launch(demo: true)
+        app.buttons["Anotar gasto"].tap()
+        let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
+        amount.tap()
+        amount.typeText("12500")
+        XCTAssertEqual(amount.value as? String, "12,500", "No puso la coma de los miles")
+
+        app.textFields["comercio"].tap()
+        require(app.buttons["Oxxo"], "No sugirió un comercio ya visitado").tap()
+        XCTAssertEqual(app.textFields["comercio"].value as? String, "Oxxo")
+        let despensa = require(app.buttons["categoria-Despensa"], "No hay categorías con un toque")
+        XCTAssertTrue(despensa.isSelected, "No tomó la categoría de la última vez")
+        snap("flujo-captura-rapida")
+
+        app.buttons["categoria-Comida"].tap()
+        XCTAssertTrue(app.buttons["categoria-Comida"].isSelected, "No cambió de categoría con un toque")
+        XCTAssertFalse(app.buttons["categoria-Despensa"].isSelected)
+        app.buttons["hoja-guardar"].tap()
+        require(row(app, containing: "12,500.00"), "El gasto no se guardó con su monto")
+    }
+
     func testNoSePuedeGuardarCeroNiUnMontoAbsurdo() {
         let app = launch()
         fillExpense(app, amount: "0", merchant: "Nada")
@@ -181,7 +214,9 @@ final class FlowTests: XCTestCase {
         let amount = app.textFields["monto"]
         amount.tap()
         amount.clearAndType("1234567890123")
-        XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled, "Dejó guardar un monto de 13 dígitos")
+        // The field stops at 12 digits, the most an amount can have: a 13th is not typed.
+        let digits = (amount.value as? String ?? "").filter(\.isNumber)
+        XCTAssertLessThanOrEqual(digits.count, 12, "Dejó escribir un monto de \(digits.count) dígitos")
         snap("flujo-monto-invalido")
     }
 
@@ -212,7 +247,7 @@ final class FlowTests: XCTestCase {
     func testBorrarPideConfirmacionYLuegoQuitaElGasto() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
-        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        deleteButton(app).tap()
 
         let confirm = require(app.buttons["Borrar"], "No pidió confirmación")
         snap("flujo-confirmar-borrado")
@@ -224,7 +259,7 @@ final class FlowTests: XCTestCase {
     func testDeshacerRegresaElGastoBorrado() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
-        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        deleteButton(app).tap()
         require(app.buttons["Borrar"], "No pidió confirmación").tap()
         let undo = require(app.buttons["deshacer-borrado"], "No ofreció deshacer", timeout: 4)
         snap("flujo-deshacer")
@@ -250,7 +285,7 @@ final class FlowTests: XCTestCase {
     func testCancelarLaConfirmacionNoBorra() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
-        require(app.buttons["borrar-gasto"], "No hay botón de borrar").tap()
+        deleteButton(app).tap()
         require(app.buttons["Borrar"], "No pidió confirmación")
         // On iOS 26 the dialog is a popover with no Cancel of its own: tapping outside dismisses it.
         let dialogCancel = app.buttons.matching(NSPredicate(
