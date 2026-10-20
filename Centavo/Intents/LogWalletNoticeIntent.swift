@@ -40,7 +40,7 @@ struct LogWalletNoticeIntent: AppIntent {
             return .result(dialog: "")
         }
         switch try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
-                                          card: parsed.card, in: context) {
+                                          card: parsed.card, rawNotice: notice, in: context) {
         case .unreadable, .empty:
             return .result(dialog: "")
         case .duplicate(let merchant):

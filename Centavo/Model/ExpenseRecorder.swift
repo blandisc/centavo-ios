@@ -23,6 +23,7 @@ enum ExpenseRecorder {
         amountText: String,
         merchant: String?,
         card: String?,
+        rawNotice: String? = nil,
         in context: ModelContext,
         now: Date = .now
     ) throws -> CaptureOutcome {
@@ -52,6 +53,7 @@ enum ExpenseRecorder {
             category: before.category,
             rawAmount: amountText
         )
+        expense.rawNotice = rawNotice
         before.apply(to: expense, withName: true)
         // Only what Wallet sends gets a cleaner reading: a name someone typed is theirs.
         if expense.displayName == nil { expense.displayName = MerchantName.readable(merchantName) }

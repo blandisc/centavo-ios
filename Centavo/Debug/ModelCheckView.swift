@@ -101,6 +101,17 @@ struct ModelCheckView: View {
             rows[index].seconds = Double(elapsed.components.seconds)
                 + Double(elapsed.components.attoseconds) / 1e18
         }
+        saveReport()
+    }
+
+    /// The run, as a file in the app's Documents (modelo.txt), to read it off the iPhone.
+    private func saveReport() {
+        var lines = [Date.now.formatted(.iso8601), LocalModel.isReady ? "Modelo listo" : "Sin Apple Intelligence",
+                     summary]
+        if let failure = OnDeviceLog.lastFailure { lines.append("Falla: " + failure) }
+        lines += rows.map { "\($0.raw) → \($0.name ?? "—") · \($0.got ?? CategoryPick.none) · esperaba \($0.expected)" }
+        guard let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        try? lines.joined(separator: "\n").write(to: folder.appending(path: "modelo.txt"), atomically: true, encoding: .utf8)
     }
 }
 #endif

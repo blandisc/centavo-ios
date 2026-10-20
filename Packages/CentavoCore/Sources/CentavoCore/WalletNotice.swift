@@ -53,6 +53,11 @@ public struct WalletNotice: Equatable, Sendable {
         if let own = clean(leftover), !own.isEmpty {
             merchant = own
             card = before.last
+        } else if before.count == 1, let concept = after.first {
+            // Card, amount, then the concept (as the owner's notices arrive): the line above the
+            // amount is the bank, and the merchant comes after it.
+            merchant = concept
+            card = before.first
         } else if let concept = before.last {
             merchant = concept
             card = before.dropLast().last

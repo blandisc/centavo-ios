@@ -18,6 +18,9 @@ final class Expense {
     var category: String?
     /// The amount text exactly as Wallet sent it, kept so a parsing bug is recoverable.
     var rawAmount: String?
+    /// The whole Wallet notification as Atajos handed it over, so a misread merchant can be
+    /// traced to the real text. Optional: a lightweight, CloudKit-safe addition.
+    var rawNotice: String?
     /// A fixed expense (rent, a subscription) that logs itself again every month. Set on the
     /// original only. Optional, so adding it is a lightweight migration.
     var repeatsMonthly: Bool?
