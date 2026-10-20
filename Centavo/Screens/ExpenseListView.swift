@@ -115,6 +115,12 @@ struct ExpenseListView: View {
                     }
                 }
                 if expenses.isEmpty {
+                    // A budget with nothing spent yet still has its days to show.
+                    if let pace {
+                        BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
+                                   onSetBudget: { showingBudget = true })
+                            .ticketRow(bottom: 20)
+                    }
                     EmptyTicket { showingSetup = true }
                         .ticketRow()
                 } else {
@@ -565,6 +571,19 @@ private struct HeroTotal: View {
         return pace.dailyAllowance
     }
 
+    @State private var counted: Double = 0
+
+    private var allowanceValue: Double { NSDecimalNumber(decimal: allowance ?? 0).doubleValue }
+
+    /// The figure on its way up: whole money, like the final one.
+    private var countedText: String {
+        let amount = Decimal(counted.rounded(.down))
+        if let iso = summary.primary.isoCode {
+            return amount.formatted(currencyStyle(iso).precision(.fractionLength(0)))
+        }
+        return summary.primary.label + amount.formatted(.number.precision(.fractionLength(0)))
+    }
+
     private var allowanceText: String {
         let amount = allowance ?? 0
         if let iso = summary.primary.isoCode {
@@ -608,24 +627,25 @@ private struct HeroTotal: View {
                     .tracking(1.6)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
-                Text(allowanceText)
+                // Counts up from zero when the screen opens, and rolls to the new figure after
+                // every payment.
+                Text(countedText)
                     .accessibilityIdentifier("hoy-puedes-gastar")
+                    .accessibilityLabel(allowanceText)
                     .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
                     .tracking(-2)
                     .foregroundStyle(Theme.brass)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                    .contentTransition(.numericText())
-                    .animation(reduceMotion ? nil : .snappy, value: allowance)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(verbatim: caption).ticketCaption()
-                    Text(totalText)
-                        .accessibilityIdentifier("total-mes")
-                        .font(.ticket(17, weight: .medium, relativeTo: .headline))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                }
+                    .contentTransition(.numericText(value: counted))
+                    .onAppear {
+                        guard !reduceMotion else { counted = allowanceValue; return }
+                        withAnimation(.snappy(duration: 0.9)) { counted = allowanceValue }
+                    }
+                    .onChange(of: allowanceValue) { _, value in
+                        withAnimation(reduceMotion ? nil : .snappy) { counted = value }
+                    }
+
             } else {
                 Text(verbatim: caption).ticketCaption()
                 Text(totalText)
@@ -638,8 +658,10 @@ private struct HeroTotal: View {
                     .contentTransition(.numericText())
                     .animation(reduceMotion ? nil : .snappy, value: summary.primary.amount)
             }
-            if !summary.others.isEmpty {
-                // Adding currencies together would be a lie, so they ride along separately.
+            // Adding currencies together would be a lie, so they ride along separately, under the
+            // month's total; with «Hoy puedes gastar» on top they would only crowd it (each one
+            // still shows in its own row of the list).
+            if allowance == nil, !summary.others.isEmpty {
                 Text(verbatim: "+ \(othersText) aparte")
                     .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(13, relativeTo: .footnote))
