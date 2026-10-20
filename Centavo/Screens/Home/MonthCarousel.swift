@@ -18,7 +18,14 @@ struct MonthCarousel: View {
     /// Each page's own height: the carousel takes the shown one's, so a short page leaves no
     /// empty band under it before the dots.
     @State private var heights: [Int: CGFloat] = [:]
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// How far the swipe has gone, 0 on the budget and 1 on the calendar. The height follows
+    /// the finger instead of jumping when the page settles (it made the list below leap).
+    @State private var progress: CGFloat = 0
+
+    private var height: CGFloat? {
+        guard let first = heights[0], let second = heights[1] else { return heights[page ?? 0] }
+        return first + (second - first) * progress
+    }
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
@@ -47,8 +54,13 @@ struct MonthCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
-            .frame(height: heights[page ?? 0], alignment: .top)
-            .animation(reduceMotion ? nil : .snappy, value: page)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                guard geometry.containerSize.width > 0 else { return 0 }
+                return min(max(geometry.contentOffset.x / geometry.containerSize.width, 0), 1)
+            } action: { _, value in
+                progress = value
+            }
+            .frame(height: height, alignment: .top)
 
             HStack(spacing: 4) {
                 ForEach(pageNames.indices, id: \.self) { index in
