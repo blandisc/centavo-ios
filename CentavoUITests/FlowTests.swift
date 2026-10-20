@@ -194,7 +194,11 @@ final class FlowTests: XCTestCase {
 
         app.textFields["comercio"].tap()
         require(app.buttons["Oxxo"], "No sugirió un comercio ya visitado").tap()
-        XCTAssertEqual(app.textFields["comercio"].value as? String, "Oxxo")
+        // A slow simulator can read the field before the pick lands.
+        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Oxxo"),
+                                               object: app.textFields["comercio"])
+        XCTAssertEqual(XCTWaiter().wait(for: [picked], timeout: 5), .completed,
+                       "El comercio dice: \(app.textFields["comercio"].value as? String ?? "")")
         let despensa = require(app.buttons["categoria-Despensa"], "No hay categorías con un toque")
         XCTAssertTrue(despensa.isSelected, "No tomó la categoría de la última vez")
         snap("flujo-captura-rapida")
