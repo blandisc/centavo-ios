@@ -238,3 +238,6 @@ Se quitó el modelo local de Apple Intelligence (nombres legibles por modelo, ca
 
 ## 2026-10-20 · Dónde se pagó
 A pedido del dueño, cada gasto puede guardar dónde estaba el iPhone al anotarse (interruptor «Guardar dónde pagas» en «Más», con permiso de ubicación «Al usar la app»). Wallet guarda la ubicación de cada cargo pero no se la da a Atajos, así que es la del iPhone: exacta en tiendas, la tuya en compras en línea. El detalle del gasto muestra un mapa y el nombre del lugar; el mapa y el nombre los da Apple (MapKit/CLGeocoder), igual que en Wallet: no hay servidor propio. Latitud, longitud y nombre son opcionales y viajan por iCloud como el resto.
+
+## 2026-10-20 · El simulador de la CI solo corre al entrar a `main`
+Decisión del dueño: en un PR solo corre «Pruebas y build» y eso decide el merge. Las pruebas de interfaz en el simulador (unos 25 min) corren en cada push a `main` y a mano («Run workflow»), nunca en un PR; desaparece la etiqueta `ci-app`. Motivo: un merge esperó horas por corridas lentas o atoradas del simulador. A cambio, quien hace un PR que toca pantallas corre las pruebas de interfaz en su simulador local, y un error que solo aparezca en la CI se ve en la corrida de `main` y se arregla ahí.

@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    # «labeled» so that putting `ci-app` on a PR runs the simulator right away.
-    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 concurrency:
@@ -64,12 +62,12 @@ jobs:
 
   # Corre la app en el simulador y le toma una captura a cada pantalla, para poder
   # revisar el diseño sin una Mac a la mano. No bloquea el PR: es para ver, no para aprobar.
-  # The simulator (flows, tap targets, screenshots) takes ~25 min, so a PR doesn't wait for it:
-  # it runs on every push to main, by hand, and on a PR only with the `ci-app` label (decision
-  # of 2026-10-19). The build and the unit tests above still gate every PR.
+  # The simulator (flows, tap targets, screenshots) takes ~25 min, so a PR never waits for it:
+  # it runs on every push to main and by hand (owner's decision of 2026-10-20). The build and
+  # the unit tests above gate every PR.
   interfaz:
     name: Capturas en simulador
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci-app')
+    if: github.event_name != 'pull_request'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
@@ -106,25 +104,13 @@ jobs:
           # Boot it now so it is ready while the app compiles, instead of after.
           xcrun simctl boot "$udid" || true
 
-      # In a PR only what decides the merge runs: flows, the tap-target audit and the unit
-      # tests. The screenshots and the accessibility audits that only report are for looking,
-      # not approving, so they run on main, and so does the 5,000-expense timing, which only
-      # tells something when compared run to run. (Two simulators in parallel were tried: on these
-      # small runners the second one dropped out and nothing was gained.)
+      # Everything runs: flows, audits, screenshots and the 5,000-expense timing. (Two
+      # simulators in parallel were tried: on these small runners the second one dropped out
+      # and nothing was gained.)
       - name: Correr las pruebas de interfaz
         run: |
-          skip=""
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            skip="-skip-testing:CentavoUITests/ScreenshotTests"
-            skip="$skip -skip-testing:CentavoUITests/FlowTests/testConCincoMilGastosLaPantallaAbreYRespondeDeprisa"
-            for t in testAuditarPrincipal testAuditarCalendario testAuditarPrimeraVez \
-                     testAuditarHojaDeGasto testAuditarGuia testAuditarLetraGrande; do
-              skip="$skip -skip-testing:CentavoUITests/AccessibilityAuditTests/$t"
-            done
-          fi
           xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
             -destination "id=${{ steps.sim.outputs.udid }}" \
-            $skip \
             -resultBundlePath build/result.xcresult \
             CODE_SIGNING_ALLOWED=NO -jobs 4
 
