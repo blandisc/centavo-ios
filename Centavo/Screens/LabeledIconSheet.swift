@@ -76,6 +76,8 @@ struct LabeledIconSheet: View {
                 .listRowBackground(Theme.surface)
             }
             .ticketForm()
+            // Like the other sheets: moving the form puts the keyboard away, so every icon shows.
+            .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(title)
             .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes uno con ese nombre" : trimmed,
