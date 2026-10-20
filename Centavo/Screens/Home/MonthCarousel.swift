@@ -15,22 +15,30 @@ struct MonthCarousel: View {
     var currency = CurrencyPreference.fallback
 
     @State private var page: Int? = 0
+    /// Each page's own height: the carousel takes the shown one's, so a short page leaves no
+    /// empty band under it before the dots.
+    @State private var heights: [Int: CGFloat] = [:]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 0) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
                                shares: shares, note: note, onSetBudget: onSetBudget)
                         .padding(.horizontal, Theme.horizontalPadding)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .containerRelativeFrame(.horizontal)
                         .id(0)
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
                                  currency: currency)
                         .padding(.horizontal, Theme.horizontalPadding)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .containerRelativeFrame(.horizontal)
                         .id(1)
                 }
@@ -39,6 +47,8 @@ struct MonthCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
+            .frame(height: heights[page ?? 0], alignment: .top)
+            .animation(reduceMotion ? nil : .snappy, value: page)
 
             HStack(spacing: 4) {
                 ForEach(pageNames.indices, id: \.self) { index in

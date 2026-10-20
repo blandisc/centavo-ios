@@ -121,7 +121,7 @@ final class FlowTests: XCTestCase {
         fillExpense(app, amount: "30", merchant: "Tienda", refund: true)
         app.buttons["hoja-guardar"].tap()
         expectTotal(app, "$70.00", "La devolución no restó")
-        XCTAssertTrue(row(app, containing: "+30.00").exists, "La devolución no sale como +30.00")
+        XCTAssertTrue(row(app, containing: "+$30.00").exists, "La devolución no sale como +$30.00")
         snap("flujo-devolucion")
     }
 
