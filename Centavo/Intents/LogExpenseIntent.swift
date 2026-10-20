@@ -98,5 +98,25 @@ struct CentavoShortcuts: AppShortcutsProvider {
             shortTitle: "Cuánto llevo",
             systemImageName: "sum"
         )
+        AppShortcut(
+            intent: QuickExpenseIntent(),
+            phrases: [
+                "Anota esto en \(.applicationName)",
+                "Apunta un gasto en \(.applicationName)",
+                "Anotar en una frase en \(.applicationName)",
+            ],
+            shortTitle: "Anotar en una frase",
+            systemImageName: "text.bubble"
+        )
+        AppShortcut(
+            intent: CategoryTotalIntent(),
+            phrases: [
+                "Cuánto llevo en \(\.$category) en \(.applicationName)",
+                "Cuánto he gastado en \(\.$category) en \(.applicationName)",
+                "Cuánto llevo por categoría en \(.applicationName)",
+            ],
+            shortTitle: "Cuánto llevo en…",
+            systemImageName: "chart.pie"
+        )
     }
 }

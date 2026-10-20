@@ -189,4 +189,37 @@ final class ExpenseRecorderTests: XCTestCase {
         try record("$89.00", "Un lugar nuevo")
         XCTAssertNil(try saved().first?.category)
     }
+
+    func testAWalletNameReadsCleanAndTheOriginalStays() throws {
+        try record("$89.00", "CLIP*MX TAQ GUERO 02")
+        let capture = try XCTUnwrap(saved().first)
+        XCTAssertEqual(capture.merchant, "CLIP*MX TAQ GUERO 02")
+        XCTAssertEqual(capture.shownName, "Taq Guero")
+    }
+
+    func testTheReadableNameAndASuggestionCarryOverButAreNotRemembered() throws {
+        let earlier = Expense(amount: 80, currencyMarker: "$", merchant: "CLIP*MX TAQ GUERO 02",
+                              date: now.addingTimeInterval(-86_400), category: "Comida")
+        earlier.categorySource = Expense.suggestedCategory
+        earlier.displayName = "Taquería El Güero"
+        context.insert(earlier)
+        try context.save()
+
+        try record("$95.00", "CLIP*MX TAQ GUERO 02")
+        let capture = try XCTUnwrap(saved().last)
+        XCTAssertEqual(capture.shownName, "Taquería El Güero")
+        XCTAssertEqual(capture.category, "Comida")
+        XCTAssertTrue(capture.hasSuggestedCategory, "Una sugerencia se volvió elección sin que nadie la eligiera")
+    }
+
+    func testAByHandExpenseKeepsItsCardAndDay() throws {
+        let yesterday = now.addingTimeInterval(-86_400)
+        XCTAssertEqual(try ExpenseRecorder.recordByHand(amountText: "230", merchant: "Tacos", card: "Efectivo",
+                                                        in: context, primary: "MXN", now: yesterday),
+                       .saved(merchant: "Tacos"))
+        let expense = try XCTUnwrap(saved().first)
+        XCTAssertEqual(expense.card, "Efectivo")
+        XCTAssertEqual(expense.date, yesterday)
+        XCTAssertEqual(expense.currencyMarker, "MXN")
+    }
 }

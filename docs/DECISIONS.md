@@ -204,5 +204,20 @@ A pedido del dueño: una pantalla nueva en «Más» (Tarjetas y categorías) con
 ## 2026-10-19 · La guía de iOS 27 usa capturas reales
 Las imágenes de la guía salen de `GuideScreenshotsTests`, que recorre Atajos de verdad en un simulador recién borrado (es-MX, oscuro) y guarda cada pantalla; un script les dibuja el aro de latón. Cuando Apple cambie Atajos se vuelven a sacar con `TEST_RUNNER_CENTAVO_GUIA=1`. En iOS 27 el «+» abre el editor directo o «Describir un atajo» (con Apple Intelligence; se sale con «Editar»), y la automatización queda con «Automatización» encendida y «Notificar» apagado: corre sin preguntar.
 
+## 2026-10-19 · Dos capas: la manual y la del modelo local
+Decisión del dueño después del spike (`docs/research/modelo-local.md`).
+- **Dos capas.** Todo lo nuevo funciona primero con reglas en `CentavoCore`, en cualquier iPhone: nombres legibles, anotar con una frase, avisos del mes, búsqueda y «¿Cuánto llevo en Café?». Con iOS 26 o posterior y Apple Intelligence encendido, el modelo del iPhone mejora lo que necesita leer lenguaje. Sin él no aparece nada nuevo ni ningún aviso de «actualiza».
+- **Solo en el iPhone.** Se usa el modelo on-device de Foundation Models; **no** Private Cloud Compute ni modelos en la nube, porque son red y la regla del 2026-10-15 dice que la app no hace llamadas por su cuenta.
+- **El modelo no suma ni inventa.** Elige de una lista (tus categorías o «Ninguna»), copia las palabras que se dijeron o redacta un hecho ya calculado. `CentavoCore` revisa todo antes de tocar un gasto: el nombre nuevo tiene que ser el mismo comercio (`MerchantName.isFaithful`), la categoría tiene que estar en la lista, el monto tiene que estar literal en lo dicho y una nota no puede traer cifras que la app no calculó (`FactCheck`).
+- **Esquema: dos propiedades opcionales en `Expense`**, `displayName` y `categorySource`. Migración ligera y compatible con iCloud. Aprobado por el dueño.
+- **El nombre legible es solo para mostrar.** El CSV, la memoria por comercio y los repetidos usan el nombre que mandó Wallet; dos sucursales siguen siendo dos comercios. El modelo solo renombra lo que llegó de Wallet, nunca un nombre que alguien escribió.
+- **Una categoría sugerida no es memoria.** Se ve igual, la hoja dice que es sugerida y no cuenta como «lo que elegiste» para el siguiente pago. Elegir otra la vuelve tuya; quitarla la deja sin categoría y no se vuelve a sugerir. El CSV no exporta sugerencias sin confirmar, para que al importarlo no parezcan elecciones.
+- **Un nombre que escribes es el que se ve**, y el modelo ya no lo toca. Las marcas conocidas tampoco se reescriben.
+- **No corre durante la captura de Wallet**, que es en segundo plano y donde Apple raciona el modelo: los comercios se revisan al abrir la app, ocho a la vez. Única excepción: un aviso de Wallet con monto que el lector no entendió.
+- **Siri en dos pasos:** «Anota esto en Al día» y luego la frase. Apple no deja texto libre en la frase que arranca Siri.
+- **La foto del ticket se pospone** (decisión del dueño).
+- **La búsqueda es el campo nativo** que aparece al bajar la lista, y busca en todos los meses.
+- **La nota del mes** es la última línea del ticket del presupuesto, solo en el mes actual.
+
 ## 2026-10-19 · El simulador no frena los PR
 Decisión del dueño (opción 2 de tres): en un PR solo corren el build y las pruebas unitarias (unos 2 min). Las pruebas de interfaz en el simulador (flujos, zonas táctiles y capturas, unos 25 min) corren en cada push a `main`, a mano («Run workflow») y en un PR solo si lleva la etiqueta `ci-app`. Revierte la regla del 2026-10-13 de que las pruebas de interfaz corran y bloqueen cada PR. A cambio, un error de pantalla puede llegar a `main`: se ve en la corrida de `main` y se arregla ahí. Un PR que toca pantallas o flujos lleva `ci-app`.

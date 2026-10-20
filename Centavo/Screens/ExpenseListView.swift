@@ -48,6 +48,13 @@ struct ExpenseListView: View {
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
     @State private var importMessage: String?
+    /// What is being searched, as typed or dictated: «uber de octubre arriba de 200».
+    @State private var searchText = ""
+    /// The category the on-device model took the search words to mean, when they matched
+    /// nothing as written («cafecitos» → «Café»).
+    @State private var searchCategory: String?
+    @AppStorage(MonthNote.storedKey) private var storedNote = ""
+    @State private var checkingModel = false
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
@@ -80,66 +87,77 @@ struct ExpenseListView: View {
         let pace = BudgetPace(budget: BudgetStore.amount(from: storedBudget),
                               spent: summary.primary.amount,
                               on: isCurrent ? now : MonthNavigator.closingMoment(of: viewed))
+        let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+        let listed = searching ? searchResults : shownExpenses
+        let fact = isCurrent ? MonthNote.facts(expenses, now: now, primary: primaryCurrency,
+                                               budget: BudgetStore.amount(from: storedBudget)).first : nil
 
         NavigationStack {
             List {
-                HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
-                          pace: pace)
-                    .ticketRow(bottom: 20)
-
-                if isCurrent, let code = CurrencySuggestion.switchTo(
-                    markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
-                    offered: CurrencyPreference.offered) {
-                    CurrencySuggestionRow(code: code) { setPrimary(code) }
+                if searching {
+                    SearchHeaderRow(count: listed.count, category: searchCategory)
+                        .ticketRow(bottom: 8)
+                } else {
+                    HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
+                              pace: pace)
                         .ticketRow(bottom: 20)
-                }
 
+                    if isCurrent, let code = CurrencySuggestion.switchTo(
+                        markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
+                        offered: CurrencyPreference.offered) {
+                        CurrencySuggestionRow(code: code) { setPrimary(code) }
+                            .ticketRow(bottom: 20)
+                    }
+                }
                 if expenses.isEmpty {
                     EmptyTicket { showingSetup = true }
                         .ticketRow()
                 } else {
-                    MonthCarousel(
-                        calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
-                                                          primary: primaryCurrency, today: now),
-                        selectedDay: selectedDay,
-                        onSelectDay: { day in withAnimation(.snappy) { selectedDay = day } },
-                        spent: summary.primary,
-                        pace: pace,
-                        isCurrentMonth: isCurrent,
-                        shares: CategoryShare.top(summary.categories),
-                        onSetBudget: { showingBudget = true },
-                        currency: primaryCurrency
-                    )
-                    // Edge to edge: each page keeps its own margin, so a swipe shows a gap
-                    // between them instead of two pages touching.
-                    .ticketRow(bottom: isCurrent ? 4 : 20, horizontal: 0)
-
-                    if isCurrent {
-                        CaptureHealthRow(
-                            health: CaptureHealth(lastCapture: latestCaptures.first?.date,
-                                                  now: now),
-                            openGuide: { showingSetup = true }
+                    if !searching {
+                        MonthCarousel(
+                            calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
+                                                              primary: primaryCurrency, today: now),
+                            selectedDay: selectedDay,
+                            onSelectDay: { day in withAnimation(.snappy) { selectedDay = day } },
+                            spent: summary.primary,
+                            pace: pace,
+                            isCurrentMonth: isCurrent,
+                            shares: CategoryShare.top(summary.categories),
+                            note: fact.map { MonthNote.text(for: $0, stored: storedNote) },
+                            onSetBudget: { showingBudget = true },
+                            currency: primaryCurrency
                         )
-                        .ticketRow(bottom: 12)
-                    }
+                        // Edge to edge: each page keeps its own margin, so a swipe shows a gap
+                        // between them instead of two pages touching.
+                        .ticketRow(bottom: isCurrent ? 4 : 20, horizontal: 0)
 
-                    if let day = selectedDay {
-                        DayFilterRow(day: day, count: shownExpenses.count) {
-                            withAnimation(.snappy) { selectedDay = nil }
+                        if isCurrent {
+                            CaptureHealthRow(
+                                health: CaptureHealth(lastCapture: latestCaptures.first?.date,
+                                                      now: now),
+                                openGuide: { showingSetup = true }
+                            )
+                            .ticketRow(bottom: 12)
                         }
-                        .ticketRow()
-                    }
-                    if monthExpenses.isEmpty {
-                        Text("Sin gastos este mes")
-                            .font(.ticket(13, relativeTo: .footnote))
-                            .tracking(1.4)
-                            .textCase(.uppercase)
-                            .foregroundStyle(Theme.muted)
-                            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-                            .overlay(alignment: .top) { Perforation() }
+
+                        if let day = selectedDay {
+                            DayFilterRow(day: day, count: shownExpenses.count) {
+                                withAnimation(.snappy) { selectedDay = nil }
+                            }
                             .ticketRow()
+                        }
+                        if monthExpenses.isEmpty {
+                            Text("Sin gastos este mes")
+                                .font(.ticket(13, relativeTo: .footnote))
+                                .tracking(1.4)
+                                .textCase(.uppercase)
+                                .foregroundStyle(Theme.muted)
+                                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                                .overlay(alignment: .top) { Perforation() }
+                                .ticketRow()
+                        }
                     }
-                    ForEach(shownExpenses) { expense in
+                    ForEach(listed) { expense in
                         Button { editing = expense } label: {
                             LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
                         }
@@ -159,6 +177,11 @@ struct ExpenseListView: View {
                 }
             }
             .listStyle(.plain)
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic),
+                        prompt: "Uber de octubre arriba de 200")
+            .task(id: searchText) { await understandSearch() }
+            .task(id: fact.map(MonthNote.identity)) { if let fact { await MonthNote.reword(fact) } }
+            .task(id: expenses.count) { await MerchantReview.run(in: context) }
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
@@ -199,6 +222,9 @@ struct ExpenseListView: View {
                         Button("Configurar atajo", systemImage: "questionmark.circle") {
                             showingSetup = true
                         }
+                        #if DEBUG
+                        Button("Probar el modelo", systemImage: "cpu") { checkingModel = true }
+                        #endif
                     } label: {
                         Label("Más", systemImage: "ellipsis")
                     }
@@ -243,7 +269,7 @@ struct ExpenseListView: View {
             ) { expense in
                 Button("Borrar", role: .destructive) { delete(expense) }
             } message: { expense in
-                Text("\(expense.merchant) · \(ledgerAmount(for: expense, primary: primaryCurrency))")
+                Text("\(expense.shownName) · \(ledgerAmount(for: expense, primary: primaryCurrency))")
             }
             .fileImporter(isPresented: $importing,
                           allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
@@ -261,9 +287,12 @@ struct ExpenseListView: View {
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
+            .modifier(ModelCheckSheet(isPresented: $checkingModel))
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
                                           onReview: { showingBudget = true }))
             .task {
+                // Siri learns the categories it can be asked about («¿Cuánto llevo en Café?»).
+                CentavoShortcuts.updateAppShortcutParameters()
                 // Never chosen: settle it once, from what the payments are in (pesos if none),
                 // so it cannot drift with the phone's settings.
                 if !CurrencyPreference.offered.contains(storedCurrency) {
@@ -337,7 +366,10 @@ private struct CatalogsSheet: ViewModifier {
             .sheet(isPresented: $isPresented) { CatalogSettingsView() }
             .onChange(of: sources) { _, value in push(value, UserCatalog.sourcesKey) }
             .onChange(of: defaultSource) { _, value in push(value, UserCatalog.defaultSourceKey) }
-            .onChange(of: categories) { _, value in push(value, UserCatalog.categoriesKey) }
+            .onChange(of: categories) { _, value in
+                push(value, UserCatalog.categoriesKey)
+                CentavoShortcuts.updateAppShortcutParameters()
+            }
     }
 
     private func push(_ value: String, _ key: String) {
@@ -408,6 +440,34 @@ private extension ExpenseListView {
         Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })
     }
 
+    /// Every expense the search asks for, from any month, newest first.
+    var searchResults: [Expense] {
+        var query = ExpenseSearch.query(from: searchText, now: now)
+        if let searchCategory {
+            query.words = []
+            query.category = searchCategory
+        }
+        return expenses.filter { ExpenseSearch.matches($0.searchable, query) }
+    }
+
+    /// When the words match nothing as written, the on-device model may know which category
+    /// they mean. Without it, the search is the plain one.
+    func understandSearch() async {
+        searchCategory = nil
+        let query = ExpenseSearch.query(from: searchText, now: now)
+        guard !query.words.isEmpty, LocalModel.isReady, searchResults.isEmpty else { return }
+        // Waits for the typing to stop.
+        try? await Task.sleep(for: .milliseconds(400))
+        guard !Task.isCancelled else { return }
+        let history = expenses.prefix(500).map(\.categorized)
+        let custom = UserCatalog.decode(UserDefaults.standard.string(forKey: UserCatalog.categoriesKey) ?? "")
+        let candidates = CategoryPick.candidates(CategoryStyle.common.map(\.name), custom.map(\.name),
+                                                 CategoryMemory.known(in: Array(history)))
+        let picked = await LocalModel.category(for: query.words.joined(separator: " "), candidates: candidates)
+        guard !Task.isCancelled else { return }
+        searchCategory = picked
+    }
+
     func isOver(_ pace: BudgetPace?) -> Bool {
         guard let pace else { return false }
         return pace.remaining < 0
@@ -415,7 +475,7 @@ private extension ExpenseListView {
 
     @ViewBuilder var undoOverlay: some View {
         if let deleted = lastDeleted {
-            UndoBar(text: "Borraste \(deleted.merchant)") { restore(deleted) }
+            UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
                 .padding(.horizontal, Theme.horizontalPadding)
                 .padding(.bottom, 76)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -629,7 +689,7 @@ private struct LedgerRow: View {
 
     private var merchantText: some View {
         // Up to three lines; the full name is in the expense sheet.
-        Text(expense.merchant)
+        Text(expense.shownName)
             .lineLimit(3)
             .font(.ticket(15, weight: .medium, relativeTo: .body))
             .tracking(0.4)
@@ -707,17 +767,20 @@ private struct DeletedExpense: Identifiable {
     let amount: Decimal, currencyMarker: String?, merchant: String, card: String?
     let date: Date, category: String?, rawAmount: String?
     let repeatsMonthly: Bool?, repeatsThrough: Date?, isRepeat: Bool?
+    let displayName: String?, categorySource: String?
 
     init(_ e: Expense) {
         amount = e.amount; currencyMarker = e.currencyMarker; merchant = e.merchant; card = e.card
         date = e.date; category = e.category; rawAmount = e.rawAmount
         repeatsMonthly = e.repeatsMonthly; repeatsThrough = e.repeatsThrough; isRepeat = e.isRepeat
+        displayName = e.displayName; categorySource = e.categorySource
     }
 
     func make() -> Expense {
         let e = Expense(amount: amount, currencyMarker: currencyMarker, merchant: merchant, card: card,
                         date: date, category: category, rawAmount: rawAmount)
         e.repeatsMonthly = repeatsMonthly; e.repeatsThrough = repeatsThrough; e.isRepeat = isRepeat
+        e.displayName = displayName; e.categorySource = categorySource
         return e
     }
 }
@@ -757,6 +820,23 @@ private struct UndoBarSurface: ViewModifier {
                 .background(Theme.surface, in: Capsule())
                 .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
         }
+    }
+}
+
+/// «3 gastos», over the results while searching; says so when the words were read as a category.
+private struct SearchHeaderRow: View {
+    let count: Int
+    let category: String?
+
+    var body: some View {
+        Text(category.map { "\(count) \(count == 1 ? "gasto" : "gastos") en \($0)" }
+             ?? (count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")"))
+            .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+            .tracking(1.2)
+            .textCase(.uppercase)
+            .foregroundStyle(Theme.brass)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .accessibilityIdentifier("resultados-busqueda")
     }
 }
 

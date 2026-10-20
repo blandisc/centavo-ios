@@ -30,6 +30,8 @@ enum RecurringExpenses {
                                    merchant: original.merchant, card: original.card,
                                    date: date, category: original.category)
                 copy.isRepeat = true
+                copy.displayName = original.displayName
+                copy.categorySource = original.categorySource
                 context.insert(copy)
                 logged += 1
             }

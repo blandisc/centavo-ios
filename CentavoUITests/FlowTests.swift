@@ -206,6 +206,31 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "12,500.00"), "El gasto no se guardó con su monto")
     }
 
+    /// Owner's request: the whole expense in one sentence fills the sheet (plain rules; the
+    /// on-device model is off in the demo modes, so this is the same on every machine).
+    func testDiloEnUnaFraseLlenaLaHoja() {
+        let app = launch(demo: true)
+        app.buttons["Anotar gasto"].tap()
+        require(app.textFields["monto"], "No abrió la hoja de gasto")
+        let button = app.buttons["en-una-frase"]
+        for _ in 0..<4 where !button.isHittable { app.swipeUp() }
+        require(button, "No está «Dilo en una frase»").tap()
+        let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
+        sentence.tap()
+        sentence.typeText("230 de tacos ayer, en efectivo")
+        app.alerts.buttons["Llenar"].tap()
+        // Back up to the amount. Give the fill a moment first: with changes in it, the sheet
+        // can't be swiped away; without them, swiping down would close it.
+        Thread.sleep(forTimeInterval: 2)
+        for _ in 0..<4 where !app.textFields["monto"].isHittable { app.swipeDown() }
+        // The sheet fills a moment after «Llenar» (the sentence is read off the main thread).
+        let filled = expectation(for: NSPredicate(format: "value == %@", "230"),
+                                 evaluatedWith: app.textFields["monto"])
+        wait(for: [filled], timeout: 10)
+        XCTAssertEqual(app.textFields["monto"].value as? String, "230", "No tomó el monto de la frase")
+        XCTAssertEqual(app.textFields["comercio"].value as? String, "Tacos", "No tomó el comercio de la frase")
+    }
+
     /// Owner's request: set up how you pay (one by default) and categories of your own, each
     /// with an icon, and find them ready when writing an expense down.
     func testTarjetasYCategoriasPropias() {

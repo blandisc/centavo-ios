@@ -82,4 +82,15 @@ final class MonthStatusTests: XCTestCase {
         XCTAssertTrue(sentence.contains("0.00"), sentence)
         XCTAssertFalse(sentence.contains("presupuesto"), sentence)
     }
+
+    func testSaysWhatACategoryAddsUpTo() throws {
+        context.insert(Expense(amount: 65, currencyMarker: "$", merchant: "Starbucks", date: now, category: "Café"))
+        context.insert(Expense(amount: 45, currencyMarker: "$", merchant: "La Ceiba", date: now, category: "cafe"))
+        context.insert(Expense(amount: 300, currencyMarker: "$", merchant: "Oxxo", date: now, category: "Despensa"))
+        let line = try MonthStatus.categorySentence("café", in: context, now: now, primary: "USD")
+        XCTAssertTrue(line.hasPrefix("Llevas"), line)
+        XCTAssertTrue(line.contains("110.00"), line)
+        XCTAssertEqual(try MonthStatus.categorySentence("Ropa", in: context, now: now, primary: "USD"),
+                       "Este mes no llevas nada en Ropa.")
+    }
 }

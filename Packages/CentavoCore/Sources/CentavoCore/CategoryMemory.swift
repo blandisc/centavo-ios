@@ -5,11 +5,15 @@ public struct CategorizedExpense: Equatable, Sendable {
     public var merchant: String
     public var category: String?
     public var date: Date
+    /// The category was a suggestion nobody confirmed (the on-device model's). It is shown,
+    /// but it is not *your* choice, so it is never remembered as one.
+    public var isSuggested: Bool
 
-    public init(merchant: String, category: String?, date: Date) {
+    public init(merchant: String, category: String?, date: Date, isSuggested: Bool = false) {
         self.merchant = merchant
         self.category = category
         self.date = date
+        self.isSuggested = isSuggested
     }
 }
 
@@ -28,7 +32,8 @@ public enum CategoryMemory {
         let wanted = key(merchant)
         guard !wanted.isEmpty else { return nil }
         return history.enumerated()
-            .filter { key($0.element.merchant) == wanted && $0.element.category != nil }
+            .filter { key($0.element.merchant) == wanted && $0.element.category != nil
+                && !$0.element.isSuggested }
             // Newest wins; the index breaks ties so the answer never depends on
             // the order the caller happened to fetch rows in.
             .max { left, right in

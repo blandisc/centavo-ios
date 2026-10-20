@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **Nombres legibles:** los comercios que llegan de Wallet se leen como se escriben («CLIP*MX TAQ GUERO 02» → «Taq Guero», «AMZN MKTP MX*2K3J» → «Amazon»). El nombre original se guarda y es el que sale en el CSV.
+- **Anotar en una frase:** «Oye Siri, anota esto en Al día» y luego «230 de tacos ayer, en efectivo». También desde «Dilo en una frase», arriba del teclado al anotar a mano. Entiende el día («ayer», «el viernes», «el 3»), cómo pagaste («en efectivo», «con la Nu») y el comercio.
+- **Nota del mes** en el ticket del presupuesto: un posible cobro doble, una suscripción que no marcaste como fija, si a este ritmo te pasas del presupuesto, o una categoría muy arriba de lo normal.
+- **Buscar** bajando la lista: «uber de octubre arriba de 200». Busca en todos los meses.
+- **Siri por categoría:** «¿Cuánto llevo en Café en Al día?».
+- **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
+
 ### Changed
 - Al anotar a mano, «¿Con qué pagaste?» tiene su propia sección: «Efectivo» siempre a un toque, tus tarjetas, y un botón «Agregar tarjeta» que dice lo que hace (antes era un «+» suelto). Las categorías nuevas se crean desde «Nueva categoría». Al bajar en la hoja se cierra el teclado numérico, que tapaba la mitad.
 - La guía para conectar Wallet (iOS 27) se rehizo siguiendo Atajos en un iPhone nuevo: una captura real por paso con lo que hay que tocar marcado, y el flujo actual (el «+» abre el editor; si sale «Describir un atajo», «Editar»; la variable «Notificación» está al final de la barra, deslizándola). Sin animaciones ni pasos de la automatización vieja.
