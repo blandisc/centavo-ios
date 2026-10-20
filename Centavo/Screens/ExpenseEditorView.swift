@@ -61,6 +61,18 @@ struct ExpenseEditorView: View {
         CurrencyPreference.offered.contains(currency)
             ? CurrencyPreference.offered : CurrencyPreference.offered + [currency]
     }
+    /// What «Guardar» will keep, or what is still missing: «$230 · Tacos · Efectivo».
+    private var saveSummary: String {
+        guard let parsed, parsed.value != 0 else { return "Falta el monto" }
+        let name = merchant.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return "Falta el comercio" }
+        let money = formatMoney(parsed.value.magnitude, isoCode: currency, label: currency)
+        var parts = [(isRefund ? "+" : "") + money, name]
+        let cardName = card.trimmingCharacters(in: .whitespaces)
+        if !cardName.isEmpty { parts.append(cardName) }
+        return parts.joined(separator: " · ")
+    }
+
     /// A zero amount is never a real expense, so it cannot be saved.
     private var canSave: Bool {
         guard let parsed, parsed.value != 0 else { return false }
@@ -267,13 +279,8 @@ struct ExpenseEditorView: View {
                         .font(.ticket(13, relativeTo: .footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save)
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                        .disabled(!canSave)
-                        .accessibilityIdentifier("hoja-guardar")
-                }
             }
+            .saveBar(saveSummary, enabled: canSave, action: save)
             .alert("Dilo en una frase", isPresented: $askingSentence) {
                 TextField("230 de tacos ayer, en efectivo", text: $sentence)
                     .accessibilityIdentifier("frase")
@@ -329,7 +336,11 @@ struct ExpenseEditorView: View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 ForEach(MerchantSuggestions.matches(for: merchant, history: pastExpenses), id: \.self) { name in
-                    Button(name) { merchant = name }
+                    Button(name) {
+                        merchant = name
+                        // The merchant is done: the keyboard would only cover the categories.
+                        merchantFocused = false
+                    }
                         .font(.ticket(13, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                         .padding(.horizontal, 14)

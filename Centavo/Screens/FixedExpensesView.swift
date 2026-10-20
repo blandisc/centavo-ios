@@ -245,13 +245,10 @@ struct FixedPlanSheet: View {
                         .font(.ticket(13, relativeTo: .footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save)
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                        .disabled(amount == nil || name.isEmpty)
-                        .accessibilityIdentifier("hoja-guardar")
-                }
             }
+            .saveBar(amount == nil ? "Falta el monto" : name.isEmpty ? "Falta qué es"
+                        : "\(name) · " + FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first!,
+                     enabled: amount != nil && !name.isEmpty, action: save)
             .onAppear { amountFocused = true }
         }
     }

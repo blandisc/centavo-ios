@@ -78,19 +78,15 @@ struct LabeledIconSheet: View {
             .ticketForm()
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(title)
+            .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes uno con ese nombre" : trimmed,
+                     enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
+                onSave(LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon))
+                dismiss()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
                         .font(.ticket(13, relativeTo: .footnote))
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        onSave(LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon))
-                        dismiss()
-                    }
-                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                    .disabled(trimmed.isEmpty || isTaken)
-                    .accessibilityIdentifier("guardar-nuevo")
                 }
             }
         }
