@@ -18,13 +18,14 @@ func formatMoney(_ amount: Decimal, isoCode: String?, label: String) -> String {
     return (amount < 0 ? "-" : "") + label + digits
 }
 
-/// An amount as the ledger prints it: bare digits in the primary currency ("89.00"),
+/// An amount as the ledger prints it: money in the primary currency ("$89.00"),
 /// the code in front of any other ("USD 24.99"), and a "+" when money came back.
 func ledgerAmount(for expense: Expense, primary: String) -> String {
     let iso = CurrencyResolver.isoCode(for: expense.currencyMarker, primary: primary)
     let number = expense.amount.magnitude.formatted(.number.precision(.fractionLength(2)))
     let sign = expense.amount < 0 ? "+" : ""
-    if iso == primary { return sign + number }
+    // The month's own money reads like every other figure on screen: «$47.50».
+    if iso == primary { return sign + formatMoney(expense.amount.magnitude, isoCode: primary, label: primary) }
     // A marker is a few characters. Anything longer is junk that slipped in (a merchant's
     // name, seen for real) and must not push the row off the screen.
     let code = String((iso ?? expense.currencyMarker ?? "").prefix(4))

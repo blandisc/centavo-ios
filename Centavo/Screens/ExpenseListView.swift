@@ -94,6 +94,12 @@ struct ExpenseListView: View {
                               on: isCurrent ? now : MonthNavigator.closingMoment(of: viewed))
         let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
         let listed = searching ? searchResults : shownExpenses
+        let groups = DayGroup.split(listed)
+        let health = CaptureHealth(lastCapture: latestCaptures.first?.date, now: now)
+        // When all is well and something came in today, the Wallet line is a note under «Hoy»
+        // instead of a row floating between the carousel and the list.
+        let healthUnderToday = isCurrent && !searching && selectedDay == nil && health.isRecent
+            && groups.first.map { Calendar.current.isDate($0.day, inSameDayAs: now) } == true
         let fact = isCurrent ? MonthNote.facts(expenses, now: now, primary: primaryCurrency,
                                                budget: BudgetStore.amount(from: storedBudget)).first : nil
 
@@ -105,7 +111,8 @@ struct ExpenseListView: View {
                 } else {
                     HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                               pace: pace)
-                        .ticketRow(bottom: 20)
+                        // With a budget the verdict sits right under the figure, one step away.
+                        .ticketRow(bottom: pace != nil && !expenses.isEmpty ? 8 : 20)
 
                     if isCurrent, let code = CurrencySuggestion.switchTo(
                         markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
@@ -142,13 +149,9 @@ struct ExpenseListView: View {
                         // between them instead of two pages touching.
                         .ticketRow(bottom: isCurrent ? 4 : 20, horizontal: 0)
 
-                        if isCurrent {
-                            CaptureHealthRow(
-                                health: CaptureHealth(lastCapture: latestCaptures.first?.date,
-                                                      now: now),
-                                openGuide: { showingSetup = true }
-                            )
-                            .ticketRow(bottom: 12)
+                        if isCurrent, !healthUnderToday {
+                            CaptureHealthRow(health: health, openGuide: { showingSetup = true })
+                                .ticketRow(bottom: 8)
                         }
 
                         if let day = selectedDay {
@@ -168,13 +171,19 @@ struct ExpenseListView: View {
                                 .ticketRow()
                         }
                     }
-                    ForEach(DayGroup.split(listed)) { group in
+                    ForEach(groups) { group in
                         // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
                         DayDivider(day: group.day, total: group.total(in: primaryCurrency), now: now)
                             .ticketRow()
+                        if healthUnderToday, group.id == groups.first?.id {
+                            CaptureHealthRow(health: health, compact: true, openGuide: { showingSetup = true })
+                                .ticketRow()
+                        }
                         ForEach(group.items) { expense in
                             Button { editing = expense } label: {
-                                LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
+                                // The divider already draws the line above a day's first row.
+                                LedgerRow(expense: expense, primaryCurrency: primaryCurrency,
+                                          perforated: expense.id != group.items.first?.id)
                             }
                             .buttonStyle(.plain)
                             .ticketRow()
@@ -193,6 +202,8 @@ struct ExpenseListView: View {
                 }
             }
             .listStyle(.plain)
+            // Rows set their own height; the list's 44 pt floor padded the small ones.
+            .environment(\.defaultMinListRowHeight, 0)
             .modifier(BottomSearch(text: $searchText))
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
@@ -248,25 +259,24 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Anotar gasto", systemImage: "plus") { adding = true }
                 }
+                // ‹ month › is one piece of glass; search sits apart at the other end.
                 ToolbarItemGroup(placement: .bottomBar) {
                     Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
                         .disabled(offset <= earliest)
-                    Spacer()
                     Text(viewed, format: .dateTime.month(.abbreviated).year())
                         .font(.ticket(15, weight: .medium, relativeTo: .body))
                         .tracking(2)
                         .textCase(.uppercase)
                         .lineLimit(1)
                         .fixedSize()
-                        .padding(.horizontal, 14)
-                    Spacer()
+                        .padding(.horizontal, 4)
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
                 }
                 // Search lives down here with the months, as a button that opens into a field
                 // (iOS 26), not as a bar across the top of the ticket.
                 if #available(iOS 26, *) {
-                    ToolbarSpacer(.fixed, placement: .bottomBar)
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
                     DefaultToolbarItem(kind: .search, placement: .bottomBar)
                 }
             }
@@ -631,7 +641,8 @@ private struct HeroTotal: View {
                     .font(.ticket(11, weight: .semibold, relativeTo: .caption))
                     .tracking(1.6)
                     .textCase(.uppercase)
-                    .foregroundStyle(Theme.brass)
+                    // Grey like every other caption, so the brass figure under it leads.
+                    .foregroundStyle(Theme.muted)
                 // Counts up from zero when the screen opens, and rolls to the new figure after
                 // every payment.
                 Text(countedText)
@@ -707,9 +718,10 @@ private struct EmptyTicket: View {
 private struct LedgerRow: View {
     let expense: Expense
     let primaryCurrency: String
+    /// The dashed line on top; a day's first row has the divider there instead.
+    var perforated = true
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .caption) private var dateWidth: CGFloat = 46
 
     private var isRefund: Bool { expense.amount < 0 }
 
@@ -719,12 +731,6 @@ private struct LedgerRow: View {
             .compactMap { $0 }
             .filter { !$0.isEmpty }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
-    private var dateText: some View {
-        Text(shortDate(expense.date))
-            .font(.ticket(12, relativeTo: .caption))
-            .foregroundStyle(Theme.muted)
     }
 
     private var merchantText: some View {
@@ -762,7 +768,6 @@ private struct LedgerRow: View {
             if typeSize.isAccessibilitySize {
                 // Side by side there is no room: stack it so nothing breaks mid-word.
                 VStack(alignment: .leading, spacing: 4) {
-                    dateText
                     merchantText
                     metaText
                     amountText
@@ -770,7 +775,6 @@ private struct LedgerRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    dateText.frame(width: dateWidth, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
                         merchantText
                         metaText
@@ -782,7 +786,7 @@ private struct LedgerRow: View {
         }
         .padding(.vertical, 8)
         .frame(minHeight: 52)
-        .overlay(alignment: .top) { Perforation() }
+        .overlay(alignment: .top) { if perforated { Perforation() } }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
@@ -938,7 +942,16 @@ struct DayGroup: Identifiable {
     /// What went that day in the month's currency (refunds subtract); others ride apart.
     func total(in primary: String) -> String? {
         let mine = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == primary }
-        guard !mine.isEmpty else { return nil }
+        // A day only in other money still says how much: «USD 24.99».
+        guard !mine.isEmpty else {
+            guard let first = items.first else { return nil }
+            let code = CurrencyResolver.isoCode(for: first.currencyMarker, primary: primary)
+            let same = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == code }
+            let sum = same.reduce(Decimal(0)) { $0 + $1.amount }
+            let number = sum.magnitude.formatted(.number.precision(.fractionLength(2)))
+            let label = String((code ?? first.currencyMarker ?? "").prefix(4))
+            return (sum < 0 ? "+" : "") + (label.isEmpty ? number : "\(label) \(number)")
+        }
         let sum = mine.reduce(Decimal(0)) { $0 + $1.amount }
         // Money that came back reads like the ledger's refunds: «+$230.00».
         return (sum < 0 ? "+" : "") + formatMoney(sum.magnitude, isoCode: primary, label: primary)

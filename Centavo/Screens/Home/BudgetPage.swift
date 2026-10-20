@@ -21,7 +21,9 @@ struct BudgetPage: View {
     @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = 22
     @State private var barWidth: CGFloat = 0
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
-    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 18
+    /// Every category icon sits in the same box, so a narrow bolt and a wide shirt weigh the same.
+    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 20
+    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = 14
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Grows a little with the text, but a bar the size of the screen helps nobody.
@@ -42,7 +44,7 @@ struct BudgetPage: View {
     var body: some View {
         // What was spent is already the big total right above; this page only says how it
         // measures against the budget.
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 32) {
             if let pace {
                 ticket(pace)
             } else {
@@ -90,12 +92,15 @@ struct BudgetPage: View {
                 let name = line.category ?? "Sin categoría"
                 let percent = line.share.formatted(.percent.precision(.fractionLength(0)))
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    HStack(alignment: .center, spacing: 8) {
                         Image(systemName: line.category.map {
                             CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories))
                         } ?? "questionmark")
-                            .font(.footnote)
+                            .resizable()
+                            .scaledToFit()
+                            .fontWeight(.medium)
                             .foregroundStyle(Theme.brass)
+                            .frame(width: iconSize, height: iconSize)
                             .frame(width: iconWidth)
                             .accessibilityHidden(true)
                         Text(name)

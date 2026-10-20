@@ -12,6 +12,12 @@ public enum CaptureHealth: Equatable, Sendable {
     /// Nothing for `days` days, long enough to be worth a look.
     case quiet(days: Int)
 
+    /// The last payment came recently: nothing to look at.
+    public var isRecent: Bool {
+        if case .recent = self { return true }
+        return false
+    }
+
     /// Days without a payment before it is worth a look. Two quiet days are normal.
     public static let quietAfterDays = 3
 

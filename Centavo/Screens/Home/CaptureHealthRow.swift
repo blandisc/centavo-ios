@@ -5,6 +5,8 @@ import SwiftUI
 /// worth checking the automation. Tapping it opens the setup guide.
 struct CaptureHealthRow: View {
     let health: CaptureHealth
+    /// A small note under the «Hoy» divider instead of a row of its own.
+    var compact = false
     let openGuide: () -> Void
 
     private var text: String {
@@ -18,10 +20,7 @@ struct CaptureHealthRow: View {
         }
     }
 
-    private var needsAttention: Bool {
-        if case .recent = health { return false }
-        return true
-    }
+    private var needsAttention: Bool { !health.isRecent }
 
     var body: some View {
         Button(action: openGuide) {
@@ -29,14 +28,16 @@ struct CaptureHealthRow: View {
                 Image(systemName: needsAttention ? "exclamationmark.circle" : "wave.3.right")
                     .imageScale(.small)
                 Text(text)
-                    .font(.ticket(11, relativeTo: .caption))
-                    .tracking(1.2)
+                    .font(.ticket(compact ? 10 : 11, relativeTo: compact ? .caption2 : .caption))
+                    .tracking(compact ? 0.8 : 1.2)
                     .textCase(.uppercase)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(needsAttention ? Theme.brass : Theme.muted)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            // Compact, it lines up with the divider's words, past its brass dash.
+            .padding(.leading, compact ? 22 : 0)
+            .frame(maxWidth: .infinity, minHeight: compact ? 28 : 44, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

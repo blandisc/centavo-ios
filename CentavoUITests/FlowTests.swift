@@ -78,7 +78,7 @@ final class FlowTests: XCTestCase {
     private func row(_ app: XCUIApplication, containing text: String) -> XCUIElement {
         let element = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
         if element.exists { return element }
-        for _ in 0..<4 where !element.exists { app.swipeUp() }
+        for _ in 0..<4 where !element.exists { scrollForm(app) }
         for _ in 0..<8 where !element.exists { app.swipeDown() }
         return element
     }
@@ -87,7 +87,7 @@ final class FlowTests: XCTestCase {
     /// these months are short, so two swipes reach the bottom.
     private func hasRow(_ app: XCUIApplication, containing text: String) -> Bool {
         let element = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
-        for _ in 0..<2 where !element.exists { app.swipeUp() }
+        for _ in 0..<2 where !element.exists { scrollForm(app) }
         return element.exists
     }
 
@@ -96,7 +96,7 @@ final class FlowTests: XCTestCase {
     private func deleteButton(_ app: XCUIApplication) -> XCUIElement {
         let button = app.buttons["borrar-gasto"]
         require(app.textFields["monto"], "No abrió el gasto")
-        for _ in 0..<4 where !button.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !button.isHittable { scrollForm(app) }
         return require(button, "No hay botón de borrar")
     }
 
@@ -121,7 +121,7 @@ final class FlowTests: XCTestCase {
         fillExpense(app, amount: "30", merchant: "Tienda", refund: true)
         app.buttons["hoja-guardar"].tap()
         expectTotal(app, "$70.00", "La devolución no restó")
-        XCTAssertTrue(row(app, containing: "+30.00").exists, "La devolución no sale como +30.00")
+        XCTAssertTrue(row(app, containing: "+$30.00").exists, "La devolución no sale como +$30.00")
         snap("flujo-devolucion")
     }
 
@@ -194,7 +194,11 @@ final class FlowTests: XCTestCase {
 
         app.textFields["comercio"].tap()
         require(app.buttons["Oxxo"], "No sugirió un comercio ya visitado").tap()
-        XCTAssertEqual(app.textFields["comercio"].value as? String, "Oxxo")
+        // A slow simulator can read the field before the pick lands.
+        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Oxxo"),
+                                               object: app.textFields["comercio"])
+        XCTAssertEqual(XCTWaiter().wait(for: [picked], timeout: 5), .completed,
+                       "El comercio dice: \(app.textFields["comercio"].value as? String ?? "")")
         let despensa = require(app.buttons["categoria-Despensa"], "No hay categorías con un toque")
         XCTAssertTrue(despensa.isSelected, "No tomó la categoría de la última vez")
         snap("flujo-captura-rapida")
@@ -216,7 +220,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
         let button = app.buttons["en-una-frase"]
-        for _ in 0..<4 where !button.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !button.isHittable { scrollForm(app) }
         require(button, "No está «Dilo en una frase»").tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
@@ -245,10 +249,11 @@ final class FlowTests: XCTestCase {
             require(app.buttons[add], "No se puede agregar").tap()
             let field = require(app.textFields["nombre-nuevo"], "No pide el nombre")
             field.tap()
-            field.typeText(name)
+            // «Listo» on the keyboard, as a person would, so the icons are not under it.
+            field.typeText(name + "\n")
             // The icon grid scrolls; the bottom «Guardar» bar leaves less of it in view.
             let iconButton = app.buttons[icon]
-            for _ in 0..<4 where !iconButton.isHittable { app.swipeUp() }
+            for _ in 0..<4 where !iconButton.isHittable { scrollForm(app) }
             iconButton.tap()
             app.buttons["guardar-nuevo"].tap()
         }
@@ -273,7 +278,7 @@ final class FlowTests: XCTestCase {
         if app.keyboards.count > 0 { app.swipeDown() }
         // Below the categories: on any phone it takes a scroll.
         let cash = app.buttons["tarjeta-Efectivo"]
-        for _ in 0..<4 where !cash.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !cash.isHittable { scrollForm(app) }
         XCTAssertTrue(require(cash, "No ofrece el efectivo").isSelected,
                       "La predeterminada no vino elegida")
         let pets = app.buttons["categoria-Mascotas"]
@@ -299,7 +304,7 @@ final class FlowTests: XCTestCase {
         require(app.textFields["monto"], "No abrió la hoja de gasto")
         XCTAssertTrue(app.keyboards.count > 0, "El monto no abrió el teclado")
         let cash = app.buttons["tarjeta-Efectivo"]
-        for _ in 0..<4 where !cash.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !cash.isHittable { scrollForm(app) }
         XCTAssertEqual(app.keyboards.count, 0, "Al bajar no se cerró el teclado")
         require(cash, "No ofrece efectivo sin configurar nada")
         XCTAssertTrue(app.buttons["tarjeta-Agregar tarjeta"].exists, "El botón no dice qué agrega")
@@ -544,7 +549,7 @@ final class FlowTests: XCTestCase {
         let app = launch()
         fillExpense(app, amount: "8500", merchant: "Renta")
         let toggle = app.switches["se-repite"]
-        for _ in 0..<3 where !toggle.isHittable { app.swipeUp() }
+        for _ in 0..<3 where !toggle.isHittable { scrollForm(app) }
         require(toggle, "No ofrece repetir cada mes")
         turnOn(toggle, "Se repite cada mes")
         app.buttons["hoja-guardar"].tap()
@@ -711,6 +716,13 @@ final class FlowTests: XCTestCase {
     }
 
     // MARK: Utilidades
+
+    /// Scrolls a sheet up by dragging its form, above the keyboard. `swipeUp()` starts at the
+    /// middle of the screen, which on smaller iPhones is already the keyboard: nothing moved.
+    private func scrollForm(_ app: XCUIApplication) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
+        start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)))
+    }
 
     private func expectTotal(_ app: XCUIApplication, _ expected: String,
                              _ message: String = "El total del mes no es el esperado") {
