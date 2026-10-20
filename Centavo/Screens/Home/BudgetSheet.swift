@@ -66,17 +66,13 @@ struct BudgetSheet: View {
             .ticketForm()
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle("Presupuesto")
+            .saveBar(amount.map { formatMoney($0, isoCode: currency, label: currency) + " al mes" } ?? "Falta el monto",
+                     enabled: amount != nil, action: save)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
                         .font(.ticket(13, relativeTo: .footnote))
                         .accessibilityIdentifier("hoja-cancelar")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save)
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                        .disabled(amount == nil)
-                        .accessibilityIdentifier("hoja-guardar")
                 }
             }
         }

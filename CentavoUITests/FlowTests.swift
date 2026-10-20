@@ -199,7 +199,10 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(despensa.isSelected, "No tomó la categoría de la última vez")
         snap("flujo-captura-rapida")
 
-        app.buttons["categoria-Comida"].tap()
+        // Picking a suggested merchant closes the keyboard, so the categories are in view.
+        XCTAssertEqual(app.keyboards.count, 0, "El teclado siguió tapando las categorías")
+        let food = app.buttons["categoria-Comida"]
+        food.tap()
         XCTAssertTrue(app.buttons["categoria-Comida"].isSelected, "No cambió de categoría con un toque")
         XCTAssertFalse(app.buttons["categoria-Despensa"].isSelected)
         app.buttons["hoja-guardar"].tap()
@@ -243,7 +246,10 @@ final class FlowTests: XCTestCase {
             let field = require(app.textFields["nombre-nuevo"], "No pide el nombre")
             field.tap()
             field.typeText(name)
-            app.buttons[icon].tap()
+            // The icon grid scrolls; the bottom «Guardar» bar leaves less of it in view.
+            let iconButton = app.buttons[icon]
+            for _ in 0..<4 where !iconButton.isHittable { app.swipeUp() }
+            iconButton.tap()
             app.buttons["guardar-nuevo"].tap()
         }
         create("agregar-fuente", "Nu", icon: "creditcard.fill")
