@@ -12,6 +12,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- La búsqueda ya no es una barra arriba de todo: es un botón 🔍 en la barra de abajo, junto a los meses, que se abre en un campo justo arriba del teclado.
 - Nuevo: **Guardar dónde pagas** (en «Más»). Cada gasto anotado por Wallet o a mano guarda dónde estaba tu iPhone, y su detalle muestra el mapa y el nombre del lugar, como Wallet.
 - Al anotar a mano, «¿Con qué pagaste?» tiene su propia sección: «Efectivo» siempre a un toque, tus tarjetas, y un botón «Agregar tarjeta» que dice lo que hace (antes era un «+» suelto). Las categorías nuevas se crean desde «Nueva categoría». Al bajar en la hoja se cierra el teclado numérico, que tapaba la mitad.
 - La guía para conectar Wallet (iOS 27) se rehizo siguiendo Atajos en un iPhone nuevo: una captura real por paso con lo que hay que tocar marcado, y el flujo actual (el «+» abre el editor; si sale «Describir un atajo», «Editar»; la variable «Notificación» está al final de la barra, deslizándola). Sin animaciones ni pasos de la automatización vieja.

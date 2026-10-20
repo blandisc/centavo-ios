@@ -182,8 +182,7 @@ struct ExpenseListView: View {
                 }
             }
             .listStyle(.plain)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic),
-                        prompt: "Uber de octubre arriba de 200")
+            .modifier(BottomSearch(text: $searchText))
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
@@ -252,6 +251,12 @@ struct ExpenseListView: View {
                     Spacer()
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
+                }
+                // Search lives down here with the months, as a button that opens into a field
+                // (iOS 26), not as a bar across the top of the ticket.
+                if #available(iOS 26, *) {
+                    ToolbarSpacer(.fixed, placement: .bottomBar)
+                    DefaultToolbarItem(kind: .search, placement: .bottomBar)
                 }
             }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
@@ -386,6 +391,24 @@ private struct CatalogsSheet: ViewModifier {
 
     private func push(_ value: String, _ key: String) {
         if Store.syncsBudget { BudgetSync.push(value, for: key) }
+    }
+}
+
+/// The search: a button in the bottom bar that opens into a field on iOS 26; on older
+/// systems, the usual field under the title.
+private struct BottomSearch: ViewModifier {
+    @Binding var text: String
+    private let prompt = "Uber de octubre arriba de 200"
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .searchable(text: $text, prompt: prompt)
+                .searchToolbarBehavior(.minimize)
+        } else {
+            content.searchable(text: $text, placement: .navigationBarDrawer(displayMode: .automatic),
+                               prompt: prompt)
+        }
     }
 }
 
