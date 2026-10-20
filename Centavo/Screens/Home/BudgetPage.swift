@@ -20,6 +20,8 @@ struct BudgetPage: View {
     /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
     @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = 22
     @State private var barWidth: CGFloat = 0
+    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 18
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Grows a little with the text, but a bar the size of the screen helps nobody.
@@ -88,7 +90,14 @@ struct BudgetPage: View {
                 let name = line.category ?? "Sin categoría"
                 let percent = line.share.formatted(.percent.precision(.fractionLength(0)))
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: line.category.map {
+                            CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories))
+                        } ?? "questionmark")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.brass)
+                            .frame(width: iconWidth)
+                            .accessibilityHidden(true)
                         Text(name)
                             .foregroundStyle(line.category == nil ? Theme.muted : Theme.ink)
                             .lineLimit(1)
@@ -105,6 +114,7 @@ struct BudgetPage: View {
                         .frame(height: 2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .scaleEffect(x: max(line.share, 0.02), anchor: .leading)
+                        .padding(.leading, iconWidth + 8)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(name): \(percent) de lo gastado")
@@ -144,98 +154,14 @@ struct BudgetPage: View {
 
     private func ticket(_ pace: BudgetPace) -> some View {
         let isOver = pace.remaining < 0
-        let markerX = barWidth * CGFloat(pace.paceFraction)
-        let labelOnLeft = pace.paceFraction < 0.5
-        let todayText = "Ritmo · " + wholeMoney(pace.expectedToDate)
         // A month where more came back than went out is 0 %, not "-5 %".
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
-        let remainingLabel = isOver ? "Te pasaste" : (isCurrentMonth ? "Te quedan" : "Te quedaron")
-        let remainingText = money(pace.remaining.magnitude)
-        // The type is monospaced (0.6 em a character), so its width is predictable. If the
-        // figure would run over the brass, it goes under the bar instead.
-        let neededWidth = CGFloat(remainingText.count) * 0.6 * figureSize + 28
-        // It also has to clear the white «Ritmo» line, or the line cuts through the figure.
-        let occupied = max(pace.spentFraction, isCurrentMonth ? pace.paceFraction : 0)
-        let remainingInside = barWidth > 0 && barWidth * CGFloat(1 - occupied) >= neededWidth
-
-        return VStack(alignment: .leading, spacing: 8) {
-            // The legend of the brass: what share of the budget is gone, past 100 % if need be.
-            Text("Gastado · " + (share > 9.99 ? "más de 999 %"
-                                 : share.formatted(.percent.precision(.fractionLength(0)))))
-                .font(.ticket(10, relativeTo: .caption2))
-                .tracking(1.2)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
-                .padding(.bottom, 4)
-            // The outline alone sets the size. Everything sized from `barWidth` is an overlay,
-            // so it can never feed back into the width it was measured from: a full brass bar
-            // used to hold the ticket at a stale, wider width and push the page off screen.
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                .frame(maxWidth: .infinity)
-                .frame(height: barHeight)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
-                .overlay(alignment: .leading) {
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 6,
-                        bottomLeadingRadius: 6,
-                        bottomTrailingRadius: pace.spentFraction >= 1 ? 6 : 0,
-                        topTrailingRadius: pace.spentFraction >= 1 ? 6 : 0
-                    )
-                    .fill(Theme.brass)
-                    .frame(width: barWidth * CGFloat(pace.spentFraction))
-                    // The brass fills up to the new spend, like a register ticking.
-                    .animation(reduceMotion ? nil : .spring(duration: 0.6, bounce: 0.15),
-                               value: pace.spentFraction)
-                }
-                .overlay(alignment: .trailing) {
-                    if remainingInside {
-                        remainingBlock(remainingLabel, remainingText)
-                            .padding(.trailing, 14)
-                    }
-                }
-                .overlay(alignment: .leading) {
-                    if isCurrentMonth {
-                        Rectangle()
-                            .fill(Theme.ink)
-                            .frame(width: 2, height: barHeight + 12)
-                            .offset(x: markerX - 1)
-                    }
-                }
-
-            if isCurrentMonth {
-                Text(todayText)
-                    .font(.ticket(10, relativeTo: .caption2))
-                    .tracking(1)
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .padding(labelOnLeft ? .leading : .trailing, labelOnLeft ? markerX + 6 : barWidth - markerX + 6)
-                    .frame(maxWidth: .infinity, alignment: labelOnLeft ? .leading : .trailing)
-            }
-
-            if !remainingInside {
-                remainingBlock(remainingLabel, remainingText, alignment: .trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            Text("Presupuesto · \(money(pace.budget))")
-                .font(.ticket(10, relativeTo: .caption2))
-                .tracking(1)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
-            // Set apart from «Hoy puedes gastar»: they are coming, just not yet.
-            if isCurrentMonth, pace.reserved > 0 {
-                Text("Fijos por venir · \(money(pace.reserved))")
-                    .font(.ticket(10, relativeTo: .caption2))
-                    .tracking(1)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.muted)
-            }
-            // «Hoy puedes gastar» heads the screen now (HeroTotal); not repeated here.
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("presupuesto-ticket")
-        .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver, remainingText: remainingText))
+        return MonthBar(pace: pace, isCurrentMonth: isCurrentMonth, money: money, wholeMoney: wholeMoney,
+                        carriesTotal: isCurrentMonth && !isOver)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("presupuesto-ticket")
+            .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver,
+                                             remainingText: money(pace.remaining.magnitude)))
     }
 
     /// What VoiceOver reads for the ticket, sentence by sentence (one expression was too much

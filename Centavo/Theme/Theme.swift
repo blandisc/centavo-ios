@@ -19,6 +19,8 @@ enum Theme {
     static var background: Color { Color(hex: 0x131211) }
     /// Slightly lifted fill for empty calendar days and fields.
     static var surface: Color { Color(hex: 0x1F1E1C) }
+    /// One step above `surface`: the days still to come in the month's bar.
+    static var raised: Color { Color(hex: 0x2C2A27) }
     static var ink: Color { Color(hex: 0xEDEAE4) }
     /// Secondary text. 6.5:1 on `background`.
     static var muted: Color { Color(hex: 0x9C978D) }
@@ -39,6 +41,8 @@ enum Theme {
     static var onBrass: Color { Color(hex: 0x131211) }
     /// The one destructive action: deleting an expense. 6:1 on `background`.
     static var danger: Color { Color(hex: 0xD9695A) }
+    /// «Vas bien»: under what an even month would have spent. 7:1 on `background`.
+    static var good: Color { Color(hex: 0x8DBF86) }
 
     static let horizontalPadding: CGFloat = 24
 
