@@ -52,12 +52,9 @@ struct ExpenseListView: View {
     @State private var searchText = ""
     /// The category the on-device model took the search words to mean, when they matched
     /// nothing as written («cafecitos» → «Café»).
-    @State private var searchCategory: String?
-    @AppStorage(MonthNote.storedKey) private var storedNote = ""
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     @State private var showingFixed = false
-    @State private var checkingModel = false
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
@@ -102,7 +99,7 @@ struct ExpenseListView: View {
         NavigationStack {
             List {
                 if searching {
-                    SearchHeaderRow(count: listed.count, category: searchCategory)
+                    SearchHeaderRow(count: listed.count)
                         .ticketRow(bottom: 8)
                 } else {
                     HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
@@ -130,7 +127,7 @@ struct ExpenseListView: View {
                             pace: pace,
                             isCurrentMonth: isCurrent,
                             shares: CategoryShare.top(summary.categories),
-                            note: fact.map { MonthNote.text(for: $0, stored: storedNote) },
+                            note: fact?.line,
                             onSetBudget: { showingBudget = true },
                             currency: primaryCurrency
                         )
@@ -186,9 +183,6 @@ struct ExpenseListView: View {
             .listStyle(.plain)
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic),
                         prompt: "Uber de octubre arriba de 200")
-            .task(id: searchText) { await understandSearch() }
-            .task(id: fact.map(MonthNote.identity)) { if let fact { await MonthNote.reword(fact) } }
-            .task(id: expenses.count) { await MerchantReview.run(in: context) }
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
@@ -230,9 +224,6 @@ struct ExpenseListView: View {
                         Button("Configurar atajo", systemImage: "questionmark.circle") {
                             showingSetup = true
                         }
-                        #if DEBUG
-                        Button("Probar el modelo", systemImage: "cpu") { checkingModel = true }
-                        #endif
                     } label: {
                         Label("Más", systemImage: "ellipsis")
                     }
@@ -298,7 +289,6 @@ struct ExpenseListView: View {
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
-            .modifier(ModelCheckSheet(isPresented: $checkingModel))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
             .onChange(of: storedPlans) { _, value in
                 if Store.syncsBudget { BudgetSync.push(value, for: FixedPlan.key) }
@@ -457,30 +447,8 @@ private extension ExpenseListView {
 
     /// Every expense the search asks for, from any month, newest first.
     var searchResults: [Expense] {
-        var query = ExpenseSearch.query(from: searchText, now: now)
-        if let searchCategory {
-            query.words = []
-            query.category = searchCategory
-        }
-        return expenses.filter { ExpenseSearch.matches($0.searchable, query) }
-    }
-
-    /// When the words match nothing as written, the on-device model may know which category
-    /// they mean. Without it, the search is the plain one.
-    func understandSearch() async {
-        searchCategory = nil
         let query = ExpenseSearch.query(from: searchText, now: now)
-        guard !query.words.isEmpty, LocalModel.isReady, searchResults.isEmpty else { return }
-        // Waits for the typing to stop.
-        try? await Task.sleep(for: .milliseconds(400))
-        guard !Task.isCancelled else { return }
-        let history = expenses.prefix(500).map(\.categorized)
-        let custom = UserCatalog.decode(UserDefaults.standard.string(forKey: UserCatalog.categoriesKey) ?? "")
-        let candidates = CategoryPick.candidates(CategoryStyle.common.map(\.name), custom.map(\.name),
-                                                 CategoryMemory.known(in: Array(history)))
-        let picked = await LocalModel.category(for: query.words.joined(separator: " "), candidates: candidates)
-        guard !Task.isCancelled else { return }
-        searchCategory = picked
+        return expenses.filter { ExpenseSearch.matches($0.searchable, query) }
     }
 
     func isOver(_ pace: BudgetPace?) -> Bool {
@@ -843,11 +811,9 @@ private struct UndoBarSurface: ViewModifier {
 /// «3 gastos», over the results while searching; says so when the words were read as a category.
 private struct SearchHeaderRow: View {
     let count: Int
-    let category: String?
 
     var body: some View {
-        Text(category.map { "\(count) \(count == 1 ? "gasto" : "gastos") en \($0)" }
-             ?? (count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")"))
+        Text(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
             .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
             .tracking(1.2)
             .textCase(.uppercase)

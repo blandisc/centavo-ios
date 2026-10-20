@@ -102,4 +102,13 @@ import Testing
         #expect(hsbc.merchant == "Oxxo Roble")
         #expect(hsbc.card == "HSBC México")
     }
+
+    @Test(arguments: ["American Express México\nMXN 1,060.00 en La Docena",
+                      "American Express México\nMXN 1,060.00\nen La Docena",
+                      "American Express México\nCompra en La Docena\nMXN 1,060.00"])
+    func onlyThePlaceIsTheMerchant(text: String) throws {
+        let notice = try #require(WalletNotice.parse(text))
+        #expect(notice.merchant == "La Docena")
+        #expect(notice.card == "American Express México")
+    }
 }

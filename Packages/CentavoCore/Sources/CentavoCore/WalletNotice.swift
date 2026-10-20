@@ -65,13 +65,24 @@ public struct WalletNotice: Equatable, Sendable {
             merchant = after.first
             card = nil
         }
+        let merchantName = merchant.map(withoutJoiner)
         let figure = amountPattern(in: lines[index]) ?? lines[index]
         guard isRefund else {
-            return WalletNotice(amount: amount, amountText: figure, merchant: merchant, card: card)
+            return WalletNotice(amount: amount, amountText: figure, merchant: merchantName, card: card)
         }
         let negative = ParsedAmount(value: -amount.value.magnitude, currencyMarker: amount.currencyMarker)
         return WalletNotice(amount: negative, amountText: figure.hasPrefix("-") ? figure : "-" + figure,
-                            merchant: merchant, card: card)
+                            merchant: merchantName, card: card)
+    }
+
+    /// «en La Docena», «at Google», «Compra en Oxxo»: only the place.
+    static func withoutJoiner(_ text: String) -> String {
+        let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
+        for joiner in ["compra en ", "pago en ", "cargo en ", "en ", "at ", "@ "] where folded.hasPrefix(joiner) {
+            let rest = String(text.dropFirst(joiner.count)).trimmingCharacters(in: .whitespaces)
+            return rest.isEmpty ? text : rest
+        }
+        return text
     }
 
     /// A notice `parse` could not read (a bank or format it doesn't know), as the on-device

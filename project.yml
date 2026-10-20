@@ -22,9 +22,6 @@ targets:
         excludes: [Info.plist]
     dependencies:
       - package: CentavoCore
-      # The on-device model (Apple Intelligence) is iOS 26+; weak so iOS 18 still launches.
-      - sdk: FoundationModels.framework
-        weak: true
     scheme:
       testTargets: [CentavoTests, CentavoUITests]
     settings:

@@ -27,14 +27,7 @@ struct LogWalletNoticeIntent: AppIntent {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         let context = container.mainContext
         try? RecurringExpenses.logDue(in: context)
-        var read = WalletNotice.parse(notice)
-        // A notice with money in it that the plain reader couldn't follow (a bank or format it
-        // doesn't know): the on-device model may, and is believed only where the notice agrees.
-        if read == nil, CaptureText.amount(in: notice) != nil,
-           let reading = await LocalModel.readNotice(notice), let amount = reading.amount {
-            read = WalletNotice.rescue(notice, merchant: reading.merchant, card: reading.card,
-                                       amountFragment: amount)
-        }
+        let read = WalletNotice.parse(notice)
         // Not every Wallet notification is a charge (passes, Apple Cash...): skip those quietly.
         guard let parsed = read else {
             return .result(dialog: "")

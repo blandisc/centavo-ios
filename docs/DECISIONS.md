@@ -232,3 +232,6 @@ Decisión del dueño.
 - **Esquema:** `Expense.repeatRule` (opcional; `nil` es mensual, así que los fijos de antes no cambian). Migración ligera, compatible con iCloud. `repeatsMonthly` conserva su nombre y significa «se repite».
 - **Las copias se cuentan una por día** para lo que se repite más seguido que cada mes (dos lunes del mismo mes son dos cobros); lo mensual sigue en una por mes.
 
+
+## 2026-10-20 · Sin modelo de IA por ahora
+Se quitó el modelo local de Apple Intelligence (nombres legibles por modelo, categorías, nota del mes reescrita, frase, búsqueda y Siri por significado). Medido en el iPhone del dueño: 15/33 categorías bien, «Compras» como cajón de sastre y nunca «Ninguna». Todo sigue funcionando con las reglas normales de CentavoCore (frase, búsqueda, avisos, nombres legibles). Se puede volver a evaluar con otra versión del modelo; la prueba («Probar el modelo») se quitó con él.
