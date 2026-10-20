@@ -168,20 +168,25 @@ struct ExpenseListView: View {
                                 .ticketRow()
                         }
                     }
-                    ForEach(listed) { expense in
-                        Button { editing = expense } label: {
-                            LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
-                        }
-                        .buttonStyle(.plain)
-                        .ticketRow()
-                        .swipeActions(edge: .trailing) {
-                            Button("Borrar", systemImage: "trash", role: .destructive) {
-                                pendingDelete = expense
+                    ForEach(DayGroup.split(listed)) { group in
+                        // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
+                        DayDivider(day: group.day, total: group.total(in: primaryCurrency), now: now)
+                            .ticketRow()
+                        ForEach(group.items) { expense in
+                            Button { editing = expense } label: {
+                                LedgerRow(expense: expense, primaryCurrency: primaryCurrency)
                             }
-                        }
-                        .contextMenu {
-                            Button("Borrar gasto", systemImage: "trash", role: .destructive) {
-                                pendingDelete = expense
+                            .buttonStyle(.plain)
+                            .ticketRow()
+                            .swipeActions(edge: .trailing) {
+                                Button("Borrar", systemImage: "trash", role: .destructive) {
+                                    pendingDelete = expense
+                                }
+                            }
+                            .contextMenu {
+                                Button("Borrar gasto", systemImage: "trash", role: .destructive) {
+                                    pendingDelete = expense
+                                }
                             }
                         }
                     }
@@ -908,5 +913,75 @@ enum Onboarding {
         }
         #endif
         return true
+    }
+}
+
+/// The expenses of one day, in the order they were listed.
+struct DayGroup: Identifiable {
+    let day: Date
+    let items: [Expense]
+    var id: Date { day }
+
+    static func split(_ expenses: [Expense], calendar: Calendar = .current) -> [DayGroup] {
+        var groups: [DayGroup] = []
+        for expense in expenses {
+            let day = calendar.startOfDay(for: expense.date)
+            if let last = groups.last, last.day == day {
+                groups[groups.count - 1] = DayGroup(day: day, items: last.items + [expense])
+            } else {
+                groups.append(DayGroup(day: day, items: [expense]))
+            }
+        }
+        return groups
+    }
+
+    /// What went that day in the month's currency (refunds subtract); others ride apart.
+    func total(in primary: String) -> String? {
+        let mine = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == primary }
+        guard !mine.isEmpty else { return nil }
+        let sum = mine.reduce(Decimal(0)) { $0 + $1.amount }
+        // Money that came back reads like the ledger's refunds: «+$230.00».
+        return (sum < 0 ? "+" : "") + formatMoney(sum.magnitude, isoCode: primary, label: primary)
+    }
+}
+
+/// Where a day starts in the list: a short brass line, the day, a hairline, the day's total.
+private struct DayDivider: View {
+    let day: Date
+    let total: String?
+    let now: Date
+
+    private var label: String {
+        let calendar = Calendar.current
+        let date = day.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))
+        if calendar.isDate(day, inSameDayAs: now) { return "Hoy · " + date }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(day, inSameDayAs: yesterday) { return "Ayer · " + date }
+        return day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+            .locale(Locale(identifier: "es_MX")))
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Capsule().fill(Theme.brass).frame(width: 14, height: 3)
+            Text(label)
+                .font(.ticket(10, weight: .semibold, relativeTo: .caption2))
+                .tracking(1.4)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+                .lineLimit(1)
+            Rectangle().fill(Theme.brass.opacity(0.25)).frame(height: 1)
+            if let total {
+                Text(total)
+                    .font(.ticket(10, relativeTo: .caption2))
+                    .foregroundStyle(Theme.muted)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+        }
+        .padding(.top, 14)
+        .padding(.bottom, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }

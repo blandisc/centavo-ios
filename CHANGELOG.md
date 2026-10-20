@@ -12,6 +12,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- En la lista de gastos, una rayita de latón separa cada día: «Hoy · 20 oct», «Ayer», «sáb 18 oct», con lo que gastaste ese día a la derecha.
 - La pantalla principal contesta de un vistazo: «Hoy puedes gastar» y una barra del mes. Todo el ancho es tu presupuesto, el latón lo que llevas, la banderita lo esperado a hoy, y lo que queda se parte en un cuadro por día (el de hoy encendido). Abajo, «Vas bien» o «Vas arriba». Al tocar la barra se despliega la cuenta. Entra con animación (respeta «Reducir movimiento»). «En qué se va» lleva el ícono de cada categoría.
 - «Guardar» ahora está abajo a la derecha, bajo el pulgar, en las hojas de gasto, presupuesto, gasto fijo y tarjeta o categoría: sube con el teclado y a su izquierda dice qué vas a guardar («$230 · Tacos · Efectivo») o qué falta. Elegir un comercio sugerido cierra el teclado para que se vean las categorías.
 - La búsqueda ya no es una barra arriba de todo: es un botón 🔍 en la barra de abajo, junto a los meses, que se abre en un campo justo arriba del teclado.
