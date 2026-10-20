@@ -722,8 +722,27 @@ private struct LedgerRow: View {
     var perforated = true
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = 32
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 15
 
     private var isRefund: Bool { expense.amount < 0 }
+
+    /// The category's icon on a small tile, the same icons as «En qué se va».
+    private var categoryTile: some View {
+        let category = expense.category.flatMap { $0.isEmpty ? nil : $0 }
+        return Image(systemName: category.map {
+            CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories))
+        } ?? "questionmark")
+            .resizable()
+            .scaledToFit()
+            .fontWeight(.medium)
+            .foregroundStyle(category == nil ? Theme.muted : Theme.brass)
+            .frame(width: iconSize, height: iconSize)
+            .frame(width: tileSize, height: tileSize)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityHidden(true)
+    }
 
     private var meta: String? {
         let parts = [isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
@@ -774,13 +793,16 @@ private struct LedgerRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        merchantText
-                        metaText
+                HStack(alignment: .center, spacing: 12) {
+                    categoryTile
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            merchantText
+                            metaText
+                        }
+                        Spacer(minLength: 8)
+                        amountText
                     }
-                    Spacer(minLength: 8)
-                    amountText
                 }
             }
         }
