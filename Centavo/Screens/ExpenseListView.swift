@@ -398,7 +398,7 @@ private struct CatalogsSheet: ViewModifier {
 /// systems, the usual field under the title.
 private struct BottomSearch: ViewModifier {
     @Binding var text: String
-    private let prompt = "Uber de octubre arriba de 200"
+    private let prompt = "Busca tus gastos"
 
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
