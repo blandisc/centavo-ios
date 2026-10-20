@@ -33,6 +33,7 @@ targets:
         INFOPLIST_KEY_UIBackgroundModes: remote-notification
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Al día"
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Para guardar dónde pagaste cada gasto, como lo muestra Wallet. Solo si enciendes «Guardar dónde pagas»."
         # Merged with the generated keys: only the launch screen lives there.
         INFOPLIST_FILE: Centavo/Info.plist
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES

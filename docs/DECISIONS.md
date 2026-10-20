@@ -235,3 +235,6 @@ Decisión del dueño.
 
 ## 2026-10-20 · Sin modelo de IA por ahora
 Se quitó el modelo local de Apple Intelligence (nombres legibles por modelo, categorías, nota del mes reescrita, frase, búsqueda y Siri por significado). Medido en el iPhone del dueño: 15/33 categorías bien, «Compras» como cajón de sastre y nunca «Ninguna». Todo sigue funcionando con las reglas normales de CentavoCore (frase, búsqueda, avisos, nombres legibles). Se puede volver a evaluar con otra versión del modelo; la prueba («Probar el modelo») se quitó con él.
+
+## 2026-10-20 · Dónde se pagó
+A pedido del dueño, cada gasto puede guardar dónde estaba el iPhone al anotarse (interruptor «Guardar dónde pagas» en «Más», con permiso de ubicación «Al usar la app»). Wallet guarda la ubicación de cada cargo pero no se la da a Atajos, así que es la del iPhone: exacta en tiendas, la tuya en compras en línea. El detalle del gasto muestra un mapa y el nombre del lugar; el mapa y el nombre los da Apple (MapKit/CLGeocoder), igual que en Wallet: no hay servidor propio. Latitud, longitud y nombre son opcionales y viajan por iCloud como el resto.

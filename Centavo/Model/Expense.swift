@@ -21,6 +21,11 @@ final class Expense {
     /// The whole Wallet notification as Atajos handed it over, so a misread merchant can be
     /// traced to the real text. Optional: a lightweight, CloudKit-safe addition.
     var rawNotice: String?
+    /// Where the iPhone was when it was logged (see `PaymentPlace`), and that place's name,
+    /// looked up the first time the expense is opened. Optional: CloudKit-safe additions.
+    var latitude: Double?
+    var longitude: Double?
+    var placeName: String?
     /// A fixed expense (rent, a subscription) that logs itself again every month. Set on the
     /// original only. Optional, so adding it is a lightweight migration.
     var repeatsMonthly: Bool?
