@@ -47,9 +47,12 @@ struct ModelCheckView: View {
         let filed = done.filter { $0.got != nil }
         let right = filed.filter { $0.got == $0.expected }.count
         let wrong = filed.filter { $0.got != $0.expected }.count
+        let silent = done.filter { $0.name == nil && $0.got == nil }.count
         let times = done.compactMap(\.seconds).sorted()
         let median = times[times.count / 2]
-        return "Aciertos \(right)/\(filed.count) archivados · Errores \(wrong)/\(done.count) · "
+        // A model that answers nothing is not a model that is never wrong.
+        let unanswered = silent > 0 ? " · Sin respuesta \(silent)/\(done.count)" : ""
+        return "Aciertos \(right)/\(filed.count) archivados · Errores \(wrong)/\(done.count)\(unanswered) · "
             + "Mediana \(median.formatted(.number.precision(.fractionLength(2)))) s"
     }
 
@@ -59,6 +62,9 @@ struct ModelCheckView: View {
                 Section {
                     Text(LocalModel.isReady ? "Modelo listo en este iPhone" : "Sin Apple Intelligence aquí")
                     Text(summary)
+                    if let failure = OnDeviceLog.lastFailure, !done.isEmpty {
+                        Text(failure).foregroundStyle(Theme.brass)
+                    }
                 }
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {

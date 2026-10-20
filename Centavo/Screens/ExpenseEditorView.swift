@@ -241,6 +241,11 @@ struct ExpenseEditorView: View {
             // The number pad has no key to close it and covers half the sheet: scrolling down to
             // the categories or the card closes it.
             .scrollDismissesKeyboard(.immediately)
+            // iOS 26 ignores the line above in a sheet's form: a drag does it there.
+            .simultaneousGesture(DragGesture(minimumDistance: 24).onChanged { _ in
+                if amountFocused { amountFocused = false }
+                if merchantFocused { merchantFocused = false }
+            })
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(expense == nil ? "Nuevo gasto" : "Editar gasto")
             .toolbar {

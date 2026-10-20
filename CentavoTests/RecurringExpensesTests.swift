@@ -8,7 +8,17 @@ final class RecurringExpensesTests: XCTestCase {
     private var context: ModelContext!
     private let calendar = Calendar.current
 
+    /// `logDue` also starts the fixed expenses planned in the app's settings: a test must not
+    /// pick up whatever the simulator had saved (a plan left there made one test log twice).
+    private var savedPlans: [FixedPlan] = []
+
+    override func tearDown() {
+        FixedPlan.save(savedPlans)
+    }
+
     override func setUpWithError() throws {
+        savedPlans = FixedPlan.saved
+        FixedPlan.save([])
         let container = try ModelContainer(
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)

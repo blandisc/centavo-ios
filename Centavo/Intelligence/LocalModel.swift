@@ -1,5 +1,6 @@
 import CentavoCore
 import Foundation
+import os
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -86,6 +87,22 @@ struct NoticeReading: Equatable, Sendable {
     var amount: String?
 }
 
+/// Why the model gave no answer, in the Console (subsystem com.blandisc.centavo): the app
+/// carries on without it, but a model that never answers must be noticeable.
+enum OnDeviceLog {
+    private static let log = Logger(subsystem: "com.blandisc.centavo", category: "modelo")
+    /// The last reason, for «Probar el modelo» (Debug).
+    nonisolated(unsafe) static var lastFailure: String?
+
+    static func failed(_ error: Error) {
+        let text = String(describing: error)
+        lastFailure = text.contains("no underlying assets") || text.contains("Code=5000")
+            ? "El modelo no está descargado en este equipo (Apple Intelligence sin terminar de bajar)."
+            : text
+        log.error("El modelo no respondió: \(text, privacy: .public)")
+    }
+}
+
 #if canImport(FoundationModels)
 @available(iOS 26, *)
 private enum OnDevice {
@@ -129,6 +146,7 @@ private enum OnDevice {
             return MerchantReading(name: try? content.value(String.self, forProperty: "nombre"),
                                    category: try? content.value(String.self, forProperty: "categoria"))
         } catch {
+            OnDeviceLog.failed(error)
             // Guardrails, rate limits, the model still downloading: no reading, never an error.
             return nil
         }
@@ -146,6 +164,7 @@ private enum OnDevice {
             return SentenceReading(amount: said.monto, merchant: said.comercio, when: said.cuando,
                                    payment: said.pago)
         } catch {
+            OnDeviceLog.failed(error)
             return nil
         }
     }
@@ -161,6 +180,7 @@ private enum OnDevice {
                                                    options: steady).content
             return NoticeReading(merchant: notice.comercio, card: notice.tarjeta, amount: notice.monto)
         } catch {
+            OnDeviceLog.failed(error)
             return nil
         }
     }
@@ -177,6 +197,7 @@ private enum OnDevice {
             let content = try await session.respond(to: words, schema: schema, options: steady).content
             return CategoryPick.validate(try content.value(String.self), among: candidates)
         } catch {
+            OnDeviceLog.failed(error)
             return nil
         }
     }
@@ -193,6 +214,7 @@ private enum OnDevice {
                                                  options: steady).content
             return note.texto
         } catch {
+            OnDeviceLog.failed(error)
             return nil
         }
     }
