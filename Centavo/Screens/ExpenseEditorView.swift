@@ -1,4 +1,5 @@
 import CentavoCore
+import MapKit
 import SwiftData
 import SwiftUI
 
@@ -222,6 +223,18 @@ struct ExpenseEditorView: View {
                             .accessibilityIdentifier("dejar-de-repetir")
                     } footer: {
                         hint("Los meses ya anotados se quedan; el siguiente ya no llega.")
+                    }
+                    .listRowBackground(Theme.surface)
+                }
+
+                if let expense, let latitude = expense.latitude, let longitude = expense.longitude {
+                    Section {
+                        PlaceMap(expense: expense,
+                                 coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+                    } header: {
+                        Text("Dónde").ticketCaption()
+                    } footer: {
+                        hint("Dónde estaba tu iPhone al anotarse. En compras en línea es donde estabas tú.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -531,6 +544,15 @@ struct ExpenseEditorView: View {
             new.displayName = history.first { $0.merchant == name }?.displayName
             setRepeats(new)
             context.insert(new)
+            // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.
+            if abs(date.timeIntervalSinceNow) < 15 * 60 {
+                Task { @MainActor in
+                    guard let place = await PaymentPlace.current() else { return }
+                    new.latitude = place.latitude
+                    new.longitude = place.longitude
+                    try? context.save()
+                }
+            }
         }
         dismiss()
     }
@@ -540,4 +562,55 @@ struct ExpenseEditorView: View {
     ExpenseEditorView(expense: nil)
         .modelContainer(for: Expense.self, inMemory: true)
         .preferredColorScheme(.dark)
+}
+
+/// The map under an expense, as Wallet shows it under a charge, with the place's name.
+private struct PlaceMap: View {
+    let expense: Expense
+    let coordinate: CLLocationCoordinate2D
+    @Environment(\.modelContext) private var context
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 400,
+                                                           longitudinalMeters: 400)),
+                interactionModes: []) {
+                Marker(expense.displayName ?? expense.merchant, coordinate: coordinate)
+                    .tint(Theme.brass)
+            }
+            .frame(height: 160)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .accessibilityLabel("Mapa de dónde se pagó")
+            if let name = expense.placeName {
+                Text(name)
+                    .font(.ticket(13, relativeTo: .footnote))
+                    .foregroundStyle(Theme.ink)
+                    .accessibilityIdentifier("lugar")
+            }
+            Button("Quitar ubicación", role: .destructive) {
+                expense.latitude = nil
+                expense.longitude = nil
+                expense.placeName = nil
+                try? context.save()
+            }
+            .font(.ticket(12, relativeTo: .footnote))
+            .buttonStyle(.borderless)
+            .frame(minHeight: 44)
+        }
+        .padding(.vertical, 6)
+        .task { await nameThePlace() }
+    }
+
+    /// The street and neighborhood, once, kept with the expense.
+    private func nameThePlace() async {
+        guard expense.placeName == nil else { return }
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        guard let mark = try? await CLGeocoder().reverseGeocodeLocation(location).first else { return }
+        let parts = [mark.name, mark.subLocality, mark.locality].compactMap { $0 }
+        var seen: [String] = []
+        for part in parts where !seen.contains(part) { seen.append(part) }
+        guard !seen.isEmpty else { return }
+        expense.placeName = seen.joined(separator: ", ")
+        try? context.save()
+    }
 }

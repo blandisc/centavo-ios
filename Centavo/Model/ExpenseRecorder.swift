@@ -1,4 +1,5 @@
 import CentavoCore
+import CoreLocation
 import Foundation
 import SwiftData
 
@@ -24,6 +25,7 @@ enum ExpenseRecorder {
         merchant: String?,
         card: String?,
         rawNotice: String? = nil,
+        place: CLLocationCoordinate2D? = nil,
         in context: ModelContext,
         now: Date = .now
     ) throws -> CaptureOutcome {
@@ -54,6 +56,8 @@ enum ExpenseRecorder {
             rawAmount: amountText
         )
         expense.rawNotice = rawNotice
+        expense.latitude = place?.latitude
+        expense.longitude = place?.longitude
         before.apply(to: expense, withName: true)
         // Only what Wallet sends gets a cleaner reading: a name someone typed is theirs.
         if expense.displayName == nil { expense.displayName = MerchantName.readable(merchantName) }

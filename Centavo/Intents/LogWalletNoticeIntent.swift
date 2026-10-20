@@ -32,8 +32,10 @@ struct LogWalletNoticeIntent: AppIntent {
         guard let parsed = read else {
             return .result(dialog: "")
         }
+        // Where the iPhone is right now, if «Guardar dónde pagas» is on: Wallet keeps its own.
+        let place = await PaymentPlace.current()
         switch try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
-                                          card: parsed.card, rawNotice: notice, in: context) {
+                                          card: parsed.card, rawNotice: notice, place: place, in: context) {
         case .unreadable, .empty:
             return .result(dialog: "")
         case .duplicate(let merchant):

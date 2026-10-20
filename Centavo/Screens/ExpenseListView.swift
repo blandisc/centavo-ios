@@ -40,6 +40,7 @@ struct ExpenseListView: View {
     @State private var showingBudget = false
     @State private var currencyChanged = false
     @State private var showingCatalogs = false
+    @AppStorage(PaymentPlace.key) private var savesPlace = false
     @State private var adding = false
     @State private var editing: Expense?
     @State private var importing = false
@@ -205,6 +206,12 @@ struct ExpenseListView: View {
                         Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
                         Button("Gastos fijos", systemImage: "repeat") { showingFixed = true }
                         Button("Tarjetas y categorías", systemImage: "creditcard") { showingCatalogs = true }
+                        Toggle(isOn: Binding(get: { savesPlace }, set: { on in
+                            savesPlace = on
+                            if on { PaymentPlace.requestPermission() }
+                        })) {
+                            Label("Guardar dónde pagas", systemImage: "mappin.and.ellipse")
+                        }
                         Picker(selection: Binding(get: { primaryCurrency }, set: { setPrimary($0) })) {
                             ForEach(CurrencyPreference.offered, id: \.self) { code in
                                 Text(CurrencyPreference.name(code)).tag(code)

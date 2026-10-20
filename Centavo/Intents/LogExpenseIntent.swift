@@ -33,8 +33,9 @@ struct LogExpenseIntent: AppIntent {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         // So "what is left" counts this month's rent even if the app was not opened.
         try? RecurringExpenses.logDue(in: container.mainContext)
+        let place = await PaymentPlace.current()
         switch try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                          in: container.mainContext) {
+                                          place: place, in: container.mainContext) {
         case .unreadable:
             // Seen for real: the whole Wallet payment connected here arrives as just the
             // merchant's name. Say how to fix the automation, not only that it failed.
