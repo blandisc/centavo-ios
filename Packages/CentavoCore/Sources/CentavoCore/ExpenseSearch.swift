@@ -4,7 +4,7 @@ import Foundation
 public struct SearchQuery: Equatable, Sendable {
     /// Words that must all appear in the merchant, its readable name, category or card.
     public var words: [String]
-    /// A category the words were taken to mean (the model maps «cafecitos» to «Café»).
+    /// A category asked for by name.
     public var category: String?
     public var minAmount: Decimal?
     public var maxAmount: Decimal?
