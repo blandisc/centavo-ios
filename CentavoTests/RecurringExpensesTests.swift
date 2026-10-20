@@ -1,3 +1,4 @@
+import CentavoCore
 import SwiftData
 import XCTest
 @testable import Centavo
@@ -7,7 +8,17 @@ final class RecurringExpensesTests: XCTestCase {
     private var context: ModelContext!
     private let calendar = Calendar.current
 
+    /// `logDue` also starts the fixed expenses planned in the app's settings: a test must not
+    /// pick up whatever the simulator had saved (a plan left there made one test log twice).
+    private var savedPlans: [FixedPlan] = []
+
+    override func tearDown() {
+        FixedPlan.save(savedPlans)
+    }
+
     override func setUpWithError() throws {
+        savedPlans = FixedPlan.saved
+        FixedPlan.save([])
         let container = try ModelContainer(
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
@@ -85,5 +96,55 @@ final class RecurringExpensesTests: XCTestCase {
         context.insert(rent)
         try RecurringExpenses.logDue(in: context, now: at(10, 31).addingTimeInterval(3600))
         XCTAssertEqual(try all().last?.date, at(10, 31))
+    }
+
+    // MARK: Other rules
+
+    private func addCleaning(rule: RepeatRule = .weeks(1)) -> Expense {
+        // Monday 5 October 2026.
+        let cleaning = Expense(amount: 500, currencyMarker: "MXN", merchant: "Limpieza", date: at(10, 5))
+        cleaning.repeatsMonthly = true
+        cleaning.repeatsThrough = cleaning.date
+        cleaning.repeatRule = rule.stored
+        context.insert(cleaning)
+        return cleaning
+    }
+
+    func testAWeeklyOneLogsEveryMondayThatCame() throws {
+        _ = addCleaning()
+        // Monday the 19th at 8:00: the 9:00 one has not come yet.
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 8))!
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: now), 1)
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.map(\.date), [at(10, 12)])
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 19)), 1, "Llegó el de las 9:00")
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 19)), 0)
+    }
+
+    func testTwoWeeklyChargesInOneMonthAreTwoCopies() throws {
+        _ = addCleaning()
+        try RecurringExpenses.logDue(in: context, now: at(10, 31))
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.count, 3, "12, 19 y 26 de octubre")
+    }
+
+    func testWhatIsComingThisMonthIsSetApart() throws {
+        let cleaning = addCleaning()
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 12))!
+        try RecurringExpenses.logDue(in: context, now: now)
+        let reserved = FixedOutlook.reserved(originals: [cleaning], plans: [], primary: "MXN", now: now)
+        XCTAssertEqual(reserved, 500, "Solo falta el lunes 26")
+    }
+
+    func testAFixedExpenseThatStartsLaterLogsNothingUntilItsDay() throws {
+        let plan = FixedPlan(merchant: "Gimnasio", amount: "650", currency: "MXN", rule: RepeatRule.monthly.stored,
+                             firstDate: at(11, 3))
+        UserDefaults.standard.set(FixedPlan.encode([plan]), forKey: FixedPlan.key)
+        defer { UserDefaults.standard.removeObject(forKey: FixedPlan.key) }
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 0)
+        XCTAssertTrue(try all().isEmpty, "Nada con fecha futura")
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(11, 3)), 1)
+        let original = try XCTUnwrap(all().first)
+        XCTAssertEqual(original.repeatsMonthly, true)
+        XCTAssertEqual(original.date, at(11, 3))
+        XCTAssertTrue(FixedPlan.saved.isEmpty, "El plan ya empezó")
     }
 }

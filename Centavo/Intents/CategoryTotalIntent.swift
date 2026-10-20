@@ -46,18 +46,13 @@ struct CategoryQuery: EntityStringQuery {
         await CategoryNames.all().map(CategoryEntity.init)
     }
 
-    /// What Siri heard: a category by its name, or, with the on-device model, by what it
-    /// means («cafecitos» → «Café»).
+    /// What Siri heard: a category by its name, whole or in part.
     func entities(matching string: String) async throws -> [CategoryEntity] {
         let names = await CategoryNames.all()
         if let exact = CategoryPick.validate(string, among: names) { return [CategoryEntity(id: exact)] }
         let folded = UserCatalog.fold(string)
         let partial = names.filter { UserCatalog.fold($0).contains(folded) || folded.contains(UserCatalog.fold($0)) }
-        if !partial.isEmpty { return partial.map(CategoryEntity.init) }
-        if let meant = await LocalModel.category(for: string, candidates: names) {
-            return [CategoryEntity(id: meant)]
-        }
-        return []
+        return partial.map(CategoryEntity.init)
     }
 }
 

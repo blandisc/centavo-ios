@@ -221,3 +221,17 @@ Decisión del dueño después del spike (`docs/research/modelo-local.md`).
 
 ## 2026-10-19 · El simulador no frena los PR
 Decisión del dueño (opción 2 de tres): en un PR solo corren el build y las pruebas unitarias (unos 2 min). Las pruebas de interfaz en el simulador (flujos, zonas táctiles y capturas, unos 25 min) corren en cada push a `main`, a mano («Run workflow») y en un PR solo si lleva la etiqueta `ci-app`. Revierte la regla del 2026-10-13 de que las pruebas de interfaz corran y bloqueen cada PR. A cambio, un error de pantalla puede llegar a `main`: se ve en la corrida de `main` y se arregla ahí. Un PR que toca pantallas o flujos lleva `ci-app`.
+
+## 2026-10-19 · Gastos fijos con cualquier frecuencia, y lo que falta se aparta
+Decisión del dueño.
+- **Frecuencias:** cada N semanas (el día de la semana del primer cobro), cada quincena (15 y último día) y cada N meses (el día del primer cobro, o el último en meses más cortos). Lo mensual se queda exactamente como estaba.
+- **Un fijo solo cuenta el día que llega:** la copia se anota sola ese día, nunca antes, como ya pasaba con lo mensual.
+- **Lo que falta del mes se aparta de «Hoy puedes gastar»** (opción «apartar» de tres). «Te quedan» no cambia, porque el fijo todavía no se gasta; solo baja lo que puedes gastar al día. El ticket dice «Fijos por venir · $X», y el aviso de Wallet y Siri también lo descuentan.
+- **«Más › Gastos fijos»:** la lista con frecuencia, próximo cobro y lo que llegó y lo que falta este mes; agregar, cambiar (abre la hoja del gasto) y dejar de repetir (lo ya anotado se queda).
+- **Un fijo cuyo primer cobro todavía no llega** espera en los ajustes sincronizados (`FixedPlan`, como el presupuesto) y se vuelve gasto ese día: nada en la base tiene fecha futura. Ya se aparta si cae en el mes.
+- **Esquema:** `Expense.repeatRule` (opcional; `nil` es mensual, así que los fijos de antes no cambian). Migración ligera, compatible con iCloud. `repeatsMonthly` conserva su nombre y significa «se repite».
+- **Las copias se cuentan una por día** para lo que se repite más seguido que cada mes (dos lunes del mismo mes son dos cobros); lo mensual sigue en una por mes.
+
+
+## 2026-10-20 · Sin modelo de IA por ahora
+Se quitó el modelo local de Apple Intelligence (nombres legibles por modelo, categorías, nota del mes reescrita, frase, búsqueda y Siri por significado). Medido en el iPhone del dueño: 15/33 categorías bien, «Compras» como cajón de sastre y nunca «Ninguna». Todo sigue funcionando con las reglas normales de CentavoCore (frase, búsqueda, avisos, nombres legibles). Se puede volver a evaluar con otra versión del modelo; la prueba («Probar el modelo») se quitó con él.

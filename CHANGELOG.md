@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- **Gastos fijos con cualquier frecuencia:** cada semana («todos los lunes, $500»), cada 2 o más semanas, cada quincena (15 y último), cada mes o cada 2 o más meses. Se anotan solos el día que llegan, nunca antes. Se eligen al marcar «Se repite» o en **Más › Gastos fijos**, que muestra el próximo cobro de cada uno y lo que ya llegó y lo que falta este mes.
+- **«Hoy puedes gastar» aparta los fijos que faltan del mes:** el dinero de la renta o de los lunes que vienen ya no se cuenta como disponible. El ticket lo dice: «Fijos por venir · $1,500».
 - **Nombres legibles:** los comercios que llegan de Wallet se leen como se escriben («CLIP*MX TAQ GUERO 02» → «Taq Guero», «AMZN MKTP MX*2K3J» → «Amazon»). El nombre original se guarda y es el que sale en el CSV.
 - **Anotar en una frase:** «Oye Siri, anota esto en Al día» y luego «230 de tacos ayer, en efectivo». También desde «Dilo en una frase», arriba del teclado al anotar a mano. Entiende el día («ayer», «el viernes», «el 3»), cómo pagaste («en efectivo», «con la Nu») y el comercio.
 - **Nota del mes** en el ticket del presupuesto: un posible cobro doble, una suscripción que no marcaste como fija, si a este ritmo te pasas del presupuesto, o una categoría muy arriba de lo normal.

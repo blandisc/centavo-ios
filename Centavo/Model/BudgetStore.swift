@@ -27,9 +27,10 @@ enum BudgetStore {
 extension BudgetStore {
     /// What a budget means today, said while it is typed: the same «Hoy puedes gastar» the
     /// main screen will show with it, counting what this month already spent.
-    static func dailyPreview(_ amount: Decimal, spent: Decimal = 0, currency: String,
-                             now: Date = .now) -> String {
-        guard let pace = BudgetPace(budget: amount, spent: spent, on: now), pace.remaining > 0 else {
+    static func dailyPreview(_ amount: Decimal, spent: Decimal = 0, reserved: Decimal = 0,
+                             currency: String, now: Date = .now) -> String {
+        guard let pace = BudgetPace(budget: amount, spent: spent, reserved: reserved, on: now),
+              pace.remaining > 0 else {
             return "Este mes ya gastaste más que eso."
         }
         let figure = pace.dailyAllowance.formatted(currencyStyle(currency).precision(.fractionLength(0)))
@@ -41,7 +42,7 @@ enum BudgetSync {
     private static var cloud: NSUbiquitousKeyValueStore { .default }
     private static var local: UserDefaults { .standard }
     static let keys = [BudgetStore.key, CurrencyPreference.key, UserCatalog.categoriesKey,
-                       UserCatalog.sourcesKey, UserCatalog.defaultSourceKey]
+                       UserCatalog.sourcesKey, UserCatalog.defaultSourceKey, FixedPlan.key]
 
     /// At launch: take what iCloud has, or hand it what this phone already had.
     static func start() {

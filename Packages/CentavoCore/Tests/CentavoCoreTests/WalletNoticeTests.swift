@@ -90,4 +90,25 @@ import Testing
         #expect(notice.merchant == "OXXO 123 MTY")
         #expect(notice.card == "BBVA")
     }
+
+    /// The owner's real notices: the bank, the amount, then the merchant. Reading upward from
+    /// the amount took the bank (saved as «American Express México», card empty).
+    @Test func bankThenAmountThenMerchant() throws {
+        let notice = try #require(WalletNotice.parse("American Express México\nMXN 1,060.00\nLa Docena"))
+        #expect(notice.merchant == "La Docena")
+        #expect(notice.card == "American Express México")
+        #expect(notice.amount.value == 1060)
+        let hsbc = try #require(WalletNotice.parse("HSBC México\nMXN 20.00\nOxxo Roble"))
+        #expect(hsbc.merchant == "Oxxo Roble")
+        #expect(hsbc.card == "HSBC México")
+    }
+
+    @Test(arguments: ["American Express México\nMXN 1,060.00 en La Docena",
+                      "American Express México\nMXN 1,060.00\nen La Docena",
+                      "American Express México\nCompra en La Docena\nMXN 1,060.00"])
+    func onlyThePlaceIsTheMerchant(text: String) throws {
+        let notice = try #require(WalletNotice.parse(text))
+        #expect(notice.merchant == "La Docena")
+        #expect(notice.card == "American Express México")
+    }
 }

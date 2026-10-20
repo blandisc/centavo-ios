@@ -22,6 +22,8 @@ struct ExpenseEditorView: View {
     @State private var category = ""
     @State private var date = Date.now
     @State private var repeatsMonthly = false
+    /// How often it comes back, once «Se repite» is on.
+    @State private var rule = RepeatRule.monthly
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
     @FocusState private var merchantFocused: Bool
@@ -49,6 +51,7 @@ struct ExpenseEditorView: View {
             || merchant != expense.merchant || card != (expense.card ?? "")
             || category != (expense.category ?? "") || date != expense.date
             || repeatsMonthly != (expense.repeatsMonthly == true)
+            || (repeatsMonthly && rule != expense.rule)
     }
 
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
@@ -173,17 +176,20 @@ struct ExpenseEditorView: View {
                     }
                     if expense?.isRepeat != true {
                         Toggle(isOn: $repeatsMonthly) {
-                            Text("Se repite cada mes")
+                            Text("Se repite")
                                 .font(.ticket(12, relativeTo: .footnote))
                                 .tracking(1.2)
                                 .textCase(.uppercase)
                         }
                         .tint(Theme.brass)
                         .accessibilityIdentifier("se-repite")
+                        if repeatsMonthly {
+                            RepeatRulePicker(rule: $rule)
+                        }
                     }
                 } footer: {
                     if repeatsMonthly {
-                        hint("Renta, suscripciones, la luz: se anota sola el mismo día de cada mes.")
+                        hint(FixedWording.howItRepeats(rule, from: date))
                     } else if expense?.isRepeat == true {
                         hint("Se anotó solo, de un gasto fijo.")
                     }
@@ -235,6 +241,11 @@ struct ExpenseEditorView: View {
             // The number pad has no key to close it and covers half the sheet: scrolling down to
             // the categories or the card closes it.
             .scrollDismissesKeyboard(.immediately)
+            // iOS 26 ignores the line above in a sheet's form: a drag does it there.
+            .simultaneousGesture(DragGesture(minimumDistance: 24).onChanged { _ in
+                if amountFocused { amountFocused = false }
+                if merchantFocused { merchantFocused = false }
+            })
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(expense == nil ? "Nuevo gasto" : "Editar gasto")
             .toolbar {
@@ -436,6 +447,7 @@ struct ExpenseEditorView: View {
             .formatted(.number.precision(.fractionLength(2)).grouping(.never))
         merchant = expense.merchant
         repeatsMonthly = expense.repeatsMonthly == true
+        rule = expense.rule
         card = expense.card ?? ""
         category = expense.category ?? ""
         date = expense.date
@@ -470,11 +482,14 @@ struct ExpenseEditorView: View {
             // maybe already logged by hand).
             if expense.repeatsMonthly != true { expense.repeatsThrough = max(date, Date.now) }
             expense.repeatsMonthly = true
-            expense.repeatDay = Calendar.current.component(.day, from: date)
+            expense.repeatRule = rule.stored
+            // The day of the month matters only to what repeats by months.
+            expense.repeatDay = rule.kind == .months ? Calendar.current.component(.day, from: date) : nil
         } else {
             expense.repeatsMonthly = nil
             expense.repeatsThrough = nil
             expense.repeatDay = nil
+            expense.repeatRule = nil
         }
     }
 
