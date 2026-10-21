@@ -397,6 +397,18 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Liverpool"), "No regresó a todo el mes")
     }
 
+    func testTocarUnaCategoriaMuestraSoloSusGastos() {
+        let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
+        require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").tap()
+        require(app.buttons["ver-todo-el-mes"], "No dice que está filtrado")
+        require(row(app, containing: "Liverpool"), "No muestra el gasto de Ropa")
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Cinépolis'")).firstMatch.exists,
+                       "Muestra gastos de otras categorías")
+        snap("flujo-categoria-filtrada")
+        app.buttons["ver-todo-el-mes"].tap()
+        require(row(app, containing: "Cinépolis"), "No regresó a todo el mes")
+    }
+
     func testCancelarLaConfirmacionNoBorra() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
@@ -813,6 +825,16 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     /// The one audit that fails the build: a tap target under 44 points is a bug, not a taste.
+    func testZonasTactilesDelMosaico() throws {
+        var issues: [String] = []
+        let app = launch(extra: ["-whereItGoesStyle", "mosaic"])
+        try app.performAccessibilityAudit(for: .hitRegion) { issue in
+            issues.append("\(issue.compactDescription) — \(issue.element?.debugDescription.prefix(220) ?? "sin elemento")")
+            return true
+        }
+        XCTAssertTrue(issues.isEmpty, "Zonas táctiles menores de 44 pt:\n" + issues.joined(separator: "\n"))
+    }
+
     func testZonasTactilesSonSuficientes() throws {
         var issues: [String] = []
         func check(_ app: XCUIApplication, _ screen: String) throws {

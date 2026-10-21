@@ -108,6 +108,20 @@ final class ScreenshotTests: XCTestCase {
         snap("14-guia-conectar-importe")
     }
 
+    func testPrincipalMosaico() {
+        let app = launch(["-whereItGoesStyle", "mosaic"])
+        snap("03-principal-mosaico")
+        app.buttons["categoria-Ropa"].tap()
+        sleep(1)
+        snap("04-principal-mosaico-ropa")
+    }
+
+    func testLetraGrandeMosaico() {
+        _ = launch(["-whereItGoesStyle", "mosaic", "-UIPreferredContentSizeCategoryName",
+                    "UICTContentSizeCategoryAccessibilityXXXL"])
+        snap("12-letra-grande-mosaico")
+    }
+
     func testLetraGrande() {
         let app = launch(["-UIPreferredContentSizeCategoryName",
                           "UICTContentSizeCategoryAccessibilityXXXL"])
