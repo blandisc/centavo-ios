@@ -7,11 +7,26 @@ enum WhereItGoesStyle: String, CaseIterable, Identifiable {
     case bar
     /// One block per category, as big as what was spent there; tapping one filters the list.
     case mosaic
+    /// Not shown: the budget page is only the month's bar.
+    case hidden
 
     static let key = "whereItGoesStyle"
     var id: String { rawValue }
-    var title: String { self == .bar ? "Barra" : "Mosaico" }
-    var icon: String { self == .bar ? "chart.bar.doc.horizontal" : "square.grid.2x2" }
+    var title: String {
+        switch self {
+        case .bar: "Barra"
+        case .mosaic: "Mosaico"
+        case .hidden: "No mostrar"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .bar: "chart.bar.doc.horizontal"
+        case .mosaic: "square.grid.2x2"
+        case .hidden: "eye.slash"
+        }
+    }
 }
 
 /// Where the month's money went, in the primary currency: each category in its own color
@@ -52,6 +67,8 @@ struct WhereItGoes: View {
                 ShareBarChart(lines: lines, money: money)
             case .mosaic:
                 ShareMosaicChart(lines: lines, money: money, selected: selected, onSelect: onSelect)
+            case .hidden:
+                EmptyView()
             }
         }
         .accessibilityElement(children: .contain)

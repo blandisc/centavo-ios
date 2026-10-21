@@ -50,7 +50,7 @@ struct BudgetPage: View {
             } else {
                 invitation
             }
-            if !shares.isEmpty {
+            if !shares.isEmpty, storedStyle != WhereItGoesStyle.hidden.rawValue {
                 whereItGoes
             }
             if let note {

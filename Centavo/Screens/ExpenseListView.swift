@@ -334,6 +334,8 @@ struct ExpenseListView: View {
             }
             // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
             .onChange(of: viewed) { _, _ in selectedDay = nil; selectedCategory = nil }
+            // Only the mosaic picks a category: with another view there is no block to undo it.
+            .onChange(of: whereItGoesStyle) { _, _ in selectedCategory = nil }
             .modifier(Feedback(expenseCount: expenses.count, newest: expenses.first?.date,
                                isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }

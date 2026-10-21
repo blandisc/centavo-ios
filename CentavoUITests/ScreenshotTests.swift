@@ -116,6 +116,12 @@ final class ScreenshotTests: XCTestCase {
         snap("04-principal-mosaico-ropa")
     }
 
+    func testPrincipalSinEnQueSeVa() {
+        let app = launch(["-whereItGoesStyle", "hidden"])
+        XCTAssertFalse(app.otherElements["en-que-se-va"].exists, "Se ve «En qué se va» aunque está apagado")
+        snap("05-principal-sin-en-que-se-va")
+    }
+
     func testLetraGrandeMosaico() {
         _ = launch(["-whereItGoesStyle", "mosaic", "-UIPreferredContentSizeCategoryName",
                     "UICTContentSizeCategoryAccessibilityXXXL"])
