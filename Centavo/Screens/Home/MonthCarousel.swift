@@ -17,12 +17,38 @@ struct MonthCarousel: View {
     var currency = CurrencyPreference.fallback
 
     @State private var page: Int? = 0
-    /// Each page's own height. The carousel keeps the taller one's, always: a height that
-    /// changed while swiping relaid the whole list below on every frame, so the swipe felt
-    /// rough and the list leapt (tried twice, #74 and #77). Only the pages move sideways.
+    /// Each page's own height. The carousel is as tall as the page it is going to, so a
+    /// short budget page (no «En qué se va») leaves no empty band above the list.
     @State private var heights: [Int: CGFloat] = [:]
+    /// The page the carousel is sized for. It changes once per swipe, as soon as the finger
+    /// says where it is going, and the height eases there in one animation while the page
+    /// slides in. A height that followed the finger frame by frame relaid the whole list
+    /// below on every frame and felt rough (#77); one that changed when the page settled
+    /// leapt (before #74).
+    @State private var sizedFor = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var height: CGFloat? { heights.values.max() }
+    private var height: CGFloat? { heights[sizedFor] ?? heights.values.max() }
+
+    /// How far a swipe is from the budget (0) to the calendar (1), in tenths: only the
+    /// tenths cross into `resize`, not every frame.
+    private static func stage(_ geometry: ScrollGeometry) -> Int {
+        guard geometry.containerSize.width > 0 else { return 0 }
+        let progress = geometry.contentOffset.x / geometry.containerSize.width
+        return Int((min(max(progress, 0), 1) * 10).rounded(.down))
+    }
+
+    /// Grows as soon as the swipe heads for the taller page, so it is whole when it lands;
+    /// shrinks only once the taller page is mostly gone, so it is never cut while in view.
+    private func resize(for stage: Int) {
+        let from = page ?? 0
+        let to = stage == 0 ? 0 : stage >= 9 ? 1 : 1 - from
+        let shown = stage < 5 ? 0 : 1
+        let tallerFirst = (heights[to] ?? 0) >= (heights[shown] ?? 0) ? to : shown
+        let target = stage == 0 || stage >= 9 ? to : tallerFirst
+        guard target != sizedFor else { return }
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { sizedFor = target }
+    }
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
@@ -52,12 +78,19 @@ struct MonthCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
+            // Only crossing a stage reaches `resize`: the swipe itself changes no state.
+            .onScrollGeometryChange(for: Int.self, of: Self.stage) { _, stage in resize(for: stage) }
             .frame(height: height, alignment: .top)
+            // While the height eases, nothing of the taller page draws over the list.
+            .clipped()
+            // A page that changes height in place (choosing «No mostrar» in «Más») eases too.
+            .animation(reduceMotion ? nil : .smooth(duration: 0.45), value: heights[sizedFor])
 
             HStack(spacing: 4) {
                 ForEach(pageNames.indices, id: \.self) { index in
                     Button {
                         withAnimation { page = index }
+                        withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { sizedFor = index }
                     } label: {
                         Capsule()
                             .fill(page == index ? Theme.ink : Theme.dimmed)
