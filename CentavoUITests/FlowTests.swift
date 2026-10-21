@@ -96,7 +96,7 @@ final class FlowTests: XCTestCase {
     private func deleteButton(_ app: XCUIApplication) -> XCUIElement {
         let button = app.buttons["borrar-gasto"]
         require(app.textFields["monto"], "No abrió el gasto")
-        for _ in 0..<4 where !button.isHittable { scrollForm(app) }
+        for _ in 0..<4 where !isClear(button, app) { scrollForm(app) }
         return require(button, "No hay botón de borrar")
     }
 
@@ -220,7 +220,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
         let button = app.buttons["en-una-frase"]
-        for _ in 0..<4 where !button.isHittable { scrollForm(app) }
+        for _ in 0..<4 where !isClear(button, app) { scrollForm(app) }
         require(button, "No está «Dilo en una frase»").tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
@@ -278,7 +278,10 @@ final class FlowTests: XCTestCase {
         if app.keyboards.count > 0 { app.swipeDown() }
         // Below the categories: on any phone it takes a scroll.
         let cash = app.buttons["tarjeta-Efectivo"]
-        for _ in 0..<4 where !cash.isHittable { scrollForm(app) }
+        // Scrolled at least once: on a Pro Max «Efectivo» shows without scrolling, and the
+        // point is that scrolling closes the number pad.
+        scrollForm(app)
+        for _ in 0..<3 where !isClear(cash, app) { scrollForm(app) }
         XCTAssertTrue(require(cash, "No ofrece el efectivo").isSelected,
                       "La predeterminada no vino elegida")
         let pets = app.buttons["categoria-Mascotas"]
@@ -304,7 +307,10 @@ final class FlowTests: XCTestCase {
         require(app.textFields["monto"], "No abrió la hoja de gasto")
         XCTAssertTrue(app.keyboards.count > 0, "El monto no abrió el teclado")
         let cash = app.buttons["tarjeta-Efectivo"]
-        for _ in 0..<4 where !cash.isHittable { scrollForm(app) }
+        // Scrolled at least once: on a Pro Max «Efectivo» shows without scrolling, and the
+        // point is that scrolling closes the number pad.
+        scrollForm(app)
+        for _ in 0..<3 where !isClear(cash, app) { scrollForm(app) }
         XCTAssertEqual(app.keyboards.count, 0, "Al bajar no se cerró el teclado")
         require(cash, "No ofrece efectivo sin configurar nada")
         XCTAssertTrue(app.buttons["tarjeta-Agregar tarjeta"].exists, "El botón no dice qué agrega")
@@ -712,6 +718,16 @@ final class FlowTests: XCTestCase {
 
     /// Scrolls a sheet up by dragging its form, above the keyboard. `swipeUp()` starts at the
     /// middle of the screen, which on smaller iPhones is already the keyboard: nothing moved.
+    /// Whether `element` can really be tapped in a sheet: on screen and above the «Guardar»
+    /// bar. On an iPhone Pro Max the last rows rest under the bar, where XCUITest calls them
+    /// hittable but a tap lands on the bar.
+    private func isClear(_ element: XCUIElement, _ app: XCUIApplication) -> Bool {
+        guard element.exists, element.isHittable else { return false }
+        let bar = app.staticTexts["resumen-guardar"]
+        guard bar.exists else { return true }
+        return element.frame.midY < bar.frame.minY - 12
+    }
+
     private func scrollForm(_ app: XCUIApplication) {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
         start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)))

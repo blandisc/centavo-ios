@@ -15,12 +15,19 @@ struct MonthCarousel: View {
     var currency = CurrencyPreference.fallback
 
     @State private var page: Int? = 0
-    /// Each page's own height. The carousel keeps the taller one's, always: a height that
-    /// changed while swiping made the list below leap or stutter, and clipped the calendar.
-    /// Only the pages move sideways; nothing else on the screen moves.
+    /// Each page's own height. The carousel is as tall as the page in view, so the budget
+    /// takes only what its categories need instead of the calendar's height (44 pt days
+    /// can't shrink to match).
     @State private var heights: [Int: CGFloat] = [:]
+    /// How far the swipe has gone, 0 on the budget and 1 on the calendar. The height follows
+    /// the finger, so the list below slides with it instead of leaping when the page settles,
+    /// and the calendar is never clipped.
+    @State private var progress: CGFloat = 0
 
-    private var height: CGFloat? { heights.values.max() }
+    private var height: CGFloat? {
+        guard let first = heights[0], let second = heights[1] else { return heights.values.max() }
+        return first + (second - first) * progress
+    }
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
@@ -49,6 +56,15 @@ struct MonthCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                guard geometry.containerSize.width > 0 else { return 0 }
+                return min(max(geometry.contentOffset.x / geometry.containerSize.width, 0), 1)
+            } action: { _, value in
+                // Whole points: a fraction of a point each frame relaid the list for nothing.
+                if abs(value - progress) * abs((heights[1] ?? 0) - (heights[0] ?? 0)) >= 0.5 || value == 0 || value == 1 {
+                    progress = value
+                }
+            }
             .frame(height: height, alignment: .top)
 
             HStack(spacing: 4) {

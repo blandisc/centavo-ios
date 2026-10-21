@@ -25,6 +25,8 @@ struct BudgetPage: View {
     @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 20
     @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = 14
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .footnote) private var shareBarHeight: CGFloat = 8
 
     /// Grows a little with the text, but a bar the size of the screen helps nobody.
     private var barHeight: CGFloat { min(scaledBarHeight, 132) }
@@ -44,7 +46,7 @@ struct BudgetPage: View {
     var body: some View {
         // What was spent is already the big total right above; this page only says how it
         // measures against the budget.
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: 24) {
             if let pace {
                 ticket(pace)
             } else {
@@ -80,7 +82,9 @@ struct BudgetPage: View {
 
     // MARK: Where it goes
 
-    /// The biggest categories, each a line of the ticket with a brass rule for its share.
+    /// The month's money as one brass bar split by category, biggest first, with a legend
+    /// under it: two to a line, so each new category adds half a line and the page only
+    /// grows when there is more to say. Past five, the smallest go together as «Otras».
     private var whereItGoes: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("En qué se va")
@@ -88,44 +92,65 @@ struct BudgetPage: View {
                 .tracking(1.2)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
-            ForEach(Array(shares.enumerated()), id: \.offset) { _, line in
-                let name = line.category ?? "Sin categoría"
-                let percent = line.share.formatted(.percent.precision(.fractionLength(0)))
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .center, spacing: 8) {
-                        Image(systemName: line.category.map {
-                            CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories))
-                        } ?? "questionmark")
-                            .resizable()
-                            .scaledToFit()
-                            .fontWeight(.medium)
-                            .foregroundStyle(Theme.brass)
-                            .frame(width: iconSize, height: iconSize)
-                            .frame(width: iconWidth)
-                            .accessibilityHidden(true)
-                        Text(name)
-                            .foregroundStyle(line.category == nil ? Theme.muted : Theme.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: 12)
-                        Text(percent)
-                            .foregroundStyle(Theme.muted)
-                            .monospacedDigit()
-                    }
-                    .font(.ticket(12, relativeTo: .footnote))
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-                    Rectangle()
-                        .fill(Theme.brass)
-                        .frame(height: 2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .scaleEffect(x: max(line.share, 0.02), anchor: .leading)
-                        .padding(.leading, iconWidth + 8)
+            ShareBar(shares: shares.map(\.share), tone: tone)
+                .frame(height: shareBarHeight)
+                .accessibilityHidden(true)
+            LazyVGrid(columns: legendColumns, alignment: .leading, spacing: 8) {
+                ForEach(Array(shares.enumerated()), id: \.offset) { index, line in
+                    legendItem(line, tone: tone(index))
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(name): \(percent) de lo gastado")
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("en-que-se-va")
+    }
+
+    /// Two columns; one with large accessibility text, where two would cut the names.
+    private var legendColumns: [GridItem] {
+        let column = GridItem(.flexible(), spacing: 16, alignment: .leading)
+        return typeSize.isAccessibilitySize ? [column] : [column, column]
+    }
+
+    /// Brass for the biggest, fading for the rest: one color, so the order reads as size.
+    private func tone(_ index: Int) -> Color {
+        Theme.brass.opacity([1, 0.72, 0.52, 0.4, 0.32, 0.26][min(index, 5)])
+    }
+
+    private func legendItem(_ line: CategoryShare, tone: Color) -> some View {
+        let name = line.isRest ? "Otras" : line.category ?? "Sin categoría"
+        let percent = line.share.formatted(.percent.precision(.fractionLength(0)))
+        let icon = line.isRest ? "ellipsis"
+            : line.category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) }
+            ?? "questionmark"
+        return HStack(spacing: 6) {
+            Image(systemName: icon)
+                .resizable()
+                .scaledToFit()
+                .fontWeight(.medium)
+                .foregroundStyle(Theme.brass)
+                .frame(width: iconSize, height: iconSize)
+                .frame(width: iconWidth)
+                .overlay(alignment: .bottom) {
+                    // The swatch ties the line to its piece of the bar.
+                    Capsule().fill(tone).frame(width: iconWidth, height: 2).offset(y: 5)
+                }
+            Text(name)
+                .foregroundStyle(line.category == nil && !line.isRest ? Theme.muted : Theme.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 4)
+            Text(percent)
+                .foregroundStyle(Theme.muted)
+                .monospacedDigit()
+                .layoutPriority(1)
+        }
+        .font(.ticket(12, relativeTo: .footnote))
+        .textCase(.uppercase)
+        .tracking(0.6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(line.isRest
+            ? "Otras \(line.restCount) categorías: \(money(line.amount)), \(percent) de lo gastado"
+            : "\(name): \(money(line.amount)), \(percent) de lo gastado")
     }
 
     // MARK: Without a budget
@@ -203,6 +228,31 @@ struct BudgetPage: View {
                 // A huge figure shrinks instead of widening the page (it shifted the carousel).
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
+        }
+    }
+}
+
+/// The month's spending as one bar, each category a piece as wide as its share, with a
+/// hairline of paper between pieces.
+private struct ShareBar: View {
+    let shares: [Double]
+    let tone: (Int) -> Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            let gap: CGFloat = 2
+            let usable = max(proxy.size.width - gap * CGFloat(max(shares.count - 1, 0)), 0)
+            let total = max(shares.reduce(0, +), .ulpOfOne)
+            HStack(spacing: gap) {
+                ForEach(Array(shares.enumerated()), id: \.offset) { index, share in
+                    Rectangle()
+                        .fill(tone(index))
+                        // A sliver still shows: 1 % of the month is still somewhere.
+                        .frame(width: max(usable * share / total, 3))
+                }
+            }
+            .frame(width: proxy.size.width, alignment: .leading)
+            .clipShape(Capsule())
         }
     }
 }

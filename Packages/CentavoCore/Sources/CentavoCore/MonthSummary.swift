@@ -133,18 +133,38 @@ public struct CategoryShare: Equatable, Sendable {
     public let category: String?
     /// 0...1 of what was spent in the primary currency.
     public let share: Double
+    /// What was spent there, in the primary currency.
+    public var amount: Decimal = 0
+    /// How many smaller categories this line gathers («Otras»); 0 for a real category.
+    public var restCount = 0
 
-    /// The biggest few, as shares of the spending (refunds that left a category in the
-    /// negative don't count, or the shares would stop adding up). Empty when nothing is
-    /// filed under a name: "100 % sin categoría" says nothing.
-    public static func top(_ categories: [CategoryTotal], limit: Int = 3) -> [CategoryShare] {
+    public var isRest: Bool { restCount > 0 }
+
+    public init(category: String?, share: Double, amount: Decimal = 0, restCount: Int = 0) {
+        self.category = category
+        self.share = share
+        self.amount = amount
+        self.restCount = restCount
+    }
+
+    /// Where the month went, biggest first, adding up to everything spent (refunds that left
+    /// a category in the negative don't count, or the shares would stop adding up). Past
+    /// `limit` lines, the smallest are gathered in one «Otras» line, so the list grows with
+    /// the categories but never past `limit`. Empty when nothing is filed under a name:
+    /// "100 % sin categoría" says nothing.
+    public static func top(_ categories: [CategoryTotal], limit: Int = 6) -> [CategoryShare] {
         let spent = categories.filter { $0.amount > 0 }
         guard spent.contains(where: { $0.category != nil }) else { return [] }
         let total = spent.reduce(Decimal(0)) { $0 + $1.amount }
-        guard total > 0 else { return [] }
-        return spent.prefix(limit).map {
-            CategoryShare(category: $0.category,
-                          share: NSDecimalNumber(decimal: $0.amount / total).doubleValue)
+        guard total > 0, limit > 0 else { return [] }
+        func share(_ amount: Decimal) -> Double { NSDecimalNumber(decimal: amount / total).doubleValue }
+        let shown = spent.count > limit ? spent.prefix(limit - 1) : spent.prefix(limit)
+        var lines = shown.map { CategoryShare(category: $0.category, share: share($0.amount), amount: $0.amount) }
+        let rest = spent.dropFirst(shown.count)
+        if !rest.isEmpty {
+            let amount = rest.reduce(Decimal(0)) { $0 + $1.amount }
+            lines.append(CategoryShare(category: nil, share: share(amount), amount: amount, restCount: rest.count))
         }
+        return lines
     }
 }
