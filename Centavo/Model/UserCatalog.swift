@@ -21,6 +21,11 @@ enum UserCatalog {
         return list
     }
 
+    /// The cards and ways of paying someone set up, for code outside a view (the Wallet intent).
+    static var sourceNames: [String] {
+        decode(UserDefaults.standard.string(forKey: sourcesKey) ?? "").map(\.name)
+    }
+
     static func encode(_ list: [LabeledIcon]) -> String {
         guard let data = try? JSONEncoder().encode(list) else { return "" }
         return String(decoding: data, as: UTF8.self)

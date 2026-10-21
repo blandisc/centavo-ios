@@ -25,7 +25,7 @@ struct ExpenseEditorView: View {
     @State private var repeatsMonthly = false
     /// How often it comes back, once «Se repite» is on.
     @State private var rule = RepeatRule.monthly
-    @State private var confirmingDelete = false
+    @State private var confirmingDelete: Expense?
     @FocusState private var amountFocused: Bool
     @FocusState private var merchantFocused: Bool
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
@@ -253,7 +253,7 @@ struct ExpenseEditorView: View {
 
                 if expense != nil {
                     Section {
-                        Button("Borrar gasto", role: .destructive) { confirmingDelete = true }
+                        Button("Borrar gasto", role: .destructive) { confirmingDelete = expense }
                             .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
                             .tracking(1.6)
                             .textCase(.uppercase)
@@ -289,14 +289,10 @@ struct ExpenseEditorView: View {
             } message: {
                 Text("Cuánto, dónde, qué día y cómo pagaste. Revisa lo que llené antes de guardar.")
             }
-            .confirmationDialog("¿Borrar este gasto?", isPresented: $confirmingDelete,
-                                titleVisibility: .visible) {
-                Button("Borrar", role: .destructive) {
-                    if let expense {
-                        if let onDelete { onDelete(expense) } else { context.delete(expense) }
-                    }
-                    dismiss()
-                }
+            .confirmsDelete(of: $confirmingDelete, primaryCurrency: CurrencyPreference.current,
+                            undoable: onDelete != nil) { expense in
+                if let onDelete { onDelete(expense) } else { context.delete(expense) }
+                dismiss()
             }
         }
         .onAppear(perform: load)

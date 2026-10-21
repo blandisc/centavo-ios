@@ -12,6 +12,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- «¿Borrar este gasto?» ya no brinca arriba de la pantalla en gris: sube desde abajo como un ticket chico con el monto, el comercio y el día, «Borrar» en rojo y «Conservar». Igual al deslizar, al mantener presionado y desde la hoja del gasto.
 - Cada gasto de la lista lleva el ícono de su categoría (el mismo de «En qué se va»); sin categoría, un «?» gris.
 - Pantalla de inicio más limpia, sin píldoras: el veredicto es una frase bajo el número («Vas $1,505 abajo de lo esperado»), «Esperado hoy» es una anotación sobre su rayita y la diferencia se ve rayada dentro de la barra. «Hoy puedes gastar» va en gris para que mande la cifra; todos los cuadros de la barra son iguales; los íconos de categoría tienen el mismo tamaño; el carrusel ya no deja un hueco vacío. En la lista: sin la columna de fecha (ya la dice el divisor), sin la línea doble, cada monto con «$», un día solo en dólares muestra su total, y el aviso de Wallet va bajo «Hoy». Abajo, ‹ mes › es una sola pieza y la lupa queda aparte.
 - En la lista de gastos, una rayita de latón separa cada día: «Hoy · 20 oct», «Ayer», «sáb 18 oct», con lo que gastaste ese día a la derecha.
@@ -41,6 +42,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Un aviso de Wallet ya no guarda el banco como comercio aunque llegue con renglones de más («Ahora», la hora) o en otro orden: el banco se reconoce por su nombre (American Express, BBVA, HSBC, Nu…) o por ser una de tus tarjetas. Los gastos que ya se habían guardado con el banco se corrigen solos al abrir la app.
 - Un aviso de Wallet ya no guarda el banco como comercio: el comercio es el concepto que va justo arriba del monto y la tarjeta la línea de arriba, aunque Atajos agregue líneas antes.
 - Importar de nuevo un CSV exportado ya no duplica gastos; un monto ilegible en el CSV se descarta en vez de leerse a medias («1,234.56» ya no entra como 1).
 - Un aviso de Wallet con el monto agrupado con espacios («MXN 1 234,56») ya no se guarda como 1.00. Un reembolso resta y el dinero recibido no cuenta como gasto.

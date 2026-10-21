@@ -66,6 +66,29 @@ enum ExpenseRecorder {
         return .saved(merchant: merchantName)
     }
 
+    /// Wallet captures saved with the bank as the merchant, read again from the notice they
+    /// kept. Only the bank's own lines are touched: a name someone typed is not a bank.
+    @discardableResult
+    static func repairBankMerchants(in context: ModelContext,
+                                    knownCards: [String] = UserCatalog.sourceNames) throws -> Int {
+        let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.rawNotice != nil })
+        var fixed = 0
+        for expense in try context.fetch(descriptor) {
+            guard let raw = expense.rawNotice,
+                  WalletNotice.looksLikeCard(expense.merchant, knownCards: knownCards),
+                  let read = WalletNotice.parse(raw, knownCards: knownCards),
+                  let merchant = read.merchant, merchant != expense.merchant else { continue }
+            let wasReadable = expense.displayName == nil
+                || expense.displayName == MerchantName.readable(expense.merchant)
+            if expense.card == nil || expense.card == "" { expense.card = read.card ?? expense.merchant }
+            expense.merchant = String(merchant.prefix(maxMerchantLength))
+            if wasReadable { expense.displayName = MerchantName.readable(expense.merchant) }
+            fixed += 1
+        }
+        if fixed > 0 { try context.save() }
+        return fixed
+    }
+
     /// A payment told to Siri or the Action button: how much and where, nothing else.
     ///
     /// Not a Wallet capture, so the raw text is not kept and nothing is treated as a repeat
