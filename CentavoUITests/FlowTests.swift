@@ -396,14 +396,7 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
         deleteButton(app).tap()
         require(app.buttons["Borrar"], "No pidió confirmación")
-        // On iOS 26 the dialog is a popover with no Cancel of its own: tapping outside dismisses it.
-        let dialogCancel = app.buttons.matching(NSPredicate(
-            format: "label == 'Cancelar' AND identifier != 'hoja-cancelar'")).firstMatch
-        if dialogCancel.waitForExistence(timeout: 2) {
-            dialogCancel.tap()
-        } else {
-            app.otherElements["PopoverDismissRegion"].firstMatch.tap()
-        }
+        app.buttons["Conservar"].tap()
         require(app.buttons["hoja-cancelar"], "La hoja de edición se cerró").tap()
         XCTAssertTrue(row(app, containing: "Cinépolis").waitForExistence(timeout: 5),
                       "Se borró aunque se canceló")

@@ -19,10 +19,13 @@ public struct WalletNotice: Equatable, Sendable {
     /// `nil` when there is no amount with a currency: a boarding pass, a top-up reminder, any
     /// Wallet notice that is not a charge, or money that came in (someone paid you).
     /// A refund comes back negative, so it subtracts instead of counting as spending.
-    public static func parse(_ text: String) -> WalletNotice? {
+    ///
+    /// `knownCards` are names the person already pays with (their cards, earlier captures):
+    /// a line that matches one is the card, never the merchant.
+    public static func parse(_ text: String, knownCards: [String] = []) -> WalletNotice? {
         let lines = text
             .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.trimmingCharacters(in: .whitespaces.union(invisibles)) }
             .filter { !$0.isEmpty }
         let folded = lines.joined(separator: " ")
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
@@ -33,38 +36,42 @@ public struct WalletNotice: Equatable, Sendable {
             CaptureText.amount(in: line).map { $0.currencyMarker != nil } ?? false
         }), let amount = CaptureText.amount(in: lines[index]) else { return nil }
 
-        // Read from the amount up, not from the top: the concept sits right above the amount
-        // and the card above that. Atajos may add lines first (the app's name, «Wallet»), and
-        // counting from the top then took the bank for the merchant (seen on the owner's iPhone).
+        // Lines that say nothing about the purchase («Wallet», «Ahora», «10:32») go first.
         let clean: (String) -> String? = { line in
-            let folded = line.folding(options: [.caseInsensitive, .diacriticInsensitive],
-                                      locale: Locale(identifier: "es_MX"))
-            if appLabels.contains(folded) { return nil }
+            if isNoise(line) { return nil }
             return isRefund ? withoutRefundWord(line) : line
         }
         let before = lines[..<index].compactMap(clean)
         let after = lines[(index + 1)...].compactMap(clean)
+        let isCard = { (line: String) in looksLikeCard(line, knownCards: knownCards) }
         // The amount may share its line with the merchant ("Google MXN 319.00").
         let leftover = lines[index]
             .replacingOccurrences(of: amountPattern(in: lines[index]) ?? lines[index], with: "")
             .trimmingCharacters(in: .whitespaces.union(.punctuationCharacters))
+        // The bank is told apart by its name first, not by where it sits: Atajos and each bank
+        // put the lines in their own order, and every guess by position took the bank for the
+        // merchant on some iPhone (the owner's, three times).
+        let named = (before + after).first(where: isCard)
+        let shops = (before: before.filter { !isCard($0) }, after: after.filter { !isCard($0) })
+
         let merchant: String?
-        let card: String?
-        if let own = clean(leftover), !own.isEmpty {
+        var card: String?
+        if let own = clean(leftover), !own.isEmpty, !isCard(own) {
             merchant = own
-            card = before.last
-        } else if before.count == 1, let concept = after.first {
-            // Card, amount, then the concept (as the owner's notices arrive): the line above the
-            // amount is the bank, and the merchant comes after it.
+            card = named ?? before.last
+        } else if let concept = shops.after.first, named != nil || !before.isEmpty {
+            // Card, amount, then the concept (as the owner's notices arrive).
             merchant = concept
-            card = before.first
-        } else if let concept = before.last {
+            card = named ?? before.last
+        } else if let concept = shops.before.last {
+            // Card, concept, then the amount: the concept sits right above the amount.
             merchant = concept
-            card = before.dropLast().last
+            card = named ?? before.prefix(while: { $0 != concept }).last
         } else {
-            merchant = after.first
-            card = nil
+            merchant = shops.after.first
+            card = named
         }
+        if card == merchant { card = nil }
         let merchantName = merchant.map(withoutJoiner)
         let figure = amountPattern(in: lines[index]) ?? lines[index]
         guard isRefund else {
@@ -137,6 +144,52 @@ public struct WalletNotice: Equatable, Sendable {
 
     /// Lines that name the app, not the purchase.
     static let appLabels: Set<String> = ["wallet", "apple wallet", "apple pay", "cartera"]
+
+    /// Characters a notification may carry that `trimmingCharacters(in: .whitespaces)` keeps.
+    static let invisibles = CharacterSet(charactersIn: "\u{200B}\u{200C}\u{200D}\u{2060}\u{FEFF}")
+
+    /// The app's name, or when the notice came: «Ahora», «hace 2 min», «10:32 a.m.», «ayer».
+    static func isNoise(_ line: String) -> Bool {
+        let folded = fold(line)
+        if appLabels.contains(folded) { return true }
+        if ["ahora", "justo ahora", "now", "ayer", "hoy"].contains(folded) { return true }
+        return folded.range(of: #"^(hace \d+ ?\w*|\d+ ?(min|h|s|d)|\d{1,2}:\d{2}( ?[ap]\.? ?m\.?)?)$"#,
+                            options: .regularExpression) != nil
+    }
+
+    /// A line that names the card or its bank, not a shop: one the person pays with, a known
+    /// issuer («American Express México», «BBVA»), or words only a card has («•••• 1234»,
+    /// «Tarjeta de crédito»).
+    public static func looksLikeCard(_ line: String, knownCards: [String] = []) -> Bool {
+        let folded = fold(line)
+        if knownCards.contains(where: { !$0.isEmpty && fold($0) == folded }) { return true }
+        if issuersAlone.contains(folded) { return true }
+        if folded.range(of: #"(•|\*{2,}|x{4})\s?\d{4}|terminacion|terminada en"#, options: .regularExpression) != nil {
+            return true
+        }
+        let words = Set(folded.components(separatedBy: CharacterSet.alphanumerics.inverted))
+        if !cardWords.isDisjoint(with: words) { return true }
+        let spaced = " " + folded.components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }.joined(separator: " ") + " "
+        return issuers.contains { spaced.contains(" \($0) ") }
+    }
+
+    private static func fold(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Banks and card issuers in Mexico, anywhere in the line.
+    static let issuers = ["american express", "amex", "bbva", "bancomer", "banamex", "citibanamex",
+                          "santander", "hsbc", "banorte", "scotiabank", "inbursa", "banregio",
+                          "banbajio", "afirme", "bancoppel", "banco azteca", "hey banco", "invex",
+                          "nu mexico", "mercado pago", "apple card", "apple cash", "rappicard",
+                          "didi card", "plata card", "spin by oxxo", "uala", "stori",
+                          "klar", "vexi", "openbank", "banco"]
+    /// Issuers whose name is also a common word: only the whole line.
+    static let issuersAlone: Set<String> = ["nu", "plata", "hey", "spin", "costco citi", "liverpool visa"]
+    /// Words on a card, never on a shop's name.
+    static let cardWords: Set<String> = ["tarjeta", "credito", "debito", "visa", "mastercard", "card"]
 
     /// Money back from a purchase: it is logged, as a refund.
     static let refunds = ["reembolso", "devolucion", "reverso", "reversion", "cargo cancelado",

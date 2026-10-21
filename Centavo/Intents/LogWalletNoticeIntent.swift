@@ -27,7 +27,7 @@ struct LogWalletNoticeIntent: AppIntent {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         let context = container.mainContext
         try? RecurringExpenses.logDue(in: context)
-        let read = WalletNotice.parse(notice)
+        let read = WalletNotice.parse(notice, knownCards: UserCatalog.sourceNames)
         // Not every Wallet notification is a charge (passes, Apple Cash...): skip those quietly.
         guard let parsed = read else {
             return .result(dialog: "")

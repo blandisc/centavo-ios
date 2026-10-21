@@ -39,6 +39,24 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(expense.date, now)
     }
 
+    /// A capture that kept the bank as the merchant is read again from its notice; one
+    /// someone named by hand, or a real shop, stays as it is.
+    func testOldCapturesWithTheBankAsMerchantAreRepaired() throws {
+        let notice = "Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena"
+        try ExpenseRecorder.record(amountText: "MXN 1,060.00", merchant: "American Express México",
+                                   card: nil, rawNotice: notice, in: context, now: now)
+        try ExpenseRecorder.record(amountText: "MXN 20.00", merchant: "Oxxo Roble", card: "HSBC México",
+                                   rawNotice: "HSBC México\nMXN 20.00\nOxxo Roble", in: context,
+                                   now: now.addingTimeInterval(3_600))
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: []), 1)
+        let rows = try saved()
+        XCTAssertEqual(rows[0].merchant, "La Docena")
+        XCTAssertEqual(rows[0].card, "American Express México")
+        XCTAssertEqual(rows[0].shownName, "La Docena")
+        XCTAssertEqual(rows[1].merchant, "Oxxo Roble")
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: []), 0)
+    }
+
     func testABlankMerchantBecomesSinComercio() throws {
         XCTAssertEqual(try record("$10", "   "), .saved(merchant: "Sin comercio"))
         XCTAssertEqual(try record("$11", nil, at: now.addingTimeInterval(3_600)),

@@ -111,4 +111,51 @@ import Testing
         #expect(notice.merchant == "La Docena")
         #expect(notice.card == "American Express México")
     }
+
+    /// Still the bank as the merchant after two fixes: any extra line above the card (when the
+    /// notice came, the app's name) pushed the card down into the merchant's place. The bank
+    /// is now known by its name, wherever it sits.
+    @Test(arguments: ["Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena",
+                      "10:32\nAmerican Express México\nMXN 1,060.00\nLa Docena",
+                      "hace 2 min\nWallet\nAmerican Express México\nMXN 1,060.00\nLa Docena",
+                      "American Express México\u{200B}\n\u{200B}\nMXN 1,060.00\nLa Docena",
+                      "American Express México\nLa Docena\nMXN 1,060.00",
+                      "La Docena\nAmerican Express México\nMXN 1,060.00",
+                      "MXN 1,060.00\nLa Docena\nAmerican Express México"])
+    func theBankIsNeverTheMerchant(text: String) throws {
+        let notice = try #require(WalletNotice.parse(text))
+        #expect(notice.merchant == "La Docena")
+        #expect(notice.card == "American Express México")
+        #expect(notice.amount.value == 1060)
+    }
+
+    @Test func aCardThePersonAlreadyUsesIsTheCard() throws {
+        let notice = try #require(WalletNotice.parse("Ahora\nMi negra\nMXN 20.00\nOxxo Roble",
+                                                     knownCards: ["Mi Negra"]))
+        #expect(notice.merchant == "Oxxo Roble")
+        #expect(notice.card == "Mi negra")
+    }
+
+    @Test func cardWordsAndDigitsMarkTheCard() throws {
+        let notice = try #require(WalletNotice.parse("Tarjeta de crédito •••• 1234\nGoogle\nMXN 319.00"))
+        #expect(notice.merchant == "Google")
+        #expect(notice.card == "Tarjeta de crédito •••• 1234")
+    }
+
+    @Test func onlyTheBankLeavesNoMerchant() throws {
+        let notice = try #require(WalletNotice.parse("BBVA\nMXN 47.50"))
+        #expect(notice.merchant == nil)
+        #expect(notice.card == "BBVA")
+    }
+
+    @Test(arguments: ["Oxxo Roble", "Liverpool", "La Docena", "Uber Eats", "Google", "Spotify"])
+    func shopsAreNotCards(name: String) {
+        #expect(!WalletNotice.looksLikeCard(name))
+    }
+
+    @Test(arguments: ["American Express México", "BBVA México", "Nu", "HSBC", "Banorte",
+                      "Mercado Pago", "Apple Card", "Visa •••• 4321"])
+    func banksAreCards(name: String) {
+        #expect(WalletNotice.looksLikeCard(name))
+    }
 }

@@ -241,3 +241,9 @@ A pedido del dueño, cada gasto puede guardar dónde estaba el iPhone al anotars
 
 ## 2026-10-20 · El simulador de la CI solo corre al entrar a `main`
 Decisión del dueño: en un PR solo corre «Pruebas y build» y eso decide el merge. Las pruebas de interfaz en el simulador (unos 25 min) corren en cada push a `main` y a mano («Run workflow»), nunca en un PR; desaparece la etiqueta `ci-app`. Motivo: un merge esperó horas por corridas lentas o atoradas del simulador. A cambio, quien hace un PR que toca pantallas corre las pruebas de interfaz en su simulador local, y un error que solo aparezca en la CI se ve en la corrida de `main` y se arregla ahí.
+
+## 2026-10-21 · El banco se reconoce por su nombre
+Tercera vez que un aviso de Wallet guardaba el banco como comercio: adivinar por la posición de los renglones falla en cuanto Atajos o el banco agregan uno («Ahora», la hora) o cambian el orden. Ahora `WalletNotice` reconoce la tarjeta por su nombre: una lista de bancos y emisores de México, palabras de tarjeta («crédito», «•••• 1234») y las tarjetas que la persona dio de alta. Esa línea nunca es el comercio; la posición solo decide entre las que quedan. Si un banco nuevo no está en la lista, se agrega ahí. Los gastos de Wallet guardados con el banco como comercio se vuelven a leer de su aviso original al abrir la app; un nombre escrito a mano no se toca.
+
+## 2026-10-21 · Confirmar el borrado con una hoja propia
+A pedido del dueño, «¿Borrar este gasto?» deja el diálogo del sistema (en iOS 26 sale como globo arriba, lejos del dedo y en gris) por una hoja chica que sube desde abajo, del alto de su contenido, con el estilo «Noche ticket»: el gasto que se va a borrar, «Borrar» en `Theme.danger` y «Conservar». Sigue siendo una hoja del sistema (`sheet` con `presentationDetents`), así que respeta Dynamic Type y VoiceOver. Mantiene la confirmación del 2026-10-13 y el «Deshacer» del 2026-10-18.

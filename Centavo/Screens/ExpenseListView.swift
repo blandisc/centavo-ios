@@ -296,15 +296,8 @@ struct ExpenseListView: View {
                                                             plans: FixedPlan.decode(storedPlans),
                                                             primary: primaryCurrency, now: now))
             }
-            .confirmationDialog(
-                "¿Borrar este gasto?",
-                isPresented: deleteDialogShown,
-                titleVisibility: .visible,
-                presenting: pendingDelete
-            ) { expense in
-                Button("Borrar", role: .destructive) { delete(expense) }
-            } message: { expense in
-                Text("\(expense.shownName) · \(ledgerAmount(for: expense, primary: primaryCurrency))")
+            .confirmsDelete(of: $pendingDelete, primaryCurrency: primaryCurrency, undoable: true) {
+                delete($0)
             }
             .fileImporter(isPresented: $importing,
                           allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
@@ -478,7 +471,10 @@ private struct KeepsTime: ViewModifier {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
             }
-            .task(id: now) { try? RecurringExpenses.logDue(in: context, now: now) }
+            .task(id: now) {
+                try? RecurringExpenses.logDue(in: context, now: now)
+                try? ExpenseRecorder.repairBankMerchants(in: context)
+            }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
                 now = .now
@@ -488,10 +484,6 @@ private struct KeepsTime: ViewModifier {
 
 private extension ExpenseListView {
     // Pulled out of `body`: the CI's compiler gave up type-checking it all in one expression.
-    var deleteDialogShown: Binding<Bool> {
-        Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })
-    }
-
     var importAlertShown: Binding<Bool> {
         Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })
     }
