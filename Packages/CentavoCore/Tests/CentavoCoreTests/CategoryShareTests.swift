@@ -25,6 +25,8 @@ import Testing
         #expect(shares.prefix(5).map(\.category) == ["C1", "C2", "C3", "C4", "C5"])
         let rest = try #require(shares.last)
         #expect(rest.isRest && rest.restCount == 3 && rest.category == nil)
+        #expect(rest.contains("c7") && !rest.contains("C1"))
+        #expect(shares[0].contains("c1") && !shares[0].contains("C2"))
         #expect(rest.amount == Decimal(94 + 93 + 92))
         #expect(abs(shares.map(\.share).reduce(0, +) - 1) < 0.000_001)
     }
@@ -33,6 +35,13 @@ import Testing
         let totals = (1...6).map { CategoryTotal(category: "C\($0)", amount: 10) }
         let gathered = CategoryShare.top(totals, limit: 6).contains { $0.isRest }
         #expect(!gathered)
+    }
+
+    @Test func fourColorsThenOtras() {
+        let totals = (1...6).map { CategoryTotal(category: "C\($0)", amount: Decimal(100 - $0)) }
+        let shares = CategoryShare.top(totals)
+        #expect(shares.count == CategoryShare.colored + 1)
+        #expect(shares.last?.restCount == 2)
     }
 
     @Test func refundsDoNotBreakTheShares() {

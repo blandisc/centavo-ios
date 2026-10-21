@@ -46,6 +46,9 @@ struct ExpenseListView: View {
     @State private var importing = false
     /// A tapped calendar day narrows the list to it.
     @State private var selectedDay: Int?
+    /// The category tapped in «En qué se va»: the list shows only its expenses.
+    @State private var selectedCategory: CategoryShare?
+    @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
     @State private var importMessage: String?
@@ -80,9 +83,10 @@ struct ExpenseListView: View {
         let isCurrent = offset == 0
         let viewed = MonthNavigator.month(offsetBy: offset, from: now)
         let monthExpenses = expenses.filter { MonthNavigator.isSameMonth($0.date, as: viewed) }
-        let shownExpenses = selectedDay.map { day in
-            monthExpenses.filter { Calendar.current.component(.day, from: $0.date) == day }
-        } ?? monthExpenses
+        let shownExpenses = monthExpenses.filter { expense in
+            (selectedDay.map { Calendar.current.component(.day, from: expense.date) == $0 } ?? true)
+                && (selectedCategory?.contains(expense.category) ?? true)
+        }
         let summary = MonthSummarizer.summarize(amounts, inMonthOf: viewed, primary: primaryCurrency)
         // A month that is over is measured at its last second: all of the budget was due.
         // This month, the fixed expenses still to come are set apart from «Hoy puedes gastar».
@@ -98,7 +102,8 @@ struct ExpenseListView: View {
         let health = CaptureHealth(lastCapture: latestCaptures.first?.date, now: now)
         // When all is well and something came in today, the Wallet line is a note under «Hoy»
         // instead of a row floating between the carousel and the list.
-        let healthUnderToday = isCurrent && !searching && selectedDay == nil && health.isRecent
+        let healthUnderToday = isCurrent && !searching && selectedDay == nil && selectedCategory == nil
+            && health.isRecent
             && groups.first.map { Calendar.current.isDate($0.day, inSameDayAs: now) } == true
         let fact = isCurrent ? MonthNote.facts(expenses, now: now, primary: primaryCurrency,
                                                budget: BudgetStore.amount(from: storedBudget)).first : nil
@@ -136,12 +141,16 @@ struct ExpenseListView: View {
                             calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
                                                               primary: primaryCurrency, today: now),
                             selectedDay: selectedDay,
-                            onSelectDay: { day in withAnimation(.snappy) { selectedDay = day } },
+                            onSelectDay: { day in
+                                withAnimation(.snappy) { selectedDay = day; selectedCategory = nil }
+                            },
                             spent: summary.primary,
                             pace: pace,
                             isCurrentMonth: isCurrent,
                             shares: CategoryShare.top(summary.categories),
                             note: fact?.line,
+                            selectedCategory: selectedCategory,
+                            onSelectCategory: { line in selectedCategory = line; selectedDay = nil },
                             onSetBudget: { showingBudget = true },
                             currency: primaryCurrency
                         )
@@ -155,8 +164,15 @@ struct ExpenseListView: View {
                         }
 
                         if let day = selectedDay {
-                            DayFilterRow(day: day, count: shownExpenses.count) {
+                            FilterRow(title: "Día \(day)", count: shownExpenses.count) {
                                 withAnimation(.snappy) { selectedDay = nil }
+                            }
+                            .ticketRow()
+                        }
+                        if let line = selectedCategory {
+                            FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
+                                      count: shownExpenses.count) {
+                                withAnimation(.snappy) { selectedCategory = nil }
                             }
                             .ticketRow()
                         }
@@ -241,6 +257,14 @@ struct ExpenseListView: View {
                             Label("Moneda principal", systemImage: "dollarsign.circle")
                         }
                         .pickerStyle(.menu)
+                        Picker(selection: $whereItGoesStyle) {
+                            ForEach(WhereItGoesStyle.allCases) { style in
+                                Label(style.title, systemImage: style.icon).tag(style.rawValue)
+                            }
+                        } label: {
+                            Label("En qué se va", systemImage: "square.grid.2x2")
+                        }
+                        .pickerStyle(.menu)
                         ShareLink(
                             item: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
                             preview: SharePreview("Gastos de Al día")
@@ -309,7 +333,7 @@ struct ExpenseListView: View {
                 Text(importMessage ?? "")
             }
             // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
-            .onChange(of: viewed) { _, _ in selectedDay = nil }
+            .onChange(of: viewed) { _, _ in selectedDay = nil; selectedCategory = nil }
             .modifier(Feedback(expenseCount: expenses.count, newest: expenses.first?.date,
                                isOver: isCurrent && isOver(pace)))
             .overlay(alignment: .bottom) { undoOverlay }
@@ -898,15 +922,16 @@ private struct SearchHeaderRow: View {
     }
 }
 
-/// "Día 12 · 2 gastos · Ver todo el mes" over the list while a day is picked.
-private struct DayFilterRow: View {
-    let day: Int
+/// «Día 12 · 2 gastos · Ver todo el mes» (or «Ropa · 2 gastos») over the list while a day
+/// or a category is picked.
+private struct FilterRow: View {
+    let title: String
     let count: Int
     let clear: () -> Void
 
     var body: some View {
         HStack {
-            Text("Día \(day) · \(count) \(count == 1 ? "gasto" : "gastos")")
+            Text("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")")
                 .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
                 .tracking(1.2)
                 .textCase(.uppercase)

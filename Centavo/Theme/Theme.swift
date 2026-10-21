@@ -44,6 +44,13 @@ enum Theme {
     /// «Vas bien»: under what an even month would have spent. 7:1 on `background`.
     static var good: Color { Color(hex: 0x8DBF86) }
 
+    /// «En qué se va»: one color per category, biggest first. Four, every pair of which reads
+    /// apart on `background` (checked for normal and color-blind vision); more looked alike.
+    static let categories: [Color] = [Color(hex: 0xC2861F), Color(hex: 0x1E9C73),
+                                      Color(hex: 0x4C86D9), Color(hex: 0xE07A9A)]
+    /// «Otras», everything past the four: grey, so it never reads as a category of its own.
+    static var categoryRest: Color { Color(hex: 0x6E6A62) }
+
     static let horizontalPadding: CGFloat = 24
 
     /// The setup guide draws Apple's Shortcuts app (dark mode) so each step looks like the

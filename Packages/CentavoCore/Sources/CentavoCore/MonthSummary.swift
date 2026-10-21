@@ -135,24 +135,28 @@ public struct CategoryShare: Equatable, Sendable {
     public let share: Double
     /// What was spent there, in the primary currency.
     public var amount: Decimal = 0
-    /// How many smaller categories this line gathers («Otras»); 0 for a real category.
-    public var restCount = 0
+    /// The smaller categories this line gathers («Otras»); empty for a real category.
+    public var members: [String?] = []
 
-    public var isRest: Bool { restCount > 0 }
+    public var isRest: Bool { !members.isEmpty }
+    public var restCount: Int { members.count }
 
-    public init(category: String?, share: Double, amount: Decimal = 0, restCount: Int = 0) {
+    public init(category: String?, share: Double, amount: Decimal = 0, members: [String?] = []) {
         self.category = category
         self.share = share
         self.amount = amount
-        self.restCount = restCount
+        self.members = members
     }
+
+    /// How many categories get a color of their own: with five, two always looked alike on
+    /// the dark paper (blue and violet), so the rest go together, in grey, as «Otras».
+    public static let colored = 4
 
     /// Where the month went, biggest first, adding up to everything spent (refunds that left
     /// a category in the negative don't count, or the shares would stop adding up). Past
-    /// `limit` lines, the smallest are gathered in one «Otras» line, so the list grows with
-    /// the categories but never past `limit`. Empty when nothing is filed under a name:
-    /// "100 % sin categoría" says nothing.
-    public static func top(_ categories: [CategoryTotal], limit: Int = 6) -> [CategoryShare] {
+    /// `limit` lines, the smallest are gathered in one «Otras» line. Empty when nothing is
+    /// filed under a name: "100 % sin categoría" says nothing.
+    public static func top(_ categories: [CategoryTotal], limit: Int = colored + 1) -> [CategoryShare] {
         let spent = categories.filter { $0.amount > 0 }
         guard spent.contains(where: { $0.category != nil }) else { return [] }
         let total = spent.reduce(Decimal(0)) { $0 + $1.amount }
@@ -163,8 +167,26 @@ public struct CategoryShare: Equatable, Sendable {
         let rest = spent.dropFirst(shown.count)
         if !rest.isEmpty {
             let amount = rest.reduce(Decimal(0)) { $0 + $1.amount }
-            lines.append(CategoryShare(category: nil, share: share(amount), amount: amount, restCount: rest.count))
+            lines.append(CategoryShare(category: nil, share: share(amount), amount: amount,
+                                       members: rest.map(\.category)))
         }
         return lines
+    }
+
+    /// Whether an expense filed under `category` belongs to this line, compared the way the
+    /// month groups them (case and accents aside; blank is no category).
+    public func contains(_ category: String?) -> Bool {
+        let key = Self.key(category)
+        return isRest ? members.contains { Self.key($0) == key } : Self.key(self.category) == key
+    }
+
+    /// The same line in another reading of the month (its amount may have changed since).
+    public func isSameLine(as other: CategoryShare) -> Bool {
+        isRest == other.isRest && (isRest || Self.key(category) == Self.key(other.category))
+    }
+
+    static func key(_ category: String?) -> String? {
+        guard let name = category, !name.isEmpty else { return nil }
+        return name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 }
