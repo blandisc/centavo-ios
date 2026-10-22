@@ -44,6 +44,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- El comercio de las compras con Wallet no llegaba nunca (se guardaba «Sin comercio» o el banco): Atajos no manda el subtítulo de la notificación, que es donde va el comercio. «Registrar aviso de Wallet» tiene ahora el campo **Comercio**; conéctalo a «Notificación › Subtítulo» (la guía tiene el paso).
 - Un aviso de Wallet ya no guarda el banco como comercio aunque llegue con renglones de más («Ahora», la hora) o en otro orden: el banco se reconoce por su nombre (American Express, BBVA, HSBC, Nu…) o por ser una de tus tarjetas. Los gastos que ya se habían guardado con el banco se corrigen solos al abrir la app.
 - Un aviso de Wallet ya no guarda el banco como comercio: el comercio es el concepto que va justo arriba del monto y la tarjeta la línea de arriba, aunque Atajos agregue líneas antes.
 - Importar de nuevo un CSV exportado ya no duplica gastos; un monto ilegible en el CSV se descarta en vez de leerse a medias («1,234.56» ya no entra como 1).

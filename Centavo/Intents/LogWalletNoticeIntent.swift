@@ -18,8 +18,18 @@ struct LogWalletNoticeIntent: AppIntent {
                inputConnectionBehavior: .connectToPreviousIntentResult)
     var notice: String
 
+    /// Wallet puts the merchant in the notification's subtitle, and Atajos leaves the subtitle
+    /// out when it hands the notification over as text (seen on the owner's iPhone: only
+    /// «American Express México · MXN 205.00» arrived for a Didi ride). Connected to
+    /// Notificación › Subtítulo, it brings the merchant.
+    @Parameter(title: "Comercio",
+               description: "El subtítulo de la notificación: en Atajos, toca la burbuja «Notificación» y elige «Subtítulo»")
+    var subtitle: String?
+
     static var parameterSummary: some ParameterSummary {
-        Summary("Registrar \(\.$notice)")
+        Summary("Registrar \(\.$notice)") {
+            \.$subtitle
+        }
     }
 
     @MainActor
@@ -27,7 +37,10 @@ struct LogWalletNoticeIntent: AppIntent {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         let context = container.mainContext
         try? RecurringExpenses.logDue(in: context)
-        let read = WalletNotice.parse(notice, knownCards: UserCatalog.sourceNames)
+        // The subtitle goes after the amount, where the reader expects the concept.
+        let shop = subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let text = shop.isEmpty || notice.localizedCaseInsensitiveContains(shop) ? notice : notice + "\n" + shop
+        let read = WalletNotice.parse(text, knownCards: UserCatalog.sourceNames)
         // Not every Wallet notification is a charge (passes, Apple Cash...): skip those quietly.
         guard let parsed = read else {
             return .result(dialog: "")
@@ -35,7 +48,7 @@ struct LogWalletNoticeIntent: AppIntent {
         // Where the iPhone is right now, if «Guardar dónde pagas» is on: Wallet keeps its own.
         let place = await PaymentPlace.current()
         switch try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
-                                          card: parsed.card, rawNotice: notice, place: place, in: context) {
+                                          card: parsed.card, rawNotice: text, place: place, in: context) {
         case .unreadable, .empty:
             return .result(dialog: "")
         case .duplicate(let merchant):
