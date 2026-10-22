@@ -544,7 +544,8 @@ private extension ExpenseListView {
         if let deleted = lastDeleted {
             UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
                 .padding(.horizontal, Theme.horizontalPadding)
-                .padding(.bottom, 76)
+                // Right above the bottom bar: the safe area already ends at the bar.
+                .padding(.bottom, 12)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: deleted.id) {
                     try? await Task.sleep(for: .seconds(6))
