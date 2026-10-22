@@ -164,7 +164,11 @@ struct ExpenseListView: View {
                         // it is about the capture, not about today's expenses (owner, 2026-10-21).
                         if isCurrent {
                             CaptureHealthRow(health: health, unread: unreadNotice(after: latestCaptures.first?.date),
-                                             openGuide: { showingSetup = true })
+                                             openGuide: {
+                                                 // Seen: tapping the warning is the last time it shows.
+                                                 UnreadNotice.clear()
+                                                 showingSetup = true
+                                             })
                                 .ticketRow()
                         }
 
@@ -528,10 +532,12 @@ private extension ExpenseListView {
         return expenses.filter { ExpenseSearch.matches($0.searchable, query) }
     }
 
-    /// The unread notice, if it came after the last payment the capture saved.
+    /// The unread notice, if it came after the last payment the capture saved and less than
+    /// two days ago: it goes once a payment comes in right, once tapped, or on its own.
     func unreadNotice(after lastCapture: Date?) -> String? {
         guard !unreadText.isEmpty else { return nil }
         let date = Date(timeIntervalSinceReferenceDate: unreadDate)
+        guard now.timeIntervalSince(date) < 2 * 24 * 3600 else { return nil }
         return lastCapture.map { date > $0 } ?? true ? unreadText : nil
     }
 
