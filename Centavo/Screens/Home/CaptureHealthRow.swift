@@ -44,6 +44,9 @@ struct CaptureHealthRow: View {
             .padding(.leading, compact ? 22 : 0)
             .frame(maxWidth: .infinity, minHeight: compact ? 28 : 44, alignment: .leading)
             .contentShape(Rectangle())
+            // Still 44 pt to tap, but it takes only its line: the rest overlaps the air above
+            // and below instead of adding a band of empty space (owner, 2026-10-22).
+            .padding(.vertical, compact ? 0 : -10)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("salud-captura")
