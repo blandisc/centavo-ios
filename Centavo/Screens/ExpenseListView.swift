@@ -48,6 +48,8 @@ struct ExpenseListView: View {
     @State private var selectedDay: Int?
     /// The category tapped in «En qué se va»: the list shows only its expenses.
     @State private var selectedCategory: CategoryShare?
+    /// The expense row left open by a swipe, showing «Borrar».
+    @State private var openRow: AnyHashable?
     @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
@@ -109,7 +111,10 @@ struct ExpenseListView: View {
                                                budget: BudgetStore.amount(from: storedBudget)).first : nil
 
         NavigationStack {
-            List {
+            // Not a `List`: a list snaps a row to its new height, and the carousel's height has
+            // to ease with the list below it (it leapt and wobbled, measured frame by frame).
+            ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 if searching {
                     SearchHeaderRow(count: listed.count)
                         .ticketRow(bottom: 8)
@@ -196,17 +201,21 @@ struct ExpenseListView: View {
                                 .ticketRow()
                         }
                         ForEach(group.items) { expense in
-                            Button { editing = expense } label: {
-                                // The divider already draws the line above a day's first row.
-                                LedgerRow(expense: expense, primaryCurrency: primaryCurrency,
-                                          perforated: expense.id != group.items.first?.id)
-                            }
-                            .buttonStyle(.plain)
-                            .ticketRow()
-                            .swipeActions(edge: .trailing) {
-                                Button("Borrar", systemImage: "trash", role: .destructive) {
-                                    pendingDelete = expense
+                            // The divider already draws the line above a day's first row.
+                            LedgerRow(expense: expense, primaryCurrency: primaryCurrency,
+                                      perforated: expense.id != group.items.first?.id)
+                                // A tap, not a Button: a button also fires when a swipe lets go
+                                // on it, and a tap gives up as soon as the finger moves. While
+                                // a row is open, a tap on another only closes it, as in a list.
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if openRow != nil { openRow = nil } else { editing = expense }
                                 }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityAddTraits(.isButton)
+                                .ticketRow()
+                            .swipeToDelete(id: expense.persistentModelID, openRow: $openRow) {
+                                pendingDelete = expense
                             }
                             .contextMenu {
                                 Button("Borrar gasto", systemImage: "trash", role: .destructive) {
@@ -217,11 +226,14 @@ struct ExpenseListView: View {
                     }
                 }
             }
-            .listStyle(.plain)
-            // Rows set their own height; the list's 44 pt floor padded the small ones.
-            .environment(\.defaultMinListRowHeight, 0)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+            }
+            // Scrolling closes a row left open by a swipe, as in a system list.
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting, openRow != nil { openRow = nil }
+            }
             .modifier(BottomSearch(text: $searchText))
-            .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: storedBudget) { _, budget in
@@ -577,13 +589,16 @@ private extension ExpenseListView {
 }
 
 private extension View {
-    /// A list row that looks like part of the ticket: no card, no separator, side margins.
+    /// A line of the ticket: the side margins and the space under it.
     func ticketRow(bottom: CGFloat = 0, horizontal: CGFloat = Theme.horizontalPadding) -> some View {
         self
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: horizontal,
-                                      bottom: bottom, trailing: horizontal))
+            // Exactly the screen's width less the margins, as a list row was: a long name
+            // can't widen the line past the screen.
+            .containerRelativeFrame(.horizontal, alignment: .leading) { length, _ in
+                max(length - 2 * horizontal, 0)
+            }
+            .padding(.horizontal, horizontal)
+            .padding(.bottom, bottom)
     }
 }
 

@@ -409,6 +409,28 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No regresó a todo el mes")
     }
 
+    func testDeslizarUnGastoPideBorrarlo() {
+        let app = launch(demo: true)
+        let cinepolis = row(app, containing: "Cinépolis")
+        require(cinepolis, "No hay fila de Cinépolis").swipeLeft(velocity: .fast)
+        let confirm = require(app.buttons["Borrar"], "Deslizar no pidió confirmación")
+        confirm.tap()
+        XCTAssertTrue(waitForDisappearance(row(app, containing: "Cinépolis")), "El gasto sigue en la lista")
+    }
+
+    func testDeslizarPocoMuestraBorrarYTocarLoCierra() {
+        let app = launch(demo: true)
+        let cinepolis = require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis")
+        let start = cinepolis.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: cinepolis.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5)),
+                    withVelocity: .slow, thenHoldForDuration: 0.1)
+        require(app.buttons["deslizar-borrar"], "Deslizar no mostró «Borrar»")
+        snap("flujo-deslizar-borrar")
+        cinepolis.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
+        XCTAssertTrue(waitForDisappearance(app.buttons["deslizar-borrar"]), "Tocar el gasto abierto no lo cerró")
+        XCTAssertFalse(app.textFields["monto"].exists, "Tocar el gasto abierto lo abrió en vez de cerrarlo")
+    }
+
     func testCancelarLaConfirmacionNoBorra() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
