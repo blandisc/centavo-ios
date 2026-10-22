@@ -158,14 +158,14 @@ struct ExpenseListView: View {
                         )
                         // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                         // between them instead of two pages touching.
-                        .ticketRow(bottom: isCurrent ? 4 : 20, horizontal: 0)
+                        .ticketRow(bottom: isCurrent ? 0 : 20, horizontal: 0)
 
                         // The Wallet line stays between the carousel and the list, not under «Hoy»:
                         // it is about the capture, not about today's expenses (owner, 2026-10-21).
                         if isCurrent {
                             CaptureHealthRow(health: health, unread: unreadNotice(after: latestCaptures.first?.date),
                                              openGuide: { showingSetup = true })
-                                .ticketRow(bottom: 8)
+                                .ticketRow()
                         }
 
                         if let day = selectedDay {
