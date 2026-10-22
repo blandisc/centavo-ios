@@ -552,6 +552,16 @@ extension GuideFrame {
         GuideFrame(caption: "Toca «Notificación», la de la campana. En la acción queda «Notificación» con su "
                    + "campana. Luego toca ✓, la tecla azul del teclado (no la X).", screen: .photo("guia27-09-variable")),
     ]
+    /// Atajos leaves the notification's subtitle out, and Wallet puts the merchant there
+    /// (owner's iPhone, 2026-10-21): «Comercio» takes it apart.
+    static let connectSubtitle: [GuideFrame] = [
+        GuideFrame(caption: "Toca la flechita junto a «Notificación»: abajo aparece «Comercio».",
+                   screen: .photo("guia27-12-flechita")),
+        GuideFrame(caption: "Toca «Comercio», desliza la barra de arriba del teclado y toca «Notificación», la de "
+                   + "la campana. Luego toca esa burbuja azul en la acción.", screen: .photo("guia27-09a-barra")),
+        GuideFrame(caption: "Elige «Subtítulo»: ahí pone Wallet el comercio. La acción queda con «Subtítulo» en "
+                   + "«Comercio».", screen: .photo("guia27-13-subtitulo")),
+    ]
     static let saveNotice: [GuideFrame] = [
         GuideFrame(caption: "No hay botón de guardar: toca la flecha de arriba a la izquierda y ya queda guardado.",
                    screen: .photo("guia27-10-guardar")),

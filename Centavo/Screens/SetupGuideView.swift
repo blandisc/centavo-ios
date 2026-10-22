@@ -272,12 +272,10 @@ private struct GuideStep {
         // the merchant (seen on the owner's iPhone, 2026-10-21): it has to be connected apart.
         GuideStep(
             title: "Conecta el comercio",
-            taps: ["En la acción, toca la flechita para ver «Comercio».",
-                   "Toca «Comercio» y elige la variable «Notificación».",
-                   "Toca la burbuja «Notificación» y elige «Subtítulo»."],
+            taps: [],
             note: "Wallet pone el comercio en el subtítulo del aviso, y Atajos no lo manda si no lo conectas.",
             opensShortcuts: true,
-            scene: .frames([])
+            scene: .frames(GuideFrame.connectSubtitle)
         ),
         GuideStep(
             title: "Guárdalo",
