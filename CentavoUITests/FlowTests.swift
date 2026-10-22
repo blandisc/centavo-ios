@@ -431,6 +431,22 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(app.textFields["monto"].exists, "Tocar el gasto abierto lo abrió en vez de cerrarlo")
     }
 
+    func testOcultarUnaCategoriaLaQuitaAlAnotar() {
+        let app = launch()
+        app.buttons["Más"].tap()
+        require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
+        let cafe = app.switches["mostrar-Café"]
+        for _ in 0..<4 where !cafe.isHittable { app.swipeUp() }
+        require(cafe, "No se pueden ocultar las categorías de siempre")
+        snap("flujo-ocultar-categoria")
+        cafe.switches.firstMatch.tap()
+        app.buttons["Listo"].tap()
+        app.buttons["Anotar gasto"].tap()
+        require(app.textFields["monto"], "No abrió la hoja de gasto")
+        require(app.buttons["categoria-Despensa"], "No hay categorías")
+        XCTAssertFalse(app.buttons["categoria-Café"].exists, "Café sigue saliendo aunque se ocultó")
+    }
+
     func testCancelarLaConfirmacionNoBorra() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()

@@ -14,6 +14,17 @@ enum UserCatalog {
     static let categoriesKey = "customCategories"
     static let sourcesKey = "paymentSources"
     static let defaultSourceKey = "defaultPaymentSource"
+    /// Category names someone chose not to see when writing down an expense (the app's own or
+    /// any already used). Expenses keep them; only the picker leaves them out.
+    static let hiddenCategoriesKey = "hiddenCategories"
+
+    static func decodeNames(_ stored: String) -> [String] {
+        (try? JSONDecoder().decode([String].self, from: Data(stored.utf8))) ?? []
+    }
+
+    static func encodeNames(_ names: [String]) -> String {
+        (try? JSONEncoder().encode(names)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+    }
 
     static func decode(_ stored: String) -> [LabeledIcon] {
         guard let data = stored.data(using: .utf8),

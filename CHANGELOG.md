@@ -12,6 +12,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- En «Tarjetas y categorías», cada tarjeta o categoría tiene «Borrar» al abrirla (antes solo deslizando). Las categorías de siempre y las ya usadas se pueden apagar para que no salgan al anotar; los gastos no cambian.
 - «Hoy puedes gastar» con el mismo gráfico y cinco cifras, cada una junto a lo que mide: «Vas $3,311 abajo de lo que podrías llevar», «Podrías llevar $5,677» sobre la rayita, «Llevas $2,366» bajo el latón y «Presupuesto $8,000» al final. «Te quedan» y lo apartado para fijos están en la cuenta al tocar la barra.
 - Anotar un pago de Wallet ya no abre la hoja de Atajos con «Listo».
 - Todo alineado al margen: la cifra grande, los íconos de «En qué se va», las orillas del mosaico, los puntitos del carrusel (centrados) y la línea de Wallet con las fechas.

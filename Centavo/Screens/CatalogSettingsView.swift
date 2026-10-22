@@ -1,3 +1,5 @@
+import CentavoCore
+import SwiftData
 import SwiftUI
 
 /// «Tarjetas y categorías»: the ways someone pays (one of them the default for what they
@@ -7,6 +9,8 @@ struct CatalogSettingsView: View {
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
+    @Query private var expenses: [Expense]
     @State private var editing: Editing?
 
     private enum Editing: Identifiable {
@@ -21,6 +25,28 @@ struct CatalogSettingsView: View {
 
     private var sources: [LabeledIcon] { UserCatalog.decode(storedSources) }
     private var categories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
+    private var hidden: [String] { UserCatalog.decodeNames(storedHidden) }
+
+    /// The app's own categories and any other already used, less the ones made here (those
+    /// are deleted instead): what can be hidden from the picker.
+    private var others: [String] {
+        let used = CategoryMemory.known(in: expenses.map(\.categorized))
+        var names: [String] = []
+        for name in CategoryStyle.common.map(\.name) + used
+        where !names.contains(where: { UserCatalog.same($0, name) })
+            && !categories.contains(where: { UserCatalog.same($0.name, name) }) {
+            names.append(name)
+        }
+        return names
+    }
+
+    private func shows(_ name: String) -> Binding<Bool> {
+        Binding(get: { !hidden.contains { UserCatalog.same($0, name) } }, set: { show in
+            var list = hidden.filter { !UserCatalog.same($0, name) }
+            if !show { list.append(name) }
+            storedHidden = UserCatalog.encodeNames(list)
+        })
+    }
 
     var body: some View {
         NavigationStack {
@@ -50,7 +76,7 @@ struct CatalogSettingsView: View {
                 } footer: {
                     hint(sources.isEmpty
                          ? "Agrega tus tarjetas y el efectivo. La predeterminada ya viene elegida cuando anotas a mano."
-                         : "La de la estrella ya viene elegida cuando anotas a mano. Desliza a la derecha para cambiarla.")
+                         : "La de la estrella ya viene elegida cuando anotas a mano: desliza a la derecha para cambiarla. Toca una para borrarla.")
                 }
                 .listRowBackground(Theme.surface)
 
@@ -67,7 +93,31 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Tus categorías").ticketCaption()
                 } footer: {
-                    hint("Se suman a las de siempre (despensa, comida, transporte…). Borrar una no cambia los gastos que ya la tienen.")
+                    hint("Toca una para cambiarla o borrarla; también puedes deslizarla a la izquierda. Borrar una no cambia los gastos que ya la tienen.")
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
+                    ForEach(others, id: \.self) { name in
+                        Toggle(isOn: shows(name)) {
+                            HStack(spacing: 12) {
+                                Image(systemName: CategoryStyle.icon(for: name, custom: categories))
+                                    .foregroundStyle(Theme.brass)
+                                    .frame(width: 28)
+                                    .accessibilityHidden(true)
+                                Text(name)
+                                    .font(.ticket(15, relativeTo: .body))
+                                    .foregroundStyle(Theme.ink)
+                            }
+                        }
+                        .tint(Theme.brass)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("mostrar-\(name)")
+                    }
+                } header: {
+                    Text("Categorías de siempre").ticketCaption()
+                } footer: {
+                    hint("Apaga las que no uses y ya no saldrán al anotar. Los gastos que ya la tienen no cambian.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -85,14 +135,18 @@ struct CatalogSettingsView: View {
                 case .source(let source):
                     LabeledIconSheet(title: source == nil ? "Nueva tarjeta" : "Editar tarjeta",
                                      prompt: "BBVA, Nu, Efectivo…", icons: UserCatalog.sourceIcons,
-                                     taken: sources.map(\.name), initial: source) { saved in
+                                     taken: sources.map(\.name), initial: source,
+                                     onDelete: source.map { item in { remove(item) } }) { saved in
                         save(saved, replacing: source)
                     }
                 case .category(let category):
                     LabeledIconSheet(title: category == nil ? "Nueva categoría" : "Editar categoría",
                                      prompt: "Mascotas, Gimnasio…", icons: UserCatalog.categoryIcons,
                                      taken: categories.map(\.name) + CategoryStyle.common.map(\.name),
-                                     initial: category) { saved in
+                                     initial: category,
+                                     onDelete: category.map { item in {
+                                         storedCategories = UserCatalog.encode(categories.filter { $0 != item })
+                                     } }) { saved in
                         var list = categories
                         if let category, let index = list.firstIndex(of: category) { list[index] = saved }
                         else { list.append(saved) }
