@@ -33,7 +33,9 @@ struct LogWalletNoticeIntent: AppIntent {
     }
 
     @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
+    // Nothing to show: any dialog, even an empty one, made Atajos pop up a sheet with «Listo» after
+    // every purchase (owner, 2026-10-22). The expense just appears in the list.
+    func perform() async throws -> some IntentResult {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         let context = container.mainContext
         try? RecurringExpenses.logDue(in: context)
@@ -45,7 +47,7 @@ struct LogWalletNoticeIntent: AppIntent {
         // but keep one that looks like a wrong wiring (see `UnreadNotice`) so the app can say so.
         guard let parsed = read else {
             UnreadNotice.note(notice)
-            return .result(dialog: "")
+            return .result()
         }
         UnreadNotice.clear()
         // Where the iPhone is right now, if «Guardar dónde pagas» is on: Wallet keeps its own.
@@ -53,12 +55,12 @@ struct LogWalletNoticeIntent: AppIntent {
         switch try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
                                           card: parsed.card, rawNotice: text, place: place, in: context) {
         case .unreadable, .empty:
-            return .result(dialog: "")
+            return .result()
         case .duplicate(let merchant):
-            return .result(dialog: "Ya estaba anotado: \(parsed.amountText) en \(merchant).")
+            return .result()
         case .saved(let merchant):
             // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
-            return .result(dialog: "Anotado: \(parsed.amountText) en \(merchant).")
+            return .result()
         }
     }
 }
