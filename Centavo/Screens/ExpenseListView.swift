@@ -102,11 +102,6 @@ struct ExpenseListView: View {
         let listed = searching ? searchResults : shownExpenses
         let groups = DayGroup.split(listed)
         let health = CaptureHealth(lastCapture: latestCaptures.first?.date, now: now)
-        // When all is well and something came in today, the Wallet line is a note under «Hoy»
-        // instead of a row floating between the carousel and the list.
-        let healthUnderToday = isCurrent && !searching && selectedDay == nil && selectedCategory == nil
-            && health.isRecent
-            && groups.first.map { Calendar.current.isDate($0.day, inSameDayAs: now) } == true
         let fact = isCurrent ? MonthNote.facts(expenses, now: now, primary: primaryCurrency,
                                                budget: BudgetStore.amount(from: storedBudget)).first : nil
 
@@ -163,7 +158,9 @@ struct ExpenseListView: View {
                         // between them instead of two pages touching.
                         .ticketRow(bottom: isCurrent ? 4 : 20, horizontal: 0)
 
-                        if isCurrent, !healthUnderToday {
+                        // The Wallet line stays between the carousel and the list, not under «Hoy»:
+                        // it is about the capture, not about today's expenses (owner, 2026-10-21).
+                        if isCurrent {
                             CaptureHealthRow(health: health, openGuide: { showingSetup = true })
                                 .ticketRow(bottom: 8)
                         }
@@ -196,10 +193,6 @@ struct ExpenseListView: View {
                         // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
                         DayDivider(day: group.day, total: group.total(in: primaryCurrency), now: now)
                             .ticketRow()
-                        if healthUnderToday, group.id == groups.first?.id {
-                            CaptureHealthRow(health: health, compact: true, openGuide: { showingSetup = true })
-                                .ticketRow()
-                        }
                         ForEach(group.items) { expense in
                             // The divider already draws the line above a day's first row.
                             LedgerRow(expense: expense, primaryCurrency: primaryCurrency,

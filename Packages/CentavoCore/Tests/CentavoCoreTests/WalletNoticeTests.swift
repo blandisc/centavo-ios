@@ -158,4 +158,12 @@ import Testing
     func banksAreCards(name: String) {
         #expect(WalletNotice.looksLikeCard(name))
     }
+
+    /// What arrives with «Comercio» connected to the subtitle: title, body, then the subtitle.
+    @Test func theSubtitleAfterTheAmountIsTheMerchant() throws {
+        let notice = try #require(WalletNotice.parse("American Express México\nMXN 205.00\nDidi Mobility Mexico"))
+        #expect(notice.merchant == "Didi Mobility Mexico")
+        #expect(notice.card == "American Express México")
+        #expect(notice.amount.value == 205)
+    }
 }

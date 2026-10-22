@@ -12,6 +12,8 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- La línea «Wallet · último pago hace…» vuelve a ir entre la gráfica y la lista, ya no debajo de «Hoy». Al regresar del calendario a una página más corta, la lista sube mientras deslizas y no al final; elegir otra vista de «En qué se va» se desvanece con suavidad.
+- La guía tiene el paso «Conecta el comercio» con capturas: la flechita de la acción, «Comercio» y «Subtítulo».
 - «En qué se va» ya no es todo amarillo: cada una de las cuatro categorías más grandes tiene su color (ocre, verde, azul y rosa) y su ícono en ese color; lo demás va en gris como «Otras». Se ve de dos maneras, o se apaga con «No mostrar», en **Más › En qué se va**: **Barra** (una barra partida por categoría con un renglón para cada una, con monto y porcentaje) o **Mosaico** (un bloque por categoría, tan grande como lo gastado, con su ícono, nombre y monto). En el mosaico, un bloque angosto pone el nombre en vertical y uno chico deja solo el ícono; tocar un bloque muestra solo los gastos de esa categoría en la lista.
 - Deslizar entre presupuesto y calendario ya no brinca ni hace bailar la lista, en las tres opciones de «En qué se va»: el espacio crece o se encoge en una sola animación suave, junto con las transacciones. Con «No mostrar» no queda hueco.
 - «¿Borrar este gasto?» ya no brinca arriba de la pantalla en gris: sube desde abajo como un ticket chico con el monto, el comercio y el día, «Borrar» en rojo y «Conservar». Igual al deslizar, al mantener presionado y desde la hoja del gasto.
@@ -44,6 +46,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- El comercio de las compras con Wallet no llegaba nunca (se guardaba «Sin comercio» o el banco): Atajos no manda el subtítulo de la notificación, que es donde va el comercio. «Registrar aviso de Wallet» tiene ahora el campo **Comercio**; conéctalo a «Notificación › Subtítulo» (la guía tiene el paso).
 - Un aviso de Wallet ya no guarda el banco como comercio aunque llegue con renglones de más («Ahora», la hora) o en otro orden: el banco se reconoce por su nombre (American Express, BBVA, HSBC, Nu…) o por ser una de tus tarjetas. Los gastos que ya se habían guardado con el banco se corrigen solos al abrir la app.
 - Un aviso de Wallet ya no guarda el banco como comercio: el comercio es el concepto que va justo arriba del monto y la tarjeta la línea de arriba, aunque Atajos agregue líneas antes.
 - Importar de nuevo un CSV exportado ya no duplica gastos; un monto ilegible en el CSV se descarta en vez de leerse a medias («1,234.56» ya no entra como 1).

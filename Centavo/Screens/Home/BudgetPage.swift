@@ -52,11 +52,15 @@ struct BudgetPage: View {
             }
             if !shares.isEmpty, storedStyle != WhereItGoesStyle.hidden.rawValue {
                 whereItGoes
+                    .transition(.opacity)
             }
             if let note {
                 noteLine(note)
             }
         }
+        // Choosing a view of «En qué se va» in «Más» fades it, while the carousel eases its
+        // height and the list below follows.
+        .animation(reduceMotion ? nil : .smooth(duration: 0.45), value: storedStyle)
     }
 
     // MARK: Note

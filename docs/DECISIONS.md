@@ -256,3 +256,6 @@ A pedido del dueño: todo en latón no se distinguía.
 
 ## 2026-10-21 · Confirmar el borrado con una hoja propia
 A pedido del dueño, «¿Borrar este gasto?» deja el diálogo del sistema (en iOS 26 sale como globo arriba, lejos del dedo y en gris) por una hoja chica que sube desde abajo, del alto de su contenido, con el estilo «Noche ticket»: el gasto que se va a borrar, «Borrar» en `Theme.danger` y «Conservar». Sigue siendo una hoja del sistema (`sheet` con `presentationDetents`), así que respeta Dynamic Type y VoiceOver. Mantiene la confirmación del 2026-10-13 y el «Deshacer» del 2026-10-18.
+
+## 2026-10-21 · El comercio viene del subtítulo
+Visto en el iPhone del dueño (texto guardado de cada captura): Atajos convierte la notificación de Wallet en texto con título y cuerpo, **sin el subtítulo**, y ahí va el comercio («American Express México · MXN 205.00» por un viaje en Didi). Ningún lector podía sacar un comercio que no llegaba. «Registrar aviso de Wallet» suma el parámetro opcional «Comercio», que se conecta a Notificación › Subtítulo (Atajos lo ofrece al tocar la burbuja); se agrega después del monto y lo lee `WalletNotice` como el concepto. Las automatizaciones sin él siguen funcionando como antes.

@@ -35,18 +35,32 @@ struct MonthCarousel: View {
     private static func stage(_ geometry: ScrollGeometry) -> Int {
         guard geometry.containerSize.width > 0 else { return 0 }
         let progress = geometry.contentOffset.x / geometry.containerSize.width
-        return Int((min(max(progress, 0), 1) * 10).rounded(.down))
+        return Int((min(max(progress, 0), 1) * 10).rounded())
     }
 
-    /// Between pages the carousel is as tall as the taller one, so that page is never cut;
-    /// arriving on a page (within a tenth of it) gives it its own height. The rule doesn't
-    /// depend on which way the swipe goes: deciding by direction flipped halfway, when the
-    /// scroll position already named the other page, and the list went down, up and down.
+    /// The stage the last swipe step reached, to know which way the finger is going.
+    @State private var lastStage = 0
+
+    /// Heading for a taller page, the height starts growing a tenth of the way, so the page
+    /// lands whole; heading for a shorter one, it starts shrinking halfway, while the page is
+    /// still moving, so the list below rises with the swipe instead of after it. The way is
+    /// read from the swipe itself, not from the scroll position: that one names the other
+    /// page halfway and made the list go down, up and down.
     private func resize(for stage: Int) {
-        let taller = (heights[1] ?? 0) > (heights[0] ?? 0) ? 1 : 0
-        let target = stage == 0 ? 0 : stage >= 9 ? 1 : taller
+        defer { lastStage = stage }
+        let target: Int
+        if stage == 0 || stage == 10 {
+            target = stage == 0 ? 0 : 1
+        } else if stage == lastStage {
+            return
+        } else {
+            let heading = stage > lastStage ? 1 : 0
+            let travel = Double(heading == 1 ? stage : 10 - stage) / 10
+            let grows = (heights[heading] ?? 0) >= (heights[1 - heading] ?? 0)
+            target = travel >= (grows ? 0.1 : 0.5) ? heading : 1 - heading
+        }
         guard target != sizedFor else { return }
-        withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { sizedFor = target }
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.4)) { sizedFor = target }
     }
 
     private let pageNames = ["Presupuesto", "Calendario"]
