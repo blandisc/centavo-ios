@@ -259,3 +259,7 @@ A pedido del dueño, «¿Borrar este gasto?» deja el diálogo del sistema (en i
 
 ## 2026-10-21 · El comercio viene del subtítulo
 Visto en el iPhone del dueño (texto guardado de cada captura): Atajos convierte la notificación de Wallet en texto con título y cuerpo, **sin el subtítulo**, y ahí va el comercio («American Express México · MXN 205.00» por un viaje en Didi). Ningún lector podía sacar un comercio que no llegaba. «Registrar aviso de Wallet» suma el parámetro opcional «Comercio», que se conecta a Notificación › Subtítulo (Atajos lo ofrece al tocar la burbuja); se agrega después del monto y lo lee `WalletNotice` como el concepto. Las automatizaciones sin él siguen funcionando como antes.
+
+## 2026-10-21 · El aviso de Wallet ya no dice el presupuesto
+Decisión del dueño: el aviso de Atajos al anotar un pago de Wallet dice solo «Anotado: $X en Comercio.». Revierte «Aviso al pagar» del 2026-10-15. Siri («Anotar gasto», «Anota esto») lo sigue diciendo.
+- **Un aviso de una línea sin monto se guarda y la pantalla principal lo dice** («Wallet · llegó «Didi Mobility Mexico» sin monto · Revisar el atajo»): es la señal de que el campo «Notificación» quedó como «Subtítulo» (pasó en el iPhone del dueño y el pago se perdió en silencio). Un pase o una promoción traen título y cuerpo, así que no cuentan.

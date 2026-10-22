@@ -41,10 +41,13 @@ struct LogWalletNoticeIntent: AppIntent {
         let shop = subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let text = shop.isEmpty || notice.localizedCaseInsensitiveContains(shop) ? notice : notice + "\n" + shop
         let read = WalletNotice.parse(text, knownCards: UserCatalog.sourceNames)
-        // Not every Wallet notification is a charge (passes, Apple Cash...): skip those quietly.
+        // Not every Wallet notification is a charge (passes, Apple Cash...): skip those quietly,
+        // but keep one that looks like a wrong wiring (see `UnreadNotice`) so the app can say so.
         guard let parsed = read else {
+            UnreadNotice.note(notice)
             return .result(dialog: "")
         }
+        UnreadNotice.clear()
         // Where the iPhone is right now, if «Guardar dónde pagas» is on: Wallet keeps its own.
         let place = await PaymentPlace.current()
         switch try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
@@ -54,9 +57,8 @@ struct LogWalletNoticeIntent: AppIntent {
         case .duplicate(let merchant):
             return .result(dialog: "Ya estaba anotado: \(parsed.amountText) en \(merchant).")
         case .saved(let merchant):
-            let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
-            let notice = ["Anotado: \(parsed.amountText) en \(merchant).", budgetLine].compactMap { $0 }
-            return .result(dialog: "\(notice.joined(separator: " "))")
+            // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
+            return .result(dialog: "Anotado: \(parsed.amountText) en \(merchant).")
         }
     }
 }

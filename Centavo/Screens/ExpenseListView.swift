@@ -50,6 +50,8 @@ struct ExpenseListView: View {
     @State private var selectedCategory: CategoryShare?
     /// The expense row left open by a swipe, showing «Borrar».
     @State private var openRow: AnyHashable?
+    @AppStorage(UnreadNotice.textKey) private var unreadText = ""
+    @AppStorage(UnreadNotice.dateKey) private var unreadDate = 0.0
     @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
@@ -161,7 +163,8 @@ struct ExpenseListView: View {
                         // The Wallet line stays between the carousel and the list, not under «Hoy»:
                         // it is about the capture, not about today's expenses (owner, 2026-10-21).
                         if isCurrent {
-                            CaptureHealthRow(health: health, openGuide: { showingSetup = true })
+                            CaptureHealthRow(health: health, unread: unreadNotice(after: latestCaptures.first?.date),
+                                             openGuide: { showingSetup = true })
                                 .ticketRow(bottom: 8)
                         }
 
@@ -523,6 +526,13 @@ private extension ExpenseListView {
     var searchResults: [Expense] {
         let query = ExpenseSearch.query(from: searchText, now: now)
         return expenses.filter { ExpenseSearch.matches($0.searchable, query) }
+    }
+
+    /// The unread notice, if it came after the last payment the capture saved.
+    func unreadNotice(after lastCapture: Date?) -> String? {
+        guard !unreadText.isEmpty else { return nil }
+        let date = Date(timeIntervalSinceReferenceDate: unreadDate)
+        return lastCapture.map { date > $0 } ?? true ? unreadText : nil
     }
 
     func isOver(_ pace: BudgetPace?) -> Bool {

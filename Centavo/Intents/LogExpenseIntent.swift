@@ -49,12 +49,8 @@ struct LogExpenseIntent: AppIntent {
         case .duplicate(let merchant):
             return .result(dialog: "Ya estaba anotado: \(amount) en \(merchant).")
         case .saved(let merchant):
-            // Right after paying is when "how am I doing" matters most. If that part fails,
-            // the payment is still saved; the notice just says less.
-            let budgetLine = (try? MonthStatus.budgetSentence(in: container.mainContext,
-                                                              budget: MonthStatus.savedBudget)) ?? nil
-            let notice = ["Anotado: \(amount) en \(merchant).", budgetLine].compactMap { $0 }
-            return .result(dialog: "\(notice.joined(separator: " "))")
+            // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
+            return .result(dialog: "Anotado: \(amount) en \(merchant).")
         }
     }
 }
