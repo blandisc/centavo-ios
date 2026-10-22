@@ -38,14 +38,13 @@ struct MonthCarousel: View {
         return Int((min(max(progress, 0), 1) * 10).rounded(.down))
     }
 
-    /// Grows as soon as the swipe heads for the taller page, so it is whole when it lands;
-    /// shrinks only once the taller page is mostly gone, so it is never cut while in view.
+    /// Between pages the carousel is as tall as the taller one, so that page is never cut;
+    /// arriving on a page (within a tenth of it) gives it its own height. The rule doesn't
+    /// depend on which way the swipe goes: deciding by direction flipped halfway, when the
+    /// scroll position already named the other page, and the list went down, up and down.
     private func resize(for stage: Int) {
-        let from = page ?? 0
-        let to = stage == 0 ? 0 : stage >= 9 ? 1 : 1 - from
-        let shown = stage < 5 ? 0 : 1
-        let tallerFirst = (heights[to] ?? 0) >= (heights[shown] ?? 0) ? to : shown
-        let target = stage == 0 || stage >= 9 ? to : tallerFirst
+        let taller = (heights[1] ?? 0) > (heights[0] ?? 0) ? 1 : 0
+        let target = stage == 0 ? 0 : stage >= 9 ? 1 : taller
         guard target != sizedFor else { return }
         withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { sizedFor = target }
     }
