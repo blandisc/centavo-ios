@@ -5,22 +5,27 @@ import SwiftUI
 /// worth checking the automation. Tapping it opens the setup guide.
 struct CaptureHealthRow: View {
     let health: CaptureHealth
+    /// A notice that arrived without an amount after the last capture (see `UnreadNotice`).
+    var unread: String?
     /// A small note under the «Hoy» divider instead of a row of its own.
     var compact = false
     let openGuide: () -> Void
 
     private var text: String {
+        if let unread {
+            return "Wallet · llegó «\(unread)» sin monto · Revisar el atajo"
+        }
         switch health {
         case .never:
-            "Wallet sin conectar · Configurar"
+            return "Wallet sin conectar · Configurar"
         case .recent(let date):
-            "Wallet · último pago " + date.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
+            return "Wallet · último pago " + date.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
         case .quiet(let days):
-            "Wallet · sin pagos desde hace \(days) días · Revisar"
+            return "Wallet · sin pagos desde hace \(days) días · Revisar"
         }
     }
 
-    private var needsAttention: Bool { !health.isRecent }
+    private var needsAttention: Bool { unread != nil || !health.isRecent }
 
     var body: some View {
         Button(action: openGuide) {
