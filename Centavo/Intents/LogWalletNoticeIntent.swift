@@ -27,9 +27,9 @@ struct LogWalletNoticeIntent: AppIntent {
     var subtitle: String?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Registrar \(\.$notice)") {
-            \.$subtitle
-        }
+        // Both on one line, so «Notificación» and «Subtítulo» read as two different things
+        // (the owner kept setting the first one to «Subtítulo» too).
+        Summary("Registrar \(\.$notice) con comercio \(\.$subtitle)")
     }
 
     @MainActor
