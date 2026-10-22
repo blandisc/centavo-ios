@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Swipe a row left to show «Borrar», as in a system list; swipe it all the way to ask right
 /// away. The main screen is not a `List` (a list can't ease a row's height, and the carousel's
@@ -11,8 +12,6 @@ private struct SwipeToDelete: ViewModifier {
 
     @State private var offset: CGFloat = 0
     @State private var width: CGFloat = 0
-    /// Whether the drag going on is sideways (a swipe) or up and down (the list scrolling).
-    @State private var sideways: Bool?
     @ScaledMetric(relativeTo: .footnote) private var buttonWidth: CGFloat = 84
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -56,45 +55,41 @@ private struct SwipeToDelete: ViewModifier {
                 }
             }
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-            .simultaneousGesture(swipe)
+            // UIKit's pan, not a SwiftUI DragGesture: a drag gesture on every row competed with
+            // the scroll and made a fast scroll stick (owner's iPhone). This one only starts
+            // when the finger goes sideways, so scrolling up and down never meets it.
+            .gesture(SidewaysPan(changed: changed, ended: ended))
             .onChange(of: openRow) { _, row in
                 if row != id, offset != 0 { withAnimation(settle) { offset = 0 } }
             }
             .accessibilityAction(named: "Borrar", onDelete)
     }
 
-    private var swipe: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onChanged { value in
-                if sideways == nil {
-                    sideways = abs(value.translation.width) > abs(value.translation.height) * 1.3
-                }
-                guard sideways == true else { return }
-                if openRow != id { openRow = id }
-                let start = isOpen && offset <= -buttonWidth / 2 ? -buttonWidth : 0
-                let x = start + value.translation.width
-                // Rightward past closed, it resists instead of moving away.
-                offset = x > 0 ? x * 0.15 : x
+    private func changed(_ dx: CGFloat) {
+        if openRow != id { openRow = id }
+        let start = isOpen && offset <= -buttonWidth / 2 ? -buttonWidth : 0
+        let x = start + dx
+        // Rightward past closed, it resists instead of moving away.
+        offset = x > 0 ? x * 0.15 : x
+    }
+
+    private func ended(_ dx: CGFloat, _ velocity: CGFloat) {
+        // Where a flick would carry the row, a fifth of a second on.
+        let reach = -(offset + velocity * 0.2)
+        if width > 0, -offset > width * 0.55 || reach > width * 0.8 {
+            // All the way: the row slides off and the confirmation comes up.
+            withAnimation(settle) { offset = -width }
+            onDelete()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(350))
+                close()
             }
-            .onEnded { value in
-                defer { sideways = nil }
-                guard sideways == true else { return }
-                let reach = -(offset + value.predictedEndTranslation.width - value.translation.width)
-                if width > 0, -offset > width * 0.55 || reach > width * 0.8 {
-                    // All the way: the row slides off and the confirmation comes up.
-                    withAnimation(settle) { offset = -width }
-                    onDelete()
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(350))
-                        close()
-                    }
-                } else if reach > buttonWidth / 2 {
-                    withAnimation(settle) { offset = -buttonWidth }
-                    openRow = id
-                } else {
-                    close()
-                }
-            }
+        } else if reach > buttonWidth / 2 {
+            withAnimation(settle) { offset = -buttonWidth }
+            openRow = id
+        } else {
+            close()
+        }
     }
 
     private func close() {
@@ -108,5 +103,37 @@ extension View {
     func swipeToDelete(id: AnyHashable, openRow: Binding<AnyHashable?>,
                        onDelete: @escaping () -> Void) -> some View {
         modifier(SwipeToDelete(id: id, openRow: openRow, onDelete: onDelete))
+    }
+}
+
+/// A pan that begins only when the finger moves more sideways than up or down; anything else
+/// is left to the scroll view.
+private struct SidewaysPan: UIGestureRecognizerRepresentable {
+    let changed: (CGFloat) -> Void
+    let ended: (_ translation: CGFloat, _ velocity: CGFloat) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let dx = recognizer.translation(in: recognizer.view).x
+        switch recognizer.state {
+        case .began, .changed: changed(dx)
+        case .ended, .cancelled, .failed: ended(dx, recognizer.velocity(in: recognizer.view).x)
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y) * 1.3
+        }
     }
 }
