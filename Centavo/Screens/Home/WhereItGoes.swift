@@ -147,8 +147,11 @@ private struct ShareBarChart: View {
                             .scaledToFit()
                             .fontWeight(.semibold)
                             .foregroundStyle(line.color)
-                            .frame(width: iconSize, height: iconSize)
-                            .frame(width: iconWidth)
+                            // Narrow glyphs (a bolt, a glass) would sit centered in the square.
+                            .frame(width: iconSize, height: iconSize, alignment: .leading)
+                            // Flush with the margin, like every other line (centered, they
+                            // started anywhere from 27 to 30 pt).
+                            .frame(width: iconWidth, alignment: .leading)
                         Text(line.name)
                             .foregroundStyle(line.share.category == nil && !line.share.isRest ? Theme.muted : Theme.ink)
                             .lineLimit(1)
@@ -197,8 +200,10 @@ private struct ShareMosaicChart: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let tiles = ShareMosaic.layout(lines.map(\.share.share), width: proxy.size.width,
-                                           height: proxy.size.height)
+            // Laid out 3 pt wider and taller, then pulled back by the half gap: the outer blocks
+            // touch the margins (they sat 1.5 pt inside, measured) and the gaps stay 3 pt.
+            let tiles = ShareMosaic.layout(lines.map(\.share.share), width: proxy.size.width + 3,
+                                           height: proxy.size.height + 3)
             ZStack(alignment: .topLeading) {
                 ForEach(Array(zip(lines, tiles)), id: \.0.id) { line, tile in
                     let isSelected = selected.map { line.share.isSameLine(as: $0) } ?? false
@@ -219,7 +224,7 @@ private struct ShareMosaicChart: View {
                         }
                     }
                     .opacity(selected == nil || isSelected ? 1 : 0.4)
-                    .offset(x: tile.x + 1.5, y: tile.y + 1.5)
+                    .offset(x: tile.x, y: tile.y)
                     .accessibilityLabel(line.spoken(money))
                     .accessibilityHint(isSelected ? "Muestra todo el mes" : "Muestra sus gastos")
                     .accessibilityAddTraits(isSelected ? .isSelected : [])

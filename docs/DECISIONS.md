@@ -263,3 +263,6 @@ Visto en el iPhone del dueño (texto guardado de cada captura): Atajos convierte
 ## 2026-10-21 · El aviso de Wallet ya no dice el presupuesto
 Decisión del dueño: el aviso de Atajos al anotar un pago de Wallet dice solo «Anotado: $X en Comercio.». Revierte «Aviso al pagar» del 2026-10-15. Siri («Anotar gasto», «Anota esto») lo sigue diciendo.
 - **Un aviso de una línea sin monto se guarda y la pantalla principal lo dice** («Wallet · llegó «Didi Mobility Mexico» sin monto · Revisar el atajo»): es la señal de que el campo «Notificación» quedó como «Subtítulo» (pasó en el iPhone del dueño y el pago se perdió en silencio). Un pase o una promoción traen título y cuerpo, así que no cuentan.
+
+## 2026-10-22 · «Hoy puedes gastar»: una cifra, una frase y una barra
+A pedido del dueño («mucha información, mucho texto»): bajo «Hoy puedes gastar» había siete cifras. Quedan tres: la de hoy, el gastado y el presupuesto («$2,366.00 de $8,000 · faltan 10 días»). El veredicto va en palabras («Vas bien este mes», «Vas arriba de tu ritmo»); la barra es gastado contra presupuesto con una rayita donde iría un mes parejo hoy, sin cuadritos por día ni rayado. Lo esperado a hoy, la diferencia y lo apartado para fijos pasan a la cuenta que se despliega al tocar la barra. Revierte en parte la barra de cinco preguntas del 2026-10-20.

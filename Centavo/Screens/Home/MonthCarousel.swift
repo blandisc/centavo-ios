@@ -116,6 +116,10 @@ struct MonthCarousel: View {
                     .accessibilityAddTraits(page == index ? .isSelected : [])
                 }
             }
+            // The lit pill is 12 pt wider than the dot, so centering the two 44 pt slots left the
+            // ink 3 pt off the middle (measured): shift it back toward the dot's side.
+            .offset(x: (page ?? 0) == 0 ? 3 : -3)
+            .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: page)
             .frame(maxWidth: .infinity)
         }
     }
