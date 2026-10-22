@@ -32,6 +32,8 @@ struct CaptureHealthRow: View {
             HStack(spacing: 8) {
                 Image(systemName: needsAttention ? "exclamationmark.circle" : "wave.3.right")
                     .imageScale(.small)
+                    // The width of a day divider's dash, so «Wallet» starts where «HOY» does.
+                    .frame(width: 14, alignment: .leading)
                 Text(text)
                     .font(.ticket(compact ? 10 : 11, relativeTo: compact ? .caption2 : .caption))
                     .tracking(compact ? 0.8 : 1.2)

@@ -688,6 +688,9 @@ private struct HeroTotal: View {
                     .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
                     .tracking(-2)
                     .foregroundStyle(Theme.brass)
+                    // The «$» carries its own air on the left (3 pt at this size, measured): pulled
+                    // back so the figure lines up with «Hoy puedes gastar» above it.
+                    .padding(.leading, -3)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.numericText(value: counted))

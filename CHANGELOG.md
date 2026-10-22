@@ -12,6 +12,8 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- «Hoy puedes gastar» es más simple: la cifra, «Vas bien este mes» (o «Vas arriba de tu ritmo») y una barra con una sola línea, «$2,366.00 de $8,000 · faltan 10 días». Lo esperado a hoy, la diferencia y lo apartado para fijos están en la cuenta que sale al tocar la barra.
+- Todo alineado al margen: la cifra grande, los íconos de «En qué se va», las orillas del mosaico, los puntitos del carrusel (centrados) y la línea de Wallet con las fechas.
 - Menos espacio vacío entre la gráfica, la línea de Wallet y la lista.
 - La guía muestra cómo debe quedar la acción: «Notificación» junto a «Registrar», «Subtítulo» en «Comercio» y «Mostrar al ejecutar» apagado.
 - El aviso al anotar un pago de Wallet dice solo qué se anotó, sin el presupuesto. Si llega un aviso sin monto (el atajo mal conectado), la pantalla principal lo dice en vez de perderlo.
