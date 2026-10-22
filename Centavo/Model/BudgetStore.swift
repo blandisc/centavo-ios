@@ -42,7 +42,8 @@ enum BudgetSync {
     private static var cloud: NSUbiquitousKeyValueStore { .default }
     private static var local: UserDefaults { .standard }
     static let keys = [BudgetStore.key, CurrencyPreference.key, UserCatalog.categoriesKey,
-                       UserCatalog.sourcesKey, UserCatalog.defaultSourceKey, FixedPlan.key]
+                       UserCatalog.sourcesKey, UserCatalog.defaultSourceKey, FixedPlan.key,
+                       UserCatalog.hiddenCategoriesKey]
 
     /// At launch: take what iCloud has, or hand it what this phone already had.
     static func start() {

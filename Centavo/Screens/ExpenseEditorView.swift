@@ -29,6 +29,7 @@ struct ExpenseEditorView: View {
     @FocusState private var amountFocused: Bool
     @FocusState private var merchantFocused: Bool
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @State private var creating: Creating?
@@ -356,7 +357,8 @@ struct ExpenseEditorView: View {
     /// one, another tap clears it. «Otra» writes a new one.
     private var categoryGrid: some View {
         let names = CategoryStyle.offered(known: Array(CategoryMemory.known(in: pastExpenses).prefix(8)),
-                                          custom: customCategories, current: category)
+                                          custom: customCategories, current: category,
+                                          hidden: UserCatalog.decodeNames(storedHidden))
         return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
             ForEach(names, id: \.self) { name in
                 categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),

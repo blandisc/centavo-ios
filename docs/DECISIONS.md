@@ -267,3 +267,6 @@ Decisión del dueño: el aviso de Atajos al anotar un pago de Wallet dice solo �
 ## 2026-10-22 · «Hoy puedes gastar»: el mismo gráfico, cinco cifras en su lugar
 Decisión del dueño (opción A de tres, después de probar una versión sin números en el veredicto, que no quiso). Se queda la barra de siempre (latón, apartado para fijos, rayado, rayita, un cuadrito por día) y contesta con número cinco preguntas: cuánto hoy, cómo voy («Vas $3,311 abajo de lo que podrías llevar»), cuánto podría llevar a hoy (sobre la rayita), cuánto llevo (bajo el latón) y el presupuesto (al final de la barra). «Esperado» se dice «podrías llevar». «Te quedan» y «Apartado para fijos» pasan a la cuenta que sale al tocar la barra.
 - **Anotar un pago de Wallet no muestra nada:** cualquier diálogo, aun vacío, hacía que Atajos abriera una hoja con «Listo» después de cada compra.
+
+## 2026-10-22 · Borrar tarjetas y categorías, y ocultar las de siempre
+A pedido del dueño. «Borrar» va también en la hoja de editar (deslizar no se descubre). Las categorías de la app y las ya usadas no se borran: se ocultan del selector al anotar (`hiddenCategories`, sincronizado como el resto de los ajustes). Un gasto que ya tiene una categoría oculta la sigue mostrando, y al editarlo aparece en el selector.

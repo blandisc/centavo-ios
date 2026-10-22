@@ -429,12 +429,14 @@ private struct CatalogsSheet: ViewModifier {
     @AppStorage(UserCatalog.sourcesKey) private var sources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @AppStorage(UserCatalog.categoriesKey) private var categories = ""
+    @AppStorage(UserCatalog.hiddenCategoriesKey) private var hidden = ""
 
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $isPresented) { CatalogSettingsView() }
             .onChange(of: sources) { _, value in push(value, UserCatalog.sourcesKey) }
             .onChange(of: defaultSource) { _, value in push(value, UserCatalog.defaultSourceKey) }
+            .onChange(of: hidden) { _, value in push(value, UserCatalog.hiddenCategoriesKey) }
             .onChange(of: categories) { _, value in
                 push(value, UserCatalog.categoriesKey)
                 CentavoShortcuts.updateAppShortcutParameters()

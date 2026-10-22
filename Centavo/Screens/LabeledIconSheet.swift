@@ -8,6 +8,8 @@ struct LabeledIconSheet: View {
     /// Names already taken, which cannot be used twice.
     let taken: [String]
     var initial: LabeledIcon?
+    /// Shown as «Borrar» when editing one that exists.
+    var onDelete: (() -> Void)?
     let onSave: (LabeledIcon) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -74,6 +76,27 @@ struct LabeledIconSheet: View {
                     Text("Ícono").ticketCaption()
                 }
                 .listRowBackground(Theme.surface)
+
+                if initial != nil, let onDelete {
+                    Section {
+                        Button(role: .destructive) {
+                            onDelete()
+                            dismiss()
+                        } label: {
+                            Text("Borrar")
+                                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                                .tracking(1.6)
+                                .textCase(.uppercase)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .accessibilityIdentifier("borrar-etiqueta")
+                    } footer: {
+                        Text("Los gastos que ya la tienen no cambian.")
+                            .font(.ticket(12, relativeTo: .footnote))
+                            .foregroundStyle(Theme.muted)
+                    }
+                    .listRowBackground(Theme.surface)
+                }
             }
             .ticketForm()
             // Like the other sheets: moving the form puts the keyboard away, so every icon shows.

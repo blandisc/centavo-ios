@@ -26,11 +26,14 @@ enum CategoryStyle {
 
     /// The common ones, then the ones someone made, then any other already used (most used
     /// first), each name once.
-    static func offered(known: [String], custom: [LabeledIcon] = [], current: String = "") -> [String] {
+    /// `hidden` ones are left out, unless the expense already has it.
+    static func offered(known: [String], custom: [LabeledIcon] = [], current: String = "",
+                        hidden: [String] = []) -> [String] {
         var names: [String] = []
         for name in common.map(\.name) + custom.map(\.name) + known + [current]
         where !name.trimmingCharacters(in: .whitespaces).isEmpty
-            && !names.contains(where: { UserCatalog.same($0, name) }) {
+            && !names.contains(where: { UserCatalog.same($0, name) })
+            && (UserCatalog.same(name, current) || !hidden.contains(where: { UserCatalog.same($0, name) })) {
             names.append(name)
         }
         return names
