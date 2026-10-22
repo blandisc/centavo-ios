@@ -559,8 +559,13 @@ extension GuideFrame {
                    screen: .photo("guia27-12-flechita")),
         GuideFrame(caption: "Toca «Comercio», desliza la barra de arriba del teclado y toca «Notificación», la de "
                    + "la campana. Luego toca esa burbuja azul en la acción.", screen: .photo("guia27-09a-barra")),
-        GuideFrame(caption: "Elige «Subtítulo»: ahí pone Wallet el comercio. La acción queda con «Subtítulo» en "
-                   + "«Comercio».", screen: .photo("guia27-13-subtitulo")),
+        GuideFrame(caption: "Elige «Subtítulo»: ahí pone Wallet el comercio. Ojo: solo en «Comercio». Junto a "
+                   + "«Registrar» tiene que seguir «Notificación»; si ahí dice «Subtítulo», no llega el monto y "
+                   + "no se anota nada.", screen: .photo("guia27-13-subtitulo")),
+        GuideFrame(caption: "Apaga «Mostrar al ejecutar»: así no sale un aviso con cada pago. Se anota igual.",
+                   screen: .photo("guia27-14-mostrar")),
+        GuideFrame(caption: "Así debe verse: «Registrar» con «Notificación», «Comercio» con «Subtítulo» y "
+                   + "«Mostrar al ejecutar» apagado.", screen: .photo("guia27-15-accion-lista"), isResult: true),
     ]
     static let saveNotice: [GuideFrame] = [
         GuideFrame(caption: "No hay botón de guardar: toca la flecha de arriba a la izquierda y ya queda guardado.",

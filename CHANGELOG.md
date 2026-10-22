@@ -12,6 +12,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- La guía muestra cómo debe quedar la acción: «Notificación» junto a «Registrar», «Subtítulo» en «Comercio» y «Mostrar al ejecutar» apagado.
 - El aviso al anotar un pago de Wallet dice solo qué se anotó, sin el presupuesto. Si llega un aviso sin monto (el atajo mal conectado), la pantalla principal lo dice en vez de perderlo.
 - La línea «Wallet · último pago hace…» vuelve a ir entre la gráfica y la lista, ya no debajo de «Hoy». Al regresar del calendario a una página más corta, la lista sube mientras deslizas y no al final; elegir otra vista de «En qué se va» se desvanece con suavidad.
 - La guía tiene el paso «Conecta el comercio» con capturas: la flechita de la acción, «Comercio» y «Subtítulo».
