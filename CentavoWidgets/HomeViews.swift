@@ -37,15 +37,15 @@ struct HoyView: View {
             Spacer(minLength: 6)
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink)
-                // «Llevas» is the figure to read; «de $X» is the small reference after it.
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                // Same type for both; «Llevas» gets the width first, so when the row is
+                // tight it keeps its size and «de $X» is the one that shrinks.
+                HStack(spacing: 4) {
                     keyText("Llevas", money.whole(pace.spent), ink: ink)
-                        .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
                         .layoutPriority(1)
                     Spacer(minLength: 2)
                     keyText("de", money.short(pace.budget), ink: ink)
-                        .font(.ticket(8, relativeTo: .caption2))
                 }
+                .font(.ticket(9, relativeTo: .caption2))
                 .textCase(.uppercase)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

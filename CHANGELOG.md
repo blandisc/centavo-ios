@@ -14,7 +14,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
-- **Widgets «Hoy puedes gastar»:** en el pequeño, «Llevas $X» ahora es la cifra grande y «de $Y» la pequeña; en el mediano, «Podrías llevar $X» ya no se encima con la barra del mes.
+- **Widgets «Hoy puedes gastar»:** en el pequeño, «Llevas $X» ya no se achica: si no cabe la fila, se achica «de $Y»; en el mediano, «Podrías llevar $X» ya no se encima con la barra del mes.
 - «Hoy puedes gastar» ahora pasa completo al día siguiente lo que te sobró o te pasaste: el mes te da un monto fijo por día (presupuesto menos fijos, entre los días del mes). Con $700 al día, si el lunes gastas $300, el martes puedes gastar $1,100; si el martes gastas $1,500, el miércoles puedes $300. Si hoy te pasas, la cifra lo dice en rojo («Hoy te pasaste $400»). Debajo, «Vas $400 abajo del ritmo» dice cuánto traes de los días anteriores, y la cuenta al tocar la barra lo desglosa.
 - «Hoy puedes gastar» baja peso por peso con lo que gastas hoy: con $630 para hoy, gastar $630 lo deja en $0 (antes decía $567, porque repartía lo de hoy entre los días que faltan). Mañana se vuelve a calcular con lo gastado hasta hoy. La cuenta al tocar la barra muestra «Para hoy» y «− Gastado hoy».
 - Siri dice lo que te queda libre después de apartar los fijos por venir, y cuánto está apartado: «Te quedan $1,000.00 libres (más $5,000.00 apartados para fijos). Hoy puedes gastar $100.» Es la misma cifra que la pantalla.
