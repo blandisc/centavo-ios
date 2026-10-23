@@ -40,22 +40,38 @@ struct WhereItGoes: View {
     var onSelect: (CategoryShare?) -> Void = { _ in }
 
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var total: Decimal { shares.reduce(0) { $0 + $1.amount } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("En qué se va")
-                    .lineLimit(1)
-                    .layoutPriority(1)
-                Spacer(minLength: 8)
-                // Shrinks with large text rather than breaking «$2,366.00» in two.
-                Text(money(total))
-                    .foregroundStyle(Theme.ink)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+            Group {
+                if typeSize.isAccessibilitySize {
+                    // Side by side the total got cut («$2,3…»): the title goes above it.
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("En qué se va")
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(money(total))
+                            .foregroundStyle(Theme.ink)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                } else {
+                    HStack {
+                        Text("En qué se va")
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                        Spacer(minLength: 8)
+                        // Shrinks with large text rather than breaking «$2,366.00» in two.
+                        Text(money(total))
+                            .foregroundStyle(Theme.ink)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                }
             }
             .font(.ticket(10, relativeTo: .caption2))
             .tracking(1.2)
@@ -117,10 +133,6 @@ private struct ShareBarChart: View {
     let money: (Decimal) -> String
 
     @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = 10
-    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 20
-    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = 14
-    @ScaledMetric(relativeTo: .footnote) private var percentWidth: CGFloat = 40
-    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = 24
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -141,43 +153,99 @@ private struct ShareBarChart: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(lines) { line in
-                    HStack(spacing: 8) {
-                        Image(systemName: line.icon)
-                            .resizable()
-                            .scaledToFit()
-                            .fontWeight(.semibold)
-                            .foregroundStyle(line.color)
-                            // Narrow glyphs (a bolt, a glass) would sit centered in the square.
-                            .frame(width: iconSize, height: iconSize, alignment: .leading)
-                            // Flush with the margin, like every other line (centered, they
-                            // started anywhere from 27 to 30 pt).
-                            .frame(width: iconWidth, alignment: .leading)
-                        Text(line.name)
-                            .foregroundStyle(line.share.category == nil && !line.share.isRest ? Theme.muted : Theme.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: 8)
-                        Text(money(line.share.amount))
-                            .foregroundStyle(Theme.ink)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .layoutPriority(1)
-                        Text(line.percent)
-                            .foregroundStyle(Theme.muted)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .frame(minWidth: percentWidth, alignment: .trailing)
-                    }
-                    .font(.ticket(12, relativeTo: .footnote))
-                    .textCase(.uppercase)
-                    .tracking(0.6)
-                    // A line of 16 pt read as a target too small for the accessibility audit.
-                    .frame(minHeight: rowHeight)
-                    .contentShape(Rectangle())
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(line.spoken(money))
+                    ShareBarLine(line: line, amount: money(line.share.amount))
+                        .accessibilityLabel(line.spoken(money))
                 }
             }
         }
+    }
+}
+
+/// A category under the bar: its icon in its color, the name, the amount and the share.
+/// With accessibility text sizes the name goes on its own line and the amount under it,
+/// whole: side by side the names disappeared and the amounts were cut («$2,3…»).
+private struct ShareBarLine: View {
+    let line: CategoryLine
+    let amount: String
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 20
+    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .footnote) private var percentWidth: CGFloat = 40
+    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = 24
+
+    private var icon: some View {
+        Image(systemName: line.icon)
+            .resizable()
+            .scaledToFit()
+            .fontWeight(.semibold)
+            .foregroundStyle(line.color)
+            // Narrow glyphs (a bolt, a glass) would sit centered in the square.
+            .frame(width: iconSize, height: iconSize, alignment: .leading)
+            // Flush with the margin, like every other line (centered, they
+            // started anywhere from 27 to 30 pt).
+            .frame(width: iconWidth, alignment: .leading)
+    }
+
+    private var name: some View {
+        Text(line.name)
+            .foregroundStyle(line.share.category == nil && !line.share.isRest ? Theme.muted : Theme.ink)
+    }
+
+    private var amountText: some View {
+        Text(amount)
+            .foregroundStyle(Theme.ink)
+            .monospacedDigit()
+            .lineLimit(1)
+    }
+
+    private var percent: some View {
+        Text(line.percent)
+            .foregroundStyle(Theme.muted)
+            .monospacedDigit()
+            .lineLimit(1)
+    }
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        icon
+                        name.fixedSize(horizontal: false, vertical: true)
+                    }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            amountText.fixedSize()
+                            Spacer(minLength: 8)
+                            percent
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            amountText.minimumScaleFactor(0.5)
+                            percent
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 8) {
+                    icon
+                    name.lineLimit(1)
+                    Spacer(minLength: 8)
+                    amountText.layoutPriority(1)
+                    percent.frame(minWidth: percentWidth, alignment: .trailing)
+                }
+            }
+        }
+        .font(.ticket(12, relativeTo: .footnote))
+        .textCase(.uppercase)
+        .tracking(0.6)
+        // A line of 16 pt read as a target too small for the accessibility audit.
+        .frame(minHeight: rowHeight)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("categoria-\(line.name)")
     }
 }
 

@@ -31,7 +31,10 @@ public enum AmountParser {
     /// something that is neither cents nor a group of three.
     ///
     /// Separator rule: the LAST `.` or `,` is the decimal separator only when it is
-    /// followed by 1–2 digits; every other separator is digit grouping.
+    /// followed by 1–2 digits; every other separator is digit grouping. A group of three
+    /// is only a group when it can be one: `1,000` is a thousand, but `0.005` (nothing to
+    /// group) and `$1,234.567` (two kinds of separator, so the last one is decimal) are
+    /// rejected rather than read a thousand times bigger.
     /// A leading `-` or wrapping parentheses mark a negative amount (refund).
     public static func parse(_ raw: String) -> ParsedAmount? {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -41,25 +44,50 @@ public enum AmountParser {
         // locales wrap refunds in parentheses. Nothing else in an amount uses one.
         let isNegative = text.contains("-") || text.contains("−")
             || (text.hasPrefix("(") && text.hasSuffix(")"))
+        // A plus is just a sign, never a currency; with a minus too it says nothing (`+-50`).
+        let isPositive = text.contains("+")
+        guard !(isNegative && isPositive) else { return nil }
+
+        // The currency sits on one side of the number. Letters between digits (`1e5`,
+        // `50ht1`) make it something else: an exponent, a code, a typo.
+        let isMarker: (Character) -> Bool = {
+            !$0.isNumber && !$0.isWhitespace && $0 != "+" && !ignorable.contains($0)
+        }
+        if let first = text.firstIndex(where: \.isNumber), let last = text.lastIndex(where: \.isNumber),
+           text[first...last].contains(where: isMarker) {
+            return nil
+        }
 
         // Everything that isn't a digit, separator, sign or space is the currency marker.
-        let marker = text.filter { !$0.isNumber && !ignorable.contains($0) }
+        let marker = text.filter(isMarker)
         let numeric = text.filter { $0.isNumber || $0 == "." || $0 == "," }
 
         var integerPart = numeric
         var fractionPart = ""
         if let lastSep = numeric.lastIndex(where: { $0 == "." || $0 == "," }) {
+            let head = numeric[..<lastSep]
             let tail = numeric[numeric.index(after: lastSep)...]
             switch tail.count {
             case 1...2:
-                integerPart = String(numeric[..<lastSep])
+                integerPart = String(head)
                 fractionPart = String(tail)
             case 3:
-                break                       // a group of three: `1,000` is a thousand
+                // A group of three: `1,000` is a thousand. Not after another kind of
+                // separator (`1,234.567`: that one is decimal) nor with nothing to group
+                // (`0.005`, `.500`): those would silently become thousands.
+                let otherSeparator: Character = numeric[lastSep] == "." ? "," : "."
+                guard !head.contains(otherSeparator), head.contains(where: { $0.isNumber && $0 != "0" }) else {
+                    return nil
+                }
             default:
                 return nil                  // `0.0001`, `1.23456`: not money
             }
         }
+        // Grouping is a first run of digits and then runs of two or three (`1,234,567`,
+        // `1,23,456`). A run of one is not grouping: `1.2.3` is not a number.
+        let groups = integerPart.split(separator: ".", omittingEmptySubsequences: false)
+            .flatMap { $0.split(separator: ",", omittingEmptySubsequences: false) }
+        guard groups.dropFirst().allSatisfy({ (2...3).contains($0.count) }) else { return nil }
         let digits = integerPart.filter(\.isNumber)
         guard digits.count <= maxIntegerDigits else { return nil }
         let normalized = (digits.isEmpty ? "0" : digits) + (fractionPart.isEmpty ? "" : "." + fractionPart)

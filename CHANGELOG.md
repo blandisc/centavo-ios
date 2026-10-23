@@ -54,6 +54,10 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- Un pago de Wallet que llega con el monto y la tarjeta juntos («Oxxo $89.00 1234») ya se anota con su monto ($89.00); antes los cuatro dígitos de la tarjeta se pegaban al monto y el pago se perdía.
+- Un número junto al nombre del banco («BBVA 1234», «Nu 1234») ya no se anota como un gasto en una moneda llamada «BBVA».
+- Un monto que no es dinero («0.005», «$1,234.567», «1.2.3», «1e5») ya no se lee mil veces más grande o como otra cifra: se rechaza.
+- «En qué se va» con el texto más grande de accesibilidad: cada categoría muestra su nombre y su monto completo, uno arriba del otro, en vez de esconder el nombre y cortar el monto («$2,3…»).
 - «Borraste … · Deshacer» vuelve a salir abajo, justo arriba de la barra de meses, y no a media pantalla.
 - Desplazar la lista rápido hacia arriba y abajo ya no se traba: deslizar para borrar solo se activa cuando el dedo va de lado.
 - El comercio de las compras con Wallet no llegaba nunca (se guardaba «Sin comercio» o el banco): Atajos no manda el subtítulo de la notificación, que es donde va el comercio. «Registrar aviso de Wallet» tiene ahora el campo **Comercio**; conéctalo a «Notificación › Subtítulo» (la guía tiene el paso).

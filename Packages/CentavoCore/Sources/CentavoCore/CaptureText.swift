@@ -14,7 +14,12 @@ public enum CaptureText {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         // Just an amount, as Wallet sends it: read it whole, exactly as before.
         if matches(singleAmount, visible) {
-            return AmountParser.parse(text)
+            // A bank's initials ("BBVA 1234") look like a currency code but are not one.
+            guard let parsed = AmountParser.parse(text) else { return nil }
+            if let marker = parsed.currencyMarker, marker.allSatisfy(\.isUppercase), !isCurrency(marker) {
+                return nil
+            }
+            return parsed
         }
         // Anything longer: the first figure that carries a currency.
         for candidate in candidates(in: visible) {
@@ -29,7 +34,9 @@ public enum CaptureText {
     /// Direction marks some languages wrap amounts in. `AmountParser` already skips them.
     private static let invisible = Set("\u{200B}\u{200E}\u{200F}\u{202A}\u{202B}\u{202C}\u{202D}\u{202E}\u{2066}\u{2067}\u{2068}\u{2069}")
 
-    private static let digits = #"\d(?:[\d.,'’  ]|\s(?=\d))*"#
+    /// A number, grouped with spaces too (`1 234,56`), but only by a run of exactly three on
+    /// the same line: the card's last four after an amount ("$89.00 1234") stay apart.
+    private static let digits = #"\d(?:[\d.,'’  ]|[    ](?=\d{3}(?!\d)))*"#
     /// One number with at most one marker, on one side: a short run with a symbol in it
     /// (`$`, `MX$`, `Bs.`, `€`) or capital letters (`USD`). "Nu 1234" is not an amount.
     private static let marker = #"(?:[^\d\s()]{0,3}[^\d\s()\p{L}][^\d\s()]{0,3}|\p{Lu}{2,4})"#

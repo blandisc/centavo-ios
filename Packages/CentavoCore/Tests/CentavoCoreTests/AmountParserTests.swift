@@ -51,6 +51,38 @@ import Testing
         #expect(AmountParser.parse("1,00")?.value == 1)                 // cents
     }
 
+    /// A group of three that can't be one would make the amount a thousand times bigger.
+    @Test(arguments: ["0.005", "0,005", ".500", "$1,234.567", "1.234,567", "-$1,234.567"])
+    func aGroupOfThreeThatCannotBeOneIsRejected(raw: String) {
+        #expect(AmountParser.parse(raw) == nil, "Leyó «\(raw)» como \(String(describing: AmountParser.parse(raw)))")
+    }
+
+    @Test func aGroupOfThreeIsStillAGroup() {
+        #expect(AmountParser.parse("1.234")?.value == 1234)
+        #expect(AmountParser.parse("1.500")?.value == 1500)
+        #expect(AmountParser.parse("$1,234,567")?.value == 1_234_567)
+        #expect(AmountParser.parse("10,000")?.value == 10_000)
+        #expect(AmountParser.parse("1,234,567,89")?.value == Decimal(string: "1234567.89"))
+    }
+
+    /// Junk that used to come out as a number with a whitespace, a sign or an exponent
+    /// as its currency.
+    @Test(arguments: ["+-50", "-+50", "1.2.3", "1,2,3", "1,2.3", "1.2,3", "1e5", "1E5", "1.5e2",
+                      "50ht1"])
+    func junkIsNotAnAmount(raw: String) {
+        #expect(AmountParser.parse(raw) == nil, "Leyó «\(raw)» como \(String(describing: AmountParser.parse(raw)))")
+    }
+
+    @Test func aCurrencyIsNeverWhitespaceOrASign() throws {
+        let split = try #require(AmountParser.parse("50\n.00"))
+        #expect(split.value == 50)
+        #expect(split.currencyMarker == nil)
+        let plus = try #require(AmountParser.parse("+50"))
+        #expect(plus.value == 50)
+        #expect(plus.currencyMarker == nil)
+        #expect(AmountParser.parse("+$20.00")?.currencyMarker == "$")
+    }
+
     @Test func swissApostropheGroupingDoesNotLeakIntoTheCurrency() throws {
         let parsed = try #require(AmountParser.parse("CHF 1'234.56"))
         #expect(parsed.value == Decimal(string: "1234.56"))
@@ -79,6 +111,9 @@ import Testing
             if let parsed = AmountParser.parse(text) {
                 #expect(parsed.value.isFinite)
                 #expect(parsed.value.magnitude < 1_000_000_000_000)
+                if let marker = parsed.currencyMarker {
+                    #expect(!marker.contains(where: { $0.isWhitespace || $0 == "+" }), "«\(text)»")
+                }
             }
         }
     }

@@ -636,6 +636,37 @@ final class FlowTests: XCTestCase {
                       "No aparece la categoría más grande")
     }
 
+    /// With the biggest accessibility text, «En qué se va» used to hide the category names and
+    /// cut the amounts («$2,3…»). Each line has to carry its name and its whole amount, and fit.
+    func testEnQueSeVaConLetraDeAccesibilidadMuestraNombresYMontosCompletos() {
+        let app = launch(demo: true, budget: true, extra: [
+            "-whereItGoesStyle", "bar",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+        let section = app.descendants(matching: .any)["en-que-se-va"]
+        for _ in 0..<6 where !section.isHittable { app.swipeUp() }
+        require(section, "No aparece «En qué se va»")
+        let lines = section.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'categoria-'"))
+        XCTAssertGreaterThanOrEqual(lines.count, 2, "«En qué se va» no tiene renglones de categoría")
+        let window = app.windows.firstMatch.frame
+        let whole = try! NSRegularExpression(pattern: #"^(.+): \$[\d,]+\.\d{2}, \d+\s?% de lo gastado$"#)
+        for index in 0..<lines.count {
+            let line = lines.element(boundBy: index)
+            let name = String(line.identifier.dropFirst("categoria-".count))
+            let label = line.label
+            let match = whole.firstMatch(in: label, range: NSRange(label.startIndex..., in: label))
+            XCTAssertNotNil(match, "Renglón sin monto completo: «\(label)»")
+            XCTAssertTrue(label.hasPrefix(name), "Renglón sin el nombre «\(name)»: «\(label)»")
+            XCTAssertFalse(label.contains("…"), "Renglón cortado: «\(label)»")
+            if line.isHittable {
+                XCTAssertLessThanOrEqual(line.frame.maxX, window.maxX + 0.5, "«\(name)» se sale de la pantalla")
+                XCTAssertGreaterThanOrEqual(line.frame.minX, window.minX - 0.5, "«\(name)» se sale de la pantalla")
+            }
+        }
+        snap("flujo-en-que-se-va-letra-de-accesibilidad")
+    }
+
     // MARK: Salud de la captura
 
     func testDiceCuandoLlegoElUltimoPagoDeWallet() {

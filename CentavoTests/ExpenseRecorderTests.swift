@@ -93,6 +93,16 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().first?.amount, 89)
     }
 
+    /// The card's last four right after the amount used to lose the payment; a bank's initials
+    /// in front of a bare number used to save it in a "currency" called BBVA.
+    func testTheCardAfterTheAmountSavesTheAmountAndABankIsNoCurrency() throws {
+        XCTAssertEqual(try record("Oxxo $89.00 1234", nil), .saved(merchant: "Sin comercio"))
+        XCTAssertEqual(try saved().first?.amount, 89)
+        XCTAssertEqual(try saved().first?.currencyMarker, "$")
+        XCTAssertEqual(try record("BBVA 1234", "Seven", at: now.addingTimeInterval(3_600)), .unreadable)
+        XCTAssertEqual(try saved().count, 1)
+    }
+
     /// What a real automation sent on 2026-10-15: the payment itself in the amount field, whose
     /// text is only the merchant (twice). It once saved 501,501 in a "currency" of letters.
     func testAMerchantNameInTheAmountIsRejectedNotSaved() throws {

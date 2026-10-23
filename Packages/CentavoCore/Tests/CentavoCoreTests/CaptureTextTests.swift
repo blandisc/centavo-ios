@@ -36,6 +36,34 @@ import Testing
         #expect(parsed.currencyMarker == marker)
     }
 
+    /// The card's last four digits right after the amount used to swallow it.
+    @Test(arguments: ["$89.00 1234", "Oxxo $89.00 1234", "Oxxo\n$89.00\n1234", "Oxxo\nBBVA\n$89.00\n1234",
+                      "$89.00\n1234"])
+    func theCardAfterTheAmountDoesNotHideIt(text: String) throws {
+        let parsed = try #require(CaptureText.amount(in: text), "No encontró el monto en «\(text)»")
+        #expect(parsed.value == 89)
+        #expect(parsed.currencyMarker == "$")
+    }
+
+    @Test func spacesStillGroupThousands() {
+        #expect(CaptureText.amount(in: "1 234,56 €")?.value == Decimal(string: "1234.56"))
+        #expect(CaptureText.amount(in: "Café 1 234,56 €")?.value == Decimal(string: "1234.56"))
+    }
+
+    /// A bank's initials next to the card are not a currency.
+    @Test(arguments: ["BBVA 1234", "NU 1234", "HSBC 4321", "AMEX 1005", "1234 BBVA"])
+    func aBankIsNotACurrency(text: String) {
+        #expect(CaptureText.amount(in: text) == nil, "Leyó un monto en «\(text)»")
+    }
+
+    @Test func goodCaptureStaysTheSame() {
+        #expect(CaptureText.amount(in: "1234") == ParsedAmount(value: 1234))
+        #expect(CaptureText.amount(in: "$-20") == ParsedAmount(value: -20, currencyMarker: "$"))
+        #expect(CaptureText.amount(in: "CAD 99.99") == ParsedAmount(value: Decimal(string: "99.99")!,
+                                                                   currencyMarker: "CAD"))
+        #expect(CaptureText.amount(in: "$1,234.567") == nil)
+    }
+
     /// A card number or a bare figure among words is never taken for the amount.
     @Test(arguments: ["Tarjeta 1234", "Oxxo BBVA 4321", "Nu 1234 Oxxo", "Nu 1234", "1234 Oxxo",
                       "abc", "", "$"])
