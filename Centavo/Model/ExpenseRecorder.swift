@@ -27,6 +27,8 @@ enum ExpenseRecorder {
         rawNotice: String? = nil,
         place: CLLocationCoordinate2D? = nil,
         in context: ModelContext,
+        rules: CategoryRules = UserCatalog.categoryRules,
+        hidden: [String] = UserCatalog.hiddenNames,
         now: Date = .now
     ) throws -> CaptureOutcome {
         // Usually just the amount; `CaptureText` also finds it when the whole payment came.
@@ -45,7 +47,7 @@ enum ExpenseRecorder {
         case .save: break
         }
 
-        let before = remembered(for: merchantName, in: context)
+        let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden)
         let expense = Expense(
             amount: parsed.value,
             currencyMarker: parsed.currencyMarker,
@@ -100,13 +102,15 @@ enum ExpenseRecorder {
         card: String? = nil,
         in context: ModelContext,
         primary: String = CurrencyPreference.current,
+        rules: CategoryRules = UserCatalog.categoryRules,
+        hidden: [String] = UserCatalog.hiddenNames,
         now: Date = .now
     ) throws -> CaptureOutcome {
         guard let parsed = AmountParser.parse(amountText) else { return .unreadable }
         guard parsed.value != 0 else { return .empty }
         let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
-        let before = remembered(for: merchantName, in: context)
+        let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden)
         let expense = Expense(
             amount: parsed.value,
             currencyMarker: spokenCurrency(parsed.currencyMarker, primary: primary),
@@ -162,18 +166,24 @@ enum ExpenseRecorder {
         }
     }
 
-    private static func remembered(for merchant: String, in context: ModelContext) -> Remembered {
+    private static func remembered(for merchant: String, in context: ModelContext,
+                                   rules: CategoryRules, hidden: [String]) -> Remembered {
         let descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
         guard let history = try? context.fetch(descriptor) else { return Remembered() }
         let key = UserCatalog.fold(merchant)
         let sameMerchant = history.filter { UserCatalog.fold($0.merchant) == key }
         let name = sameMerchant.first?.displayName
         // What you filed this merchant under before; failing that, the catalog's guess.
-        if let category = MerchantCatalog.suggestion(for: merchant, history: history.map(\.categorized)) {
+        if let category = CategoryMemory.suggestion(for: merchant, rules: rules,
+                                                    history: history.map(\.categorized), hidden: hidden) {
             return Remembered(category: category, name: name)
         }
+        // What you decided here (none, or a category since hidden) beats an old model guess.
+        guard rules.choice(for: merchant) == nil else { return Remembered(name: name) }
         // Failing both, what the on-device model suggested last time, still as a suggestion.
-        let suggested = sameMerchant.first { $0.hasSuggestedCategory }
+        let suggested = sameMerchant.first { expense in
+            expense.hasSuggestedCategory && !hidden.contains { UserCatalog.same($0, expense.category ?? "") }
+        }
         return Remembered(category: suggested?.category, isSuggested: suggested != nil, name: name)
     }
 }

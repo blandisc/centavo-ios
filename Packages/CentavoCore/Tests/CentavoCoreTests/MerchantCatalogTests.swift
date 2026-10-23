@@ -30,7 +30,7 @@ import Testing
 
     @Test func whatYouChoseWinsOverTheCatalog() {
         let history = [CategorizedExpense(merchant: "Oxxo", category: "Antojos", date: .now)]
-        #expect(MerchantCatalog.suggestion(for: "OXXO", history: history) == "Antojos")
-        #expect(MerchantCatalog.suggestion(for: "Uber", history: history) == "Transporte")
+        #expect(CategoryMemory.suggestion(for: "OXXO", rules: CategoryRules(), history: history) == "Antojos")
+        #expect(CategoryMemory.suggestion(for: "Uber", rules: CategoryRules(), history: history) == "Transporte")
     }
 }

@@ -62,11 +62,6 @@ public enum MerchantCatalog {
         return nil
     }
 
-    /// The category to suggest: yours if you ever filed this merchant, else the catalog's.
-    public static func suggestion(for merchant: String, history: [CategorizedExpense]) -> String? {
-        CategoryMemory.category(for: merchant, in: history) ?? category(for: merchant)
-    }
-
     /// Lowercased, accent-free words; punctuation splits («Sam's» → sams, «AT&T» → at t).
     static func tokens(_ text: String) -> [String] {
         let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)

@@ -23,9 +23,16 @@ final class ExpenseRecorderTests: XCTestCase {
 
     @discardableResult
     private func record(_ amount: String, _ merchant: String? = "Oxxo", card: String? = "BBVA",
-                        at date: Date? = nil) throws -> CaptureOutcome {
+                        at date: Date? = nil, rules: CategoryRules = CategoryRules(),
+                        hidden: [String] = []) throws -> CaptureOutcome {
         try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                   in: context, now: date ?? now)
+                                   in: context, rules: rules, hidden: hidden, now: date ?? now)
+    }
+
+    private func filed(_ merchant: String, _ category: String?, daysAgo: Double) throws {
+        context.insert(Expense(amount: 50, currencyMarker: "$", merchant: merchant,
+                               date: now.addingTimeInterval(-86_400 * daysAgo), category: category))
+        try context.save()
     }
 
     func testSavesAWalletPaymentWithEverythingItCame() throws {
@@ -196,6 +203,51 @@ final class ExpenseRecorderTests: XCTestCase {
         try record("$89.00", "OXXO")
         let capture = try XCTUnwrap(saved().last)
         XCTAssertEqual(capture.category, "Despensa")
+    }
+
+    /// «Recordar mi categoría»: the owner's newest decision beats the newest expense.
+    func testTheLatestManualChoiceWinsEvenOnAnOlderExpense() throws {
+        try filed("Oxxo", "Antojos", daysAgo: 9)   // corrected by hand today
+        try filed("Oxxo", "Despensa", daysAgo: 1)  // got Despensa from the memory
+        var rules = CategoryRules()
+        rules.learn("Despensa", for: "Oxxo")
+        rules.learn("Antojos", for: "Oxxo")
+        try record("$89.00", "  oxxo ", rules: rules)
+        XCTAssertEqual(try saved().last?.category, "Antojos")
+    }
+
+    func testAMerchantTheOwnerLeftWithoutCategoryStaysWithout() throws {
+        try filed("Oxxo", "Despensa", daysAgo: 3)
+        var rules = CategoryRules()
+        rules.learn(nil, for: "Oxxo")
+        try record("$89.00", "OXXO", rules: rules)
+        XCTAssertNil(try saved().last?.category, "Ni la memoria ni el catálogo después de quitarla")
+    }
+
+    func testAHiddenOrDeletedCategoryIsNotFilledIn() throws {
+        try filed("Petco", "Mascotas", daysAgo: 3)
+        var rules = CategoryRules()
+        rules.learn("Mascotas", for: "Petco")
+        try record("$300.00", "Petco", rules: rules, hidden: ["Mascotas"])
+        XCTAssertNil(try saved().last?.category)
+    }
+
+    func testRememberingNeverTouchesExpensesAlreadySaved() throws {
+        try filed("Oxxo", "Despensa", daysAgo: 5)
+        try filed("Oxxo", nil, daysAgo: 2)
+        var rules = CategoryRules()
+        rules.learn("Antojos", for: "Oxxo")
+        try record("$89.00", "Oxxo", rules: rules)
+        XCTAssertEqual(try saved().map(\.category), ["Despensa", nil, "Antojos"])
+    }
+
+    func testSiriAlsoGetsTheRememberedCategory() throws {
+        var rules = CategoryRules()
+        rules.learn("Café", for: "La Esquina")
+        XCTAssertEqual(try ExpenseRecorder.recordByHand(amountText: "45", merchant: "la esquina", in: context,
+                                                        primary: "MXN", rules: rules, hidden: [], now: now),
+                       .saved(merchant: "la esquina"))
+        XCTAssertEqual(try saved().first?.category, "Café")
     }
 
     func testAKnownMexicanMerchantGetsASuggestedCategory() throws {

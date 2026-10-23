@@ -266,7 +266,9 @@ struct FixedPlanSheet: View {
             merchant: String(name.prefix(ExpenseRecorder.maxMerchantLength)),
             amount: "\(amount)",
             currency: CurrencyPreference.current,
-            category: MerchantCatalog.suggestion(for: name, history: history.map(\.categorized)),
+            category: CategoryMemory.suggestion(for: name, rules: UserCatalog.categoryRules,
+                                                history: history.map(\.categorized),
+                                                hidden: UserCatalog.hiddenNames),
             rule: rule.stored,
             firstDate: firstDate
         )

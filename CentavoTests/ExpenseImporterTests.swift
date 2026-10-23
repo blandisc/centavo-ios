@@ -56,4 +56,26 @@ final class ExpenseImporterTests: XCTestCase {
         XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context),
                        .init(added: 0, alreadyThere: 1, unreadable: 0))
     }
+
+    /// A row without a category gets the one the owner chose; one with a category keeps it.
+    func testRowsWithoutCategoryGetTheRememberedOne() throws {
+        let day = Date(timeIntervalSince1970: 1_792_000_000)
+        context.insert(Expense(amount: 50, currencyMarker: "MXN", merchant: "Oxxo", date: day, category: "Despensa"))
+        try context.save()
+        var rules = CategoryRules()
+        rules.learn("Comida", for: "Boru Oum")
+        rules.learn("Mascotas", for: "Petco")
+        let csv = CSVExporter.csv(from: [
+            ExpenseRecord(date: day.addingTimeInterval(60), merchant: "OXXO", amount: 89, currency: "MXN"),
+            ExpenseRecord(date: day.addingTimeInterval(120), merchant: "Oxxo", amount: 30, currency: "MXN",
+                          category: "Antojos"),
+            ExpenseRecord(date: day.addingTimeInterval(180), merchant: "boru oum", amount: 175, currency: "MXN"),
+            ExpenseRecord(date: day.addingTimeInterval(240), merchant: "Petco", amount: 300, currency: "MXN"),
+            ExpenseRecord(date: day.addingTimeInterval(300), merchant: "Uber", amount: 120, currency: "MXN"),
+        ])
+        _ = try ExpenseImporter.importCSV(csv, into: context, rules: rules, hidden: ["Mascotas"])
+        // Oxxo's newest choice in the app or the file is Antojos; Mascotas was deleted; Uber was
+        // never filed (the catalog does not guess on an import).
+        XCTAssertEqual(try all().map(\.category), ["Despensa", "Antojos", "Antojos", "Comida", nil, nil])
+    }
 }

@@ -270,3 +270,11 @@ Decisión del dueño (opción A de tres, después de probar una versión sin nú
 
 ## 2026-10-22 · Borrar tarjetas y categorías, y ocultar las de siempre
 A pedido del dueño. «Borrar» va también en la hoja de editar (deslizar no se descubre). Las categorías de la app y las ya usadas no se borran: se ocultan del selector al anotar (`hiddenCategories`, sincronizado como el resto de los ajustes). Un gasto que ya tiene una categoría oculta la sigue mostrando, y al editarlo aparece en el selector.
+
+## 2026-10-23 · Recordar mi categoría: gana tu última elección
+Afina la memoria por comercio del 2026-10-11. El historial dice en qué categoría está cada gasto, pero no *cuándo* se decidió: corregir el Oxxo del mes pasado perdía contra el Oxxo de esta semana, que solo tenía la categoría porque la memoria se la puso.
+- **Cada elección a mano se anota** (`CategoryRules`, en `CentavoCore`): comercio → la última categoría que elegiste en la hoja, o «ninguna» si se la quitaste. Gana la más reciente, sin importar la fecha del gasto. Es una lista chica (una entrada por comercio, máximo 1,000) que se guarda y sincroniza con los demás ajustes (`categoryRules` en `BudgetSync`), no una propiedad nueva de `Expense`: el esquema no cambia.
+- **Sin elección anotada, manda el historial** como antes (para lo archivado antes de esto); luego el catálogo de marcas. Quitar la categoría también es una decisión: ese comercio ya no recibe ni la memoria ni el catálogo.
+- **El comercio se compara sin mayúsculas, acentos ni espacios de más** (`MerchantKey`), también entre palabras («OXXO  ROBLE» es «Oxxo Roble»). Los números siguen contando: dos sucursales son dos comercios. «Sin comercio» no se recuerda.
+- **Solo gastos nuevos:** lo de Wallet, Siri, la hoja a mano (que ya se llenaba sola) e «Importar CSV» en las filas sin categoría; una fila con categoría la conserva, y la importación no usa el catálogo (una categoría vacía en el archivo puede ser a propósito). Nunca se recategoriza un gasto guardado.
+- **Una categoría oculta o borrada no se pone sola**, aunque haya sido tu elección; ese comercio cae al catálogo. Borrar una categoría propia ahora también la oculta del selector (si se usó, aparece apagada en «Categorías de siempre»); crearla otra vez con el mismo nombre la vuelve a mostrar. Renombrarla mueve sus comercios al nombre nuevo.

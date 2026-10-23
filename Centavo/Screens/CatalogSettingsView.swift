@@ -85,7 +85,7 @@ struct CatalogSettingsView: View {
                         Button { editing = .category(category) } label: { row(category, isDefault: false) }
                             .swipeActions(edge: .trailing) {
                                 Button("Borrar", systemImage: "trash", role: .destructive) {
-                                    storedCategories = UserCatalog.encode(categories.filter { $0 != category })
+                                    removeCategory(category)
                                 }
                             }
                     }
@@ -144,13 +144,14 @@ struct CatalogSettingsView: View {
                                      prompt: "Mascotas, Gimnasio…", icons: UserCatalog.categoryIcons,
                                      taken: categories.map(\.name) + CategoryStyle.common.map(\.name),
                                      initial: category,
-                                     onDelete: category.map { item in {
-                                         storedCategories = UserCatalog.encode(categories.filter { $0 != item })
-                                     } }) { saved in
+                                     onDelete: category.map { item in { removeCategory(item) } }) { saved in
                         var list = categories
-                        if let category, let index = list.firstIndex(of: category) { list[index] = saved }
-                        else { list.append(saved) }
+                        if let category, let index = list.firstIndex(of: category) {
+                            list[index] = saved
+                            UserCatalog.renameCategory(category.name, to: saved.name)
+                        } else { list.append(saved) }
                         storedCategories = UserCatalog.encode(list)
+                        storedHidden = UserCatalog.hiddenNames(storedHidden, setting: saved.name, hidden: false)
                     }
                 }
             }
@@ -168,6 +169,13 @@ struct CatalogSettingsView: View {
             if defaultSource.isEmpty { defaultSource = source.name }
         }
         storedSources = UserCatalog.encode(list)
+    }
+
+    /// A deleted category also leaves the picker and is never filled in on its own again;
+    /// expenses that have it keep it. If it was used, it shows off in «Categorías de siempre».
+    private func removeCategory(_ category: LabeledIcon) {
+        storedCategories = UserCatalog.encode(categories.filter { $0 != category })
+        storedHidden = UserCatalog.hiddenNames(storedHidden, setting: category.name, hidden: true)
     }
 
     private func remove(_ source: LabeledIcon) {

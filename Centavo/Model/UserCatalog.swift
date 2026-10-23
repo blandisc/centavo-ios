@@ -1,3 +1,4 @@
+import CentavoCore
 import Foundation
 
 /// A name someone chose and the icon they gave it: a category of their own, or a way they
@@ -17,6 +18,8 @@ enum UserCatalog {
     /// Category names someone chose not to see when writing down an expense (the app's own or
     /// any already used). Expenses keep them; only the picker leaves them out.
     static let hiddenCategoriesKey = "hiddenCategories"
+    /// The category the owner last chose for each merchant (`CategoryRules`), synced too.
+    static let categoryRulesKey = "categoryRules"
 
     static func decodeNames(_ stored: String) -> [String] {
         (try? JSONDecoder().decode([String].self, from: Data(stored.utf8))) ?? []
@@ -35,6 +38,45 @@ enum UserCatalog {
     /// The cards and ways of paying someone set up, for code outside a view (the Wallet intent).
     static var sourceNames: [String] {
         decode(UserDefaults.standard.string(forKey: sourcesKey) ?? "").map(\.name)
+    }
+
+    /// Hidden category names, for code outside a view (the intents, the importer).
+    static var hiddenNames: [String] {
+        decodeNames(UserDefaults.standard.string(forKey: hiddenCategoriesKey) ?? "")
+    }
+
+    /// What the owner chose per merchant, for code outside a view.
+    static var categoryRules: CategoryRules {
+        CategoryRules(stored: UserDefaults.standard.string(forKey: categoryRulesKey) ?? "")
+    }
+
+    /// The owner filed `merchant` under `category` by hand (`nil`: under none): the next
+    /// expense from there starts with it. Pushed to iCloud like the other settings.
+    static func learnCategory(_ category: String?, for merchant: String) {
+        var rules = categoryRules
+        rules.learn(category, for: merchant)
+        saveRules(rules)
+    }
+
+    /// One of their categories was renamed: what was filed under the old name follows it.
+    static func renameCategory(_ old: String, to new: String) {
+        guard !same(old, new) else { return }
+        var rules = categoryRules
+        rules.renameCategory(old, to: new)
+        saveRules(rules)
+    }
+
+    private static func saveRules(_ rules: CategoryRules) {
+        let stored = rules.stored
+        UserDefaults.standard.set(stored, forKey: categoryRulesKey)
+        if Store.syncsBudget { BudgetSync.push(stored, for: categoryRulesKey) }
+    }
+
+    /// `hidden` with `name` added (`hide`) or taken out.
+    static func hiddenNames(_ stored: String, setting name: String, hidden hide: Bool) -> String {
+        var list = decodeNames(stored).filter { !same($0, name) }
+        if hide { list.append(name) }
+        return encodeNames(list)
     }
 
     static func encode(_ list: [LabeledIcon]) -> String {

@@ -30,6 +30,7 @@ struct ExpenseEditorView: View {
     @FocusState private var merchantFocused: Bool
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
+    @AppStorage(UserCatalog.categoryRulesKey) private var storedRules = ""
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @State private var creating: Creating?
@@ -41,6 +42,11 @@ struct ExpenseEditorView: View {
     private enum Creating: String, Identifiable { case category, source; var id: String { rawValue } }
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
     private var paymentSources: [LabeledIcon] { UserCatalog.decode(storedSources) }
+    /// The category you chose for what is typed in «Comercio», if you ever did.
+    private var rememberedCategory: String? {
+        CategoryMemory.remembered(for: merchant, rules: CategoryRules(stored: storedRules),
+                                  history: pastExpenses, hidden: UserCatalog.decodeNames(storedHidden))
+    }
     @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = 22
 
     /// Whether something was typed or changed since the sheet opened.
@@ -161,9 +167,11 @@ struct ExpenseEditorView: View {
                 } footer: {
                     if let expense, expense.hasSuggestedCategory, category == expense.category {
                         hint("Sugerida por Al día con tus gastos de ejemplo. Elige otra si no te queda; la que elijas se recuerda.")
-                    } else if let remembered = CategoryMemory.category(for: merchant, in: pastExpenses) {
+                    } else if let remembered = rememberedCategory {
                         hint("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
-                    } else if let suggested = MerchantCatalog.category(for: merchant) {
+                    } else if let suggested = CategoryMemory.suggestion(
+                        for: merchant, rules: CategoryRules(stored: storedRules), history: pastExpenses,
+                        hidden: UserCatalog.decodeNames(storedHidden)) {
                         hint("Sugerida para \(merchant.trimmingCharacters(in: .whitespaces)): \(suggested). Cámbiala si no te queda.")
                     }
                 }
@@ -304,6 +312,7 @@ struct ExpenseEditorView: View {
                                  icons: UserCatalog.categoryIcons,
                                  taken: customCategories.map(\.name) + CategoryStyle.common.map(\.name)) { saved in
                     storedCategories = UserCatalog.encode(customCategories + [saved])
+                    storedHidden = UserCatalog.hiddenNames(storedHidden, setting: saved.name, hidden: false)
                     category = saved.name
                 }
             case .source:
@@ -322,7 +331,9 @@ struct ExpenseEditorView: View {
             // but only while the field is empty — never overwrite a typed one. Only for a new
             // expense: opening an uncategorized one must not quietly file it.
             guard expense == nil, category.trimmingCharacters(in: .whitespaces).isEmpty,
-                  let remembered = MerchantCatalog.suggestion(for: new, history: pastExpenses)
+                  let remembered = CategoryMemory.suggestion(for: new, rules: CategoryRules(stored: storedRules),
+                                                             history: pastExpenses,
+                                                             hidden: UserCatalog.decodeNames(storedHidden))
             else { return }
             category = remembered
         }
@@ -536,6 +547,9 @@ struct ExpenseEditorView: View {
             // and taking it off means none, not «suggest another».
             if categoryName != (expense.category ?? "") {
                 expense.categorySource = categoryName.isEmpty ? Expense.clearedCategory : nil
+                // The newest choice is what the next expense from here starts with, even when
+                // this one is older than others from the same place.
+                UserCatalog.learnCategory(categoryName, for: name)
             }
             expense.category = categoryName.isEmpty ? nil : categoryName
             expense.date = date
@@ -549,6 +563,7 @@ struct ExpenseEditorView: View {
                 date: date,
                 category: categoryName.isEmpty ? nil : categoryName
             )
+            if !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: name) }
             // A place picked from the suggestions reads as it did before.
             new.displayName = history.first { $0.merchant == name }?.displayName
             setRepeats(new)
