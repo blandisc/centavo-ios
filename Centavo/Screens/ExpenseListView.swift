@@ -316,6 +316,18 @@ struct ExpenseListView: View {
                 }
             }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
+            // The widgets' «+» and «Fijar presupuesto» (`centavo://anotar`, `centavo://presupuesto`).
+            .onOpenURL { url in
+                guard url.scheme == "centavo" else { return }
+                switch url.host() {
+                case "anotar": adding = true
+                case "presupuesto": showingBudget = true
+                default: break
+                }
+            }
+            .onChange(of: storedBudget) { WidgetBridge.refresh() }
+            .onChange(of: storedPlans) { WidgetBridge.refresh() }
+            .onChange(of: storedCurrency) { WidgetBridge.refresh() }
             .sheet(isPresented: $adding) {
                 // Adding while looking at a past month puts the expense in that month.
                 ExpenseEditorView(expense: nil,
@@ -508,10 +520,13 @@ private struct KeepsTime: ViewModifier {
         content
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
+                // A budget or a fixed expense changed in «Más» also changes the widgets.
+                if phase == .background { WidgetBridge.refresh() }
             }
             .task(id: now) {
                 try? RecurringExpenses.logDue(in: context, now: now)
                 try? ExpenseRecorder.repairBankMerchants(in: context)
+                WidgetBridge.refresh()
             }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
