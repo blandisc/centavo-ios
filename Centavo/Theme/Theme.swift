@@ -70,9 +70,10 @@ struct Perforation: View {
     var body: some View {
         Rectangle()
             .fill(.clear)
-            .frame(height: 1)
+            .frame(height: Theme.Stroke.hairline)
             .overlay(
-                Line().stroke(Theme.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                Line().stroke(Theme.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                 dash: Theme.Dash.perforation))
             )
             .accessibilityHidden(true)
     }
@@ -101,8 +102,8 @@ extension View {
         self.toolbar {
             ToolbarItem(placement: .principal) {
                 Text(title)
-                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                    .tracking(2)
+                    .font(.ticket(.footnoteStrong))
+                    .tracking(Theme.Tracking.title)
                     .textCase(.uppercase)
                     .accessibilityAddTraits(.isHeader)
             }
