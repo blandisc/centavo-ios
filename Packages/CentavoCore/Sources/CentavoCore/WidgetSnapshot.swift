@@ -34,10 +34,13 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
     public var reserved: Decimal
     /// Biggest first: the three biggest categories and «Otras».
     public var slices: [Slice]
+    /// The rule chosen in the budget sheet. Optional so a snapshot written before it existed
+    /// still reads (as `.carry`).
+    public var mode: AllowanceMode?
 
     public init(budget: Decimal?, isoCode: String?, label: String, takenAt: Date, spent: Decimal,
                 spentToday: Decimal = 0, fixedSpent: Decimal = 0, fixedToday: Decimal = 0,
-                reserved: Decimal = 0, slices: [Slice] = []) {
+                reserved: Decimal = 0, slices: [Slice] = [], mode: AllowanceMode = .carry) {
         self.budget = budget
         self.isoCode = isoCode
         self.label = label
@@ -48,6 +51,7 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         self.fixedToday = fixedToday
         self.reserved = reserved
         self.slices = slices
+        self.mode = mode
     }
 
     /// The month as it stands at `date`, which may be days after `takenAt`.
@@ -70,7 +74,7 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         let month = month(at: date, calendar: calendar)
         return BudgetPace(budget: budget, spent: month.spent, spentToday: month.spentToday,
                           fixedSpent: month.fixedSpent, fixedToday: month.fixedToday,
-                          reserved: month.reserved, on: date, calendar: calendar)
+                          reserved: month.reserved, mode: mode ?? .carry, on: date, calendar: calendar)
     }
 
     /// The shared App Group's key.

@@ -1,12 +1,30 @@
 import Foundation
 
+/// How «Hoy puedes gastar» treats what a day leaves over or overspends (owner's choice in the
+/// budget sheet, 2026-10-23).
+public enum AllowanceMode: String, Codable, CaseIterable, Sendable {
+    /// It goes whole to the next day: a fixed amount per day, carried over (the default).
+    case carry = "acumular"
+    /// It is spread over the days still to come, today included (the rule of PR #94).
+    case spread = "repartir"
+
+    /// The UserDefaults key the app keeps the choice under (synced like the budget).
+    public static let key = "allowanceMode"
+
+    /// What the setting holds when nothing was chosen, or something unknown was stored.
+    public init(stored: String?) {
+        self = stored.flatMap(AllowanceMode.init(rawValue:)) ?? .carry
+    }
+}
+
 /// Where the month stands against a budget: what was spent, what is left, and what can go
 /// today.
 ///
-/// «Hoy puedes gastar» carries every day over whole (owner's decision, 2026-10-22): the month
-/// gives a fixed amount per day, `dailyBase` = (budget − the month's fixed expenses) ÷ days in
-/// the month, and today can spend every day's amount so far, today included, minus what those
-/// days already spent outside the fixed expenses. What a day leaves over goes whole to the
+/// «Hoy puedes gastar» carries every day over whole by default (`.carry`, owner's decision,
+/// 2026-10-22; `.spread` is the other choice, see `init`): the month gives a fixed amount per
+/// day, `dailyBase` = (budget − the month's fixed expenses) ÷ days in the month, and today
+/// can spend every day's amount so far, today included, minus what those days already spent
+/// outside the fixed expenses. What a day leaves over goes whole to the
 /// next one, and so does what it overspends; nothing is spread over the days still to come.
 /// With $700 a day: spend $300 on the 1st and the 2nd can spend $1,100; spend $1,500 on the
 /// 2nd and the 3rd can spend $300.
@@ -28,7 +46,8 @@ public struct BudgetPace: Equatable, Sendable {
     /// to come (`reserved`). They come off the budget before it is cut into days.
     public var fixedMonth: Decimal { fixedSpent + reserved }
     /// What the days before today left over (positive) or overspent (negative), outside the
-    /// fixed expenses: «vas $400 abajo del ritmo». Zero on the 1st.
+    /// fixed expenses: «vas $400 abajo del ritmo». Zero on the 1st. With `.spread`, what an
+    /// even month would have spent by today minus what was spent, today included.
     public let carriedOver: Decimal
     /// What today could spend before anything was spent today: `dailyBase` + `carriedOver`.
     /// Not rounded.
@@ -54,6 +73,9 @@ public struct BudgetPace: Equatable, Sendable {
     public let day: Int
     public let daysInMonth: Int
 
+    /// Which rule made `dailyAllowance`.
+    public let mode: AllowanceMode
+
     public var isOverBudget: Bool { spent > budget }
     /// Today already spent more than it could.
     public var isOverToday: Bool { dailyAllowance < 0 }
@@ -63,9 +85,15 @@ public struct BudgetPace: Equatable, Sendable {
     /// `spentToday` is the part of `spent` that went on `date`'s day. `fixedSpent` is the part
     /// of `spent` that went on fixed expenses this month, and `fixedToday` the part of that
     /// charged today. `reserved` is what the fixed expenses still to come add up to.
+    ///
+    /// With `.spread`, what was left when the day began (budget − spent before today − fixed
+    /// expenses still to come) is shared over the days left, today included, and what today
+    /// spent outside the fixed expenses comes off today's share; never below zero. Fixed
+    /// expenses already charged count as spent, `dailyBase` and `todayShare` are today's share,
+    /// and «Podrías llevar» is the budget spread evenly over the month.
     public init?(budget: Decimal?, spent: Decimal, spentToday: Decimal = 0,
                  fixedSpent: Decimal = 0, fixedToday: Decimal = 0, reserved: Decimal = 0,
-                 on date: Date, calendar: Calendar = .current) {
+                 mode: AllowanceMode = .carry, on date: Date, calendar: Calendar = .current) {
         guard let budget, budget > 0,
               let days = calendar.range(of: .day, in: .month, for: date)?.count,
               days > 0 else { return nil }
@@ -82,7 +110,20 @@ public struct BudgetPace: Equatable, Sendable {
         self.reserved = max(reserved, 0)
         self.fixedSpent = fixedSpent
         self.spentToday = spentToday
+        self.mode = mode
         self.variableToday = spentToday - fixedToday
+        if mode == .spread {
+            // A fixed expense charged today was still to come when the day began: it comes off
+            // what is shared, not off today's share.
+            let share = (budget - (spent - variableToday) - self.reserved) / Decimal(days - day + 1)
+            let expected = Self.cents(budget * Decimal(day) / Decimal(days))
+            self.dailyBase = share
+            self.todayShare = share
+            self.carriedOver = expected - spent
+            self.expectedToDate = expected
+            self.dailyAllowance = max(0, Self.whole(share - variableToday))
+            return
+        }
         // Multiplied before dividing: 1,000 ÷ 31 × 31 is 999.99… in Decimal, and the last day
         // has to get exactly what is left.
         let pool = budget - fixedSpent - self.reserved

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- **Elige cómo se calcula «Hoy puedes gastar»** en la hoja del presupuesto: «Acumular día a día» (como hasta ahora: lo que te sobra o te pasas hoy se suma o se resta completo mañana) o «Repartir entre los días que quedan» (lo que queda del mes se divide parejo entre los días que faltan, y lo que gastas hoy sale de hoy; nunca baja de $0). La pantalla, la barra, Siri y los widgets usan la misma elección.
 - **Widgets:** «Hoy puedes gastar» en la pantalla de inicio (pequeño y mediano, con un «+» para anotar) y «Hoy y en qué se va» (mediano, con tus tres categorías más grandes). En la pantalla bloqueada: un círculo que se llena con lo que gastas hoy y dice cuánto te queda hoy (o «−$X» si te pasaste), un rectangular con la barra del mes y una línea junto a la fecha («Al día $190 hoy»). Se actualizan al anotar, editar o borrar un gasto y a medianoche. Sin presupuesto, tocar el widget abre la hoja para fijarlo.
 - **Gastos fijos con cualquier frecuencia:** cada semana («todos los lunes, $500»), cada 2 o más semanas, cada quincena (15 y último), cada mes o cada 2 o más meses. Se anotan solos el día que llegan, nunca antes. Se eligen al marcar «Se repite» o en **Más › Gastos fijos**, que muestra el próximo cobro de cada uno y lo que ya llegó y lo que falta este mes.
 - **«Hoy puedes gastar» aparta los fijos que faltan del mes:** el dinero de la renta o de los lunes que vienen ya no se cuenta como disponible. El ticket lo dice: «Fijos por venir · $1,500».

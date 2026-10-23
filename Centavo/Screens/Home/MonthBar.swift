@@ -244,7 +244,23 @@ struct MonthBar: View {
             sumLine("Presupuesto", wholeMoney(pace.budget))
             sumLine("− Llevas", wholeMoney(pace.spent))
             sumLine(isOver ? "= Te pasaste" : "= Te quedan", wholeMoney(pace.remaining.magnitude))
-            if days > 0 {
+            if days > 0, pace.mode == .spread {
+                // «Repartir»: what was left when the day began, shared over the days left.
+                Divider().overlay(Theme.hairline)
+                sumLine("Presupuesto", wholeMoney(pace.budget))
+                sumLine("− Llevas antes de hoy", wholeMoney(pace.spent - pace.variableToday))
+                if pace.reserved > 0 {
+                    sumLine("− Fijos por venir", wholeMoney(pace.reserved))
+                }
+                sumLine("÷ Días que faltan", "\(pace.daysLeft)")
+                sumLine("= Para hoy", wholeMoney(pace.todayShare))
+                if pace.variableToday != 0 {
+                    sumLine(pace.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
+                            wholeMoney(pace.variableToday.magnitude))
+                }
+                Divider().overlay(Theme.hairline)
+                sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
+            } else if days > 0 {
                 Divider().overlay(Theme.hairline)
                 if pace.fixedMonth > 0 {
                     sumLine("Presupuesto", wholeMoney(pace.budget))

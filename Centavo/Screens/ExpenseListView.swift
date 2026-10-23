@@ -62,6 +62,8 @@ struct ExpenseListView: View {
     /// nothing as written («cafecitos» → «Café»).
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
     @AppStorage(FixedPlan.key) private var storedPlans = ""
+    /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
+    @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
@@ -97,7 +99,8 @@ struct ExpenseListView: View {
         let summary = MonthSummarizer.summarize(amounts, inMonthOf: viewed, primary: primaryCurrency)
         let pace = TodayBudget.pace(budget: BudgetStore.amount(from: storedBudget), rows: monthExpenses,
                                     originals: fixedOriginals, plans: FixedPlan.decode(storedPlans),
-                                    primary: primaryCurrency, month: viewed, now: now)
+                                    primary: primaryCurrency, month: viewed, now: now,
+                                    mode: AllowanceMode(stored: storedMode))
         let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
         let listed = searching ? searchResults : shownExpenses
         let groups = DayGroup.split(listed)
@@ -241,6 +244,9 @@ struct ExpenseListView: View {
             .onChange(of: storedCurrency) { _, code in
                 if Store.syncsBudget { BudgetSync.push(code, for: CurrencyPreference.key) }
             }
+            .onChange(of: storedMode) { _, mode in
+                if Store.syncsBudget { BudgetSync.push(mode, for: AllowanceMode.key) }
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Al día")
@@ -328,6 +334,8 @@ struct ExpenseListView: View {
             .onChange(of: storedBudget) { WidgetBridge.refresh() }
             .onChange(of: storedPlans) { WidgetBridge.refresh() }
             .onChange(of: storedCurrency) { WidgetBridge.refresh() }
+            // The widgets get the new rule with the snapshot, and redraw.
+            .onChange(of: storedMode) { WidgetBridge.refresh() }
             .sheet(isPresented: $adding) {
                 // Adding while looking at a past month puts the expense in that month.
                 ExpenseEditorView(expense: nil,
@@ -335,11 +343,11 @@ struct ExpenseListView: View {
             }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
             .sheet(isPresented: $showingBudget) {
-                BudgetSheet(stored: $storedBudget, currency: primaryCurrency) { budget in
+                BudgetSheet(stored: $storedBudget, storedMode: $storedMode, currency: primaryCurrency) { budget, mode in
                     TodayBudget.pace(budget: budget,
                                      rows: expenses.filter { MonthNavigator.isSameMonth($0.date, as: now) },
                                      originals: fixedOriginals, plans: FixedPlan.decode(storedPlans),
-                                     primary: primaryCurrency, month: now, now: now)
+                                     primary: primaryCurrency, month: now, now: now, mode: mode)
                 }
             }
             .confirmsDelete(of: $pendingDelete, primaryCurrency: primaryCurrency, undoable: true) {

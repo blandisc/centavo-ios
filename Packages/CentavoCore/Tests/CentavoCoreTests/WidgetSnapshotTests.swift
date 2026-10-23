@@ -73,4 +73,22 @@ import Testing
         #expect(slices.last?.isRest == true)
         #expect(slices.last?.amount == 2_390)
     }
+
+    @Test func theWidgetUsesTheChosenRule() throws {
+        var spread = snapshot
+        spread.mode = .spread
+        // November 2nd, 300 spent on the 1st: (22,000 − 300 − 1,000) / 29 = 713.79.
+        let pace = try #require(spread.pace(at: Self.date(11, 2), calendar: Self.calendar))
+        #expect(pace.mode == .spread)
+        #expect(pace.dailyAllowance == 713)
+        #expect(try #require(snapshot.pace(at: Self.date(11, 2), calendar: Self.calendar)).dailyAllowance == 1_100)
+    }
+
+    @Test func aSnapshotFromBeforeTheChoiceReadsAsCarry() throws {
+        var old = snapshot
+        old.mode = nil
+        let back = try #require(WidgetSnapshot.decode(old.encoded()))
+        #expect(back.mode == nil)
+        #expect(try #require(back.pace(at: Self.date(11, 2), calendar: Self.calendar)).mode == .carry)
+    }
 }
