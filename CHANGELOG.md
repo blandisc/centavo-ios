@@ -15,7 +15,7 @@
 
 ### Changed
 - **Un solo widget mediano:** «Hoy puedes gastar» en mediano muestra el ritmo del presupuesto o en qué se va; se elige manteniéndolo presionado › «Editar widget». «Hoy y en qué se va» ya no sale aparte en la galería (si lo tenías puesto, vuelve a poner el mediano y elige «En qué se va»).
-- **Widgets «Hoy puedes gastar»:** en el pequeño, «Llevas $X» va en letra normal y «de $Y» más chica, siempre completa; en el mediano, «Podrías llevar $X» ya no se encima con la barra del mes.
+- **Widgets «Hoy puedes gastar»:** en el pequeño, bajo la barra solo va «Llevas $X», más grande y completo; en el mediano, «Podrías llevar $X» ya no se encima con la barra del mes.
 - «Hoy puedes gastar» ahora pasa completo al día siguiente lo que te sobró o te pasaste: el mes te da un monto fijo por día (presupuesto menos fijos, entre los días del mes). Con $700 al día, si el lunes gastas $300, el martes puedes gastar $1,100; si el martes gastas $1,500, el miércoles puedes $300. Si hoy te pasas, la cifra lo dice en rojo («Hoy te pasaste $400»). Debajo, «Vas $400 abajo del ritmo» dice cuánto traes de los días anteriores, y la cuenta al tocar la barra lo desglosa.
 - «Hoy puedes gastar» baja peso por peso con lo que gastas hoy: con $630 para hoy, gastar $630 lo deja en $0 (antes decía $567, porque repartía lo de hoy entre los días que faltan). Mañana se vuelve a calcular con lo gastado hasta hoy. La cuenta al tocar la barra muestra «Para hoy» y «− Gastado hoy».
 - Siri dice lo que te queda libre después de apartar los fijos por venir, y cuánto está apartado: «Te quedan $1,000.00 libres (más $5,000.00 apartados para fijos). Hoy puedes gastar $100.» Es la misma cifra que la pantalla.
