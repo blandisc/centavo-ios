@@ -24,7 +24,6 @@ struct OnboardingView: View {
     @State private var draftAmount = ""
     @State private var draftDay = 1
     @FocusState private var focused: Field?
-    @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var pointIconWidth = Theme.Size.iconColumnNarrow
 
     private enum Field { case budget, name, amount }
@@ -257,10 +256,8 @@ struct OnboardingView: View {
                                      @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                // Decorative; with accessibility text it would push the page out of reach.
-                if !typeSize.isAccessibilitySize {
-                    OnboardingEmblem(systemImage: symbol)
-                }
+                // Decorative; with accessibility text it stays out of the way (StepEmblem).
+                StepEmblem(systemImage: symbol)
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text("Paso \(page + 1) de \(pages)").ticketCaption()
                     Text(title)
@@ -345,43 +342,8 @@ struct OnboardingView: View {
     }
 }
 
-/// The brass symbol on a raised, hairline-edged tile that heads each page: the page's best
-/// one-word picture. Decorative: VoiceOver reads the title that follows, not the symbol.
-private struct OnboardingEmblem: View {
-    let systemImage: String
-    @ScaledMetric(relativeTo: .body) private var tile = Theme.Size.onboardingEmblem
-
-    var body: some View {
-        Image(systemName: systemImage)
-            .font(Theme.Symbol.large)
-            .foregroundStyle(Theme.brass)
-            .frame(width: tile, height: tile)
-            .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Theme.hairline)
-            }
-            .accessibilityHidden(true)
-    }
-}
-
-/// The bottom-bar progress: one pill per page, the current one longer, like the carousel's
-/// dots. The «Paso X de 5» caption above the title carries the progress for VoiceOver.
-private struct StepDots: View {
-    let current: Int
-    let of: Int
-
-    var body: some View {
-        HStack(spacing: Theme.Space.xxs) {
-            ForEach(0..<of, id: \.self) { index in
-                Capsule()
-                    .fill(current == index ? Theme.ink : Theme.dimmed)
-                    .frame(width: current == index ? Theme.Size.pageDotCurrent : Theme.Size.pageDot,
-                           height: Theme.Size.pageDot)
-            }
-        }
-    }
-}
-
+/// The bottom-bar progress of the welcome, one pill per page: hidden from VoiceOver because
+/// the «Paso X de 5» caption above each title says where the person is.
 private struct FixedDraft: Identifiable {
     let id = UUID()
     let name: String

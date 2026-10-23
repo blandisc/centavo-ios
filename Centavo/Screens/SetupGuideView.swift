@@ -6,6 +6,9 @@ import SwiftUI
 /// Apple does not let an app create that automation, so the next best thing is drawing each
 /// Atajos screen as it will look and showing where to tap. Connecting the amount is two taps
 /// in a row that nobody guesses, so that step plays them out on a loop, like a short video.
+///
+/// Each step reads like the welcome: a brass emblem, a «Paso X de 8» caption, a title, a short
+/// lead and the content; the dots between the bottom-bar buttons show where the person is.
 struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
     /// Payments the automation saved (only it keeps the raw Wallet text): proof that it works.
@@ -23,6 +26,11 @@ struct SetupGuideView: View {
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
+
+    /// How far the dot row slides toward its side to look centered (see the welcome).
+    private var stepDotShift: CGFloat {
+        step < steps.count / 2 ? Theme.Size.pageDotShift : -Theme.Size.pageDotShift
+    }
 
     var body: some View {
         NavigationStack {
@@ -49,15 +57,12 @@ struct SetupGuideView: View {
                     .disabled(step == 0)
                     .accessibilityIdentifier("guia-anterior")
                     Spacer()
-                    // Big enough to read at a glance while switching back from Atajos.
-                    Text("\(step + 1) de \(steps.count)")
-                        .font(.ticket(.bodyMedium))
-                        .tracking(Theme.Tracking.title)
-                        .textCase(.uppercase)
-                        .monospacedDigit()
-                        .fixedSize()
-                        .padding(.horizontal, Theme.Space.l)
-                        .accessibilityLabel("Paso \(step + 1) de \(steps.count)")
+                    StepDots(current: step, of: steps.count)
+                        // The «Paso X de 8» caption above each title carries the progress.
+                        .accessibilityHidden(true)
+                        // The lit pill is wider than the dot, so centering the eight slots left
+                        // the current one off the middle (measured): shift it toward its side.
+                        .offset(x: stepDotShift)
                     Spacer()
                     Button("Paso siguiente", systemImage: "chevron.right") {
                         withAnimation { step += 1 }
@@ -71,13 +76,25 @@ struct SetupGuideView: View {
 
     private func page(_ guide: GuideStep, number: Int) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.lx) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                StepEmblem(systemImage: guide.symbol)
+
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text("Paso \(number) de \(steps.count)").ticketCaption()
+                    Text("Paso \(number) de \(steps.count)")
+                        .ticketCaption()
+                        .accessibilityLabel("Paso \(number) de \(steps.count)")
                     Text(guide.title)
-                        .font(.ticket(.subheading))
+                        .font(.ticket(.pageTitle))
                         .foregroundStyle(Theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
+                }
+
+                if let lead = guide.lead {
+                    Text(lead)
+                        .font(.ticket(.body))
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if case .frames(let frames) = guide.scene {
@@ -94,24 +111,20 @@ struct SetupGuideView: View {
                 if !guide.taps.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Space.sm) {
                         ForEach(Array(guide.taps.enumerated()), id: \.offset) { index, tap in
-                            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
-                                Text("\(index + 1)")
-                                    .foregroundStyle(Theme.brass)
-                                    .frame(minWidth: stepNumberWidth, alignment: .leading)
-                                Text(tap).foregroundStyle(Theme.ink)
-                            }
-                            .font(.ticket(.body))
-                            .lineSpacing(Theme.Space.guideLine)
-                            .accessibilityElement(children: .combine)
+                            instruction("\(index + 1)", text: tap)
                         }
                     }
+                    .padding(Theme.Space.l)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .ticketPanel()
+                }
+
+                if let warning = guide.warning {
+                    warningBlock(warning)
                 }
 
                 if let note = guide.note {
-                    Text(note)
-                        .font(.ticket(.detail))
-                        .lineSpacing(Theme.Space.guideLine)
-                        .foregroundStyle(Theme.muted)
+                    noteRow(note)
                 }
 
                 if guide.opensShortcuts {
@@ -123,20 +136,75 @@ struct SetupGuideView: View {
 
                 if number == steps.count {
                     CaptureCheck(latest: captured.first)
-                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                        Text("Bueno saber").ticketCaption()
-                        ForEach(GuideStep.notes, id: \.self) { note in
-                            Text(note)
-                                .font(.ticket(.detail))
-                                .lineSpacing(Theme.Space.guideLine)
-                                .foregroundStyle(Theme.muted)
-                        }
-                    }
+                    goodToKnow
                 }
             }
             .padding(.horizontal, Theme.Space.screen)
-            .padding(.vertical, Theme.Space.l)
+            .padding(.vertical, Theme.Space.xxl)
         }
+    }
+
+    /// One numbered instruction of a step: the number in brass, then what to do.
+    private func instruction(_ number: String, text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
+            Text(number)
+                .foregroundStyle(Theme.brass)
+                .monospacedDigit()
+                .frame(minWidth: stepNumberWidth, alignment: .leading)
+            Text(text)
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.ticket(.body))
+        .lineSpacing(Theme.Space.guideLine)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The trap of a step told as a warning, not a quiet note: a triangle, brass, first lines.
+    private func warningBlock(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(Theme.brass)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.ticket(.callout))
+                .foregroundStyle(Theme.ink)
+                .lineSpacing(Theme.Space.guideLine)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Space.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ticketPanel()
+        .accessibilityElement(children: .combine)
+    }
+
+    /// A quiet secondary block: an info mark under a step or inside «Bueno saber».
+    private func noteRow(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(Theme.faint)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.ticket(.detail))
+                .foregroundStyle(Theme.muted)
+                .lineSpacing(Theme.Space.guideLine)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The last step's side panel: what the automation will and won't capture.
+    private var goodToKnow: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Bueno saber").ticketCaption()
+            ForEach(GuideStep.notes, id: \.self) { note in
+                noteRow(note)
+            }
+        }
+        .padding(Theme.Space.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ticketPanel()
     }
 }
 
@@ -144,8 +212,12 @@ struct SetupGuideView: View {
 
 private struct GuideStep {
     let title: String
+    /// The symbol of the step's brass emblem.
+    let symbol: String
+    var lead: String? = nil
     let taps: [String]
-    var note: String?
+    var warning: String? = nil
+    var note: String? = nil
     var opensShortcuts = false
     let scene: ShortcutsScene
 
@@ -154,15 +226,19 @@ private struct GuideStep {
     static let all: [GuideStep] = [
         GuideStep(
             title: "Abre Atajos",
+            symbol: "bolt.horizontal",
+            lead: "Atajos corre una acción cada vez que pagas. Al día no puede crear la "
+                + "automatización por ti: Apple no lo permite. Son 2 minutos y se hace una sola vez.",
             taps: ["Abre la app Atajos (viene con el iPhone).",
                    "Abajo, al centro, toca «Automatización»."],
-            note: "Atajos es la que corre una acción cada vez que pagas. Al día no puede crear "
-                + "la automatización por ti: Apple no lo permite. Son 2 minutos y se hace una vez.",
             opensShortcuts: true,
             scene: .tabs
         ),
         GuideStep(
             title: "Elige «Wallet»",
+            symbol: "wallet.pass",
+            lead: "Aquí le dices a Atajos qué te hace correr la acción: el pago sin contacto "
+                + "de Wallet.",
             taps: ["Toca «Nueva automatización» (o «+» arriba, si ya tienes otras).",
                    "En el buscador de abajo escribe «Wallet».",
                    "Toca «Wallet»: «Al realizar un pago sin contacto…»."],
@@ -171,6 +247,9 @@ private struct GuideStep {
         ),
         GuideStep(
             title: "Que corra sola",
+            symbol: "play.fill",
+            lead: "La automatización se ejecuta sola en cuanto pagas; con «Notificar al "
+                + "ejecutar», su aviso te dice cuánto te queda.",
             taps: ["Elige las tarjetas con las que pagas.",
                    "Marca «Ejecutar de inmediato».",
                    "Activa «Notificar al ejecutar»: después de cada pago te dirá cuánto te queda.",
@@ -179,40 +258,52 @@ private struct GuideStep {
         ),
         GuideStep(
             title: "Toca «Crear nuevo atajo»",
+            symbol: "plus.square",
             taps: ["Arriba, en «Empezar», toca «Crear nuevo atajo»."],
-            note: "Ojo: no toques Al día en la lista de apps. Así la automatización se crea "
-                + "sin el importe del pago y no anota nada. Si ya lo hiciste, ve a «Automatización», "
-                + "desliza esa automatización a la izquierda, bórrala y empieza de nuevo.",
+            warning: "Ojo: no toques Al día en la lista de apps. Así la automatización se crea "
+                + "sin el importe del pago y no anota nada. Si ya lo hiciste, ve a "
+                + "«Automatización», desliza esa automatización a la izquierda, bórrala y "
+                + "empieza de nuevo.",
             scene: .newShortcut
         ),
         GuideStep(
             title: "Agrega «Registrar gasto»",
+            symbol: "magnifyingglass",
+            lead: "La acción de Al día que guarda cada pago.",
             taps: ["Toca «Buscar acciones» y escribe «Registrar gasto».",
                    "Toca «Registrar gasto», la de Al día."],
             scene: .addAction
         ),
         GuideStep(
             title: "Conecta el importe",
+            symbol: "dollarsign.circle",
+            lead: "La acción tiene dos datos por llenar, el importe y el comercio, y cada uno "
+                + "se conecta con los datos del pago.",
             taps: ["En la acción, toca la palabra azul «Importe».",
                    "Arriba del teclado aparece «Entrada del atajo». Tócala.",
                    "En la acción quedó una burbuja azul. Tócala otra vez.",
                    "Se abre una lista: elige «Importe»."],
-            note: "Este es el paso que nadie adivina: hay que tocar la burbuja una segunda vez para "
-                + "elegir qué dato del pago va en cada lugar.",
+            note: "Este es el paso que nadie adivina: hay que tocar la burbuja una segunda vez "
+                + "para elegir qué dato del pago va en cada lugar.",
             scene: .connect(field: "Importe", done: [])
         ),
         GuideStep(
             title: "Conecta el comercio",
+            symbol: "bag",
+            lead: "Así cada pago llega con el lugar donde lo hiciste.",
             taps: ["Toca la palabra azul «Comercio».",
                    "Toca «Entrada del atajo» arriba del teclado.",
                    "Toca la burbuja y elige «Comercio».",
                    "Arriba a la derecha, toca la palomita azul para guardar."],
-            note: "La tarjeta es opcional. Si la quieres, toca la flechita de la acción para ver "
-                + "«Tarjeta» y conéctala igual, eligiendo la tarjeta en la lista.",
+            note: "La tarjeta es opcional. Si la quieres, toca la flechita de la acción para "
+                + "ver «Tarjeta» y conéctala igual, eligiendo la tarjeta en la lista.",
             scene: .connect(field: "Comercio", done: ["Importe"])
         ),
         GuideStep(
             title: "Pruébalo",
+            symbol: "creditcard",
+            lead: "La única prueba cierta es un pago real: acerca el iPhone o el reloj a la "
+                + "terminal y vuelve aquí.",
             taps: ["Paga algo acercando el iPhone o el reloj a la terminal.",
                    "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
             scene: .finished
@@ -231,35 +322,45 @@ private struct GuideStep {
     static let ios27: [GuideStep] = [
         GuideStep(
             title: "Crea un atajo nuevo",
+            symbol: "plus.square",
+            lead: "Al día no puede crearlo por ti: Apple no lo permite. Toma 2 minutos y se "
+                + "hace una sola vez.",
             taps: [],
-            note: "Al día no puede crearlo por ti: Apple no lo permite. Toma 2 minutos y se hace una sola vez.",
             opensShortcuts: true,
             scene: .frames(GuideFrame.newShortcut)
         ),
         GuideStep(
             title: "Que se active con una notificación",
+            symbol: "bell.badge.fill",
+            lead: "«Notificación» anota todas tus compras con Wallet: en línea y acercando el "
+                + "teléfono.",
             taps: [],
-            note: "«Notificación» anota todas tus compras con Wallet: en línea y acercando el teléfono.",
             opensShortcuts: true,
             scene: .frames(GuideFrame.pickNotification)
         ),
         GuideStep(
             title: "Que sea la de Wallet",
+            symbol: "wallet.pass",
+            lead: "Solo las notificaciones de Wallet abren este atajo.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.pickWalletApp)
         ),
         GuideStep(
             title: "Agrega a Al día",
+            symbol: "magnifyingglass",
+            lead: "La acción de Al día que guarda cada aviso de Wallet.",
             taps: [],
-            note: "Si no aparece, abre Al día una vez y vuelve a buscar: Atajos solo conoce las apps que ya abriste.",
+            note: "Si no aparece, abre Al día una vez y vuelve a buscar: Atajos solo conoce "
+                + "las apps que ya abriste.",
             opensShortcuts: true,
             scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
             title: "Conéctalos",
+            symbol: "link",
+            lead: "Así Al día recibe el aviso completo: la tarjeta, el comercio y el monto.",
             taps: [],
-            note: "Así Al día recibe el aviso completo: la tarjeta, el comercio y el monto.",
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectNotice)
         ),
@@ -267,19 +368,26 @@ private struct GuideStep {
         // the merchant (seen on the owner's iPhone, 2026-10-21): it has to be connected apart.
         GuideStep(
             title: "Conecta el comercio",
+            symbol: "bag",
+            lead: "Wallet pone el comercio en el subtítulo del aviso, y Atajos no lo manda si "
+                + "no lo conectas.",
             taps: [],
-            note: "Wallet pone el comercio en el subtítulo del aviso, y Atajos no lo manda si no lo conectas.",
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectSubtitle)
         ),
         GuideStep(
             title: "Guárdalo",
+            symbol: "checkmark.circle",
+            lead: "Ya casi: con esto, cada compra con Wallet llega sola.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.saveNotice)
         ),
         GuideStep(
             title: "Pruébalo",
+            symbol: "creditcard",
+            lead: "La única prueba cierta es un pago real: compra en línea o acercando el "
+                + "teléfono, y vuelve aquí.",
             taps: ["Compra algo, en línea o acercando el teléfono.",
                    "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
             scene: .frames([])
