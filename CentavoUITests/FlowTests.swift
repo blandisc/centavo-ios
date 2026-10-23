@@ -667,6 +667,33 @@ final class FlowTests: XCTestCase {
         snap("flujo-en-que-se-va-letra-de-accesibilidad")
     }
 
+    /// «Mosaico» with the largest text: blocks sized by their share had no room for a name or an
+    /// amount. In accessibility sizes each category is a full-width block as tall as its text;
+    /// each has to fit across the screen, be tappable (it filters the list) and say everything.
+    func testMosaicoConLetraDeAccesibilidadMuestraCadaCategoriaCompleta() {
+        let app = launch(demo: true, budget: true, extra: [
+            "-whereItGoesStyle", "mosaic",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+        let section = app.descendants(matching: .any)["en-que-se-va"]
+        for _ in 0..<6 where !section.isHittable { app.swipeUp() }
+        require(section, "No aparece «En qué se va»")
+        let tiles = section.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'categoria-'"))
+        XCTAssertGreaterThanOrEqual(tiles.count, 2, "El mosaico no tiene bloques de categoría")
+        let window = app.windows.firstMatch.frame
+        for index in 0..<tiles.count {
+            let tile = tiles.element(boundBy: index)
+            let name = String(tile.identifier.dropFirst("categoria-".count))
+            XCTAssertTrue(tile.label.hasPrefix(name), "Bloque sin el nombre «\(name)»: «\(tile.label)»")
+            XCTAssertTrue(tile.label.contains("$"), "Bloque sin monto: «\(tile.label)»")
+            XCTAssertLessThanOrEqual(tile.frame.maxX, window.maxX + 0.5, "«\(name)» se sale de la pantalla")
+            XCTAssertGreaterThanOrEqual(tile.frame.minX, window.minX - 0.5, "«\(name)» se sale de la pantalla")
+            XCTAssertGreaterThanOrEqual(tile.frame.height, 44, "«\(name)» es muy chico para tocarlo")
+        }
+        snap("flujo-mosaico-letra-de-accesibilidad")
+    }
+
     /// With the largest text the day's divider in the list («HOY · 23 OCT  ——  $1,234») was cut
     /// to «HO…». In accessibility sizes the day gets its own lines and the total goes under it:
     /// every divider has to fit across the screen and carry the whole day and month.
@@ -679,7 +706,7 @@ final class FlowTests: XCTestCase {
         require(divider, "No aparece el divisor del día con letra grande")
         let window = app.windows.firstMatch.frame
         let dividers = app.descendants(matching: .any).matching(identifier: "divisor-dia")
-        let day = try! NSRegularExpression(pattern: #"\d{1,2} [a-záéíóú]{3}"#, options: .caseInsensitive)
+        let day = try! NSRegularExpression(pattern: #"\d{1,2} (de )?[a-záéíóú]{3}"#, options: .caseInsensitive)
         for index in 0..<dividers.count {
             let element = dividers.element(boundBy: index)
             guard element.isHittable else { continue }
