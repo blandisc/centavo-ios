@@ -667,6 +667,31 @@ final class FlowTests: XCTestCase {
         snap("flujo-en-que-se-va-letra-de-accesibilidad")
     }
 
+    /// With the largest text the day's divider in the list («HOY · 23 OCT  ——  $1,234») was cut
+    /// to «HO…». In accessibility sizes the day gets its own lines and the total goes under it:
+    /// every divider has to fit across the screen and carry the whole day and month.
+    func testElDivisorDelDiaConLetraDeAccesibilidadCabeCompleto() {
+        let app = launch(demo: true, budget: true, extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+        let divider = app.descendants(matching: .any)["divisor-dia"].firstMatch
+        for _ in 0..<12 where !divider.isHittable { app.swipeUp() }
+        require(divider, "No aparece el divisor del día con letra grande")
+        let window = app.windows.firstMatch.frame
+        let dividers = app.descendants(matching: .any).matching(identifier: "divisor-dia")
+        let day = try! NSRegularExpression(pattern: #"\d{1,2} [a-záéíóú]{3}"#, options: .caseInsensitive)
+        for index in 0..<dividers.count {
+            let element = dividers.element(boundBy: index)
+            guard element.isHittable else { continue }
+            let label = element.label
+            XCTAssertNotNil(day.firstMatch(in: label, range: NSRange(label.startIndex..., in: label)),
+                            "Divisor sin día y mes: «\(label)»")
+            XCTAssertLessThanOrEqual(element.frame.maxX, window.maxX + 0.5, "«\(label)» se sale de la pantalla")
+            XCTAssertGreaterThanOrEqual(element.frame.minX, window.minX - 0.5, "«\(label)» se sale de la pantalla")
+        }
+        snap("flujo-divisor-del-dia-letra-de-accesibilidad")
+    }
+
     // MARK: Salud de la captura
 
     func testDiceCuandoLlegoElUltimoPagoDeWallet() {

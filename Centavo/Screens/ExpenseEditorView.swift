@@ -49,7 +49,7 @@ struct ExpenseEditorView: View {
         CategoryMemory.remembered(for: merchant, rules: CategoryRules(stored: storedRules),
                                   history: pastExpenses, hidden: notAutoAssigned)
     }
-    @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = 22
+    @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = Theme.Size.categorySymbol
 
     /// Whether something was typed or changed since the sheet opened.
     private var hasChanges: Bool {
@@ -98,39 +98,18 @@ struct ExpenseEditorView: View {
 
     private func field(_ title: String, text: Binding<String>, prompt: String,
                        identifier: String) -> some View {
-        TextField(title, text: text, prompt: Text(prompt).foregroundStyle(Theme.faint))
-            .font(.ticket(17, relativeTo: .body))
-            .tracking(0.6)
-            .foregroundStyle(Theme.ink)
-            .accessibilityIdentifier(identifier)
-    }
-
-    private func hint(_ text: String) -> some View {
-        Text(text)
-            .font(.ticket(11, relativeTo: .caption2))
-            .tracking(0.6)
-            .foregroundStyle(Theme.faint)
+        TicketTextField(title, text: text, prompt: prompt, identifier: identifier)
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Monto", text: $amountText,
-                              prompt: Text("0.00").foregroundStyle(Theme.faint))
-                        .font(.ticket(44, weight: .medium, relativeTo: .largeTitle))
-                        .tracking(-1.5)
-                        .foregroundStyle(Theme.ink)
-                        .keyboardType(.decimalPad)
+                    AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "monto")
                         .focused($amountFocused)
-                        .groupsThousands($amountText)
-                        .accessibilityIdentifier("monto")
                     // The decimal pad has no minus key, so a refund is a switch rather than a sign.
                     Toggle(isOn: $isRefund) {
-                        Text("Es una devolución")
-                            .font(.ticket(12, relativeTo: .footnote))
-                            .tracking(1.2)
-                            .textCase(.uppercase)
+                        SectionLabel("Es una devolución")
                     }
                     .tint(Theme.brass)
                     .accessibilityIdentifier("devolucion")
@@ -157,7 +136,7 @@ struct ExpenseEditorView: View {
                     Text("Comercio").ticketCaption()
                 } footer: {
                     if let shown = expense?.displayName, shown != expense?.merchant, merchant == expense?.merchant {
-                        hint("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
+                        HintText("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -168,13 +147,13 @@ struct ExpenseEditorView: View {
                     Text("Categoría (opcional)").ticketCaption()
                 } footer: {
                     if let expense, expense.hasSuggestedCategory, category == expense.category {
-                        hint("Sugerida por Al día con tus gastos de ejemplo. Elige otra si no te queda; la que elijas se recuerda.")
+                        HintText("Sugerida por Al día con tus gastos de ejemplo. Elige otra si no te queda; la que elijas se recuerda.")
                     } else if let remembered = rememberedCategory {
-                        hint("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
+                        HintText("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
                     } else if let suggested = CategoryMemory.suggestion(
                         for: merchant, rules: CategoryRules(stored: storedRules), history: pastExpenses,
                         hidden: notAutoAssigned) {
-                        hint("Sugerida para \(merchant.trimmingCharacters(in: .whitespaces)): \(suggested). Cámbiala si no te queda.")
+                        HintText("Sugerida para \(merchant.trimmingCharacters(in: .whitespaces)): \(suggested). Cámbiala si no te queda.")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -185,7 +164,7 @@ struct ExpenseEditorView: View {
                     Text("¿Con qué pagaste? (opcional)").ticketCaption()
                 } footer: {
                     if paymentSources.isEmpty {
-                        hint("Agrega tus tarjetas una vez (BBVA, Nu…). La que marques como predeterminada "
+                        HintText("Agrega tus tarjetas una vez (BBVA, Nu…). La que marques como predeterminada "
                              + "en «Más › Tarjetas y categorías» ya vendrá elegida.")
                     }
                 }
@@ -193,17 +172,11 @@ struct ExpenseEditorView: View {
 
                 Section {
                     DatePicker(selection: $date, in: ...Date.now) {
-                        Text("Fecha")
-                            .font(.ticket(12, relativeTo: .footnote))
-                            .tracking(1.2)
-                            .textCase(.uppercase)
+                        SectionLabel("Fecha")
                     }
                     if expense?.isRepeat != true {
                         Toggle(isOn: $repeatsMonthly) {
-                            Text("Se repite")
-                                .font(.ticket(12, relativeTo: .footnote))
-                                .tracking(1.2)
-                                .textCase(.uppercase)
+                            SectionLabel("Se repite")
                         }
                         .tint(Theme.brass)
                         .accessibilityIdentifier("se-repite")
@@ -213,9 +186,9 @@ struct ExpenseEditorView: View {
                     }
                 } footer: {
                     if repeatsMonthly {
-                        hint(FixedWording.howItRepeats(rule, from: date))
+                        HintText(FixedWording.howItRepeats(rule, from: date))
                     } else if expense?.isRepeat == true {
-                        hint("Se anotó solo, de un gasto fijo.")
+                        HintText("Se anotó solo, de un gasto fijo.")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -225,13 +198,13 @@ struct ExpenseEditorView: View {
                 if expense == nil {
                     Section {
                         Button("Dilo en una frase", systemImage: "text.bubble") { askingSentence = true }
-                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                            .font(.ticket(.footnoteStrong))
                             .foregroundStyle(Theme.brass)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                             .disabled(readingSentence)
                             .accessibilityIdentifier("en-una-frase")
                     } footer: {
-                        hint("«230 de tacos ayer, en efectivo» llena el monto, el comercio, el día y cómo pagaste.")
+                        HintText("«230 de tacos ayer, en efectivo» llena el monto, el comercio, el día y cómo pagaste.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -239,13 +212,13 @@ struct ExpenseEditorView: View {
                 if expense?.isRepeat == true, original != nil {
                     Section {
                         Button("Dejar de repetir cada mes") { stopRepeating() }
-                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                            .tracking(1.6)
+                            .font(.ticket(.footnoteStrong))
+                            .tracking(Theme.Tracking.caption)
                             .textCase(.uppercase)
                             .foregroundStyle(Theme.brass)
                             .accessibilityIdentifier("dejar-de-repetir")
                     } footer: {
-                        hint("Los meses ya anotados se quedan; el siguiente ya no llega.")
+                        HintText("Los meses ya anotados se quedan; el siguiente ya no llega.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -257,7 +230,7 @@ struct ExpenseEditorView: View {
                     } header: {
                         Text("Dónde").ticketCaption()
                     } footer: {
-                        hint("Dónde estaba tu iPhone al anotarse. En compras en línea es donde estabas tú.")
+                        HintText("Dónde estaba tu iPhone al anotarse. En compras en línea es donde estabas tú.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -265,8 +238,8 @@ struct ExpenseEditorView: View {
                 if expense != nil {
                     Section {
                         Button("Borrar gasto", role: .destructive) { confirmingDelete = expense }
-                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                            .tracking(1.6)
+                            .font(.ticket(.footnoteStrong))
+                            .tracking(Theme.Tracking.caption)
                             .textCase(.uppercase)
                             .accessibilityIdentifier("borrar-gasto")
                     }
@@ -287,7 +260,7 @@ struct ExpenseEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(.footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
             }
@@ -344,17 +317,17 @@ struct ExpenseEditorView: View {
     /// Places already paid at, one tap away while the name is typed.
     private var merchantSuggestions: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Space.s) {
                 ForEach(MerchantSuggestions.matches(for: merchant, history: pastExpenses), id: \.self) { name in
                     Button(name) {
                         merchant = name
                         // The merchant is done: the keyboard would only cover the categories.
                         merchantFocused = false
                     }
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(.footnote))
                         .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 44)
+                        .padding(.horizontal, Theme.Space.ml)
+                        .frame(minHeight: Theme.Size.tapTarget)
                         .background(Theme.background, in: Capsule())
                         .overlay { Capsule().strokeBorder(Theme.hairline) }
                         .buttonStyle(.plain)
@@ -372,7 +345,8 @@ struct ExpenseEditorView: View {
         let names = CategoryStyle.offered(known: Array(CategoryMemory.known(in: pastExpenses).prefix(8)),
                                           custom: customCategories, current: category,
                                           hidden: UserCatalog.decodeNames(storedHidden))
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)],
+                         spacing: Theme.Space.s) {
             ForEach(names, id: \.self) { name in
                 categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
                              selected: category == name) {
@@ -381,7 +355,7 @@ struct ExpenseEditorView: View {
             }
             categoryChip("Nueva categoría", icon: "plus", selected: false) { creating = .category }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Theme.Space.xs)
     }
 
     /// The cards and cash set up in «Tarjetas y categorías», plus any other a payment came
@@ -394,7 +368,8 @@ struct ExpenseEditorView: View {
         for name in knownCards + [card] where !name.isEmpty && !names.contains(where: { UserCatalog.same($0, name) }) {
             names.append(name)
         }
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)],
+                         spacing: Theme.Space.s) {
             ForEach(names, id: \.self) { name in
                 let icon = sources.first { UserCatalog.same($0.name, name) }?.icon
                     ?? (UserCatalog.same(name, "Efectivo") ? "banknote" : "creditcard")
@@ -404,7 +379,7 @@ struct ExpenseEditorView: View {
             }
             categoryChip("Agregar tarjeta", icon: "plus", selected: false, kind: "tarjeta") { creating = .source }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Theme.Space.xs)
         .accessibilityIdentifier("tarjetas")
     }
 
@@ -421,25 +396,22 @@ struct ExpenseEditorView: View {
     private func categoryChip(_ name: String, icon: String, selected: Bool, kind: String = "categoria",
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 5) {
+            VStack(spacing: Theme.Space.xxs) {
                 Image(systemName: icon)
-                    .font(.body)
+                    .font(Theme.Symbol.regular)
                     // Every icon in the same box, so the names line up.
                     .frame(height: iconHeight)
                     .foregroundStyle(selected ? Theme.onBrass : Theme.brass)
                     .accessibilityHidden(true)
                 Text(name)
-                    .font(.ticket(11, relativeTo: .caption))
+                    .font(.ticket(.caption))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(Theme.MinimumScale.text)
                     .foregroundStyle(selected ? Theme.onBrass : Theme.ink)
             }
-            .frame(maxWidth: .infinity, minHeight: 58)
-            .padding(.horizontal, 4)
-                .background(selected ? Theme.brass : Theme.background, in: RoundedRectangle(cornerRadius: 8))
-                .overlay {
-                    if !selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline) }
-                }
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.categoryTile)
+            .padding(.horizontal, Theme.Space.xxs)
+                .choiceTile(selected: selected)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -587,7 +559,7 @@ struct ExpenseEditorView: View {
 #Preview("Nuevo") {
     ExpenseEditorView(expense: nil)
         .modelContainer(for: Expense.self, inMemory: true)
-        .preferredColorScheme(.dark)
+        .ticketPreview()
 }
 
 /// The map under an expense, as Wallet shows it under a charge, with the place's name.
@@ -597,19 +569,19 @@ private struct PlaceMap: View {
     @Environment(\.modelContext) private var context
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 400,
                                                            longitudinalMeters: 400)),
                 interactionModes: []) {
                 Marker(expense.displayName ?? expense.merchant, coordinate: coordinate)
                     .tint(Theme.brass)
             }
-            .frame(height: 160)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .frame(height: Theme.Size.mapPreview)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
             .accessibilityLabel("Mapa de dónde se pagó")
             if let name = expense.placeName {
                 Text(name)
-                    .font(.ticket(13, relativeTo: .footnote))
+                    .font(.ticket(.footnote))
                     .foregroundStyle(Theme.ink)
                     .accessibilityIdentifier("lugar")
             }
@@ -619,11 +591,11 @@ private struct PlaceMap: View {
                 expense.placeName = nil
                 try? context.save()
             }
-            .font(.ticket(12, relativeTo: .footnote))
+            .font(.ticket(.detail))
             .buttonStyle(.borderless)
-            .frame(minHeight: 44)
+            .frame(minHeight: Theme.Size.tapTarget)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Theme.Space.xs)
         .task { await nameThePlace() }
     }
 

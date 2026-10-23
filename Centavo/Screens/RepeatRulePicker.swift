@@ -34,10 +34,7 @@ struct RepeatRulePicker: View {
         .accessibilityIdentifier("frecuencia")
         if rule.kind != .semimonthly {
             Stepper(value: count, in: 1...12) {
-                Text(countText)
-                    .font(.ticket(12, relativeTo: .footnote))
-                    .tracking(1.2)
-                    .textCase(.uppercase)
+                SectionLabel(countText)
             }
             .accessibilityIdentifier("cada-cuanto")
         }

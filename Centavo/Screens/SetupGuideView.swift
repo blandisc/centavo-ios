@@ -19,6 +19,7 @@ struct SetupGuideView: View {
         return descriptor
     }
     @State private var step = 0
+    @ScaledMetric(relativeTo: .body) private var stepNumberWidth = Theme.Size.stepNumber
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
@@ -38,7 +39,7 @@ struct SetupGuideView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Listo") { dismiss() }
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                        .font(.ticket(.footnoteStrong))
                         .accessibilityIdentifier("hoja-listo")
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -50,12 +51,12 @@ struct SetupGuideView: View {
                     Spacer()
                     // Big enough to read at a glance while switching back from Atajos.
                     Text("\(step + 1) de \(steps.count)")
-                        .font(.ticket(15, weight: .medium, relativeTo: .body))
-                        .tracking(2)
+                        .font(.ticket(.bodyMedium))
+                        .tracking(Theme.Tracking.title)
                         .textCase(.uppercase)
                         .monospacedDigit()
                         .fixedSize()
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Theme.Space.l)
                         .accessibilityLabel("Paso \(step + 1) de \(steps.count)")
                     Spacer()
                     Button("Paso siguiente", systemImage: "chevron.right") {
@@ -70,11 +71,11 @@ struct SetupGuideView: View {
 
     private func page(_ guide: GuideStep, number: Int) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.lx) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text("Paso \(number) de \(steps.count)").ticketCaption()
                     Text(guide.title)
-                        .font(.ticket(20, weight: .semibold, relativeTo: .title3))
+                        .font(.ticket(.subheading))
                         .foregroundStyle(Theme.ink)
                         .accessibilityAddTraits(.isHeader)
                 }
@@ -91,16 +92,16 @@ struct SetupGuideView: View {
                 }
 
                 if !guide.taps.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
                         ForEach(Array(guide.taps.enumerated()), id: \.offset) { index, tap in
-                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
                                 Text("\(index + 1)")
                                     .foregroundStyle(Theme.brass)
-                                    .frame(minWidth: 16, alignment: .leading)
+                                    .frame(minWidth: stepNumberWidth, alignment: .leading)
                                 Text(tap).foregroundStyle(Theme.ink)
                             }
-                            .font(.ticket(15, relativeTo: .body))
-                            .lineSpacing(3)
+                            .font(.ticket(.body))
+                            .lineSpacing(Theme.Space.guideLine)
                             .accessibilityElement(children: .combine)
                         }
                     }
@@ -108,39 +109,33 @@ struct SetupGuideView: View {
 
                 if let note = guide.note {
                     Text(note)
-                        .font(.ticket(12, relativeTo: .footnote))
-                        .lineSpacing(3)
+                        .font(.ticket(.detail))
+                        .lineSpacing(Theme.Space.guideLine)
                         .foregroundStyle(Theme.muted)
                 }
 
                 if guide.opensShortcuts {
                     Link(destination: URL(string: "shortcuts://")!) {
-                        Label("Abrir Atajos", systemImage: "arrow.up.forward.app")
-                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                            .tracking(1.4)
-                            .textCase(.uppercase)
-                            .foregroundStyle(Theme.onBrass)
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                        PrimaryButtonLabel("Abrir Atajos", systemImage: "arrow.up.forward.app")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.brass)
+                    .ticketProminent()
                 }
 
                 if number == steps.count {
                     CaptureCheck(latest: captured.first)
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
                         Text("Bueno saber").ticketCaption()
                         ForEach(GuideStep.notes, id: \.self) { note in
                             Text(note)
-                                .font(.ticket(12, relativeTo: .footnote))
-                                .lineSpacing(3)
+                                .font(.ticket(.detail))
+                                .lineSpacing(Theme.Space.guideLine)
                                 .foregroundStyle(Theme.muted)
                         }
                     }
                 }
             }
-            .padding(.horizontal, Theme.horizontalPadding)
-            .padding(.vertical, 16)
+            .padding(.horizontal, Theme.Space.screen)
+            .padding(.vertical, Theme.Space.l)
         }
     }
 }
@@ -319,41 +314,41 @@ private struct CaptureCheck: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
             if let latest = recent {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.brass)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Ya funciona")
-                        .font(.ticket(14, weight: .semibold, relativeTo: .body))
+                        .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
                     Text("Llegó \(latest.rawAmount ?? "") en \(latest.merchant), "
                          + latest.date.formatted(.relative(presentation: .named)) + ".")
-                        .font(.ticket(12, relativeTo: .footnote))
+                        .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
             } else {
                 ProgressView()
                     .tint(Theme.brass)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Esperando tu primer pago")
-                        .font(.ticket(14, weight: .semibold, relativeTo: .body))
+                        .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
                     Text(ShortcutsVersion.isIOS27
                          ? "Si pagaste y no llega en un par de minutos, revisa el paso 5: la acción debe decir "
                            + "«Registrar» y «Notificación» con campana, en azul."
                          : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
-                        .font(.ticket(12, relativeTo: .footnote))
+                        .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
             }
         }
-        .padding(16)
+        .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .ticketPanel()
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("guia-comprobacion")
     }
 }
 
-#Preview { SetupGuideView().preferredColorScheme(.dark) }
+#Preview { SetupGuideView().ticketPreview() }

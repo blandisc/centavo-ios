@@ -10,13 +10,13 @@ private struct SwipeToDelete: ViewModifier {
     @Binding var openRow: AnyHashable?
     let onDelete: () -> Void
 
-    @State private var offset: CGFloat = 0
-    @State private var width: CGFloat = 0
-    @ScaledMetric(relativeTo: .footnote) private var buttonWidth: CGFloat = 84
+    @State private var offset: CGFloat = .zero
+    @State private var width: CGFloat = .zero
+    @ScaledMetric(relativeTo: .footnote) private var buttonWidth: CGFloat = Theme.Size.swipeButton
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isOpen: Bool { openRow == id }
-    private var settle: Animation? { reduceMotion ? nil : .smooth(duration: 0.3) }
+    private var settle: Animation? { reduceMotion ? nil : Theme.Motion.settle }
 
     func body(content: Content) -> some View {
         content
@@ -39,10 +39,10 @@ private struct SwipeToDelete: ViewModifier {
                         close()
                         onDelete()
                     } label: {
-                        VStack(spacing: 4) {
+                        VStack(spacing: Theme.Space.xxs) {
                             Image(systemName: "trash")
                             Text("Borrar")
-                                .font(.ticket(11, weight: .semibold, relativeTo: .caption))
+                                .font(.ticket(.captionStrong))
                         }
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -50,7 +50,7 @@ private struct SwipeToDelete: ViewModifier {
                     .buttonStyle(.plain)
                     .frame(width: -offset)
                     .background(Theme.danger)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
                     .accessibilityIdentifier("deslizar-borrar")
                 }
             }

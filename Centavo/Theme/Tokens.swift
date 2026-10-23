@@ -40,6 +40,9 @@ extension Theme {
         static let xxl: CGFloat = 24
         /// 28 pt. Top of a sheet that has no navigation bar.
         static let xxxl: CGFloat = 28
+        /// −3 pt. Optical outset: pulls the hero's «$» back to the caption's edge (its side
+        /// bearing at that size, measured) or puts a ring just outside what it circles.
+        static let outset: CGFloat = -3
         /// Left and right margin of every screen.
         static let screen: CGFloat = Theme.horizontalPadding
     }

@@ -21,6 +21,7 @@ struct OnboardingView: View {
     @State private var draftAmount = ""
     @State private var draftDay = 1
     @FocusState private var focused: Field?
+    @ScaledMetric(relativeTo: .body) private var pointIconWidth = Theme.Size.iconColumnNarrow
 
     private enum Field { case budget, name, amount }
     private let pages = 5
@@ -51,7 +52,7 @@ struct OnboardingView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     if page < pages - 1 {
                         Button("Omitir") { save(); finish(false) }
-                            .font(.ticket(13, relativeTo: .footnote))
+                            .font(.ticket(.footnote))
                             .accessibilityIdentifier("bienvenida-omitir")
                     }
                 }
@@ -62,7 +63,7 @@ struct OnboardingView: View {
                         focused = nil
                         go(to: page + 1)
                     }
-                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                    .font(.ticket(.footnoteStrong))
                     .accessibilityIdentifier("teclado-siguiente")
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -73,11 +74,11 @@ struct OnboardingView: View {
                         .disabled(page == 0)
                     Spacer()
                     Text("\(page + 1) de \(pages)")
-                        .font(.ticket(15, weight: .medium, relativeTo: .body))
-                        .tracking(2)
+                        .font(.ticket(.bodyMedium))
+                        .tracking(Theme.Tracking.title)
                         .textCase(.uppercase)
                         .fixedSize()
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, Theme.Space.ml)
                         .accessibilityLabel("Paso \(page + 1) de \(pages)")
                     Spacer()
                     Button("Siguiente", systemImage: "chevron.right") {
@@ -95,14 +96,14 @@ struct OnboardingView: View {
     private func go(to target: Int) {
         guard (0..<pages).contains(target), target != page else { return }
         forward = target > page
-        withAnimation(.snappy(duration: 0.3)) { page = target }
+        withAnimation(Theme.Motion.page) { page = target }
     }
 
     // MARK: Pages
 
     private var welcome: some View {
         pageLayout(title: "Al día", lead: "Te dice cuánto puedes gastar hoy, sin que tengas que anotar nada.") {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Space.ml) {
                 point("wallet.pass", "Cada compra con Wallet se anota sola: en línea o acercando el teléfono.")
                 point("calendar", "Reparte tu presupuesto entre los días que quedan del mes.")
                 point("lock", "Sin cuenta ni servidor: tus gastos viven en tu iPhone y en tu iCloud.")
@@ -112,7 +113,7 @@ struct OnboardingView: View {
 
     private var currencyPage: some View {
         pageLayout(title: "Tu moneda", lead: "En la que sumas el mes. Lo demás se muestra aparte.") {
-            VStack(spacing: 8) {
+            VStack(spacing: Theme.Space.s) {
                 ForEach(CurrencyPreference.offered, id: \.self) { code in
                     Button {
                         currency = code
@@ -124,15 +125,10 @@ struct OnboardingView: View {
                                 Image(systemName: "checkmark").foregroundStyle(Theme.brass)
                             }
                         }
-                        .font(.ticket(15, relativeTo: .body))
-                        .padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay {
-                            if currency == code {
-                                RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.brass, lineWidth: 1.5)
-                            }
-                        }
+                        .font(.ticket(.body))
+                        .padding(.horizontal, Theme.Space.l)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow)
+                        .selectableCard(selected: currency == code)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -145,24 +141,20 @@ struct OnboardingView: View {
 
     private var budgetPage: some View {
         pageLayout(title: "Tu presupuesto", lead: "¿Cuánto quieres gastar al mes? Con esto te dice cuánto puedes gastar hoy.") {
-            VStack(alignment: .leading, spacing: 10) {
-                TextField("Presupuesto", text: $budgetText, prompt: Text("8000").foregroundStyle(Theme.faint))
-                    .font(.ticket(40, weight: .medium, relativeTo: .largeTitle))
-                    .foregroundStyle(Theme.ink)
-                    .keyboardType(.decimalPad)
+            VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                AmountInputField("Presupuesto", text: $budgetText, prompt: "8000", size: .compact,
+                                 identifier: "bienvenida-presupuesto")
                     .focused($focused, equals: .budget)
-                    .groupsThousands($budgetText)
-                    .padding(14)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityIdentifier("bienvenida-presupuesto")
+                    .padding(Theme.Space.ml)
+                    .selectableCard(selected: false)
                 if let value = AmountParser.parse(budgetText)?.value, value > 0 {
                     Text(BudgetStore.dailyPreview(value, currency: currency))
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(.footnote))
                         .foregroundStyle(Theme.brass)
                         .contentTransition(.numericText())
-                        .animation(.snappy, value: budgetText)
+                        .animation(Theme.Motion.quick, value: budgetText)
                 } else {
-                    hint("Puedes dejarlo vacío y fijarlo después en «Más».")
+                    NoteText("Puedes dejarlo vacío y fijarlo después en «Más».", color: Theme.faint)
                 }
             }
         }
@@ -170,7 +162,7 @@ struct OnboardingView: View {
 
     private var fixedPage: some View {
         pageLayout(title: "Gastos fijos", lead: "Renta, suscripciones, la luz: se anotan solos cada mes.") {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 ForEach(fixed) { item in
                     HStack {
                         Text(item.name).foregroundStyle(Theme.ink)
@@ -178,11 +170,11 @@ struct OnboardingView: View {
                         Text("\(item.amount.formatted(.number.precision(.fractionLength(0...2)))) · día \(item.day)")
                             .foregroundStyle(Theme.muted)
                     }
-                    .font(.ticket(13, relativeTo: .footnote))
-                    .padding(12)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+                    .font(.ticket(.footnote))
+                    .padding(Theme.Space.m)
+                    .ticketPanel()
                 }
-                VStack(spacing: 8) {
+                VStack(spacing: Theme.Space.s) {
                     TextField("Qué es", text: $draftName, prompt: Text("Renta, Netflix…").foregroundStyle(Theme.faint))
                         .textInputAutocapitalization(.words)
                         .focused($focused, equals: .name)
@@ -197,39 +189,29 @@ struct OnboardingView: View {
                     Stepper("El día \(draftDay) de cada mes", value: $draftDay, in: 1...31)
                         .foregroundStyle(Theme.ink)
                 }
-                .font(.ticket(15, relativeTo: .body))
-                .padding(14)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                .font(.ticket(.body))
+                .padding(Theme.Space.ml)
+                .selectableCard(selected: false)
                 Button("Agregar", systemImage: "plus", action: addFixed)
-                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                    .font(.ticket(.footnoteStrong))
                     .disabled(draftValue == nil || draftName.trimmingCharacters(in: .whitespaces).isEmpty)
                     .accessibilityIdentifier("bienvenida-fijo-agregar")
-                hint("También puedes marcar cualquier gasto como fijo después.")
+                NoteText("También puedes marcar cualquier gasto como fijo después.", color: Theme.faint)
             }
         }
     }
 
     private var walletPage: some View {
         pageLayout(title: "Conecta Wallet", lead: "Una automatización de Atajos le avisa a Al día de cada compra. Se hace una vez y toma unos minutos.") {
-            VStack(spacing: 12) {
+            VStack(spacing: Theme.Space.m) {
                 Button {
                     save(); finish(true)
                 } label: {
-                    Label("Configurar ahora", systemImage: "wallet.pass")
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                        .tracking(1.2)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Theme.onBrass)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                    PrimaryButtonLabel("Configurar ahora", systemImage: "wallet.pass")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.brass)
+                .ticketProminent()
                 .accessibilityIdentifier("bienvenida-configurar")
-                Button("Después") { save(); finish(false) }
-                    .font(.ticket(13, relativeTo: .footnote))
-                    .foregroundStyle(Theme.muted)
-                    .frame(minHeight: 44)
-                    .accessibilityIdentifier("bienvenida-despues")
+                SecondaryButton("Después", identifier: "bienvenida-despues") { save(); finish(false) }
             }
         }
     }
@@ -239,33 +221,29 @@ struct OnboardingView: View {
     private func pageLayout<Content: View>(title: String, lead: String,
                                            @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 Text(title)
-                    .font(.ticket(28, weight: .semibold, relativeTo: .title))
+                    .font(.ticket(.pageTitle))
                     .foregroundStyle(Theme.ink)
                     .accessibilityAddTraits(.isHeader)
                 Text(lead)
-                    .font(.ticket(15, relativeTo: .body))
+                    .font(.ticket(.body))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
                 content()
             }
-            .padding(.horizontal, Theme.horizontalPadding)
-            .padding(.vertical, 24)
+            .padding(.horizontal, Theme.Space.screen)
+            .padding(.vertical, Theme.Space.xxl)
         }
         .scrollDismissesKeyboard(.interactively)
     }
 
     private func point(_ icon: String, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: icon).foregroundStyle(Theme.brass).frame(width: 22)
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Image(systemName: icon).foregroundStyle(Theme.brass).frame(width: pointIconWidth)
             Text(text).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
         }
-        .font(.ticket(14, relativeTo: .body))
-    }
-
-    private func hint(_ text: String) -> some View {
-        Text(text).font(.ticket(12, relativeTo: .footnote)).foregroundStyle(Theme.faint)
+        .font(.ticket(.callout))
     }
 
     // MARK: Saving

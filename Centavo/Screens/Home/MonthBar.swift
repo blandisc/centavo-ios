@@ -17,12 +17,14 @@ struct MonthBar: View {
     let carriesTotal: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = 20
-    @State private var width: CGFloat = 0
+    @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = Theme.Size.monthBarTrack
+    @State private var width: CGFloat = Theme.Space.none
     @State private var shown = false
     @State private var showsSum = false
 
-    private let gap: CGFloat = 3
+    private let gap: CGFloat = Theme.Size.monthBarGap
+    /// Whether the bar has been measured yet.
+    private var hasWidth: Bool { width > 0 }
     private var isOver: Bool { pace.remaining < 0 }
     /// What the day tiles share: what is left, minus the fixed expenses still to come.
     private var toShare: Decimal { max(0, pace.remaining - (isCurrentMonth ? pace.reserved : 0)) }
@@ -34,15 +36,15 @@ struct MonthBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             // Right under «Hoy puedes gastar», the one sentence that judges the month.
             verdict
-                .opacity(shown ? 1 : 0)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.4).delay(0.9), value: shown)
-                .padding(.bottom, isCurrentMonth ? 16 : 8)
+                .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                .animation(reduceMotion ? nil : Theme.Motion.Entrance.legend, value: shown)
+                .padding(.bottom, isCurrentMonth ? Theme.Space.l : Theme.Space.s)
 
             Button {
-                withAnimation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.2)) { showsSum.toggle() }
+                withAnimation(reduceMotion ? nil : Theme.Motion.toggle) { showsSum.toggle() }
             } label: {
                 bar
             }
@@ -53,15 +55,15 @@ struct MonthBar: View {
             // Each figure where what it measures is: «Llevas» under the brass, «Presupuesto» at
             // the bar's end, «Podrías llevar» over the rule (owner's choice, 2026-10-22).
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: 8); budgetKey }
-                VStack(alignment: .leading, spacing: 4) { spentKey; budgetKey }
+                HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) { spentKey; budgetKey }
             }
-            .font(.ticket(12, relativeTo: .footnote))
+            .font(.ticket(.detail))
 
 
             if showsSum {
                 sum
-                    .padding(.top, 8)
+                    .padding(.top, Theme.Space.s)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
@@ -80,7 +82,7 @@ struct MonthBar: View {
         let tilesX = width - freeW
         let markX = snapped(width * CGFloat(pace.paceFraction), tilesX: tilesX, slotW: slotW)
 
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             if isCurrentMonth {
                 annotation(at: markX)
             }
@@ -91,29 +93,28 @@ struct MonthBar: View {
                 .overlay(alignment: .leading) {
                     HStack(spacing: gap) {
                         // What went: grows in from nothing, with a little bounce.
-                        RoundedRectangle(cornerRadius: 3)
+                        RoundedRectangle(cornerRadius: Theme.Radius.tile)
                             .fill(isOver ? Theme.danger : Theme.brass)
-                            .frame(width: shown ? spentW : 0)
-                            .animation(reduceMotion ? nil : .spring(duration: 0.9, bounce: 0.18).delay(0.1), value: shown)
-                            .animation(reduceMotion ? nil : .spring(duration: 0.6, bounce: 0.15), value: spentW)
+                            .frame(width: shown ? spentW : Theme.Space.none)
+                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
+                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.refill, value: spentW)
                         if reservedW > 0 {
-                            RoundedRectangle(cornerRadius: 3)
-                                .strokeBorder(Theme.brassLow, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
+                            RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                                .strokeBorder(Theme.brassLow, style: StrokeStyle(lineWidth: Theme.Stroke.emphasis, dash: Theme.Dash.dotted))
                                 .frame(width: reservedW)
-                                .opacity(shown ? 1 : 0)
-                                .animation(reduceMotion ? nil : .easeOut(duration: 0.3).delay(0.5), value: shown)
+                                .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                                .animation(reduceMotion ? nil : Theme.Motion.Entrance.markers, value: shown)
                         }
-                        if slotW >= 2 {
+                        if slotW >= Theme.Size.minimumDayTile {
                             ForEach(0..<days, id: \.self) { index in
                                 DayTile(isToday: index == 0, animate: !reduceMotion)
                                     .frame(width: slotW)
-                                    .opacity(shown ? 1 : 0)
-                                    .scaleEffect(y: shown ? 1 : 0.3, anchor: .bottom)
-                                    .animation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0.3)
-                                        .delay(0.45 + Double(index) * 0.035), value: shown)
+                                    .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                                    .scaleEffect(y: shown ? Theme.Size.barFullScale : Theme.Motion.Entrance.barStart, anchor: .bottom)
+                                    .animation(reduceMotion ? nil : Theme.Motion.Entrance.bar(index), value: shown)
                             }
                         } else if !isOver {
-                            RoundedRectangle(cornerRadius: 3).fill(Theme.raised)
+                            RoundedRectangle(cornerRadius: Theme.Radius.tile).fill(Theme.raised)
                         }
                     }
                     // Only the bar as a whole is rounded; every piece inside is cut the same.
@@ -126,13 +127,13 @@ struct MonthBar: View {
                         let spent = width * fraction(pace.spent)
                         let ahead = spent > markX
                         Hatch()
-                            .stroke(ahead ? Theme.danger : Theme.good, lineWidth: 1.2)
-                            .opacity(ahead ? 0.8 : 0.55)
+                            .stroke(ahead ? Theme.danger : Theme.good, lineWidth: Theme.Stroke.mark)
+                            .opacity(ahead ? Theme.Opacity.paceAhead : Theme.Opacity.paceBehind)
                             .frame(width: abs(markX - spent), height: trackHeight)
                             .clipShape(Rectangle())
                             .offset(x: min(spent, markX))
-                            .opacity(shown ? 1 : 0)
-                            .animation(reduceMotion ? nil : .easeOut(duration: 0.4).delay(0.8), value: shown)
+                            .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.pace, value: shown)
                             .accessibilityHidden(true)
                     }
                 }
@@ -141,10 +142,10 @@ struct MonthBar: View {
                         // Where an even month would be by today.
                         Capsule()
                             .fill(Theme.ink)
-                            .frame(width: 2, height: trackHeight + 8)
-                            .offset(x: markX - 1, y: -4)
-                            .opacity(shown ? 1 : 0)
-                            .animation(reduceMotion ? nil : .easeOut(duration: 0.35).delay(0.7), value: shown)
+                            .frame(width: Theme.Size.todayMarkWidth, height: trackHeight + Theme.Size.todayMarkExtra)
+                            .offset(x: markX - Theme.Size.todayMarkHalf, y: -Theme.Size.todayMarkInset)
+                            .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.today, value: shown)
                     }
                 }
         }
@@ -153,7 +154,7 @@ struct MonthBar: View {
 
     /// The expected mark, set in the gap between two day tiles rather than on a tile's edge.
     private func snapped(_ x: CGFloat, tilesX: CGFloat, slotW: CGFloat) -> CGFloat {
-        guard slotW >= 2, x > tilesX else { return x }
+        guard slotW >= Theme.Size.minimumDayTile, x > tilesX else { return x }
         let step = slotW + gap
         let k = ((x - tilesX + gap / 2) / step).rounded()
         return min(tilesX + k * step - gap / 2, width)
@@ -163,25 +164,30 @@ struct MonthBar: View {
     private func annotation(at x: CGFloat) -> some View {
         (Text("Podrías llevar ").foregroundStyle(Theme.muted)
             + Text(wholeMoney(pace.expectedToDate)).foregroundStyle(Theme.ink))
-            .font(.ticket(10, relativeTo: .caption2))
-            .tracking(1)
+            .font(.ticket(.micro))
+            .tracking(Theme.Tracking.tag)
             .textCase(.uppercase)
             .lineLimit(1)
-            .minimumScaleFactor(0.5)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
             // Never wider than the bar it sits on (large text made it push the page aside).
-            .frame(maxWidth: width > 0 ? width : nil)
+            .frame(maxWidth: hasWidth ? width : nil)
             .fixedSize(horizontal: width == 0, vertical: false)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { annotationWidth = $0 }
-            .offset(x: min(max(x - annotationWidth / 2, 0), max(0, width - annotationWidth)))
-            .opacity(shown ? 1 : 0)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.4).delay(0.75), value: shown)
+            .offset(x: annotationX(centeredOn: x))
+            .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+            .animation(reduceMotion ? nil : Theme.Motion.Entrance.annotation, value: shown)
     }
     @State private var annotationWidth: CGFloat = 0
+
+    /// Where the note starts so it is centered on the mark, without leaving the bar.
+    private func annotationX(centeredOn x: CGFloat) -> CGFloat {
+        min(max(x - annotationWidth / 2, 0), max(0, width - annotationWidth))
+    }
 
     // MARK: Words
 
     private var spentKey: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Theme.Space.xs) {
             swatch(isOver ? Theme.danger : Theme.brass)
             Text("Llevas").foregroundStyle(Theme.muted)
             totalText
@@ -194,15 +200,15 @@ struct MonthBar: View {
         (Text("Presupuesto ").foregroundStyle(Theme.muted)
             + Text(wholeMoney(pace.budget)).foregroundStyle(Theme.ink))
             .lineLimit(1)
-            .minimumScaleFactor(0.6)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
     }
 
     /// The key's little square, the same shape as the bar's pieces.
     private func swatch(_ color: Color, outlined: Bool = false) -> some View {
-        RoundedRectangle(cornerRadius: 2)
+        RoundedRectangle(cornerRadius: Theme.Radius.bar)
             .fill(color)
-            .overlay { if outlined { RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.dimmed, lineWidth: 0.5) } }
-            .frame(width: 8, height: 8)
+            .overlay { if outlined { RoundedRectangle(cornerRadius: Theme.Radius.bar).strokeBorder(Theme.dimmed, lineWidth: Theme.Stroke.fine) } }
+            .frame(width: Theme.Size.legendDot, height: Theme.Size.legendDot)
             .accessibilityHidden(true)
     }
 
@@ -228,14 +234,14 @@ struct MonthBar: View {
         return (Text(before).foregroundStyle(Theme.muted)
             + Text(colored).foregroundStyle(good ? Theme.good : Theme.danger)
             + Text(after).foregroundStyle(Theme.muted))
-            .font(.ticket(12, relativeTo: .footnote))
+            .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("veredicto")
     }
 
     /// The sum behind «Hoy puedes gastar», like a ticket's lines.
     private var sum: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Theme.Space.xs) {
             sumLine("Presupuesto", wholeMoney(pace.budget))
             sumLine("− Llevas", wholeMoney(pace.spent))
             sumLine(isOver ? "= Te pasaste" : "= Te quedan", wholeMoney(pace.remaining.magnitude))
@@ -249,9 +255,9 @@ struct MonthBar: View {
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
             }
         }
-        .font(.ticket(12, relativeTo: .footnote))
-        .padding(12)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .font(.ticket(.detail))
+        .padding(Theme.Space.m)
+        .ticketPanel()
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("la-cuenta")
     }
@@ -272,14 +278,14 @@ private struct DayTile: View {
     let animate: Bool
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 3)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.tile)
         if isToday {
             shape
-                .fill(Theme.brass.opacity(0.35))
-                .overlay(shape.strokeBorder(Theme.brass, lineWidth: 1.5))
-                .phaseAnimator(animate ? [0.65, 1.0] : [1.0]) { tile, phase in
+                .fill(Theme.brass.opacity(Theme.Opacity.glow))
+                .overlay(shape.strokeBorder(Theme.brass, lineWidth: Theme.Stroke.emphasis))
+                .phaseAnimator(animate ? [Theme.Opacity.tileBreath, Theme.Opacity.visible] : [Theme.Opacity.visible]) { tile, phase in
                     tile.opacity(phase)
-                } animation: { _ in .easeInOut(duration: 1.4) }
+                } animation: { _ in Theme.Motion.pulse }
         } else {
             shape.fill(Theme.raised)
         }
@@ -288,7 +294,7 @@ private struct DayTile: View {
 
 /// Thin diagonal lines, like the shading on a printed form.
 private struct Hatch: Shape {
-    var spacing: CGFloat = 5
+    var spacing: CGFloat = Theme.Size.hatchSpacing
 
     func path(in rect: CGRect) -> Path {
         var path = Path()

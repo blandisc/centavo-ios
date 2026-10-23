@@ -44,13 +44,13 @@ struct FixedExpensesView: View {
                         Spacer()
                         summaryFigure("Faltan", money(coming, primary), brass: true)
                     }
-                    .frame(minHeight: 44)
+                    .frame(minHeight: Theme.Size.tapTarget)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("fijos-resumen")
                 } header: {
                     Text("Este mes").ticketCaption()
                 } footer: {
-                    hint("Lo que falta ya se aparta de «Hoy puedes gastar», y cada uno se anota solo el día que llega.")
+                    NoteText("Lo que falta ya se aparta de «Hoy puedes gastar», y cada uno se anota solo el día que llega.")
                 }
                 .listRowBackground(Theme.surface)
 
@@ -70,17 +70,17 @@ struct FixedExpensesView: View {
                     }
                     Button { adding = true } label: {
                         Label("Agregar gasto fijo", systemImage: "plus")
-                            .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                            .font(.ticket(.footnoteStrong))
                             .foregroundStyle(Theme.brass)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                     }
                     .accessibilityIdentifier("agregar-fijo")
                 } header: {
                     Text("Tus gastos fijos").ticketCaption()
                 } footer: {
-                    hint(items.isEmpty
-                         ? "La renta, la limpieza de cada lunes, Netflix: anótalos una vez y se anotan solos el día que llegan."
-                         : "Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
+                    NoteText(items.isEmpty
+                             ? "La renta, la limpieza de cada lunes, Netflix: anótalos una vez y se anotan solos el día que llegan."
+                             : "Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -90,7 +90,7 @@ struct FixedExpensesView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Listo") { dismiss() }
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                        .font(.ticket(.footnoteStrong))
                         .accessibilityIdentifier("hoja-listo")
                 }
             }
@@ -101,50 +101,46 @@ struct FixedExpensesView: View {
     }
 
     private func row(_ item: FixedItem) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             HStack(alignment: .firstTextBaseline) {
                 Text(item.name)
-                    .font(.ticket(15, weight: .medium, relativeTo: .body))
+                    .font(.ticket(.bodyMedium))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2)
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
                 Text(money(item.amount, item.currency))
-                    .font(.ticket(15, relativeTo: .body))
+                    .font(.ticket(.body))
                     .foregroundStyle(Theme.ink)
                     .fixedSize()
             }
             Text(item.ruleText)
-                .font(.ticket(11, relativeTo: .caption2))
-                .tracking(0.6)
+                .font(.ticket(.hint))
+                .tracking(Theme.Tracking.detail)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
             if let next = item.next {
                 Text((item.original == nil ? "Empieza: " : "Próximo: ")
                      + next.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                    .font(.ticket(11, relativeTo: .caption2))
+                    .font(.ticket(.hint))
                     .foregroundStyle(item.coming.isEmpty ? Theme.muted : Theme.brass)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
     private func summaryFigure(_ label: String, _ amount: String, brass: Bool = false) -> some View {
-        VStack(alignment: brass ? .trailing : .leading, spacing: 2) {
+        VStack(alignment: brass ? .trailing : .leading, spacing: Theme.Space.xxxs) {
             Text(label)
-                .font(.ticket(10, relativeTo: .caption2))
-                .tracking(1.2)
+                .font(.ticket(.micro))
+                .tracking(Theme.Tracking.label)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
             Text(amount)
-                .font(.ticket(17, weight: .medium, relativeTo: .headline))
+                .font(.ticket(.headline))
                 .foregroundStyle(brass ? Theme.brass : Theme.ink)
         }
-    }
-
-    private func hint(_ text: String) -> some View {
-        Text(text).font(.ticket(12, relativeTo: .footnote)).foregroundStyle(Theme.muted)
     }
 
     /// What is already logged stays; only what is to come stops.
@@ -191,14 +187,8 @@ struct FixedPlanSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Monto", text: $amountText, prompt: Text("0.00").foregroundStyle(Theme.faint))
-                        .font(.ticket(44, weight: .medium, relativeTo: .largeTitle))
-                        .tracking(-1.5)
-                        .foregroundStyle(Theme.ink)
-                        .keyboardType(.decimalPad)
+                    AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "fijo-monto")
                         .focused($amountFocused)
-                        .groupsThousands($amountText)
-                        .accessibilityIdentifier("fijo-monto")
                 } header: {
                     Text("Monto (\(CurrencyPreference.current))").ticketCaption()
                 }
@@ -207,7 +197,7 @@ struct FixedPlanSheet: View {
                 Section {
                     TextField("Qué es", text: $merchant,
                               prompt: Text("Renta, limpieza, Netflix…").foregroundStyle(Theme.faint))
-                        .font(.ticket(17, relativeTo: .body))
+                        .font(.ticket(.field))
                         .foregroundStyle(Theme.ink)
                         .textInputAutocapitalization(.sentences)
                         .accessibilityIdentifier("fijo-nombre")
@@ -219,19 +209,16 @@ struct FixedPlanSheet: View {
                 Section {
                     RepeatRulePicker(rule: $rule)
                     DatePicker(selection: $firstDay, in: ...latest, displayedComponents: .date) {
-                        Text("Primer cobro")
-                            .font(.ticket(12, relativeTo: .footnote))
-                            .tracking(1.2)
-                            .textCase(.uppercase)
+                        SectionLabel("Primer cobro")
                     }
                     .accessibilityIdentifier("fijo-primer-cobro")
                 } header: {
                     Text("Cada cuándo").ticketCaption()
                 } footer: {
-                    hint(FixedWording.howItRepeats(rule, from: firstDate) + " "
-                         + (firstDate > .now
-                            ? "Hasta su primer cobro no se anota nada."
-                            : "El primer cobro ya llegó: se anota con su fecha, y los que hayan llegado después."))
+                    HintText(FixedWording.howItRepeats(rule, from: firstDate) + " "
+                             + (firstDate > .now
+                                ? "Hasta su primer cobro no se anota nada."
+                                : "El primer cobro ya llegó: se anota con su fecha, y los que hayan llegado después."))
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -242,7 +229,7 @@ struct FixedPlanSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(.footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
             }
@@ -251,13 +238,6 @@ struct FixedPlanSheet: View {
                      enabled: amount != nil && !name.isEmpty, action: save)
             .onAppear { amountFocused = true }
         }
-    }
-
-    private func hint(_ text: String) -> some View {
-        Text(text)
-            .font(.ticket(11, relativeTo: .caption2))
-            .tracking(0.6)
-            .foregroundStyle(Theme.faint)
     }
 
     private func save() {

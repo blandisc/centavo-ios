@@ -27,6 +27,11 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i ios
 
+      # Fails when a screen writes a raw number, font size or color instead of a token
+      # (docs/DESIGN_SYSTEM.md). First, because it takes a second.
+      - name: Lint del sistema de diseño
+        run: Tools/lint-design.sh
+
       - name: Instalar xcodegen
         run: brew install xcodegen
 

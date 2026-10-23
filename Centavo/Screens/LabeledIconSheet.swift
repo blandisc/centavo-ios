@@ -16,6 +16,7 @@ struct LabeledIconSheet: View {
     @State private var name = ""
     @State private var icon = ""
     @FocusState private var nameFocused: Bool
+    @ScaledMetric(relativeTo: .body) private var iconColumn = Theme.Size.iconColumnWide
 
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     private var isTaken: Bool {
@@ -26,14 +27,14 @@ struct LabeledIconSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    HStack(spacing: 12) {
+                    HStack(spacing: Theme.Space.m) {
                         Image(systemName: icon.isEmpty ? (icons.first ?? "tag") : icon)
-                            .font(.title3)
+                            .font(Theme.Symbol.large)
                             .foregroundStyle(Theme.brass)
-                            .frame(width: 32)
+                            .frame(width: iconColumn)
                             .accessibilityHidden(true)
                         TextField("Nombre", text: $name, prompt: Text(prompt).foregroundStyle(Theme.faint))
-                            .font(.ticket(17, relativeTo: .body))
+                            .font(.ticket(.field))
                             .foregroundStyle(Theme.ink)
                             .textInputAutocapitalization(.words)
                             .focused($nameFocused)
@@ -44,26 +45,24 @@ struct LabeledIconSheet: View {
                     Text("Nombre").ticketCaption()
                 } footer: {
                     if isTaken {
-                        Text("Ya tienes uno con ese nombre.")
-                            .font(.ticket(12, relativeTo: .footnote))
-                            .foregroundStyle(Theme.danger)
+                        NoteText("Ya tienes uno con ese nombre.", color: Theme.danger)
                     }
                 }
                 .listRowBackground(Theme.surface)
 
                 Section {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48), spacing: 8)], spacing: 8) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.choiceTile), spacing: Theme.Space.s)],
+                              spacing: Theme.Space.s) {
                         ForEach(icons, id: \.self) { symbol in
                             let selected = symbol == icon
                             Button {
                                 icon = symbol
                             } label: {
                                 Image(systemName: symbol)
-                                    .font(.title3)
+                                    .font(Theme.Symbol.large)
                                     .foregroundStyle(selected ? Theme.onBrass : Theme.brass)
-                                    .frame(maxWidth: .infinity, minHeight: 48)
-                                    .background(selected ? Theme.brass : Theme.background,
-                                                in: RoundedRectangle(cornerRadius: 8))
+                                    .frame(maxWidth: .infinity, minHeight: Theme.Size.choiceTile)
+                                    .choiceTile(selected: selected)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -71,7 +70,7 @@ struct LabeledIconSheet: View {
                             .accessibilityAddTraits(selected ? .isSelected : [])
                         }
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, Theme.Space.xs)
                 } header: {
                     Text("Ícono").ticketCaption()
                 }
@@ -84,16 +83,14 @@ struct LabeledIconSheet: View {
                             dismiss()
                         } label: {
                             Text("Borrar")
-                                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                                .tracking(1.6)
+                                .font(.ticket(.footnoteStrong))
+                                .tracking(Theme.Tracking.caption)
                                 .textCase(.uppercase)
-                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
                         }
                         .accessibilityIdentifier("borrar-etiqueta")
                     } footer: {
-                        Text("Los gastos que ya la tienen no cambian.")
-                            .font(.ticket(12, relativeTo: .footnote))
-                            .foregroundStyle(Theme.muted)
+                        NoteText("Los gastos que ya la tienen no cambian.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -111,7 +108,7 @@ struct LabeledIconSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(.footnote))
                 }
             }
         }
