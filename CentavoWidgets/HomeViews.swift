@@ -37,12 +37,15 @@ struct HoyView: View {
             Spacer(minLength: 6)
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink)
-                HStack(spacing: 4) {
+                // «Llevas» is the figure to read; «de $X» is the small reference after it.
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
                     keyText("Llevas", money.whole(pace.spent), ink: ink)
+                        .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                        .layoutPriority(1)
                     Spacer(minLength: 2)
                     keyText("de", money.short(pace.budget), ink: ink)
+                        .font(.ticket(8, relativeTo: .caption2))
                 }
-                .font(.ticket(9, relativeTo: .caption2))
                 .textCase(.uppercase)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -110,7 +113,7 @@ struct HoyView: View {
                          share > 0.5 ? max(0, proxy.size.width * (1 - share) - 2) : max(0, proxy.size.width * share - 2))
         }
         .frame(height: 12)
-        .padding(.bottom, 3)
+        .padding(.bottom, 8)
     }
 
     private func keys(_ pace: BudgetPace) -> some View {
