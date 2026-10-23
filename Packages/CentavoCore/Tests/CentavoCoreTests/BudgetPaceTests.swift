@@ -80,3 +80,85 @@ import Testing
         #expect(pace.dailyAllowance == 0)
     }
 }
+
+/// What today spent comes off today, not off the rest of the month (audit 2026-10-22, #3).
+@Suite struct BudgetPaceTodayTests {
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
+        return calendar
+    }()
+
+    private static func day(_ day: Int, hour: Int = 12) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
+    }
+
+    private func pace(spent: Decimal, today: Decimal, reserved: Decimal = 0, on date: Date) -> BudgetPace? {
+        BudgetPace(budget: 9300, spent: spent, spentToday: today, reserved: reserved,
+                   on: date, calendar: Self.calendar)
+    }
+
+    @Test func theDayStartsWithItsShare() throws {
+        // October 22nd: 10 days left. (9,300 − 3,000) / 10 = 630.
+        let pace = try #require(pace(spent: 3000, today: 0, on: Self.day(22)))
+        #expect(pace.daysLeft == 10)
+        #expect(pace.dailyAllowance == 630)
+    }
+
+    @Test func spendingTodayComesOffToday() throws {
+        // Spending all of it leaves nothing for today (it used to say $567).
+        let spentIt = try #require(pace(spent: 3630, today: 630, on: Self.day(22)))
+        #expect(spentIt.dailyAllowance == 0)
+        let some = try #require(pace(spent: Decimal(string: "3047.50")!, today: Decimal(string: "47.50")!,
+                                     on: Self.day(22)))
+        #expect(some.dailyAllowance == 582)
+        #expect(some.todayShare == 630)
+    }
+
+    @Test func spendingPastTodaysShareShowsZeroNotLess() throws {
+        let pace = try #require(pace(spent: 4000, today: 1000, on: Self.day(22)))
+        #expect(pace.dailyAllowance == 0)
+        #expect(pace.remaining == 5300)
+    }
+
+    @Test func tomorrowStartsOverWithWhatWentBeforeIt() throws {
+        // The 630 of the 22nd is now "before today": (9,300 − 3,630) / 9 = 630.
+        let tomorrow = try #require(pace(spent: 3630, today: 0, on: Self.day(23, hour: 0)))
+        #expect(tomorrow.daysLeft == 9)
+        #expect(tomorrow.dailyAllowance == 630)
+        // Spending 1,000 on the 22nd instead leaves less for each day after.
+        let after = try #require(pace(spent: 4000, today: 0, on: Self.day(23)))
+        #expect(after.dailyAllowance == 588)
+    }
+
+    @Test func fixedExpensesAreSetApartBeforeTodaysShare() throws {
+        // (9,300 − 3,000 − 1,300) / 10 = 500, minus 200 today.
+        let pace = try #require(pace(spent: 3200, today: 200, reserved: 1300, on: Self.day(22)))
+        #expect(pace.dailyAllowance == 300)
+        #expect(pace.free == 4800)
+    }
+
+    @Test func aRefundTodayGivesTodayBack() throws {
+        let pace = try #require(pace(spent: 2900, today: -100, on: Self.day(22)))
+        #expect(pace.dailyAllowance == 730)
+    }
+
+    @Test func freeIsWhatIsLeftAfterTheFixedOnesAndNeverNegative() throws {
+        let pace = try #require(pace(spent: 9000, today: 0, reserved: 500, on: Self.day(22)))
+        #expect(pace.remaining == 300)
+        #expect(pace.free == 0)
+    }
+
+    @Test func todayIsTheDayOfTheDateInTheMainCurrency() {
+        let amounts = [
+            ExpenseAmount(value: 3000, currencyMarker: "MXN", date: Self.day(21)),
+            ExpenseAmount(value: 600, currencyMarker: "$", date: Self.day(22, hour: 0)),
+            ExpenseAmount(value: 30, currencyMarker: "MXN", date: Self.day(22, hour: 23)),
+            ExpenseAmount(value: 20, currencyMarker: "USD", date: Self.day(22)),
+            ExpenseAmount(value: 99, currencyMarker: "MXN", date: Self.day(23, hour: 0)),
+        ]
+        let today = MonthSummarizer.dayTotal(amounts, onDayOf: Self.day(22), primary: "MXN",
+                                             calendar: Self.calendar)
+        #expect(today == 630)
+    }
+}
