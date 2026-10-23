@@ -4,14 +4,16 @@ import SwiftData
 import WidgetKit
 
 /// Keeps the widgets up to date: after every change the app writes the month's sums
-/// (`WidgetSnapshot`) to the App Group it shares with them and asks WidgetKit to redraw.
+/// (`WidgetSnapshot`) where they read it (`WidgetSnapshotStore`: the App Group, or a shared
+/// Keychain item when the build has no App Group) and asks WidgetKit to redraw.
 /// The widgets never open the store: they only read this.
 enum WidgetBridge {
     /// `group.` + the app's bundle identifier. Free accounts can sign App Groups (CloudKit
     /// they cannot), so the widgets work with the free account too.
-    static let appGroup = "group.com.blandisc.centavo"
+    static let appGroup = WidgetSnapshotStore.appGroup
 
-    static var shared: UserDefaults? { UserDefaults(suiteName: appGroup) }
+    static let store = WidgetSnapshotStore()
+    static var shared: UserDefaults? { store.groupDefaults }
 
     /// DEBUG only: the moment the widgets pretend it is, to show «día 1» on any day.
     static let demoDateKey = "widgetDemoDate"
@@ -39,7 +41,7 @@ enum WidgetBridge {
         #if DEBUG
         // `-centavo-widget-estado …`: a fixed month to look at the widgets with.
         if let sample = DemoData.widgetSample {
-            shared?.set(sample.snapshot.encoded(), forKey: WidgetSnapshot.key)
+            if let data = sample.snapshot.encoded() { store.write(data) }
             shared?.set(sample.date, forKey: demoDateKey)
             WidgetCenter.shared.reloadAllTimelines()
             return
@@ -56,8 +58,8 @@ enum WidgetBridge {
         else { return }
         let snapshot = TodayBudget.snapshot(budget: budget, rows: rows, originals: originals, plans: FixedPlan.saved,
                                             primary: CurrencyPreference.current, month: now, now: now)
-        guard let data = snapshot.encoded(), data != shared?.data(forKey: WidgetSnapshot.key) else { return }
-        shared?.set(data, forKey: WidgetSnapshot.key)
+        guard let data = snapshot.encoded(), data != store.read() else { return }
+        store.write(data)
         WidgetCenter.shared.reloadAllTimelines()
     }
 }

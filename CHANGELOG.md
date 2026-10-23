@@ -58,6 +58,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- **Widgets con la cuenta gratuita:** ya muestran tus cifras en vez de «Sin presupuesto». Al compilar desde la terminal con la cuenta gratuita, el App Group salía vacío y el widget no veía nada; ahora, si no hay App Group, la app deja las sumas en un llavero compartido con el widget. Abre la app una vez para que se llenen.
 - «Borraste … · Deshacer» vuelve a salir abajo, justo arriba de la barra de meses, y no a media pantalla.
 - Desplazar la lista rápido hacia arriba y abajo ya no se traba: deslizar para borrar solo se activa cuando el dedo va de lado.
 - El comercio de las compras con Wallet no llegaba nunca (se guardaba «Sin comercio» o el banco): Atajos no manda el subtítulo de la notificación, que es donde va el comercio. «Registrar aviso de Wallet» tiene ahora el campo **Comercio**; conéctalo a «Notificación › Subtítulo» (la guía tiene el paso).

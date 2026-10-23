@@ -19,12 +19,12 @@ struct DayEntry: TimelineEntry {
                                   .init(name: nil, amount: 2_390, isRest: true)]))
 }
 
-/// Reads what the app wrote to the App Group. The app reloads the timelines after every
+/// Reads what the app left (`WidgetSnapshotStore`: App Group or shared Keychain). The app reloads the timelines after every
 /// change; each timeline also carries the next two midnights, so «Hoy puedes gastar» starts
 /// the new day on its own.
 struct DayProvider: TimelineProvider {
-    /// The same App Group as `WidgetBridge.appGroup` in the app.
-    static let appGroup = "group.com.blandisc.centavo"
+    /// The same App Group as `WidgetBridge.appGroup` in the app (the snapshot may come from the Keychain instead).
+    static let appGroup = WidgetSnapshotStore.appGroup
 
     /// DEBUG only: the moment the app's sample asks the widgets to pretend it is.
     private var now: Date {
@@ -35,7 +35,7 @@ struct DayProvider: TimelineProvider {
     }
 
     private var saved: WidgetSnapshot? {
-        WidgetSnapshot.decode(UserDefaults(suiteName: Self.appGroup)?.data(forKey: WidgetSnapshot.key))
+        WidgetSnapshot.decode(WidgetSnapshotStore().read())
     }
 
     func placeholder(in context: Context) -> DayEntry { .sample }

@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import Testing
 @testable import CentavoCore
 
@@ -50,6 +51,16 @@ import Testing
     @Test func survivesTheTripThroughTheAppGroup() throws {
         let back = try #require(WidgetSnapshot.decode(snapshot.encoded()))
         #expect(back == snapshot)
+    }
+
+    @Test func keychainItemIsTheSharedOne() {
+        let store = WidgetSnapshotStore(keychainGroup: "B7KRCF776Z.com.blandisc.centavo.shared")
+        let query = store.itemQuery
+        #expect(query[kSecAttrService as String] as? String == "centavo.widget")
+        #expect(query[kSecAttrAccount as String] as? String == "snapshot")
+        #expect(query[kSecAttrAccessGroup as String] as? String == "B7KRCF776Z.com.blandisc.centavo.shared")
+        // An unexpanded build setting is no group.
+        #expect(WidgetSnapshotStore(keychainGroup: "$(AppIdentifierPrefix)x").keychainGroup == nil)
     }
 
     @Test func slicesAreTheThreeBiggestAndTheRest() {

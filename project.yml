@@ -29,8 +29,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
         # iCloud sync and the App Group shared with the widgets. A free developer account
-        # cannot sign iCloud: build with CODE_SIGN_ENTITLEMENTS=Centavo/CentavoGratis.entitlements
-        # (only the App Group) and the app keeps everything on the phone only.
+        # cannot sign iCloud, and xcodebuild gives it profiles without the App Group: build with
+        # CODE_SIGN_ENTITLEMENTS=Centavo/CentavoGratis.entitlements (for both targets: only the
+        # shared Keychain group) and the app keeps everything on the phone only.
         CODE_SIGN_ENTITLEMENTS: Centavo/Centavo.entitlements
         INFOPLIST_KEY_UIBackgroundModes: remote-notification
         GENERATE_INFOPLIST_FILE: YES
@@ -62,12 +63,13 @@ targets:
         CFBundleDisplayName: Al día
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CentavoKeychainGroup: $(AppIdentifierPrefix)com.blandisc.centavo.shared
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.widgets
-        # Only the App Group: a free developer account can sign it.
+        # The App Group and the shared Keychain group (the fallback a free account can sign).
         CODE_SIGN_ENTITLEMENTS: CentavoWidgets/CentavoWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
