@@ -8,34 +8,38 @@ struct CentavoWidgets: WidgetBundle {
 
     var body: some Widget {
         HoyWidget()
-        EnQueSeVaWidget()
         HoyBloqueoWidget()
     }
 }
 
-/// «Hoy puedes gastar» y la barra del mes: pequeño (propuesta A) y mediano (propuesta A, con «+»).
+/// «Hoy puedes gastar»: pequeño (propuesta A) y mediano, que en «Editar widget» muestra el ritmo
+/// del presupuesto (propuesta A, con «+») o en qué se va (propuesta B). Mismo `kind` que antes,
+/// así los widgets ya puestos se quedan.
 struct HoyWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Hoy", provider: DayProvider()) { entry in
-            HoyView(entry: entry)
-                .containerBackground(for: .widget) { Theme.background }
+        AppIntentConfiguration(kind: "Hoy", intent: HoyConfiguration.self, provider: HoyProvider()) { entry in
+            Group {
+                if entry.show == .whereItGoes {
+                    HoyAdaptiveView(entry: entry)
+                } else {
+                    HoyView(entry: entry)
+                }
+            }
+            .containerBackground(for: .widget) { Theme.background }
         }
         .configurationDisplayName("Hoy puedes gastar")
-        .description("Cuánto puedes gastar hoy, cómo vas y la barra del mes.")
+        .description("Cuánto puedes gastar hoy. El mediano muestra la barra del mes o en qué se va: mantenlo presionado › Editar widget.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
-/// «Hoy puedes gastar» con «En qué se va» al lado (mediano, propuesta B).
-struct EnQueSeVaWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "EnQueSeVa", provider: DayProvider()) { entry in
-            WhereItGoesView(entry: entry)
-                .containerBackground(for: .widget) { Theme.background }
-        }
-        .configurationDisplayName("Hoy y en qué se va")
-        .description("Cuánto puedes gastar hoy y tus tres categorías más grandes.")
-        .supportedFamilies([.systemMedium])
+/// «En qué se va» only fits the medium; the small one stays the same.
+private struct HoyAdaptiveView: View {
+    let entry: DayEntry
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        if family == .systemMedium { WhereItGoesView(entry: entry) } else { HoyView(entry: entry) }
     }
 }
 

@@ -37,18 +37,19 @@ struct HoyView: View {
             Spacer(minLength: 6)
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink)
-                // Same type for both; «Llevas» gets the width first, so when the row is
-                // tight it keeps its size and «de $X» is the one that shrinks.
-                HStack(spacing: 4) {
+                // «Llevas $X» at the labels' 9 points, «de $Y» smaller at 7. Both whole: «de»
+                // never shrinks or cuts, and «Llevas» may shrink a little if a big amount needs it.
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
                     keyText("Llevas", money.whole(pace.spent), ink: ink)
-                        .layoutPriority(1)
+                        .font(.ticket(9, relativeTo: .caption2))
+                        .minimumScaleFactor(0.7)
                     Spacer(minLength: 2)
                     keyText("de", money.short(pace.budget), ink: ink)
+                        .font(.ticket(7, relativeTo: .caption2))
+                        .fixedSize()
                 }
-                .font(.ticket(9, relativeTo: .caption2))
                 .textCase(.uppercase)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
                 .padding(.top, 4)
             } else {
                 SetBudgetBox(ink: ink)
