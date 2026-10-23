@@ -13,25 +13,35 @@ enum MonthStatus {
         BudgetStore.amount(from: UserDefaults.standard.string(forKey: BudgetStore.key) ?? "")
     }
 
-    /// "Te quedan $5,586.50 del presupuesto." or "Te pasaste del presupuesto por $230.00."
+    /// "Te quedan $1,000.00 libres (más $5,000.00 apartados para fijos). Hoy puedes gastar $100."
+    /// or "Te pasaste del presupuesto por $230.00." The same figures as the screen: what is
+    /// left once the fixed expenses still to come are set apart, and today's «Hoy puedes gastar».
     /// `nil` with no budget: nothing to measure against.
     static func budgetSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
                                primary: String = primaryCurrency) throws -> String? {
-        let summary = try summarize(in: context, now: now, primary: primary)
+        let amounts = try monthAmounts(in: context, now: now)
+        let summary = MonthSummarizer.summarize(amounts, inMonthOf: now, primary: primary)
+        let spentToday = MonthSummarizer.dayTotal(amounts, onDayOf: now, primary: primary)
         // The fixed expenses still to come are set apart, as on the screen.
         let originals = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.repeatsMonthly == true }))
         let reserved = FixedOutlook.reserved(originals: originals, plans: FixedPlan.saved, primary: primary, now: now)
-        guard let pace = BudgetPace(budget: budget, spent: summary.primary.amount, reserved: reserved, on: now) else {
+        guard let pace = BudgetPace(budget: budget, spent: summary.primary.amount, spentToday: spentToday,
+                                    reserved: reserved, on: now) else {
             return nil
         }
-        let left = money(pace.remaining.magnitude, summary.primary)
-        if pace.remaining < 0 { return "Te pasaste del presupuesto por \(left)." }
-        let perDay = pace.dailyAllowance.formatted(currencyStyle(summary.primary.isoCode ?? primary)
-                                                    .precision(.fractionLength(0)))
-        return "Te quedan \(left) del presupuesto: \(perDay) al día."
+        if pace.remaining < 0 {
+            return "Te pasaste del presupuesto por \(money(pace.remaining.magnitude, summary.primary))."
+        }
+        let today = pace.dailyAllowance.formatted(currencyStyle(summary.primary.isoCode ?? primary)
+                                                   .precision(.fractionLength(0)))
+        let left = pace.reserved > 0
+            ? "Te quedan \(money(pace.free, summary.primary)) libres "
+                + "(más \(money(pace.reserved, summary.primary)) apartados para fijos)."
+            : "Te quedan \(money(pace.remaining, summary.primary)) del presupuesto."
+        return left + " Hoy puedes gastar \(today)."
     }
 
-    /// "Llevas $2,366.00 este mes, más USD 24.99 aparte. Te quedan $5,634.00 del presupuesto."
+    /// "Llevas $2,366.00 este mes, más USD 24.99 aparte. Te quedan $5,634.00 del presupuesto. Hoy…"
     static func totalSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
                               primary: String = primaryCurrency) throws -> String {
         let summary = try summarize(in: context, now: now, primary: primary)
@@ -64,6 +74,10 @@ enum MonthStatus {
 
     private static func summarize(in context: ModelContext, now: Date,
                                   primary: String) throws -> MonthSummary {
+        MonthSummarizer.summarize(try monthAmounts(in: context, now: now), inMonthOf: now, primary: primary)
+    }
+
+    private static func monthAmounts(in context: ModelContext, now: Date) throws -> [ExpenseAmount] {
         // Only this month's rows: the notice runs at every payment and should stay quick.
         let calendar = Calendar.current
         let interval = calendar.dateInterval(of: .month, for: now)
@@ -72,11 +86,10 @@ enum MonthStatus {
         let rows = try context.fetch(FetchDescriptor<Expense>(
             predicate: #Predicate { $0.date >= start && $0.date < end }
         ))
-        let amounts = rows.map {
+        return rows.map {
             ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
                           date: $0.date, category: $0.category)
         }
-        return MonthSummarizer.summarize(amounts, inMonthOf: now, primary: primary)
     }
 
     private static func money(_ amount: Decimal, _ total: MoneyTotal) -> String {

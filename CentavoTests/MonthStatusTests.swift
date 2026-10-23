@@ -42,7 +42,32 @@ final class MonthStatusTests: XCTestCase {
         let line = try XCTUnwrap(budgetLine(500))
         XCTAssertTrue(line.hasPrefix("Te quedan"), line)
         XCTAssertTrue(line.contains("350.00"), line)
-        XCTAssertTrue(line.contains("al día"), "No dice cuánto por día: \(line)")
+        XCTAssertTrue(line.contains("Hoy puedes gastar"), "No dice cuánto hoy: \(line)")
+    }
+
+    /// What today spent comes off today, as on the screen (audit 2026-10-22, #3).
+    func testSpendingTodayComesOffToday() throws {
+        add(100, daysAgo: 1)
+        // October 15th: 17 days left. (1,800 − 100) / 17 = 100, minus the 30 of today.
+        add(30)
+        let line = try XCTUnwrap(budgetLine(1800))
+        XCTAssertTrue(line.contains("1,670.00 del presupuesto"), line)
+        XCTAssertTrue(line.hasSuffix("70."), line)
+    }
+
+    /// «Te quedan» says what is free once the fixed ones still to come are set apart, and
+    /// names those, so it squares with «Hoy puedes gastar» (audit 2026-10-22, #4).
+    func testSaysWhatIsFreeAndWhatIsSetApartForFixedOnes() throws {
+        let rent = Expense(amount: 600, currencyMarker: "$", merchant: "Renta",
+                           date: Calendar.current.date(byAdding: .day, value: -20, to: now)!)
+        rent.repeatsMonthly = true  // Next charge: October 25th, still to come.
+        context.insert(rent)
+        add(100, daysAgo: 1)
+        let line = try XCTUnwrap(budgetLine(2300))
+        XCTAssertTrue(line.contains("1,600.00 libres"), line)
+        XCTAssertTrue(line.contains("600.00 apartados para fijos"), line)
+        // (2,300 − 100 − 600) / 17 = 94.1 → 94.
+        XCTAssertTrue(line.hasSuffix("94."), line)
     }
 
     func testSaysByHowMuchTheBudgetWasBlown() throws {

@@ -10,6 +10,7 @@ struct MonthCarousel: View {
     let pace: BudgetPace?
     let isCurrentMonth: Bool
     var shares: [CategoryShare] = []
+    var returned: Decimal = 0
     var note: String?
     var selectedCategory: CategoryShare?
     var onSelectCategory: (CategoryShare?) -> Void = { _ in }
@@ -70,7 +71,7 @@ struct MonthCarousel: View {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 0) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
-                               shares: shares, note: note, selectedCategory: selectedCategory,
+                               shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
                                onSelectCategory: onSelectCategory, onSetBudget: onSetBudget)
                         .padding(.horizontal, Theme.horizontalPadding)
                         .fixedSize(horizontal: false, vertical: true)

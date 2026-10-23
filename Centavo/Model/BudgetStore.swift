@@ -27,9 +27,10 @@ enum BudgetStore {
 extension BudgetStore {
     /// What a budget means today, said while it is typed: the same «Hoy puedes gastar» the
     /// main screen will show with it, counting what this month already spent.
-    static func dailyPreview(_ amount: Decimal, spent: Decimal = 0, reserved: Decimal = 0,
-                             currency: String, now: Date = .now) -> String {
-        guard let pace = BudgetPace(budget: amount, spent: spent, reserved: reserved, on: now),
+    static func dailyPreview(_ amount: Decimal, spent: Decimal = 0, spentToday: Decimal = 0,
+                             reserved: Decimal = 0, currency: String, now: Date = .now) -> String {
+        guard let pace = BudgetPace(budget: amount, spent: spent, spentToday: spentToday,
+                                    reserved: reserved, on: now),
               pace.remaining > 0 else {
             return "Este mes ya gastaste más que eso."
         }

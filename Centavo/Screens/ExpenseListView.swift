@@ -97,8 +97,10 @@ struct ExpenseListView: View {
         let reserved = isCurrent ? FixedOutlook.reserved(originals: expenses.filter { $0.repeatsMonthly == true },
                                                          plans: FixedPlan.decode(storedPlans),
                                                          primary: primaryCurrency, now: now) : 0
+        // What today already spent comes off today alone, not off the days still to come.
+        let spentToday = isCurrent ? MonthSummarizer.dayTotal(amounts, onDayOf: now, primary: primaryCurrency) : 0
         let pace = BudgetPace(budget: BudgetStore.amount(from: storedBudget),
-                              spent: summary.primary.amount, reserved: reserved,
+                              spent: summary.primary.amount, spentToday: spentToday, reserved: reserved,
                               on: isCurrent ? now : MonthNavigator.closingMoment(of: viewed))
         let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
         let listed = searching ? searchResults : shownExpenses
@@ -150,6 +152,7 @@ struct ExpenseListView: View {
                             pace: pace,
                             isCurrentMonth: isCurrent,
                             shares: CategoryShare.top(summary.categories),
+                            returned: CategoryShare.returned(summary.categories),
                             note: fact?.line,
                             selectedCategory: selectedCategory,
                             onSelectCategory: { line in selectedCategory = line; selectedDay = nil },
@@ -328,6 +331,7 @@ struct ExpenseListView: View {
                             spent: isCurrent ? summary.primary.amount
                                 : MonthSummarizer.summarize(amounts, inMonthOf: now,
                                                             primary: primaryCurrency).primary.amount,
+                            spentToday: MonthSummarizer.dayTotal(amounts, onDayOf: now, primary: primaryCurrency),
                             reserved: FixedOutlook.reserved(originals: expenses.filter { $0.repeatsMonthly == true },
                                                             plans: FixedPlan.decode(storedPlans),
                                                             primary: primaryCurrency, now: now))

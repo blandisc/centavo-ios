@@ -12,6 +12,8 @@ struct BudgetPage: View {
     let isCurrentMonth: Bool
     /// Where the month's money went, biggest first. Empty when nothing is filed.
     var shares: [CategoryShare] = []
+    /// What came back this month, which `shares` leave out (`CategoryShare.returned`).
+    var returned: Decimal = 0
     /// One thing worth knowing about the month (see `MonthNote`), this month only.
     var note: String?
     /// The category whose expenses the list shows, if one was tapped in the mosaic.
@@ -86,7 +88,7 @@ struct BudgetPage: View {
 
     private var whereItGoes: some View {
         WhereItGoes(shares: shares, style: WhereItGoesStyle(rawValue: storedStyle) ?? .bar, money: money,
-                    selected: selectedCategory, onSelect: onSelectCategory)
+                    returned: returned, selected: selectedCategory, onSelect: onSelectCategory)
     }
 
     // MARK: Without a budget

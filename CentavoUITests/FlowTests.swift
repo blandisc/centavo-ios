@@ -480,6 +480,25 @@ final class FlowTests: XCTestCase {
         require(app.buttons["fijar-presupuesto"], "No quitó el presupuesto")
     }
 
+    /// What is spent today comes off today's figure peso for peso; it used to be spread over
+    /// the days left and barely moved (audit 2026-10-22, #3).
+    func testGastarHoyRestaDeLoQuePuedesGastarHoy() {
+        let app = launch(budget: true)
+        let figure = require(app.staticTexts["hoy-puedes-gastar"], "No dice cuánto puedes gastar hoy")
+        let before = wholeAmount(figure.label)
+        fillExpense(app, amount: "100", merchant: "Antojo")
+        app.buttons["hoja-guardar"].tap()
+        let expected = before - 100
+        let updated = NSPredicate { _, _ in self.wholeAmount(figure.label) == expected }
+        let waited = XCTWaiter().wait(for: [expectation(for: updated, evaluatedWith: nil)], timeout: 10)
+        XCTAssertEqual(waited, .completed, "Pasó de \(before) a «\(figure.label)», no a \(expected)")
+    }
+
+    /// "$8,000" → 8000.
+    private func wholeAmount(_ label: String) -> Int {
+        Int(label.filter(\.isNumber)) ?? -1
+    }
+
     func testPasarseDelPresupuestoLoDice() {
         let app = launch()
         app.buttons["Más"].tap()
