@@ -24,6 +24,7 @@ struct OnboardingView: View {
     @State private var draftAmount = ""
     @State private var draftDay = 1
     @FocusState private var focused: Field?
+    @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var pointIconWidth = Theme.Size.iconColumnNarrow
 
     private enum Field { case budget, name, amount }
@@ -109,7 +110,7 @@ struct OnboardingView: View {
     // MARK: Pages
 
     private var welcome: some View {
-        page(title: "Al día", symbol: "wallet.pass.fill",
+        page(title: "Al día", symbol: "calendar.day.timeline.left",
              lead: "Te dice cuánto puedes gastar hoy, sin que anotes nada.") {
             VStack(spacing: Theme.Space.none) {
                 point("wallet.pass", "Cada compra con Wallet se anota sola: en línea o acercando el teléfono.")
@@ -133,15 +134,16 @@ struct OnboardingView: View {
                     Button {
                         currency = code
                     } label: {
-                        IconRow(CurrencyPreference.name(code),
-                                systemImage: CashSymbol.symbol(for: code)) {
+                        HStack {
+                            Text(CurrencyPreference.name(code)).foregroundStyle(Theme.ink)
+                            Spacer()
                             if currency == code {
-                                Image(systemName: "checkmark")
-                                    .font(Theme.Symbol.regular)
-                                    .foregroundStyle(Theme.brass)
+                                Image(systemName: "checkmark").foregroundStyle(Theme.brass)
                             }
                         }
+                        .font(.ticket(.body))
                         .padding(.horizontal, Theme.Space.l)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow)
                         .selectableCard(selected: currency == code)
                         .contentShape(Rectangle())
                     }
@@ -233,7 +235,7 @@ struct OnboardingView: View {
     private var walletPage: some View {
         page(title: "Conecta Wallet", symbol: "wallet.pass",
              lead: "Una automatización de Atajos avisa a Al día de cada compra. Se configura una vez y toma unos minutos.") {
-            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            VStack(spacing: Theme.Space.xl) {
                 Button {
                     save(); finish(true)
                 } label: {
@@ -255,7 +257,10 @@ struct OnboardingView: View {
                                      @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                OnboardingEmblem(systemImage: symbol)
+                // Decorative; with accessibility text it would push the page out of reach.
+                if !typeSize.isAccessibilitySize {
+                    OnboardingEmblem(systemImage: symbol)
+                }
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text("Paso \(page + 1) de \(pages)").ticketCaption()
                     Text(title)
@@ -373,18 +378,6 @@ private struct StepDots: View {
                     .frame(width: current == index ? Theme.Size.pageDotCurrent : Theme.Size.pageDot,
                            height: Theme.Size.pageDot)
             }
-        }
-    }
-}
-
-/// The SF Symbol of each offered currency, so the choice reads without reading.
-private enum CashSymbol {
-    static func symbol(for code: String) -> String {
-        switch code {
-        case "MXN": "mexicanpesosign"
-        case "USD": "dollarsign"
-        case "EUR": "eurosign"
-        default: "banknote"
         }
     }
 }
