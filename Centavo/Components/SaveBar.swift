@@ -10,36 +10,25 @@ private struct SaveBar: View {
     let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.m) {
             Text(summary)
-                .font(.ticket(12, relativeTo: .footnote))
+                .font(.ticket(.detail))
                 .foregroundStyle(enabled ? Theme.ink : Theme.muted)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("resumen-guardar")
             Button(action: action) {
                 Text("Guardar")
-                    .font(.ticket(14, weight: .semibold, relativeTo: .body))
-                    .padding(.horizontal, 8)
-                    .frame(minHeight: 34)
+                    .font(.ticket(.button))
+                    .padding(.horizontal, Theme.Space.s)
+                    .frame(minHeight: Theme.Size.capsuleLabel)
             }
-            .modifier(ProminentCapsule())
+            .ticketProminent()
             .disabled(!enabled)
             .accessibilityIdentifier(identifier)
         }
-        .padding(.horizontal, Theme.horizontalPadding)
-        .padding(.vertical, 10)
-    }
-}
-
-/// The system's prominent button in brass: Liquid Glass on iOS 26, a filled capsule before.
-private struct ProminentCapsule: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.buttonStyle(.glassProminent).tint(Theme.brass)
-        } else {
-            content.buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(Theme.brass)
-        }
+        .padding(.horizontal, Theme.Space.screen)
+        .padding(.vertical, Theme.Space.sm)
     }
 }
 
@@ -63,4 +52,18 @@ private struct SaveBarPlacement: ViewModifier {
             content.safeAreaInset(edge: .bottom) { bar.background(Theme.background) }
         }
     }
+}
+
+#Preview("Barra de guardar") {
+    NavigationStack {
+        Form {
+            Section { Text("Contenido de la hoja").font(.ticket(.body)) }
+                .listRowBackground(Theme.surface)
+        }
+        .ticketForm()
+        .navigationBarTitleDisplayMode(.inline)
+        .ticketBarTitle("Nuevo gasto")
+        .saveBar("$89.00 en Oxxo", enabled: true) {}
+    }
+    .ticketPreview()
 }

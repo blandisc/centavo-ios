@@ -11,6 +11,8 @@ struct CaptureHealthRow: View {
     var compact = false
     let openGuide: () -> Void
 
+    @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = Theme.Size.glyph
+
     private var text: String {
         if let unread {
             return "Wallet · llegó «\(unread)» sin monto · Revisar el atajo"
@@ -29,26 +31,26 @@ struct CaptureHealthRow: View {
 
     var body: some View {
         Button(action: openGuide) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Space.s) {
                 Image(systemName: needsAttention ? "exclamationmark.circle" : "wave.3.right")
                     .imageScale(.small)
                     // The width of a day divider's dash, so «Wallet» starts where «HOY» does.
-                    .frame(width: 14, alignment: .leading)
+                    .frame(width: glyphWidth, alignment: .leading)
                 Text(text)
-                    .font(.ticket(compact ? 10 : 11, relativeTo: compact ? .caption2 : .caption))
-                    .tracking(compact ? 0.8 : 1.2)
+                    .font(.ticket(compact ? .micro : .caption))
+                    .tracking(compact ? Theme.Tracking.compactLabel : Theme.Tracking.label)
                     .textCase(.uppercase)
                     .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
+                Spacer(minLength: Theme.Space.none)
             }
             .foregroundStyle(needsAttention ? Theme.brass : Theme.muted)
             // Compact, it lines up with the divider's words, past its brass dash.
-            .padding(.leading, compact ? 22 : 0)
-            .frame(maxWidth: .infinity, minHeight: compact ? 28 : 44, alignment: .leading)
+            .padding(.leading, compact ? Theme.Space.xlx : Theme.Space.none)
+            .frame(maxWidth: .infinity, minHeight: compact ? Theme.Size.compactRow : Theme.Size.tapTarget, alignment: .leading)
             .contentShape(Rectangle())
             // Still 44 pt to tap, but it takes only its line: the rest overlaps the air above
             // and below instead of adding a band of empty space (owner, 2026-10-22).
-            .padding(.vertical, compact ? 0 : -10)
+            .padding(.vertical, compact ? Theme.Space.none : Theme.Space.tuck)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("salud-captura")

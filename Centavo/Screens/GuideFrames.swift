@@ -339,7 +339,7 @@ private struct FrameView: View {
     private func noticeTrigger(app: String?, ringApp: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: "bell.badge.fill").foregroundStyle(.red)
+                Image(systemName: "bell.badge.fill").foregroundStyle(.red) // ds-allow: globo rojo de notificación del sistema, dibujo de Atajos
                 Text("Al recibir una notificación de")
             }
             Group {

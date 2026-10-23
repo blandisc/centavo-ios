@@ -13,6 +13,12 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- **Sistema de diseño reforzado** (para quien programa: `docs/DESIGN_SYSTEM.md`). Toda la interfaz sale de tokens y componentes; un lint en la CI rechaza números, tamaños de letra y colores sueltos. Con letra normal la app se ve igual, salvo estos detalles a propósito:
+  - «Configurar ahora» (bienvenida), «Abrir Atajos» (guía) y «Sumar en pesos» usan el mismo botón de vidrio (Liquid Glass) que «Guardar»; antes eran un botón relleno hecho a mano. El interletrado de «Configurar ahora» pasa de 1.2 a 1.4, como «Abrir Atajos».
+  - Las etiquetas en mayúsculas dentro de una fila («Es una devolución», «Se repite»…) van en el blanco cálido de la app en vez del blanco puro del sistema.
+  - El presupuesto de la bienvenida lleva el mismo campo de monto que las hojas.
+  - Diferencias de 1 punto: el hueco entre ícono y nombre de los botones de categoría (5 → 4) y el interlineado del mensaje de error de la base (5 → 4).
+- **Letra grande (Dynamic Type):** el divisor de cada día («HOY · 23 OCT») ya no se corta: con letra de accesibilidad el día va en su renglón y el total debajo. Las columnas de íconos de «Tarjetas y categorías», de la bienvenida y de la guía crecen con la letra. Las cifras grandes ya no se encogen a la mitad: el mínimo es 60 % para cifras y 75 % para palabras.
 - En «Tarjetas y categorías», cada tarjeta o categoría tiene «Borrar» al abrirla (antes solo deslizando). Las categorías de siempre y las ya usadas se pueden apagar para que no salgan al anotar; los gastos no cambian.
 - «Hoy puedes gastar» con el mismo gráfico y cinco cifras, cada una junto a lo que mide: «Vas $3,311 abajo de lo que podrías llevar», «Podrías llevar $5,677» sobre la rayita, «Llevas $2,366» bajo el latón y «Presupuesto $8,000» al final. «Te quedan» y lo apartado para fijos están en la cuenta al tocar la barra.
 - Anotar un pago de Wallet ya no abre la hoja de Atajos con «Listo».

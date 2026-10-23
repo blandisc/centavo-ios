@@ -28,6 +28,8 @@ struct MonthCarousel: View {
     @State private var sizedFor = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var onBudgetPage: Bool { (page ?? 0) == 0 }
+
     private var height: CGFloat? { heights[sizedFor] ?? heights.values.max() }
 
     /// How far a swipe is from the budget (0) to the calendar (1), in tenths: only the
@@ -60,19 +62,19 @@ struct MonthCarousel: View {
             target = travel >= (grows ? 0.1 : 0.5) ? heading : 1 - heading
         }
         guard target != sizedFor else { return }
-        withAnimation(reduceMotion ? nil : .smooth(duration: 0.4)) { sizedFor = target }
+        withAnimation(reduceMotion ? nil : Theme.Motion.resize) { sizedFor = target }
     }
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Space.none) {
             ScrollView(.horizontal) {
-                HStack(alignment: .top, spacing: 0) {
+                HStack(alignment: .top, spacing: Theme.Space.none) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth,
                                shares: shares, note: note, selectedCategory: selectedCategory,
                                onSelectCategory: onSelectCategory, onSetBudget: onSetBudget)
-                        .padding(.horizontal, Theme.horizontalPadding)
+                        .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .containerRelativeFrame(.horizontal)
@@ -80,7 +82,7 @@ struct MonthCarousel: View {
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
                                  currency: currency)
-                        .padding(.horizontal, Theme.horizontalPadding)
+                        .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .containerRelativeFrame(.horizontal)
@@ -97,18 +99,19 @@ struct MonthCarousel: View {
             // While the height eases, nothing of the taller page draws over the list.
             .clipped()
             // A page that changes height in place (choosing «No mostrar» in «Más») eases too.
-            .animation(reduceMotion ? nil : .smooth(duration: 0.45), value: heights[sizedFor])
+            .animation(reduceMotion ? nil : Theme.Motion.restyle, value: heights[sizedFor])
 
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Space.xxs) {
                 ForEach(pageNames.indices, id: \.self) { index in
                     Button {
                         withAnimation { page = index }
-                        withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { sizedFor = index }
+                        withAnimation(reduceMotion ? nil : Theme.Motion.restyle) { sizedFor = index }
                     } label: {
                         Capsule()
                             .fill(page == index ? Theme.ink : Theme.dimmed)
-                            .frame(width: page == index ? 18 : 6, height: 6)
-                            .frame(width: 44, height: 44)
+                            .frame(width: page == index ? Theme.Size.pageDotCurrent : Theme.Size.pageDot,
+                                   height: Theme.Size.pageDot)
+                            .frame(width: Theme.Size.tapTarget, height: Theme.Size.tapTarget)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -118,8 +121,8 @@ struct MonthCarousel: View {
             }
             // The lit pill is 12 pt wider than the dot, so centering the two 44 pt slots left the
             // ink 3 pt off the middle (measured): shift it back toward the dot's side.
-            .offset(x: (page ?? 0) == 0 ? 3 : -3)
-            .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: page)
+            .offset(x: onBudgetPage ? Theme.Size.pageDotShift : -Theme.Size.pageDotShift)
+            .animation(reduceMotion ? nil : Theme.Motion.settle, value: page)
             .frame(maxWidth: .infinity)
         }
     }

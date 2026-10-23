@@ -11,7 +11,7 @@ private struct DeleteSheet: View {
     let confirm: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var height: CGFloat = 320
+    @State private var height: CGFloat = 320 // ds-allow: altura inicial antes de medir el contenido
 
     private var details: String {
         [expense.category, expense.card, expense.date.formatted(.dateTime.day().month(.abbreviated))]
@@ -21,83 +21,72 @@ private struct DeleteSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Space.none) {
             Text("¿Borrar este gasto?")
-                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                .tracking(2)
+                .font(.ticket(.footnoteStrong))
+                .tracking(Theme.Tracking.title)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
                 .accessibilityAddTraits(.isHeader)
-                .padding(.bottom, 20)
+                .padding(.bottom, Theme.Space.xl)
 
-            VStack(spacing: 6) {
+            VStack(spacing: Theme.Space.xs) {
                 Text(ledgerAmount(for: expense, primary: primaryCurrency))
-                    .font(.ticket(32, weight: .semibold, relativeTo: .largeTitle))
+                    .font(.ticket(.display))
                     .foregroundStyle(Theme.ink)
                     .monospacedDigit()
                 Text(expense.shownName)
-                    .font(.ticket(15, weight: .medium, relativeTo: .body))
+                    .font(.ticket(.bodyMedium))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2)
                 if !details.isEmpty {
                     Text(details)
-                        .font(.ticket(12, relativeTo: .footnote))
+                        .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
             }
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
+            .padding(.vertical, Theme.Space.lx)
             .overlay(alignment: .top) { Perforation() }
             .overlay(alignment: .bottom) { Perforation() }
             .accessibilityElement(children: .combine)
 
             Text(undoable ? "Podrás deshacerlo unos segundos." : "No se puede deshacer.")
-                .font(.ticket(12, relativeTo: .footnote))
+                .font(.ticket(.detail))
                 .foregroundStyle(Theme.faint)
-                .padding(.top, 14)
-                .padding(.bottom, 20)
+                .padding(.top, Theme.Space.ml)
+                .padding(.bottom, Theme.Space.xl)
 
-            VStack(spacing: 4) {
+            VStack(spacing: Theme.Space.xxs) {
                 Button {
                     confirm()
                     dismiss()
                 } label: {
                     Text("Borrar")
-                        .font(.ticket(15, weight: .semibold, relativeTo: .body))
-                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .font(.ticket(.bodyStrong))
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.wideCapsuleLabel)
                 }
-                .modifier(DangerCapsule())
+                .ticketProminent(.destructive)
 
                 Button { dismiss() } label: {
                     Text("Conservar")
-                        .font(.ticket(15, relativeTo: .body))
+                        .font(.ticket(.body))
                         .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, Theme.horizontalPadding)
-        .padding(.top, 28)
-        .padding(.bottom, 8)
+        .padding(.horizontal, Theme.Space.screen)
+        .padding(.top, Theme.Space.xxxl)
+        .padding(.bottom, Theme.Space.s)
         .fixedSize(horizontal: false, vertical: true)
         // As tall as what it holds, at any text size.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         .presentationDetents([.height(height)])
         .presentationBackground(Theme.background)
-        .presentationCornerRadius(28)
-    }
-}
-
-/// The prominent button, in the one red the app has.
-private struct DangerCapsule: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.buttonStyle(.glassProminent).tint(Theme.danger)
-        } else {
-            content.buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(Theme.danger)
-        }
+        .presentationCornerRadius(Theme.Radius.sheet)
     }
 }
 

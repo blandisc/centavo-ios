@@ -45,36 +45,36 @@ struct WhereItGoes: View {
     private var total: Decimal { shares.reduce(0) { $0 + $1.amount } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Group {
                 if typeSize.isAccessibilitySize {
                     // Side by side the total got cut («$2,3…»): the title goes above it.
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                         Text("En qué se va")
                             .fixedSize(horizontal: false, vertical: true)
                         Text(money(total))
                             .foregroundStyle(Theme.ink)
                             .monospacedDigit()
                             .lineLimit(1)
-                            .minimumScaleFactor(0.5)
+                            .minimumScaleFactor(Theme.MinimumScale.figure)
                     }
                 } else {
                     HStack {
                         Text("En qué se va")
                             .lineLimit(1)
                             .layoutPriority(1)
-                        Spacer(minLength: 8)
+                        Spacer(minLength: Theme.Space.s)
                         // Shrinks with large text rather than breaking «$2,366.00» in two.
                         Text(money(total))
                             .foregroundStyle(Theme.ink)
                             .monospacedDigit()
                             .lineLimit(1)
-                            .minimumScaleFactor(0.5)
+                            .minimumScaleFactor(Theme.MinimumScale.figure)
                     }
                 }
             }
-            .font(.ticket(10, relativeTo: .caption2))
-            .tracking(1.2)
+            .font(.ticket(.micro))
+            .tracking(Theme.Tracking.label)
             .textCase(.uppercase)
             .foregroundStyle(Theme.muted)
             .accessibilityElement(children: .combine)
@@ -132,17 +132,17 @@ private struct ShareBarChart: View {
     let lines: [CategoryLine]
     let money: (Decimal) -> String
 
-    @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = 10
+    @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = Theme.Size.shareBar
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             GeometryReader { proxy in
-                let gap: CGFloat = 2
+                let gap: CGFloat = Theme.Space.xxxs
                 let usable = max(proxy.size.width - gap * CGFloat(max(lines.count - 1, 0)), 0)
                 HStack(spacing: gap) {
                     ForEach(lines) { line in
                         // A sliver still shows: 1 % of the month is still somewhere.
-                        Rectangle().fill(line.color).frame(width: max(usable * line.share.share, 3))
+                        Rectangle().fill(line.color).frame(width: max(usable * line.share.share, Theme.Size.minimumBarWidth))
                     }
                 }
                 .frame(width: proxy.size.width, alignment: .leading)
@@ -151,7 +151,7 @@ private struct ShareBarChart: View {
             .frame(height: barHeight)
             .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
                 ForEach(lines) { line in
                     ShareBarLine(line: line, amount: money(line.share.amount))
                         .accessibilityLabel(line.spoken(money))
@@ -169,10 +169,10 @@ private struct ShareBarLine: View {
     let amount: String
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = 20
-    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = 14
-    @ScaledMetric(relativeTo: .footnote) private var percentWidth: CGFloat = 40
-    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = 24
+    @ScaledMetric(relativeTo: .footnote) private var iconWidth: CGFloat = Theme.Size.shareIconColumn
+    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = Theme.Size.glyph
+    @ScaledMetric(relativeTo: .footnote) private var percentWidth: CGFloat = Theme.Size.sharePercentColumn
+    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = Theme.Size.shareRow
 
     private var icon: some View {
         Image(systemName: line.icon)
@@ -209,38 +209,38 @@ private struct ShareBarLine: View {
     var body: some View {
         Group {
             if typeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    HStack(spacing: Theme.Space.s) {
                         icon
                         name.fixedSize(horizontal: false, vertical: true)
                     }
                     ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: Theme.Space.s) {
                             amountText.fixedSize()
-                            Spacer(minLength: 8)
+                            Spacer(minLength: Theme.Space.s)
                             percent
                         }
-                        VStack(alignment: .leading, spacing: 2) {
-                            amountText.minimumScaleFactor(0.5)
+                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                            amountText.minimumScaleFactor(Theme.MinimumScale.figure)
                             percent
                         }
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, Theme.Space.xxs)
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Space.s) {
                     icon
                     name.lineLimit(1)
-                    Spacer(minLength: 8)
+                    Spacer(minLength: Theme.Space.s)
                     amountText.layoutPriority(1)
                     percent.frame(minWidth: percentWidth, alignment: .trailing)
                 }
             }
         }
-        .font(.ticket(12, relativeTo: .footnote))
+        .font(.ticket(.detail))
         .textCase(.uppercase)
-        .tracking(0.6)
+        .tracking(Theme.Tracking.detail)
         // A line of 16 pt read as a target too small for the accessibility audit.
         .frame(minHeight: rowHeight)
         .contentShape(Rectangle())
@@ -259,48 +259,132 @@ private struct ShareMosaicChart: View {
     let selected: CategoryShare?
     let onSelect: (CategoryShare?) -> Void
 
-    @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = 156
-    @ScaledMetric(relativeTo: .footnote) private var textSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.mosaicHeight
+    @ScaledMetric(relativeTo: .footnote) private var textSize: CGFloat = Theme.Size.mosaicText
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Grows a little with the text, but stays a part of the screen.
-    private var height: CGFloat { min(scaledHeight, 260) }
+    private var height: CGFloat { min(scaledHeight, Theme.Size.mosaicMaxHeight) }
+
+    private func isSelected(_ line: CategoryLine) -> Bool {
+        selected.map { line.share.isSameLine(as: $0) } ?? false
+    }
+
+    private func toggle(_ line: CategoryLine) {
+        let wasSelected = isSelected(line)
+        withAnimation(reduceMotion ? nil : Theme.Motion.quick) { onSelect(wasSelected ? nil : line.share) }
+    }
 
     var body: some View {
+        if typeSize.isAccessibilitySize {
+            // With the largest text no name or amount fits in a block sized by its share (they
+            // were cut or left only the icon): one full-width block per category, biggest
+            // first, as tall as its text, in the same colors and still a filter.
+            VStack(spacing: Theme.Space.xxs) {
+                ForEach(lines) { line in
+                    Button { toggle(line) } label: {
+                        MosaicStackedTile(line: line, amount: money(line.share.amount))
+                    }
+                    .buttonStyle(.plain)
+                    .modifier(MosaicTileDress(line: line, isSelected: isSelected(line),
+                                              anySelected: selected != nil, money: money))
+                }
+            }
+        } else {
+            tiled
+        }
+    }
+
+    private var tiled: some View {
         GeometryReader { proxy in
             // Laid out 3 pt wider and taller, then pulled back by the half gap: the outer blocks
             // touch the margins (they sat 1.5 pt inside, measured) and the gaps stay 3 pt.
-            let tiles = ShareMosaic.layout(lines.map(\.share.share), width: proxy.size.width + 3,
-                                           height: proxy.size.height + 3)
+            let tiles = ShareMosaic.layout(lines.map(\.share.share), width: proxy.size.width + Theme.Size.mosaicGap,
+                                           height: proxy.size.height + Theme.Size.mosaicGap)
             ZStack(alignment: .topLeading) {
                 ForEach(Array(zip(lines, tiles)), id: \.0.id) { line, tile in
-                    let isSelected = selected.map { line.share.isSameLine(as: $0) } ?? false
-                    Button {
-                        withAnimation(reduceMotion ? nil : .snappy) { onSelect(isSelected ? nil : line.share) }
-                    } label: {
+                    Button { toggle(line) } label: {
                         MosaicTile(line: line, amount: money(line.share.amount),
-                                   fit: ShareMosaic.fit(width: tile.width - 3, height: tile.height - 3,
-                                                        name: line.name, lineHeight: textSize * 1.35,
-                                                        charWidth: textSize * 0.66))
+                                   fit: ShareMosaic.fit(width: tile.width - Theme.Size.mosaicGap,
+                                                        height: tile.height - Theme.Size.mosaicGap,
+                                                        name: line.name,
+                                                        lineHeight: textSize * Theme.Size.mosaicLineHeightRatio,
+                                                        charWidth: textSize * Theme.Size.mosaicCharWidthRatio))
                     }
                     .buttonStyle(.plain)
-                    .frame(width: tile.width - 3, height: tile.height - 3)
-                    .background(line.color, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.ink, lineWidth: 2)
-                        }
-                    }
-                    .opacity(selected == nil || isSelected ? 1 : 0.4)
+                    .frame(width: tile.width - Theme.Size.mosaicGap, height: tile.height - Theme.Size.mosaicGap)
+                    .modifier(MosaicTileDress(line: line, isSelected: isSelected(line),
+                                              anySelected: selected != nil, money: money))
                     .offset(x: tile.x, y: tile.y)
-                    .accessibilityLabel(line.spoken(money))
-                    .accessibilityHint(isSelected ? "Muestra todo el mes" : "Muestra sus gastos")
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                    .accessibilityIdentifier("categoria-\(line.name)")
                 }
             }
         }
         .frame(height: height)
+    }
+}
+
+/// A mosaic block's color, selection ring, dimming and what VoiceOver says: the same tiled
+/// or stacked.
+private struct MosaicTileDress: ViewModifier {
+    let line: CategoryLine
+    let isSelected: Bool
+    let anySelected: Bool
+    let money: (Decimal) -> String
+
+    func body(content: Content) -> some View {
+        content
+            .background(line.color, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+            .overlay {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: Theme.Radius.control)
+                        .strokeBorder(Theme.ink, lineWidth: Theme.Stroke.strong)
+                }
+            }
+            .opacity(!anySelected || isSelected ? Theme.Opacity.visible : Theme.Opacity.unselected)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(line.spoken(money))
+            .accessibilityHint(isSelected ? "Muestra todo el mes" : "Muestra sus gastos")
+            .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+            .accessibilityIdentifier("categoria-\(line.name)")
+    }
+}
+
+/// A mosaic block in accessibility text sizes: icon and name over the amount and its share,
+/// all wrapping instead of shrinking.
+private struct MosaicStackedTile: View {
+    let line: CategoryLine
+    let amount: String
+
+    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = Theme.Size.glyph
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                Image(systemName: line.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .fontWeight(.semibold)
+                    .frame(width: iconSize, height: iconSize)
+                Text(line.name)
+                    .font(.ticket(.label))
+                    .textCase(.uppercase)
+                    .tracking(Theme.Tracking.detail)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(amount)
+                .font(.ticket(.bodyStrong))
+                .monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+            Text(line.percent)
+                .font(.ticket(.micro))
+                .monospacedDigit()
+                .opacity(Theme.Opacity.onTileSecondary)
+        }
+        .foregroundStyle(line.textColor)
+        .padding(Theme.Space.s)
+        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
 
@@ -309,7 +393,7 @@ private struct MosaicTile: View {
     let amount: String
     let fit: ShareMosaic.Fit
 
-    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = Theme.Size.glyph
 
     private var icon: some View {
         Image(systemName: line.icon)
@@ -321,9 +405,9 @@ private struct MosaicTile: View {
 
     private var name: some View {
         Text(line.name)
-            .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+            .font(.ticket(.label))
             .textCase(.uppercase)
-            .tracking(0.6)
+            .tracking(Theme.Tracking.detail)
             .lineLimit(1)
     }
 
@@ -331,27 +415,27 @@ private struct MosaicTile: View {
         Group {
             switch fit {
             case .full:
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) { icon; name }
-                    Spacer(minLength: 4)
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    HStack(spacing: Theme.Space.xs) { icon; name }
+                    Spacer(minLength: Theme.Space.xxs)
                     Text(amount)
-                        .font(.ticket(15, weight: .semibold, relativeTo: .body))
+                        .font(.ticket(.bodyStrong))
                         .monospacedDigit()
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(Theme.MinimumScale.figure)
                     Text(line.percent)
-                        .font(.ticket(10, relativeTo: .caption2))
+                        .font(.ticket(.micro))
                         .monospacedDigit()
-                        .opacity(0.75)
+                        .opacity(Theme.Opacity.onTileSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             case .line:
-                HStack(spacing: 6) {
+                HStack(spacing: Theme.Space.xs) {
                     icon
                     name
-                    Spacer(minLength: 4)
+                    Spacer(minLength: Theme.Space.xxs)
                     Text(amount)
-                        .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                        .font(.ticket(.label))
                         .monospacedDigit()
                         .lineLimit(1)
                 }
@@ -359,9 +443,9 @@ private struct MosaicTile: View {
             case .vertical:
                 // Too narrow for the name across: it runs up the block, as on a book's spine.
                 GeometryReader { proxy in
-                    VStack(spacing: 6) {
+                    VStack(spacing: Theme.Space.xs) {
                         icon
-                        let room = max(proxy.size.height - iconSize - 6, 0)
+                        let room = max(proxy.size.height - iconSize - Theme.Space.xs, 0)
                         name
                             .frame(width: room, alignment: .leading)
                             .rotationEffect(.degrees(-90))
@@ -374,7 +458,7 @@ private struct MosaicTile: View {
             }
         }
         .foregroundStyle(line.textColor)
-        .padding(8)
+        .padding(Theme.Space.s)
         .contentShape(Rectangle())
     }
 }

@@ -111,21 +111,21 @@ struct ExpenseListView: View {
             // Not a `List`: a list snaps a row to its new height, and the carousel's height has
             // to ease with the list below it (it leapt and wobbled, measured frame by frame).
             ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
+            LazyVStack(alignment: .leading, spacing: Theme.Space.none) {
                 if searching {
                     SearchHeaderRow(count: listed.count)
-                        .ticketRow(bottom: 8)
+                        .ticketRow(bottom: Theme.Space.s)
                 } else {
                     HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                               pace: pace)
                         // With a budget the verdict sits right under the figure, one step away.
-                        .ticketRow(bottom: pace != nil && !expenses.isEmpty ? 8 : 20)
+                        .ticketRow(bottom: pace != nil && !expenses.isEmpty ? Theme.Space.s : Theme.Space.xl)
 
                     if isCurrent, let code = CurrencySuggestion.switchTo(
                         markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
                         offered: CurrencyPreference.offered) {
                         CurrencySuggestionRow(code: code) { setPrimary(code) }
-                            .ticketRow(bottom: 20)
+                            .ticketRow(bottom: Theme.Space.xl)
                     }
                 }
                 if expenses.isEmpty {
@@ -133,7 +133,7 @@ struct ExpenseListView: View {
                     if let pace {
                         BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
                                    onSetBudget: { showingBudget = true })
-                            .ticketRow(bottom: 20)
+                            .ticketRow(bottom: Theme.Space.xl)
                     }
                     EmptyTicket { showingSetup = true }
                         .ticketRow()
@@ -144,7 +144,7 @@ struct ExpenseListView: View {
                                                               primary: primaryCurrency, today: now),
                             selectedDay: selectedDay,
                             onSelectDay: { day in
-                                withAnimation(.snappy) { selectedDay = day; selectedCategory = nil }
+                                withAnimation(Theme.Motion.quick) { selectedDay = day; selectedCategory = nil }
                             },
                             spent: summary.primary,
                             pace: pace,
@@ -158,7 +158,7 @@ struct ExpenseListView: View {
                         )
                         // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                         // between them instead of two pages touching.
-                        .ticketRow(bottom: isCurrent ? 0 : 20, horizontal: 0)
+                        .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
 
                         // The Wallet line stays between the carousel and the list, not under «Hoy»:
                         // it is about the capture, not about today's expenses (owner, 2026-10-21).
@@ -174,24 +174,24 @@ struct ExpenseListView: View {
 
                         if let day = selectedDay {
                             FilterRow(title: "Día \(day)", count: shownExpenses.count) {
-                                withAnimation(.snappy) { selectedDay = nil }
+                                withAnimation(Theme.Motion.quick) { selectedDay = nil }
                             }
                             .ticketRow()
                         }
                         if let line = selectedCategory {
                             FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
                                       count: shownExpenses.count) {
-                                withAnimation(.snappy) { selectedCategory = nil }
+                                withAnimation(Theme.Motion.quick) { selectedCategory = nil }
                             }
                             .ticketRow()
                         }
                         if monthExpenses.isEmpty {
                             Text("Sin gastos este mes")
-                                .font(.ticket(13, relativeTo: .footnote))
-                                .tracking(1.4)
+                                .font(.ticket(.footnote))
+                                .tracking(Theme.Tracking.action)
                                 .textCase(.uppercase)
                                 .foregroundStyle(Theme.muted)
-                                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                                .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
                                 .overlay(alignment: .top) { Perforation() }
                                 .ticketRow()
                         }
@@ -226,8 +226,8 @@ struct ExpenseListView: View {
                     }
                 }
             }
-            .padding(.top, 8)
-            .padding(.bottom, 24)
+            .padding(.top, Theme.Space.s)
+            .padding(.bottom, Theme.Space.xxl)
             }
             // Scrolling closes a row left open by a swipe, as in a system list.
             .onScrollPhaseChange { _, phase in
@@ -245,8 +245,8 @@ struct ExpenseListView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Al día")
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                        .tracking(2)
+                        .font(.ticket(.footnoteStrong))
+                        .tracking(Theme.Tracking.title)
                         .textCase(.uppercase)
                         .accessibilityAddTraits(.isHeader)
                 }
@@ -300,12 +300,12 @@ struct ExpenseListView: View {
                     Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
                         .disabled(offset <= earliest)
                     Text(viewed, format: .dateTime.month(.abbreviated).year())
-                        .font(.ticket(15, weight: .medium, relativeTo: .body))
-                        .tracking(2)
+                        .font(.ticket(.bodyMedium))
+                        .tracking(Theme.Tracking.title)
                         .textCase(.uppercase)
                         .lineLimit(1)
                         .fixedSize()
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, Theme.Space.xxs)
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
                 }
@@ -400,26 +400,22 @@ private struct CurrencySuggestionRow: View {
     let apply: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: Theme.Space.m) {
             Text("Casi todos tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
-                .font(.ticket(12, relativeTo: .footnote))
+                .font(.ticket(.detail))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
+            Spacer(minLength: Theme.Space.s)
             Button("Sumar en \(CurrencyPreference.spoken(code))", action: apply)
-                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                .font(.ticket(.label))
                 .foregroundStyle(Theme.onBrass)
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.brass)
-                .frame(minHeight: 44)
+                .ticketProminent()
+                .frame(minHeight: Theme.Size.tapTarget)
                 .accessibilityIdentifier("sumar-en-moneda")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-        .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
-        }
+        .padding(.horizontal, Theme.Space.ml)
+        .padding(.vertical, Theme.Space.xs)
+        .ticketOutline()
     }
 }
 
@@ -551,9 +547,9 @@ private extension ExpenseListView {
     @ViewBuilder var undoOverlay: some View {
         if let deleted = lastDeleted {
             UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
-                .padding(.horizontal, Theme.horizontalPadding)
+                .padding(.horizontal, Theme.Space.screen)
                 // Right above the bottom bar: the safe area already ends at the bar.
-                .padding(.bottom, 12)
+                .padding(.bottom, Theme.Space.m)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: deleted.id) {
                     try? await Task.sleep(for: .seconds(6))
@@ -565,12 +561,12 @@ private extension ExpenseListView {
     func delete(_ expense: Expense) {
         let snapshot = DeletedExpense(expense)
         context.delete(expense)
-        withAnimation(.snappy) { lastDeleted = snapshot }
+        withAnimation(Theme.Motion.quick) { lastDeleted = snapshot }
     }
 
     func restore(_ deleted: DeletedExpense) {
         context.insert(deleted.make())
-        withAnimation(.snappy) { lastDeleted = nil }
+        withAnimation(Theme.Motion.quick) { lastDeleted = nil }
     }
 
     /// Reads the chosen file and says plainly what happened.
@@ -602,7 +598,7 @@ private extension ExpenseListView {
 
 private extension View {
     /// A line of the ticket: the side margins and the space under it.
-    func ticketRow(bottom: CGFloat = 0, horizontal: CGFloat = Theme.horizontalPadding) -> some View {
+    func ticketRow(bottom: CGFloat = 0, horizontal: CGFloat = Theme.Space.screen) -> some View {
         self
             // Exactly the screen's width less the margins, as a list row was: a long name
             // can't widen the line past the screen.
@@ -680,11 +676,11 @@ private struct HeroTotal: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if allowance != nil {
                 Text("Hoy puedes gastar")
-                    .font(.ticket(11, weight: .semibold, relativeTo: .caption))
-                    .tracking(1.6)
+                    .font(.ticket(.captionStrong))
+                    .tracking(Theme.Tracking.caption)
                     .textCase(.uppercase)
                     // Grey like every other caption, so the brass figure under it leads.
                     .foregroundStyle(Theme.muted)
@@ -693,34 +689,34 @@ private struct HeroTotal: View {
                 Text(countedText)
                     .accessibilityIdentifier("hoy-puedes-gastar")
                     .accessibilityLabel(allowanceText)
-                    .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
-                    .tracking(-2)
+                    .font(.ticket(.hero))
+                    .tracking(Theme.Tracking.hero)
                     .foregroundStyle(Theme.brass)
                     // The «$» carries its own air on the left (3 pt at this size, measured): pulled
                     // back so the figure lines up with «Hoy puedes gastar» above it.
-                    .padding(.leading, -3)
+                    .padding(.leading, Theme.Space.outset)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+                    .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText(value: counted))
                     .onAppear {
                         guard !reduceMotion else { counted = allowanceValue; return }
-                        withAnimation(.snappy(duration: 0.9)) { counted = allowanceValue }
+                        withAnimation(Theme.Motion.countUp) { counted = allowanceValue }
                     }
                     .onChange(of: allowanceValue) { _, value in
-                        withAnimation(reduceMotion ? nil : .snappy) { counted = value }
+                        withAnimation(reduceMotion ? nil : Theme.Motion.quick) { counted = value }
                     }
 
             } else {
                 Text(verbatim: caption).ticketCaption()
                 Text(totalText)
                     .accessibilityIdentifier("total-mes")
-                    .font(.ticket(54, weight: .medium, relativeTo: .largeTitle))
-                    .tracking(-2)
+                    .font(.ticket(.hero))
+                    .tracking(Theme.Tracking.hero)
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+                    .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText())
-                    .animation(reduceMotion ? nil : .snappy, value: summary.primary.amount)
+                    .animation(reduceMotion ? nil : Theme.Motion.quick, value: summary.primary.amount)
             }
             // Adding currencies together would be a lie, so they ride along separately, under the
             // month's total; with «Hoy puedes gastar» on top they would only crowd it (each one
@@ -728,7 +724,7 @@ private struct HeroTotal: View {
             if allowance == nil, !summary.others.isEmpty {
                 Text(verbatim: "+ \(othersText) aparte")
                     .accessibilityIdentifier("otras-monedas")
-                    .font(.ticket(13, relativeTo: .footnote))
+                    .font(.ticket(.footnote))
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
@@ -740,26 +736,23 @@ private struct EmptyTicket: View {
     let onSetup: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Space.ml) {
             Text("Sin gastos todavía")
-                .font(.ticket(15, weight: .semibold, relativeTo: .body))
-                .tracking(1.6)
+                .font(.ticket(.bodyStrong))
+                .tracking(Theme.Tracking.caption)
                 .textCase(.uppercase)
             Text("Configura el atajo y cada pago con Apple Wallet se anotará solo. Lo demás, anótalo tú.")
-                .font(.ticket(14, relativeTo: .callout))
-                .lineSpacing(4)
+                .font(.ticket(.callout))
+                .lineSpacing(Theme.Space.xxs)
                 .foregroundStyle(Theme.muted)
             Button("Configurar atajo", action: onSetup)
                 .buttonStyle(.bordered)
-                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                .padding(.top, 6)
+                .font(.ticket(.footnoteStrong))
+                .padding(.top, Theme.Space.xs)
         }
-        .padding(22)
+        .padding(Theme.Space.xlx)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-        }
+        .ticketOutline(.emphasis)
     }
 }
 
@@ -771,8 +764,8 @@ private struct LedgerRow: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
-    @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = 32
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = Theme.Size.rowTile
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = Theme.Size.rowTileSymbol
 
     private var isRefund: Bool { expense.amount < 0 }
 
@@ -788,7 +781,7 @@ private struct LedgerRow: View {
             .foregroundStyle(category == nil ? Theme.muted : Theme.brass)
             .frame(width: iconSize, height: iconSize)
             .frame(width: tileSize, height: tileSize)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 8))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
             .accessibilityHidden(true)
     }
 
@@ -804,8 +797,8 @@ private struct LedgerRow: View {
         // Up to three lines; the full name is in the expense sheet.
         Text(expense.shownName)
             .lineLimit(3)
-            .font(.ticket(15, weight: .medium, relativeTo: .body))
-            .tracking(0.4)
+            .font(.ticket(.bodyMedium))
+            .tracking(Theme.Tracking.name)
             .textCase(.uppercase)
             .foregroundStyle(Theme.ink)
             .multilineTextAlignment(.leading)
@@ -814,8 +807,8 @@ private struct LedgerRow: View {
     @ViewBuilder private var metaText: some View {
         if let meta {
             Text(meta)
-                .font(.ticket(11, relativeTo: .caption2))
-                .tracking(0.6)
+                .font(.ticket(.hint))
+                .tracking(Theme.Tracking.detail)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.leading)
@@ -824,7 +817,7 @@ private struct LedgerRow: View {
 
     private var amountText: some View {
         Text(ledgerAmount(for: expense, primary: primaryCurrency))
-            .font(.ticket(15, relativeTo: .body))
+            .font(.ticket(.body))
             .foregroundStyle(isRefund ? Theme.brass : Theme.ink)
             .lineLimit(1)
             .fixedSize()
@@ -834,28 +827,28 @@ private struct LedgerRow: View {
         Group {
             if typeSize.isAccessibilitySize {
                 // Side by side there is no room: stack it so nothing breaks mid-word.
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     merchantText
                     metaText
                     amountText
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                HStack(alignment: .center, spacing: 12) {
+                HStack(alignment: .center, spacing: Theme.Space.m) {
                     categoryTile
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
+                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                             merchantText
                             metaText
                         }
-                        Spacer(minLength: 8)
+                        Spacer(minLength: Theme.Space.s)
                         amountText
                     }
                 }
             }
         }
-        .padding(.vertical, 8)
-        .frame(minHeight: 52)
+        .padding(.vertical, Theme.Space.s)
+        .frame(minHeight: Theme.Size.tallRow)
         .overlay(alignment: .top) { if perforated { Perforation() } }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -872,7 +865,7 @@ private struct LedgerRow: View {
     context.insert(Expense(amount: -230, currencyMarker: "$", merchant: "Liverpool",
                            date: .now.addingTimeInterval(-86_400), category: "Ropa"))
     context.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam", card: "BBVA"))
-    return ExpenseListView().modelContainer(container).preferredColorScheme(.dark)
+    return ExpenseListView().modelContainer(container).ticketPreview()
 }
 
 /// Everything needed to bring a deleted expense back exactly as it was.
@@ -907,21 +900,21 @@ private struct UndoBar: View {
     let undo: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.m) {
             Text(text)
-                .font(.ticket(12, relativeTo: .footnote))
+                .font(.ticket(.detail))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
-            Spacer(minLength: 8)
+            Spacer(minLength: Theme.Space.s)
             Button("Deshacer", action: undo)
-                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
+                .font(.ticket(.label))
                 .textCase(.uppercase)
-                .tracking(1.2)
+                .tracking(Theme.Tracking.label)
                 .foregroundStyle(Theme.brass)
-                .frame(minHeight: 44)
+                .frame(minHeight: Theme.Size.tapTarget)
                 .accessibilityIdentifier("deshacer-borrado")
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.Space.l)
         .modifier(UndoBarSurface())
     }
 }
@@ -934,7 +927,7 @@ private struct UndoBarSurface: ViewModifier {
         } else {
             content
                 .background(Theme.surface, in: Capsule())
-                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: Theme.Stroke.hairline) }
         }
     }
 }
@@ -945,11 +938,11 @@ private struct SearchHeaderRow: View {
 
     var body: some View {
         Text(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
-            .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
-            .tracking(1.2)
+            .font(.ticket(.label))
+            .tracking(Theme.Tracking.label)
             .textCase(.uppercase)
             .foregroundStyle(Theme.brass)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
             .accessibilityIdentifier("resultados-busqueda")
     }
 }
@@ -964,15 +957,15 @@ private struct FilterRow: View {
     var body: some View {
         HStack {
             Text("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")")
-                .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
-                .tracking(1.2)
+                .font(.ticket(.label))
+                .tracking(Theme.Tracking.label)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.brass)
             Spacer()
             Button("Ver todo el mes", action: clear)
-                .font(.ticket(12, relativeTo: .footnote))
+                .font(.ticket(.detail))
                 .foregroundStyle(Theme.muted)
-                .frame(minHeight: 44)
+                .frame(minHeight: Theme.Size.tapTarget)
                 .accessibilityIdentifier("ver-todo-el-mes")
         }
     }
@@ -1045,27 +1038,58 @@ private struct DayDivider: View {
             .locale(Locale(identifier: "es_MX")))
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    private var tick: some View {
+        Capsule().fill(Theme.brass)
+            .frame(width: Theme.Size.dayTick.width, height: Theme.Size.dayTick.height)
+    }
+
+    private var dayText: some View {
+        Text(label)
+            .font(.ticket(.microStrong))
+            .tracking(Theme.Tracking.action)
+            .textCase(.uppercase)
+            .foregroundStyle(Theme.brass)
+    }
+
+    @ViewBuilder private var totalText: some View {
+        if let total {
+            Text(total)
+                .font(.ticket(.micro))
+                .foregroundStyle(Theme.muted)
+                .monospacedDigit()
+        }
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
-            Capsule().fill(Theme.brass).frame(width: 14, height: 3)
-            Text(label)
-                .font(.ticket(10, weight: .semibold, relativeTo: .caption2))
-                .tracking(1.4)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
-                .lineLimit(1)
-            Rectangle().fill(Theme.brass.opacity(0.25)).frame(height: 1)
-            if let total {
-                Text(total)
-                    .font(.ticket(10, relativeTo: .caption2))
-                    .foregroundStyle(Theme.muted)
-                    .monospacedDigit()
-                    .lineLimit(1)
+        Group {
+            if typeSize.isAccessibilitySize {
+                // With the largest text the day, the rule and the total don't fit on one line and
+                // «HOY · 23 OCT» was cut to «HO…»: the day gets its own lines, the total under it.
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        tick
+                        dayText.fixedSize(horizontal: false, vertical: true)
+                    }
+                    totalText
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: Theme.Space.s) {
+                    tick
+                    // The day never gives way: the rule between it and the total shrinks first.
+                    dayText.lineLimit(1).layoutPriority(1)
+                    Rectangle().fill(Theme.brass.opacity(Theme.Opacity.rule))
+                        .frame(height: Theme.Stroke.hairline)
+                    totalText.lineLimit(1)
+                }
             }
         }
-        .padding(.top, 14)
-        .padding(.bottom, 2)
+        .padding(.top, Theme.Space.ml)
+        .padding(.bottom, Theme.Space.xxxs)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("divisor-dia")
     }
 }

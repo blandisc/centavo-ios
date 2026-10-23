@@ -74,9 +74,9 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Cómo pagas").ticketCaption()
                 } footer: {
-                    hint(sources.isEmpty
-                         ? "Agrega tus tarjetas y el efectivo. La predeterminada ya viene elegida cuando anotas a mano."
-                         : "La de la estrella ya viene elegida cuando anotas a mano: desliza a la derecha para cambiarla. Toca una para borrarla.")
+                    NoteText(sources.isEmpty
+                             ? "Agrega tus tarjetas y el efectivo. La predeterminada ya viene elegida cuando anotas a mano."
+                             : "La de la estrella ya viene elegida cuando anotas a mano: desliza a la derecha para cambiarla. Toca una para borrarla.")
                 }
                 .listRowBackground(Theme.surface)
 
@@ -93,31 +93,23 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Tus categorías").ticketCaption()
                 } footer: {
-                    hint("Toca una para cambiarla o borrarla; también puedes deslizarla a la izquierda. Borrar una no cambia los gastos que ya la tienen.")
+                    NoteText("Toca una para cambiarla o borrarla; también puedes deslizarla a la izquierda. Borrar una no cambia los gastos que ya la tienen.")
                 }
                 .listRowBackground(Theme.surface)
 
                 Section {
                     ForEach(others, id: \.self) { name in
                         Toggle(isOn: shows(name)) {
-                            HStack(spacing: 12) {
-                                Image(systemName: CategoryStyle.icon(for: name, custom: categories))
-                                    .foregroundStyle(Theme.brass)
-                                    .frame(width: 28)
-                                    .accessibilityHidden(true)
-                                Text(name)
-                                    .font(.ticket(15, relativeTo: .body))
-                                    .foregroundStyle(Theme.ink)
-                            }
+                            IconRow(name, systemImage: CategoryStyle.icon(for: name, custom: categories))
                         }
                         .tint(Theme.brass)
-                        .frame(minHeight: 44)
+                        .frame(minHeight: Theme.Size.tapTarget)
                         .accessibilityIdentifier("mostrar-\(name)")
                     }
                 } header: {
                     Text("Categorías de siempre").ticketCaption()
                 } footer: {
-                    hint("Apaga las que no uses y ya no saldrán al anotar. Los gastos que ya la tienen no cambian.")
+                    NoteText("Apaga las que no uses y ya no saldrán al anotar. Los gastos que ya la tienen no cambian.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -127,7 +119,7 @@ struct CatalogSettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Listo") { dismiss() }
-                        .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                        .font(.ticket(.footnoteStrong))
                 }
             }
             .sheet(item: $editing) { item in
@@ -185,36 +177,23 @@ struct CatalogSettingsView: View {
     }
 
     private func row(_ item: LabeledIcon, isDefault: Bool) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: item.icon)
-                .foregroundStyle(Theme.brass)
-                .frame(width: 28)
-                .accessibilityHidden(true)
-            Text(item.name)
-                .font(.ticket(15, relativeTo: .body))
-                .foregroundStyle(Theme.ink)
-            Spacer()
+        IconRow(item.name, systemImage: item.icon) {
             if isDefault {
                 Image(systemName: "star.fill")
                     .foregroundStyle(Theme.brass)
                     .accessibilityLabel("Predeterminada")
             }
         }
-        .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
 
     private func addButton(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: "plus")
-                .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
+                .font(.ticket(.footnoteStrong))
                 .foregroundStyle(Theme.brass)
-                .frame(minHeight: 44)
+                .frame(minHeight: Theme.Size.tapTarget)
         }
         .accessibilityIdentifier(identifier)
-    }
-
-    private func hint(_ text: String) -> some View {
-        Text(text).font(.ticket(12, relativeTo: .footnote)).foregroundStyle(Theme.muted)
     }
 }

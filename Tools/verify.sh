@@ -4,6 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-all}"
+# Design-system lint first: it takes a second and catches raw values before a long build.
+Tools/lint-design.sh --quiet
 if [[ "$mode" == all || "$mode" == package ]]; then
   (cd Packages/CentavoCore && swift test)
 fi

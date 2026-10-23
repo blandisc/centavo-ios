@@ -23,27 +23,20 @@ struct BudgetSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Presupuesto", text: $text,
-                              prompt: Text("0").foregroundStyle(Theme.faint))
-                        .font(.ticket(44, weight: .medium, relativeTo: .largeTitle))
-                        .tracking(-1.5)
-                        .foregroundStyle(Theme.ink)
-                        .keyboardType(.decimalPad)
+                    AmountInputField("Presupuesto", text: $text, prompt: "0", identifier: "presupuesto-monto")
                         .focused($focused)
-                        .groupsThousands($text)
-                        .accessibilityIdentifier("presupuesto-monto")
                 } header: {
                     Text("Tope de gasto cada mes (\(currency))").ticketCaption()
                 } footer: {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
                         if let amount {
                             Text(BudgetStore.dailyPreview(amount, spent: spent, reserved: reserved, currency: currency))
-                                .font(.ticket(13, relativeTo: .footnote))
+                                .font(.ticket(.footnote))
                                 .foregroundStyle(Theme.brass)
                                 .accessibilityIdentifier("presupuesto-al-dia")
                         }
                         Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency).")
-                            .font(.ticket(12, relativeTo: .footnote))
+                            .font(.ticket(.detail))
                             .foregroundStyle(Theme.muted)
                     }
                 }
@@ -55,8 +48,8 @@ struct BudgetSheet: View {
                             stored = ""
                             dismiss()
                         }
-                        .font(.ticket(12, relativeTo: .footnote))
-                        .tracking(1.4)
+                        .font(.ticket(.detail))
+                        .tracking(Theme.Tracking.action)
                         .textCase(.uppercase)
                         .accessibilityIdentifier("quitar-presupuesto")
                     }
@@ -71,7 +64,7 @@ struct BudgetSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
-                        .font(.ticket(13, relativeTo: .footnote))
+                        .font(.ticket(.footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
             }

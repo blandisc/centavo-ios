@@ -19,15 +19,15 @@ struct BudgetPage: View {
     var onSelectCategory: (CategoryShare?) -> Void = { _ in }
     let onSetBudget: () -> Void
 
-    @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = 84
+    @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = Theme.Size.budgetBar
     /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
-    @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = 22
+    @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = Theme.Size.figureText
     @State private var barWidth: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(WhereItGoesStyle.key) private var storedStyle = WhereItGoesStyle.bar.rawValue
 
     /// Grows a little with the text, but a bar the size of the screen helps nobody.
-    private var barHeight: CGFloat { min(scaledBarHeight, 132) }
+    private var barHeight: CGFloat { min(scaledBarHeight, Theme.Size.budgetBarMaxHeight) }
 
     private func money(_ amount: Decimal) -> String {
         formatMoney(amount, isoCode: spent.isoCode, label: spent.label)
@@ -44,7 +44,7 @@ struct BudgetPage: View {
     var body: some View {
         // What was spent is already the big total right above; this page only says how it
         // measures against the budget.
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             if let pace {
                 ticket(pace)
             } else {
@@ -60,21 +60,21 @@ struct BudgetPage: View {
         }
         // Choosing a view of «En qué se va» in «Más» fades it, while the carousel eases its
         // height and the list below follows.
-        .animation(reduceMotion ? nil : .smooth(duration: 0.45), value: storedStyle)
+        .animation(reduceMotion ? nil : Theme.Motion.restyle, value: storedStyle)
     }
 
     // MARK: Note
 
     /// «Nota · Comida va 40 % arriba de lo normal…», the last line of the ticket.
     private func noteLine(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text("Nota")
-                .font(.ticket(10, relativeTo: .caption2))
-                .tracking(1.2)
+                .font(.ticket(.micro))
+                .tracking(Theme.Tracking.label)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.brass)
             Text(text)
-                .font(.ticket(12, relativeTo: .footnote))
+                .font(.ticket(.detail))
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -93,23 +93,20 @@ struct BudgetPage: View {
 
     private var invitation: some View {
         Button(action: onSetBudget) {
-            VStack(spacing: 6) {
+            VStack(spacing: Theme.Space.xs) {
                 Text("Fijar presupuesto")
-                    .font(.ticket(13, weight: .semibold, relativeTo: .footnote))
-                    .tracking(1.6)
+                    .font(.ticket(.footnoteStrong))
+                    .tracking(Theme.Tracking.caption)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
                 Text("Para ver cuánto te queda")
-                    .font(.ticket(11, relativeTo: .caption))
-                    .tracking(0.6)
+                    .font(.ticket(.caption))
+                    .tracking(Theme.Tracking.detail)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
             .frame(maxWidth: .infinity, minHeight: barHeight)
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-            }
+            .ticketOutline(.emphasis)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -150,20 +147,20 @@ struct BudgetPage: View {
 
     private func remainingBlock(_ label: String, _ amount: String,
                                 alignment: HorizontalAlignment = .trailing) -> some View {
-        VStack(alignment: alignment, spacing: 4) {
+        VStack(alignment: alignment, spacing: Theme.Space.xxs) {
             Text(label)
-                .font(.ticket(10, relativeTo: .caption2))
-                .tracking(1.2)
+                .font(.ticket(.micro))
+                .tracking(Theme.Tracking.label)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
             Text(amount)
                 .contentTransition(.numericText())
-                .font(.ticket(22, relativeTo: .title2))
-                .tracking(-0.5)
+                .font(.ticket(.figure))
+                .tracking(Theme.Tracking.figure)
                 .foregroundStyle(Theme.ink)
                 // A huge figure shrinks instead of widening the page (it shifted the carousel).
                 .lineLimit(1)
-                .minimumScaleFactor(0.4)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
         }
     }
 }

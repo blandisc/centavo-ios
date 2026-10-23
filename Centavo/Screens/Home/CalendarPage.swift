@@ -12,7 +12,7 @@ struct CalendarPage: View {
     var currency = CurrencyPreference.fallback
 
     /// 44 pt: Apple's minimum for something to tap.
-    @ScaledMetric(relativeTo: .caption2) private var cellHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .caption2) private var cellHeight: CGFloat = Theme.Size.tapTarget
 
     private var rows: [[MonthCalendar.Cell]] {
         var cells = model.cells
@@ -21,14 +21,14 @@ struct CalendarPage: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Cada día del mes").ticketCaption()
-            Grid(horizontalSpacing: 4, verticalSpacing: 4) {
+            Grid(horizontalSpacing: Theme.Space.xxs, verticalSpacing: Theme.Space.xxs) {
                 GridRow {
                     ForEach(Array(model.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                         Text(symbol)
-                            .font(.ticket(10, relativeTo: .caption2))
-                            .tracking(1)
+                            .font(.ticket(.micro))
+                            .tracking(Theme.Tracking.tag)
                             .foregroundStyle(Theme.muted)
                             .frame(maxWidth: .infinity)
                             .accessibilityHidden(true)
@@ -96,32 +96,32 @@ private struct DayCell: View {
 
     var body: some View {
         Text("\(day.number)")
-            .font(.ticket(11, relativeTo: .caption2))
+            .font(.ticket(.hint))
             .lineLimit(1)
-            .minimumScaleFactor(0.5)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
             .foregroundStyle(textColor)
             .frame(maxWidth: .infinity, minHeight: height)
             .background(fill)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
             .overlay {
                 switch day.state {
                 case .future:
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(Theme.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
+                        .strokeBorder(Theme.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.perforation))
                 case .refund:
-                    RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.brass, lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: Theme.Radius.chip).strokeBorder(Theme.brass, lineWidth: Theme.Stroke.emphasis)
                 default:
                     EmptyView()
                 }
             }
             .overlay {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 6).stroke(Theme.brass, lineWidth: 2).padding(-3)
+                    RoundedRectangle(cornerRadius: Theme.Radius.ticket).stroke(Theme.brass, lineWidth: Theme.Stroke.strong).padding(Theme.Space.outset)
                 }
             }
             .overlay {
                 if day.isToday && !isSelected {
-                    RoundedRectangle(cornerRadius: 6).stroke(Theme.ink, lineWidth: 1.5).padding(-3)
+                    RoundedRectangle(cornerRadius: Theme.Radius.ticket).stroke(Theme.ink, lineWidth: Theme.Stroke.emphasis).padding(Theme.Space.outset)
                 }
             }
             .accessibilityElement(children: .ignore)
