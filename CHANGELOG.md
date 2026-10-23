@@ -12,6 +12,9 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- «Hoy puedes gastar» baja peso por peso con lo que gastas hoy: con $630 para hoy, gastar $630 lo deja en $0 (antes decía $567, porque repartía lo de hoy entre los días que faltan). Mañana se vuelve a calcular con lo gastado hasta hoy. La cuenta al tocar la barra muestra «Para hoy» y «− Gastado hoy».
+- Siri dice lo que te queda libre después de apartar los fijos por venir, y cuánto está apartado: «Te quedan $1,000.00 libres (más $5,000.00 apartados para fijos). Hoy puedes gastar $100.» Es la misma cifra que la pantalla.
+- «En qué se va» cuadra con «Llevas»: arriba dice el mismo total y, si hubo devoluciones, las resta en «Menos devoluciones». Una categoría escrita con un espacio de más («Café ») ya filtra los mismos gastos que suma.
 - En «Tarjetas y categorías», cada tarjeta o categoría tiene «Borrar» al abrirla (antes solo deslizando). Las categorías de siempre y las ya usadas se pueden apagar para que no salgan al anotar; los gastos no cambian.
 - «Hoy puedes gastar» con el mismo gráfico y cinco cifras, cada una junto a lo que mide: «Vas $3,311 abajo de lo que podrías llevar», «Podrías llevar $5,677» sobre la rayita, «Llevas $2,366» bajo el latón y «Presupuesto $8,000» al final. «Te quedan» y lo apartado para fijos están en la cuenta al tocar la barra.
 - Anotar un pago de Wallet ya no abre la hoja de Atajos con «Listo».

@@ -270,3 +270,9 @@ Decisión del dueño (opción A de tres, después de probar una versión sin nú
 
 ## 2026-10-22 · Borrar tarjetas y categorías, y ocultar las de siempre
 A pedido del dueño. «Borrar» va también en la hoja de editar (deslizar no se descubre). Las categorías de la app y las ya usadas no se borran: se ocultan del selector al anotar (`hiddenCategories`, sincronizado como el resto de los ajustes). Un gasto que ya tiene una categoría oculta la sigue mostrando, y al editarlo aparece en el selector.
+
+## 2026-10-22 · Lo de hoy sale de hoy; «Te quedan» y «En qué se va» cuadran
+Arreglos de la auditoría de sumas (`docs/research/2026-10-22-auditoria-sumas.md`, #3, #4 y #5).
+- **«Hoy puedes gastar» = (presupuesto − fijos por venir − lo gastado antes de hoy) ÷ días que faltan (hoy incluido) − lo gastado hoy**, redondeado hacia abajo y nunca menos de cero. Precisa la regla del 2026-10-16: antes lo de hoy se repartía entre los días que faltan y la cifra casi no bajaba al pagar ($630 → gasto $630 → $567). Mañana se recalcula con todo lo gastado hasta hoy. Lo mismo en la pantalla, la cuenta de la barra, la hoja del presupuesto y Siri. Una devolución de hoy regresa a hoy.
+- **Siri dice lo libre y lo apartado:** «Te quedan $X libres (más $Y apartados para fijos). Hoy puedes gastar $Z.»; sin fijos por venir, «Te quedan $X del presupuesto». Cambia «Te quedan» del 2026-10-19 («no cambia, porque el fijo todavía no se gasta») para Siri: decir el total sin apartar junto a una cifra por día que sí aparta no cuadraba. Se dice «Hoy puedes gastar» en vez de «al día» porque, con lo de hoy restado, la cifra es de hoy, no de cada día.
+- **«En qué se va» suma lo mismo que «Llevas».** Los porcentajes siguen sin contar devoluciones (2026-10-15), pero arriba va el total del mes y, si una categoría quedó en negativo, la diferencia se ve en «Menos devoluciones». Una categoría se compara sin espacios a los lados, igual al sumar que al filtrar.
