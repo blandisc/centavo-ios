@@ -28,7 +28,7 @@ enum ExpenseRecorder {
         place: CLLocationCoordinate2D? = nil,
         in context: ModelContext,
         rules: CategoryRules = UserCatalog.categoryRules,
-        hidden: [String] = UserCatalog.hiddenNames,
+        hidden: [String] = UserCatalog.notAutoAssigned,
         now: Date = .now
     ) throws -> CaptureOutcome {
         // Usually just the amount; `CaptureText` also finds it when the whole payment came.
@@ -103,7 +103,7 @@ enum ExpenseRecorder {
         in context: ModelContext,
         primary: String = CurrencyPreference.current,
         rules: CategoryRules = UserCatalog.categoryRules,
-        hidden: [String] = UserCatalog.hiddenNames,
+        hidden: [String] = UserCatalog.notAutoAssigned,
         now: Date = .now
     ) throws -> CaptureOutcome {
         guard let parsed = AmountParser.parse(amountText) else { return .unreadable }

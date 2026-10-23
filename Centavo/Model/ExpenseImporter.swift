@@ -15,7 +15,7 @@ enum ExpenseImporter {
     /// catalog's guess: an empty category in an export can be on purpose.
     static func importCSV(_ text: String, into context: ModelContext,
                           rules: CategoryRules = UserCatalog.categoryRules,
-                          hidden: [String] = UserCatalog.hiddenNames) throws -> Summary {
+                          hidden: [String] = UserCatalog.notAutoAssigned) throws -> Summary {
         let parsed = try CSVImporter.records(from: text)
         let existing = try context.fetch(FetchDescriptor<Expense>())
         let latest = CategoryMemory.latest(in: existing.map(\.categorized) + parsed.records.map {

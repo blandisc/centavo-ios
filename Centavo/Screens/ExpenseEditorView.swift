@@ -42,10 +42,12 @@ struct ExpenseEditorView: View {
     private enum Creating: String, Identifiable { case category, source; var id: String { rawValue } }
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
     private var paymentSources: [LabeledIcon] { UserCatalog.decode(storedSources) }
+    /// Hidden and deleted categories: never filled in on their own.
+    private var notAutoAssigned: [String] { UserCatalog.decodeNames(storedHidden) + UserCatalog.deletedNames }
     /// The category you chose for what is typed in «Comercio», if you ever did.
     private var rememberedCategory: String? {
         CategoryMemory.remembered(for: merchant, rules: CategoryRules(stored: storedRules),
-                                  history: pastExpenses, hidden: UserCatalog.decodeNames(storedHidden))
+                                  history: pastExpenses, hidden: notAutoAssigned)
     }
     @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = 22
 
@@ -171,7 +173,7 @@ struct ExpenseEditorView: View {
                         hint("La última vez en \(merchant.trimmingCharacters(in: .whitespaces)) fue \(remembered).")
                     } else if let suggested = CategoryMemory.suggestion(
                         for: merchant, rules: CategoryRules(stored: storedRules), history: pastExpenses,
-                        hidden: UserCatalog.decodeNames(storedHidden)) {
+                        hidden: notAutoAssigned) {
                         hint("Sugerida para \(merchant.trimmingCharacters(in: .whitespaces)): \(suggested). Cámbiala si no te queda.")
                     }
                 }
@@ -312,7 +314,7 @@ struct ExpenseEditorView: View {
                                  icons: UserCatalog.categoryIcons,
                                  taken: customCategories.map(\.name) + CategoryStyle.common.map(\.name)) { saved in
                     storedCategories = UserCatalog.encode(customCategories + [saved])
-                    storedHidden = UserCatalog.hiddenNames(storedHidden, setting: saved.name, hidden: false)
+                    UserCatalog.markDeleted(saved.name, false)
                     category = saved.name
                 }
             case .source:
@@ -333,7 +335,7 @@ struct ExpenseEditorView: View {
             guard expense == nil, category.trimmingCharacters(in: .whitespaces).isEmpty,
                   let remembered = CategoryMemory.suggestion(for: new, rules: CategoryRules(stored: storedRules),
                                                              history: pastExpenses,
-                                                             hidden: UserCatalog.decodeNames(storedHidden))
+                                                             hidden: notAutoAssigned)
             else { return }
             category = remembered
         }

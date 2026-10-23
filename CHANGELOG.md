@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Added
-- **Recordar mi categoría:** la última categoría que elegiste para un comercio es la que reciben sus pagos nuevos (Wallet, Siri, a mano e «Importar CSV» en las filas sin categoría), aunque la hayas corregido en un gasto viejo. Si se la quitas, los siguientes llegan sin categoría. No cambia ningún gasto ya guardado, y una categoría que borraste u ocultaste no se vuelve a poner sola.
+- **Recordar mi categoría:** la última categoría que elegiste para un comercio es la que reciben sus pagos nuevos (Wallet, Siri, a mano e «Importar CSV» en las filas sin categoría), aunque la hayas corregido en un gasto viejo. Si se la quitas, los siguientes llegan sin categoría. No cambia ningún gasto ya guardado, y una categoría que borraste u ocultaste no se vuelve a poner sola (borrarla no la quita del selector si algún gasto la usa).
 - **Gastos fijos con cualquier frecuencia:** cada semana («todos los lunes, $500»), cada 2 o más semanas, cada quincena (15 y último), cada mes o cada 2 o más meses. Se anotan solos el día que llegan, nunca antes. Se eligen al marcar «Se repite» o en **Más › Gastos fijos**, que muestra el próximo cobro de cada uno y lo que ya llegó y lo que falta este mes.
 - **«Hoy puedes gastar» aparta los fijos que faltan del mes:** el dinero de la renta o de los lunes que vienen ya no se cuenta como disponible. El ticket lo dice: «Fijos por venir · $1,500».
 - **Nombres legibles:** los comercios que llegan de Wallet se leen como se escriben («CLIP*MX TAQ GUERO 02» → «Taq Guero», «AMZN MKTP MX*2K3J» → «Amazon»). El nombre original se guarda y es el que sale en el CSV.

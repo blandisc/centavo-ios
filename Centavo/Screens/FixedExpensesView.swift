@@ -268,7 +268,7 @@ struct FixedPlanSheet: View {
             currency: CurrencyPreference.current,
             category: CategoryMemory.suggestion(for: name, rules: UserCatalog.categoryRules,
                                                 history: history.map(\.categorized),
-                                                hidden: UserCatalog.hiddenNames),
+                                                hidden: UserCatalog.notAutoAssigned),
             rule: rule.stored,
             firstDate: firstDate
         )

@@ -20,6 +20,10 @@ enum UserCatalog {
     static let hiddenCategoriesKey = "hiddenCategories"
     /// The category the owner last chose for each merchant (`CategoryRules`), synced too.
     static let categoryRulesKey = "categoryRules"
+    /// Custom categories someone deleted (and has not made again), synced too. Only the
+    /// remembered category reads it: those are never filled in on their own. The picker
+    /// does not, so one still used keeps showing there.
+    static let deletedCategoriesKey = "deletedCategories"
 
     static func decodeNames(_ stored: String) -> [String] {
         (try? JSONDecoder().decode([String].self, from: Data(stored.utf8))) ?? []
@@ -43,6 +47,22 @@ enum UserCatalog {
     /// Hidden category names, for code outside a view (the intents, the importer).
     static var hiddenNames: [String] {
         decodeNames(UserDefaults.standard.string(forKey: hiddenCategoriesKey) ?? "")
+    }
+
+    /// Deleted custom category names (`deletedCategoriesKey`).
+    static var deletedNames: [String] {
+        decodeNames(UserDefaults.standard.string(forKey: deletedCategoriesKey) ?? "")
+    }
+
+    /// What a new expense never gets on its own: hidden categories and deleted ones.
+    static var notAutoAssigned: [String] { hiddenNames + deletedNames }
+
+    /// A custom category was deleted (`true`) or made again with that name (`false`).
+    static func markDeleted(_ name: String, _ deleted: Bool) {
+        let stored = names(UserDefaults.standard.string(forKey: deletedCategoriesKey) ?? "",
+                           setting: name, included: deleted)
+        UserDefaults.standard.set(stored, forKey: deletedCategoriesKey)
+        if Store.syncsBudget { BudgetSync.push(stored, for: deletedCategoriesKey) }
     }
 
     /// What the owner chose per merchant, for code outside a view.
@@ -72,10 +92,10 @@ enum UserCatalog {
         if Store.syncsBudget { BudgetSync.push(stored, for: categoryRulesKey) }
     }
 
-    /// `hidden` with `name` added (`hide`) or taken out.
-    static func hiddenNames(_ stored: String, setting name: String, hidden hide: Bool) -> String {
+    /// The stored list with `name` added (`included`) or taken out.
+    static func names(_ stored: String, setting name: String, included: Bool) -> String {
         var list = decodeNames(stored).filter { !same($0, name) }
-        if hide { list.append(name) }
+        if included { list.append(name) }
         return encodeNames(list)
     }
 

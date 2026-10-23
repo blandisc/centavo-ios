@@ -224,12 +224,30 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertNil(try saved().last?.category, "Ni la memoria ni el catálogo después de quitarla")
     }
 
-    func testAHiddenOrDeletedCategoryIsNotFilledIn() throws {
+    func testAHiddenCategoryIsNotFilledIn() throws {
         try filed("Petco", "Mascotas", daysAgo: 3)
         var rules = CategoryRules()
         rules.learn("Mascotas", for: "Petco")
         try record("$300.00", "Petco", rules: rules, hidden: ["Mascotas"])
         XCTAssertNil(try saved().last?.category)
+    }
+
+    func testADeletedCategoryStaysInThePickerButIsNotFilledIn() throws {
+        try filed("Petco", "Mascotas", daysAgo: 3)
+        var rules = CategoryRules()
+        rules.learn("Mascotas", for: "Petco")
+        // Deleting adds it to the deleted list, never to the hidden one.
+        let deleted = UserCatalog.decodeNames(UserCatalog.names("", setting: "Mascotas", included: true))
+        let known = CategoryMemory.known(in: try saved().map(\.categorized))
+        XCTAssertTrue(CategoryStyle.offered(known: known, custom: [], hidden: []).contains("Mascotas"))
+        try record("$300.00", "PETCO", rules: rules, hidden: deleted)
+        XCTAssertNil(try saved().last?.category)
+        // Made again: off the list, filled in as before.
+        let again = UserCatalog.decodeNames(UserCatalog.names(UserCatalog.encodeNames(deleted),
+                                                              setting: "mascotas", included: false))
+        XCTAssertEqual(again, [])
+        try record("$120.00", "Petco", rules: rules, hidden: again)
+        XCTAssertEqual(try saved().last?.category, "Mascotas")
     }
 
     func testRememberingNeverTouchesExpensesAlreadySaved() throws {

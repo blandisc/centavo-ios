@@ -151,7 +151,7 @@ struct CatalogSettingsView: View {
                             UserCatalog.renameCategory(category.name, to: saved.name)
                         } else { list.append(saved) }
                         storedCategories = UserCatalog.encode(list)
-                        storedHidden = UserCatalog.hiddenNames(storedHidden, setting: saved.name, hidden: false)
+                        UserCatalog.markDeleted(saved.name, false)
                     }
                 }
             }
@@ -171,11 +171,11 @@ struct CatalogSettingsView: View {
         storedSources = UserCatalog.encode(list)
     }
 
-    /// A deleted category also leaves the picker and is never filled in on its own again;
-    /// expenses that have it keep it. If it was used, it shows off in «Categorías de siempre».
+    /// Expenses that have a deleted category keep it, and if any does it stays in the picker;
+    /// it is just never filled in on its own again.
     private func removeCategory(_ category: LabeledIcon) {
         storedCategories = UserCatalog.encode(categories.filter { $0 != category })
-        storedHidden = UserCatalog.hiddenNames(storedHidden, setting: category.name, hidden: true)
+        UserCatalog.markDeleted(category.name, true)
     }
 
     private func remove(_ source: LabeledIcon) {
