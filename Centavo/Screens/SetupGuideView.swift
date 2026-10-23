@@ -226,9 +226,8 @@ private struct GuideStep {
     static let all: [GuideStep] = [
         GuideStep(
             title: "Abre Atajos",
-            symbol: "bolt.horizontal",
-            lead: "Atajos corre una acción cada vez que pagas. Al día no puede crear la "
-                + "automatización por ti: Apple no lo permite. Son 2 minutos y se hace una sola vez.",
+            symbol: "square.2.layers.3d",
+            lead: "Apple no deja que Al día la cree por ti. Son 2 minutos, una sola vez.",
             taps: ["Abre la app Atajos (viene con el iPhone).",
                    "Abajo, al centro, toca «Automatización»."],
             opensShortcuts: true,
@@ -237,8 +236,7 @@ private struct GuideStep {
         GuideStep(
             title: "Elige «Wallet»",
             symbol: "wallet.pass",
-            lead: "Aquí le dices a Atajos qué te hace correr la acción: el pago sin contacto "
-                + "de Wallet.",
+            lead: "Atajos se dispara con el pago sin contacto de Wallet.",
             taps: ["Toca «Nueva automatización» (o «+» arriba, si ya tienes otras).",
                    "En el buscador de abajo escribe «Wallet».",
                    "Toca «Wallet»: «Al realizar un pago sin contacto…»."],
@@ -248,8 +246,6 @@ private struct GuideStep {
         GuideStep(
             title: "Que corra sola",
             symbol: "play.fill",
-            lead: "La automatización se ejecuta sola en cuanto pagas; con «Notificar al "
-                + "ejecutar», su aviso te dice cuánto te queda.",
             taps: ["Elige las tarjetas con las que pagas.",
                    "Marca «Ejecutar de inmediato».",
                    "Activa «Notificar al ejecutar»: después de cada pago te dirá cuánto te queda.",
@@ -277,8 +273,7 @@ private struct GuideStep {
         GuideStep(
             title: "Conecta el importe",
             symbol: "dollarsign.circle",
-            lead: "La acción tiene dos datos por llenar, el importe y el comercio, y cada uno "
-                + "se conecta con los datos del pago.",
+            lead: "Dos datos del pago se conectan en la acción: el importe y el comercio.",
             taps: ["En la acción, toca la palabra azul «Importe».",
                    "Arriba del teclado aparece «Entrada del atajo». Tócala.",
                    "En la acción quedó una burbuja azul. Tócala otra vez.",
@@ -302,8 +297,6 @@ private struct GuideStep {
         GuideStep(
             title: "Pruébalo",
             symbol: "creditcard",
-            lead: "La única prueba cierta es un pago real: acerca el iPhone o el reloj a la "
-                + "terminal y vuelve aquí.",
             taps: ["Paga algo acercando el iPhone o el reloj a la terminal.",
                    "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
             scene: .finished
@@ -323,8 +316,7 @@ private struct GuideStep {
         GuideStep(
             title: "Crea un atajo nuevo",
             symbol: "plus.square",
-            lead: "Al día no puede crearlo por ti: Apple no lo permite. Toma 2 minutos y se "
-                + "hace una sola vez.",
+            lead: "Apple no deja que Al día lo cree por ti. Son 2 minutos, una sola vez.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.newShortcut)
@@ -332,8 +324,7 @@ private struct GuideStep {
         GuideStep(
             title: "Que se active con una notificación",
             symbol: "bell.badge.fill",
-            lead: "«Notificación» anota todas tus compras con Wallet: en línea y acercando el "
-                + "teléfono.",
+            lead: "Cubre tus compras en línea y acercando el teléfono.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.pickNotification)
@@ -369,8 +360,7 @@ private struct GuideStep {
         GuideStep(
             title: "Conecta el comercio",
             symbol: "bag",
-            lead: "Wallet pone el comercio en el subtítulo del aviso, y Atajos no lo manda si "
-                + "no lo conectas.",
+            lead: "El comercio va en el subtítulo del aviso y hay que conectarlo aparte.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectSubtitle)
@@ -378,7 +368,6 @@ private struct GuideStep {
         GuideStep(
             title: "Guárdalo",
             symbol: "checkmark.circle",
-            lead: "Ya casi: con esto, cada compra con Wallet llega sola.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.saveNotice)
@@ -386,8 +375,6 @@ private struct GuideStep {
         GuideStep(
             title: "Pruébalo",
             symbol: "creditcard",
-            lead: "La única prueba cierta es un pago real: compra en línea o acercando el "
-                + "teléfono, y vuelve aquí.",
             taps: ["Compra algo, en línea o acercando el teléfono.",
                    "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
             scene: .frames([])
