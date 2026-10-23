@@ -156,7 +156,7 @@ struct OnboardingView: View {
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityIdentifier("bienvenida-presupuesto")
                 if let value = AmountParser.parse(budgetText)?.value, value > 0 {
-                    Text(BudgetStore.dailyPreview(value, currency: currency))
+                    Text(BudgetStore.dailyPreview(BudgetPace(budget: value, spent: 0, on: .now), currency: currency))
                         .font(.ticket(13, relativeTo: .footnote))
                         .foregroundStyle(Theme.brass)
                         .contentTransition(.numericText())

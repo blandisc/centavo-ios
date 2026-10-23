@@ -5,12 +5,9 @@ import SwiftUI
 struct BudgetSheet: View {
     @Binding var stored: String
     let currency: String
-    /// What this month already spent in `currency`, so the preview matches the main screen.
-    var spent: Decimal = 0
-    /// The part of `spent` that went today: it comes off today alone.
-    var spentToday: Decimal = 0
-    /// Fixed expenses still to come this month, set apart as on the main screen.
-    var reserved: Decimal = 0
+    /// This month measured against a budget (`TodayBudget`), so the preview matches the main
+    /// screen.
+    var pace: (Decimal) -> BudgetPace? = { BudgetPace(budget: $0, spent: 0, on: .now) }
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
@@ -39,8 +36,7 @@ struct BudgetSheet: View {
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if let amount {
-                            Text(BudgetStore.dailyPreview(amount, spent: spent, spentToday: spentToday,
-                                                     reserved: reserved, currency: currency))
+                            Text(BudgetStore.dailyPreview(pace(amount), currency: currency))
                                 .font(.ticket(13, relativeTo: .footnote))
                                 .foregroundStyle(Theme.brass)
                                 .accessibilityIdentifier("presupuesto-al-dia")

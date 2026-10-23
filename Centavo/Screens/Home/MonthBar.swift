@@ -76,7 +76,8 @@ struct MonthBar: View {
         let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))
         let slotW = days > 0 ? (freeW - gap * CGFloat(days - 1)) / CGFloat(days) : 0
         let tilesX = width - freeW
-        let markX = snapped(width * CGFloat(pace.paceFraction), tilesX: tilesX, slotW: slotW)
+        // «Podrías llevar»: the fixed expenses already charged plus every day's amount so far.
+        let markX = snapped(width * fraction(pace.expectedToDate), tilesX: tilesX, slotW: slotW)
 
         return VStack(alignment: .leading, spacing: 8) {
             if isCurrentMonth {
@@ -212,16 +213,21 @@ struct MonthBar: View {
             .accessibilityIdentifier(carriesTotal ? "total-mes" : "llevas")
     }
 
-    /// «Vas $2,537 abajo de lo esperado»: a plain sentence, only the judgement in color.
+    /// «Vas $400 abajo del ritmo»: what the days before today left over (or overspent), which
+    /// today gets on top of its own amount. A plain sentence, only the judgement in color.
     private var verdict: some View {
-        let difference = pace.expectedToDate - pace.spent
+        let carried = pace.carriedOver
         let (before, colored, after, good): (String, String, String, Bool) = {
             if isOver {
                 return ("Te pasaste ", wholeMoney(pace.remaining.magnitude), " del presupuesto", false)
             }
             if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.remaining), " de sobra", true) }
-            if difference >= 0 { return ("Vas ", "\(wholeMoney(difference)) abajo", " de lo que podrías llevar", true) }
-            return ("Vas ", "\(wholeMoney(-difference)) arriba", " de lo que podrías llevar", false)
+            if carried.magnitude >= 1 {
+                return carried > 0 ? ("Vas ", "\(wholeMoney(carried)) abajo", " del ritmo", true)
+                    : ("Vas ", "\(wholeMoney(-carried)) arriba", " del ritmo", false)
+            }
+            if pace.day == 1 { return ("Día 1 de \(pace.daysInMonth)", "", " · mes nuevo", true) }
+            return ("Vas ", "justo", " al ritmo", true)
         }()
         return (Text(before).foregroundStyle(Theme.muted)
             + Text(colored).foregroundStyle(good ? Theme.good : Theme.danger)
@@ -231,31 +237,32 @@ struct MonthBar: View {
             .accessibilityIdentifier("veredicto")
     }
 
-    /// The sum behind «Hoy puedes gastar», like a ticket's lines.
+    /// The sum behind «Hoy puedes gastar», like a ticket's lines: what is left of the month,
+    /// then the day's amount, what the days before left over or overspent, and today.
     private var sum: some View {
         VStack(spacing: 6) {
             sumLine("Presupuesto", wholeMoney(pace.budget))
             sumLine("− Llevas", wholeMoney(pace.spent))
             sumLine(isOver ? "= Te pasaste" : "= Te quedan", wholeMoney(pace.remaining.magnitude))
-            // What today spent comes off today alone: it goes back in before sharing the
-            // days, and comes off today's share at the end.
-            let spentToday = pace.spentToday != 0
-            if days > 0, pace.reserved > 0 {
-                sumLine("− Fijos por venir", wholeMoney(pace.reserved))
-                sumLine(spentToday ? "= Libres" : "= Para tus días", wholeMoney(pace.free))
-            }
-            if days > 0, spentToday {
-                sumLine(pace.spentToday > 0 ? "+ Gastado hoy" : "− Devuelto hoy", wholeMoney(pace.spentToday.magnitude))
-                sumLine("= Para tus días", wholeMoney(pace.todayShare * Decimal(days)))
-            }
             if days > 0 {
-                sumLine("÷ Días que faltan", "\(days)")
-                if spentToday {
-                    sumLine("= Para hoy", wholeMoney(pace.todayShare))
-                    sumLine(pace.spentToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy", wholeMoney(pace.spentToday.magnitude))
+                Divider().overlay(Theme.hairline)
+                if pace.fixedMonth > 0 {
+                    sumLine("Presupuesto", wholeMoney(pace.budget))
+                    sumLine("− Fijos del mes", wholeMoney(pace.fixedMonth))
+                }
+                sumLine("÷ Días del mes", "\(pace.daysInMonth)")
+                sumLine("= Por día", wholeMoney(pace.dailyBase))
+                if pace.day > 1 {
+                    sumLine(pace.carriedOver >= 0 ? "+ Sobró de otros días" : "− Te pasaste otros días",
+                            wholeMoney(pace.carriedOver.magnitude))
+                }
+                if pace.variableToday != 0 {
+                    sumLine(pace.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
+                            wholeMoney(pace.variableToday.magnitude))
                 }
                 Divider().overlay(Theme.hairline)
-                sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
+                sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",
+                        wholeMoney(pace.dailyAllowance.magnitude), strong: true)
             }
         }
         .font(.ticket(12, relativeTo: .footnote))

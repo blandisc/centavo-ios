@@ -93,15 +93,15 @@ import Testing
 }
 
 @Suite struct BudgetPaceReservedTests {
-    @Test func upcomingFixedExpensesAreSetApartFromToday() throws {
+    @Test func upcomingFixedExpensesComeOffTheDailyBase() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
-        // 19 October: 13 days left, today included. 15,000 − 6,000 spent − 1,000 to come = 8,000.
+        // 19 October. (15,000 − 1,000 to come) ÷ 31 = 451.61 a day; 19 days = 8,580.65 − 6,000.
         let date = calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 12))!
         let pace = try #require(BudgetPace(budget: 15_000, spent: 6_000, reserved: 1_000, on: date, calendar: calendar))
         #expect(pace.remaining == 9_000, "Lo que te queda no cambia: el fijo aún no se gasta")
-        #expect(pace.dailyAllowance == 615)
+        #expect(pace.dailyAllowance == 2_580)
         let plain = try #require(BudgetPace(budget: 15_000, spent: 6_000, on: date, calendar: calendar))
-        #expect(plain.dailyAllowance == 692)
+        #expect(plain.dailyAllowance == 3_193)
     }
 }
