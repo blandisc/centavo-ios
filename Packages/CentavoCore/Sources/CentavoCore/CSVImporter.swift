@@ -26,6 +26,8 @@ public enum CSVImporter {
             throw Failure.notOurFile
         }
         let card = column("Tarjeta"), category = column("Categoría")
+        // Added later: a file from before has neither, and everything in it counts.
+        let counts = column("Cuenta"), reason = column("Motivo")
 
         var result = Result(records: [], skipped: 0)
         for row in rows.dropFirst() {
@@ -43,10 +45,20 @@ public enum CSVImporter {
             }
             result.records.append(ExpenseRecord(
                 date: parsedDate, merchant: field(merchant) ?? "Sin comercio", amount: value,
-                currency: currencyText, card: field(card), category: field(category)
+                currency: currencyText, card: field(card), category: field(category),
+                counts: !isNo(field(counts)),
+                uncountedReason: isNo(field(counts)) ? UncountedReason(text: field(reason)) : nil
             ))
         }
         return result
+    }
+
+    /// «No» under «Cuenta». Anything else (blank, «Sí», a typo) counts, as it did before the
+    /// column existed: leaving an expense out of the budget is never a guess.
+    private static func isNo(_ text: String?) -> Bool {
+        guard let text else { return false }
+        return text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            == CSVExporter.uncountedText.lowercased()
     }
 
     /// The exporter's dates (`2026-10-17T15:52:11-06:00`), with or without fractions.

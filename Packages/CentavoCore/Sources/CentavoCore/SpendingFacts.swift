@@ -12,12 +12,18 @@ public struct SpendingRecord: Equatable, Sendable {
     public var date: Date
     /// A fixed expense or one of its copies.
     public var isFixed: Bool
+    /// What counts toward the budget (`CountedAmount.effective`): the projection and the
+    /// categories add this up. A double charge is still found by `amount`: charged twice is a
+    /// problem even when it gets paid back.
+    public var counted: Decimal
 
     public var name: String { displayName ?? merchant }
 
+    /// `counted` left out is all of `amount`, as for every expense that counts in full.
     public init(amount: Decimal, currencyMarker: String? = nil, merchant: String, displayName: String? = nil,
-                category: String? = nil, date: Date, isFixed: Bool = false) {
+                category: String? = nil, date: Date, isFixed: Bool = false, counted: Decimal? = nil) {
         self.amount = amount
+        self.counted = counted ?? amount
         self.currencyMarker = currencyMarker
         self.merchant = merchant
         self.displayName = displayName
@@ -141,8 +147,8 @@ public enum SpendingFacts {
         let day = calendar.component(.day, from: now)
         guard day >= 7, day < days else { return [] }
         let month = records.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .month) }
-        let fixed = month.filter(\.isFixed).reduce(Decimal(0)) { $0 + $1.amount }
-        let variable = month.filter { !$0.isFixed }.reduce(Decimal(0)) { $0 + $1.amount }
+        let fixed = month.filter(\.isFixed).reduce(Decimal(0)) { $0 + $1.counted }
+        let variable = month.filter { !$0.isFixed }.reduce(Decimal(0)) { $0 + $1.counted }
         let projected = whole(fixed + variable / Decimal(day) * Decimal(days))
         let over = projected - budget
         guard over > budget * Decimal(0.05) else { return [] }
@@ -170,7 +176,7 @@ public enum SpendingFacts {
             var totals: [String: (name: String, amount: Decimal)] = [:]
             for row in rows {
                 guard let name = row.category?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { continue }
-                totals[key(name), default: (name, 0)].amount += row.amount
+                totals[key(name), default: (name, 0)].amount += row.counted
             }
             return totals
         }
