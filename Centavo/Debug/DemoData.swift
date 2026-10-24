@@ -80,6 +80,13 @@ enum DemoData {
         context.insert(Expense(amount: 47.5, currencyMarker: "$", merchant: "Oxxo",
                                card: "BBVA", date: now.addingTimeInterval(-3_600), category: "Despensa",
                                rawAmount: "$47.50"))
+        // A work trip that gets paid back: in the list, in no total («No cuenta»). Earlier
+        // than the Oxxo, so the list still opens on it; never yesterday.
+        let trip = Expense(amount: 230, currencyMarker: "$", merchant: "Uber", card: "Nu",
+                           date: max(calendar.startOfDay(for: now), now.addingTimeInterval(-7_200)),
+                           category: "Transporte")
+        trip.markUncounted(.reimbursed)
+        context.insert(trip)
 
         let lastMonth: [(Int, Decimal, String, String, String?, String?)] = [
             (3, 880, "$", "Soriana", "BBVA", "Despensa"),
