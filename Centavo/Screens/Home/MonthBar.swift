@@ -26,8 +26,6 @@ struct MonthBar: View {
     /// Whether the bar has been measured yet.
     private var hasWidth: Bool { width > 0 }
     private var isOver: Bool { pace.remaining < 0 }
-    /// What the day tiles share: what is left, minus the fixed expenses still to come.
-    private var toShare: Decimal { max(0, pace.remaining - (isCurrentMonth ? pace.reserved : 0)) }
     private var days: Int { isCurrentMonth && !isOver ? min(max(pace.daysLeft, 1), 31) : 0 }
 
     private func fraction(_ part: Decimal) -> CGFloat {
@@ -245,12 +243,23 @@ struct MonthBar: View {
             sumLine("Presupuesto", wholeMoney(pace.budget))
             sumLine("− Llevas", wholeMoney(pace.spent))
             sumLine(isOver ? "= Te pasaste" : "= Te quedan", wholeMoney(pace.remaining.magnitude))
+            // What today spent comes off today alone: it goes back in before sharing the
+            // days, and comes off today's share at the end.
+            let spentToday = pace.spentToday != 0
             if days > 0, pace.reserved > 0 {
                 sumLine("− Fijos por venir", wholeMoney(pace.reserved))
-                sumLine("= Para tus días", wholeMoney(toShare))
+                sumLine(spentToday ? "= Libres" : "= Para tus días", wholeMoney(pace.free))
+            }
+            if days > 0, spentToday {
+                sumLine(pace.spentToday > 0 ? "+ Gastado hoy" : "− Devuelto hoy", wholeMoney(pace.spentToday.magnitude))
+                sumLine("= Para tus días", wholeMoney(pace.todayShare * Decimal(days)))
             }
             if days > 0 {
                 sumLine("÷ Días que faltan", "\(days)")
+                if spentToday {
+                    sumLine("= Para hoy", wholeMoney(pace.todayShare))
+                    sumLine(pace.spentToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy", wholeMoney(pace.spentToday.magnitude))
+                }
                 Divider().overlay(Theme.hairline)
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
             }

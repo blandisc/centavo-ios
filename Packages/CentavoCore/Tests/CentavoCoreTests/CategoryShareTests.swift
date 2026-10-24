@@ -57,3 +57,38 @@ import Testing
         #expect(CategoryShare.top([]).isEmpty)
     }
 }
+
+/// «En qué se va» squares with «Llevas» (audit 2026-10-22, #5).
+@Suite struct CategoryShareTotalsTests {
+    @Test func theLinesMinusWhatCameBackAreTheMonth() {
+        let categories = [
+            CategoryTotal(category: "Despensa", amount: 800),
+            CategoryTotal(category: "Ropa", amount: -300),
+            CategoryTotal(category: nil, amount: -50),
+            CategoryTotal(category: "Café", amount: 200),
+        ]
+        let month = categories.reduce(Decimal(0)) { $0 + $1.amount }
+        let shares = CategoryShare.top(categories)
+        let lines = shares.reduce(Decimal(0)) { $0 + $1.amount }
+        #expect(CategoryShare.returned(categories) == 350)
+        #expect(lines - CategoryShare.returned(categories) == month)
+    }
+
+    @Test func nothingCameBackWithoutNegatives() {
+        #expect(CategoryShare.returned([CategoryTotal(category: "Café", amount: 10)]) == 0)
+    }
+
+    @Test func aCategoryWithTrailingSpaceFiltersWhatItAddsUp() throws {
+        let day = Date(timeIntervalSince1970: 1_792_000_000)
+        let summary = MonthSummarizer.summarize([
+            ExpenseAmount(value: 40, currencyMarker: "MXN", date: day, category: "Café "),
+            ExpenseAmount(value: 60, currencyMarker: "MXN", date: day, category: "café"),
+        ], inMonthOf: day, primary: "MXN")
+        let line = try #require(CategoryShare.top(summary.categories).first)
+        #expect(line.amount == 100)
+        #expect(line.contains("Café "))
+        #expect(line.contains(" café"))
+        #expect(!line.contains(""))
+        #expect(CategoryShare(category: " ", share: 0).contains(nil))
+    }
+}
