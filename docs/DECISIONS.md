@@ -25,12 +25,12 @@ Registro de decisiones. Se revierten solo de forma explícita.
 - **No hay ajuste de moneda.** Cambiarla es cambiar tu región en iOS.
 - **`$` a secas significa tu moneda.** Decenas de países usan ese signo; Wallet no dice cuál. `MX$`, `US$`, `€`, `USD` y compañía sí se resuelven.
 - **Marcador desconocido no se adivina:** se agrupa tal cual y se muestra con el símbolo que mandó Wallet.
-- **Los reembolsos son montos negativos** del mismo gasto, no un tipo aparte. Un mes puede quedar en negativo.
+- **Los reembolsos son montos negativos** del mismo gasto, no un tipo aparte. Un mes puede quedar en negativo. (Desde el 2026-10-23, un gasto que te van a reembolsar se marca «No cuenta» en vez de anotar su negativo; las devoluciones de verdad siguen siendo negativas.)
 
 ## 2026-10-11 — Exportar
 - **CSV y nada más.** Un archivo que abre Numbers, Excel y cualquier hoja de cálculo. Sin PDF ni formatos de apps ajenas.
 - **Se exporta todo**, no solo el mes a la vista. Lo que filtres lo haces en la hoja de cálculo.
-- **Columnas:** Fecha, Comercio, Monto, Moneda, Tarjeta. Fechas en ISO 8601 con su huso y montos con punto decimal, para que cualquier hoja las lea igual.
+- **Columnas:** Fecha, Comercio, Monto, Moneda, Tarjeta (luego Categoría; y desde el 2026-10-23, Cuenta y Motivo). Fechas en ISO 8601 con su huso y montos con punto decimal, para que cualquier hoja las lea igual.
 - **Sale por la hoja de compartir de iOS,** así tú decides dónde queda. La app no escribe en ningún lado ni manda nada por la red.
 - **La guía del atajo y la exportación viven en un menú «Más»** en la barra, para no llenarla de botones.
 
@@ -290,3 +290,15 @@ Hallazgos de una revisión adversarial (probados en 97421b3). Regla general: **u
 
 ## 2026-10-23 · «En qué se va» con letra de accesibilidad
 Con los tamaños de accesibilidad (`dynamicTypeSize.isAccessibilitySize`), la Barra apila cada renglón: ícono y nombre arriba, monto y porcentaje abajo (o uno bajo otro si no caben), y el encabezado pone el total bajo «En qué se va». Antes se cortaban los montos («$2,3…») y desaparecían los nombres. En los tamaños normales se ve igual que antes. Mismo patrón que los renglones de la lista de gastos.
+
+## 2026-10-23 · Gastos que no cuentan
+Aprobado por Fernando (alternativa A de tres y el cambio de esquema; propuesta en `centavo-gasto-cero/propuesta.md`). Un gasto que te reembolsan, una transferencia entre tus cuentas o lo que quieras dejar fuera se marca «No cuenta»: se queda en la lista con su monto real y no suma en ningún lado. Reemplaza el truco de anotar un negativo que lo compense.
+- **Esquema: dos propiedades opcionales en `Expense`**, `countedAmount` (cuánto cuenta: `nil` todo, como cualquier gasto de antes; `0` nada) y `uncountedReason` (`reembolso`, `entre-cuentas` u `otro`, valores que no cambian). Migración ligera y compatible con iCloud; los gastos guardados se ven y suman exactamente igual. Se guarda una cantidad y no un sí/no para que «solo cuenta mi mitad» quepa después sin otro cambio de esquema (en CloudKit de producción un campo no se borra); por ahora no hay pantalla para una parte.
+- **Una sola cuenta:** `CountedAmount.effective` (en `CentavoCore`) nunca cuenta más que el monto y respeta su signo. Todas las sumas pasan por `Expense.asAmount`, la única que arma un `ExpenseAmount`: la pantalla, Siri y los avisos no pueden dar cifras distintas.
+- **Dónde no cuenta:** «Hoy puedes gastar», «Llevas», la barra, «En qué se va», el calendario (un día solo con eso se ve vacío), el total de cada día, Siri, lo apartado para fijos y la proyección y las categorías de la nota del mes. **Sí cuenta para el cobro doble:** un cargo doble es un problema aunque te lo paguen.
+- **Se marca en la hoja del gasto** («Cuenta para el presupuesto», encendido por omisión; al apagarlo, «Motivo»: Me lo reembolsan, Entre mis cuentas u Otro) **o al mantener presionado el renglón** («No cuenta» / «Sí cuenta»). Desde el menú el motivo es «Me lo reembolsan», o el que tuvo antes: volver a contarlo no borra el motivo.
+- **En la lista:** el monto tachado en gris (`Theme.muted`, no latón: el latón es dinero que regresa), el ícono en gris y «No cuenta · Me lo reembolsan» primero en la línea de abajo. VoiceOver dice «no cuenta para el presupuesto».
+- **Nada desaparece sin explicación:** al tocar la barra, la cuenta agrega «Fuera del presupuesto · $X» si en el mes hay algo que no cuenta.
+- **Gastos fijos:** las copias heredan la marca.
+- **CSV:** el monto real y dos columnas nuevas, «Cuenta» (Sí/No) y «Motivo». Al importar, solo un «No» deja fuera; un CSV sin esas columnas cuenta todo.
+- **Fuera por ahora:** reglas automáticas por tarjeta o comercio, un parámetro en el Atajo, la parte («mi mitad») y convertir las compensaciones ya anotadas.
