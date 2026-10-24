@@ -476,7 +476,13 @@ final class FlowTests: XCTestCase {
 
         app.buttons["Más"].tap()
         app.buttons["Presupuesto del mes"].tap()
-        require(app.buttons["quitar-presupuesto"], "No ofrece quitar el presupuesto").tap()
+        // «Quitar presupuesto» goes under the «Hoy puedes gastar» choice: scroll the sheet to it.
+        let remove = app.buttons["quitar-presupuesto"]
+        require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
+        for _ in 0..<4 where !remove.isHittable {
+            app.swipeUp()
+        }
+        require(remove, "No ofrece quitar el presupuesto").tap()
         require(app.buttons["fijar-presupuesto"], "No quitó el presupuesto")
     }
 
