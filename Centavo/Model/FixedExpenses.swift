@@ -48,6 +48,8 @@ struct FixedItem: Identifiable {
     let id: String
     let name: String
     let amount: Decimal
+    /// What each charge sets apart from the budget: nothing for one that doesn't count.
+    let counted: Decimal
     let currency: String
     let ruleText: String
     /// The next charge, if any comes within a year.
@@ -70,6 +72,7 @@ enum FixedOutlook {
                 id: String(describing: original.persistentModelID),
                 name: original.shownName,
                 amount: original.amount,
+                counted: original.counted,
                 currency: original.currencyMarker ?? CurrencyPreference.current,
                 ruleText: rule.describe(anchor: original.date, day: original.repeatDay, calendar: calendar),
                 next: RecurringSchedule.next(rule: rule, anchor: original.date, day: original.repeatDay,
@@ -86,6 +89,7 @@ enum FixedOutlook {
                 id: plan.id.uuidString,
                 name: MerchantName.readable(plan.merchant) ?? plan.merchant,
                 amount: plan.value,
+                counted: plan.value,
                 currency: plan.currency,
                 ruleText: rule.describe(anchor: plan.firstDate, calendar: calendar),
                 next: plan.firstDate > now ? plan.firstDate
@@ -104,7 +108,7 @@ enum FixedOutlook {
                          calendar: Calendar = .current) -> Decimal {
         items(originals: originals, plans: plans, now: now, calendar: calendar)
             .filter { CurrencyResolver.isoCode(for: $0.currency, primary: primary) == primary }
-            .reduce(Decimal(0)) { $0 + $1.amount * Decimal($1.coming.count) }
+            .reduce(Decimal(0)) { $0 + $1.counted * Decimal($1.coming.count) }
     }
 
     /// Its first charge is a charge too: the one that comes first.

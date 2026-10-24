@@ -72,11 +72,8 @@ enum MonthStatus {
         let rows = try context.fetch(FetchDescriptor<Expense>(
             predicate: #Predicate { $0.date >= start && $0.date < end }
         ))
-        let amounts = rows.map {
-            ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
-                          date: $0.date, category: $0.category)
-        }
-        return MonthSummarizer.summarize(amounts, inMonthOf: now, primary: primary)
+        // The same amounts the screen adds up (`Expense.asAmount`), so Siri never says another figure.
+        return MonthSummarizer.summarize(rows.map(\.asAmount), inMonthOf: now, primary: primary)
     }
 
     private static func money(_ amount: Decimal, _ total: MoneyTotal) -> String {

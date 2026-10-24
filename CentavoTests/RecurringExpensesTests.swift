@@ -134,6 +134,27 @@ final class RecurringExpensesTests: XCTestCase {
         XCTAssertEqual(reserved, 500, "Solo falta el lunes 26")
     }
 
+    func testCopiesOfOneThatDoesNotCountDoNotCountEither() throws {
+        let netflix = addNetflix()
+        netflix.markUncounted(.reimbursed)
+        try RecurringExpenses.logDue(in: context, now: at(10, 30))
+        let copies = try all().filter { $0.isRepeat == true }
+        XCTAssertEqual(copies.count, 2)
+        XCTAssertTrue(copies.allSatisfy(\.isUncounted), "Una copia volvió a contar")
+        XCTAssertEqual(copies.map(\.reason), [.reimbursed, .reimbursed])
+        XCTAssertEqual(copies.map(\.amount), [219, 219], "La copia perdió su monto real")
+    }
+
+    func testOneThatDoesNotCountSetsNothingApart() throws {
+        let cleaning = addCleaning()
+        cleaning.markUncounted(.betweenAccounts)
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 12))!
+        try RecurringExpenses.logDue(in: context, now: now)
+        XCTAssertEqual(FixedOutlook.reserved(originals: [cleaning], plans: [], primary: "MXN", now: now), 0)
+        cleaning.markCounted()
+        XCTAssertEqual(FixedOutlook.reserved(originals: [cleaning], plans: [], primary: "MXN", now: now), 500)
+    }
+
     func testAFixedExpenseThatStartsLaterLogsNothingUntilItsDay() throws {
         let plan = FixedPlan(merchant: "Gimnasio", amount: "650", currency: "MXN", rule: RepeatRule.monthly.stored,
                              firstDate: at(11, 3))

@@ -41,6 +41,9 @@ enum RecurringExpenses {
                 copy.isRepeat = true
                 copy.displayName = original.displayName
                 copy.categorySource = original.categorySource
+                // A fixed expense that doesn't count (paid by work) doesn't count every month.
+                copy.countedAmount = original.countedAmount
+                copy.uncountedReason = original.uncountedReason
                 context.insert(copy)
                 logged += 1
             }

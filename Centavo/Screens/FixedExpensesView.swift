@@ -28,7 +28,7 @@ struct FixedExpensesView: View {
         (originals + copies)
             .filter { MonthNavigator.isSameMonth($0.date, as: .now) && $0.date <= .now }
             .filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == primary }
-            .reduce(Decimal(0)) { $0 + $1.amount }
+            .reduce(Decimal(0)) { $0 + $1.counted }
     }
 
     private var coming: Decimal {

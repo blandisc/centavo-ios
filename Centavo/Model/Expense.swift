@@ -45,6 +45,13 @@ final class Expense {
     /// Where `category` came from when nobody chose it: `suggestedCategory` for the on-device
     /// model's guess. `nil` is a category someone chose (or one from before this existed).
     var categorySource: String?
+    /// How much counts toward the budget and every total (`CountedAmount`): `nil` is all of it,
+    /// as every expense from before this existed; `0` is «No cuenta». A share in between is kept
+    /// for later. `amount` stays the real amount. Optional: a lightweight, CloudKit-safe addition.
+    var countedAmount: Decimal?
+    /// Why it doesn't count (`UncountedReason.rawValue`). Kept when it counts again, so turning
+    /// «No cuenta» back on brings the same reason. Optional, like the above.
+    var uncountedReason: String?
 
     static let suggestedCategory = "sugerida"
     /// Someone took the category off on purpose: nothing suggests one again.
@@ -62,6 +69,33 @@ final class Expense {
 
     /// A category the model suggested and nobody confirmed yet.
     var hasSuggestedCategory: Bool { category != nil && categorySource == Self.suggestedCategory }
+
+    /// What adds up: the amount, or none of it when it doesn't count.
+    var counted: Decimal { CountedAmount.effective(amount: amount, counted: countedAmount) }
+
+    /// «No cuenta»: in the list with its amount, but in no total.
+    var isUncounted: Bool { CountedAmount.isUncounted(countedAmount) }
+
+    /// Why it doesn't count, if it was said.
+    var reason: UncountedReason? { UncountedReason(rawValue: uncountedReason ?? "") }
+
+    /// Leaves it out of the budget, for `reason`.
+    func markUncounted(_ reason: UncountedReason) {
+        countedAmount = 0
+        uncountedReason = reason.rawValue
+    }
+
+    /// Counts in full again. The reason stays, for if it is left out once more.
+    func markCounted() {
+        countedAmount = nil
+    }
+
+    /// As every total sees it: the screen, Siri and the notice all add up this, so they can
+    /// never disagree. The only place an `ExpenseAmount` is made from an expense.
+    var asAmount: ExpenseAmount {
+        ExpenseAmount(value: counted, currencyMarker: currencyMarker, date: date, category: category,
+                      excluded: CountedAmount.excluded(amount: amount, counted: countedAmount))
+    }
 
     /// As a search sees it.
     var searchable: SearchableExpense {

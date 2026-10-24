@@ -11,7 +11,7 @@ enum MonthNote {
             // By Wallet's name, so two branches stay two; said by the readable one.
             SpendingRecord(amount: $0.amount, currencyMarker: $0.currencyMarker, merchant: $0.merchant,
                            displayName: $0.displayName, category: $0.category, date: $0.date,
-                           isFixed: $0.isFixed)
+                           isFixed: $0.isFixed, counted: $0.counted)
         }
         return SpendingFacts.detect(Array(records), now: now, primary: primary, budget: budget,
                                     money: { formatMoney($0, isoCode: primary, label: primary) })
