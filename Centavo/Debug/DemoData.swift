@@ -1,3 +1,4 @@
+import CentavoCore
 #if DEBUG
 import Foundation
 import SwiftData
@@ -116,6 +117,39 @@ enum DemoData {
             ))
         }
         try context.save()
+    }
+
+    /// `-centavo-widget-estado normal|sin-presupuesto|te-pasaste|hoy-te-pasaste|dia-1`: the
+    /// widgets show the numbers of the design proposals in that state (and `date`, if set,
+    /// is the moment they pretend it is).
+    static var widgetSample: (snapshot: WidgetSnapshot, date: Date?)? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-centavo-widget-estado"), index + 1 < arguments.count
+        else { return nil }
+        let slices: [WidgetSnapshot.Slice] = [.init(name: "Comida", amount: 2_450), .init(name: "Despensa", amount: 1_980),
+                                              .init(name: "Transporte", amount: 1_320),
+                                              .init(name: nil, amount: 2_390, isRest: true)]
+        func month(_ budget: Decimal?, spent: Decimal, today: Decimal, reserved: Decimal = 1_200,
+                   at date: Date) -> WidgetSnapshot {
+            WidgetSnapshot(budget: budget, isoCode: "MXN", label: "$", takenAt: date, spent: spent,
+                           spentToday: today, reserved: reserved, slices: spent > 0 ? slices : [])
+        }
+        // A fixed Thursday, October 22nd, so the numbers read the same any day: $348 a day
+        // ((12,000 − 1,200 of fixed expenses) ÷ 31).
+        var calendar = Calendar.current
+        calendar.timeZone = .current
+        let thursday = calendar.date(from: DateComponents(year: 2026, month: 10, day: 22, hour: 12))!
+        switch arguments[index + 1] {
+        case "sin-presupuesto": return (month(nil, spent: 8_140, today: 84, at: thursday), thursday)
+        case "te-pasaste": return (month(12_000, spent: 12_430, today: 84, reserved: 0, at: thursday), thursday)
+        // 900 today on top of the 316 the days before left over: «Hoy te pasaste $236».
+        case "hoy-te-pasaste": return (month(12_000, spent: 7_900, today: 900, at: thursday), thursday)
+        case "dia-1":
+            let first = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1, hour: 10))!
+            return (month(12_000, spent: 0, today: 0, at: first), first)
+        // «Hoy puedes gastar $464», «Vas $200 abajo».
+        default: return (month(12_000, spent: 7_200, today: 84, at: thursday), thursday)
+        }
     }
 }
 #endif

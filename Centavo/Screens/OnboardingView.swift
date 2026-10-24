@@ -148,7 +148,7 @@ struct OnboardingView: View {
                     .padding(Theme.Space.ml)
                     .selectableCard(selected: false)
                 if let value = AmountParser.parse(budgetText)?.value, value > 0 {
-                    Text(BudgetStore.dailyPreview(value, currency: currency))
+                    Text(BudgetStore.dailyPreview(BudgetPace(budget: value, spent: 0, on: .now), currency: currency))
                         .font(.ticket(.footnote))
                         .foregroundStyle(Theme.brass)
                         .contentTransition(.numericText())

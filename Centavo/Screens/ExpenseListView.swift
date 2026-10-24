@@ -62,9 +62,14 @@ struct ExpenseListView: View {
     /// nothing as written («cafecitos» → «Café»).
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
     @AppStorage(FixedPlan.key) private var storedPlans = ""
+    /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
+    @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
+
+    /// The fixed expenses' first charges, to know what is still to come this month.
+    private var fixedOriginals: [Expense] { expenses.filter { $0.repeatsMonthly == true } }
 
     /// Changes the currency the month adds up in. The budget is a bare number, and 8,000
     /// pesos must not quietly become 8,000 dollars, so it asks about it.
@@ -92,16 +97,10 @@ struct ExpenseListView: View {
                 && (selectedCategory?.contains(expense.category) ?? true)
         }
         let summary = MonthSummarizer.summarize(amounts, inMonthOf: viewed, primary: primaryCurrency)
-        // A month that is over is measured at its last second: all of the budget was due.
-        // This month, the fixed expenses still to come are set apart from «Hoy puedes gastar».
-        let reserved = isCurrent ? FixedOutlook.reserved(originals: expenses.filter { $0.repeatsMonthly == true },
-                                                         plans: FixedPlan.decode(storedPlans),
-                                                         primary: primaryCurrency, now: now) : 0
-        // What today already spent comes off today alone, not off the days still to come.
-        let spentToday = isCurrent ? MonthSummarizer.dayTotal(amounts, onDayOf: now, primary: primaryCurrency) : 0
-        let pace = BudgetPace(budget: BudgetStore.amount(from: storedBudget),
-                              spent: summary.primary.amount, spentToday: spentToday, reserved: reserved,
-                              on: isCurrent ? now : MonthNavigator.closingMoment(of: viewed))
+        let pace = TodayBudget.pace(budget: BudgetStore.amount(from: storedBudget), rows: monthExpenses,
+                                    originals: fixedOriginals, plans: FixedPlan.decode(storedPlans),
+                                    primary: primaryCurrency, month: viewed, now: now,
+                                    mode: AllowanceMode(stored: storedMode))
         let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
         let listed = searching ? searchResults : shownExpenses
         let groups = DayGroup.split(listed)
@@ -245,6 +244,9 @@ struct ExpenseListView: View {
             .onChange(of: storedCurrency) { _, code in
                 if Store.syncsBudget { BudgetSync.push(code, for: CurrencyPreference.key) }
             }
+            .onChange(of: storedMode) { _, mode in
+                if Store.syncsBudget { BudgetSync.push(mode, for: AllowanceMode.key) }
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Al día")
@@ -320,6 +322,20 @@ struct ExpenseListView: View {
                 }
             }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
+            // The widgets' «+» and «Fijar presupuesto» (`centavo://anotar`, `centavo://presupuesto`).
+            .onOpenURL { url in
+                guard url.scheme == "centavo" else { return }
+                switch url.host() {
+                case "anotar": adding = true
+                case "presupuesto": showingBudget = true
+                default: break
+                }
+            }
+            .onChange(of: storedBudget) { WidgetBridge.refresh() }
+            .onChange(of: storedPlans) { WidgetBridge.refresh() }
+            .onChange(of: storedCurrency) { WidgetBridge.refresh() }
+            // The widgets get the new rule with the snapshot, and redraw.
+            .onChange(of: storedMode) { WidgetBridge.refresh() }
             .sheet(isPresented: $adding) {
                 // Adding while looking at a past month puts the expense in that month.
                 ExpenseEditorView(expense: nil,
@@ -327,14 +343,12 @@ struct ExpenseListView: View {
             }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
             .sheet(isPresented: $showingBudget) {
-                BudgetSheet(stored: $storedBudget, currency: primaryCurrency,
-                            spent: isCurrent ? summary.primary.amount
-                                : MonthSummarizer.summarize(amounts, inMonthOf: now,
-                                                            primary: primaryCurrency).primary.amount,
-                            spentToday: MonthSummarizer.dayTotal(amounts, onDayOf: now, primary: primaryCurrency),
-                            reserved: FixedOutlook.reserved(originals: expenses.filter { $0.repeatsMonthly == true },
-                                                            plans: FixedPlan.decode(storedPlans),
-                                                            primary: primaryCurrency, now: now))
+                BudgetSheet(stored: $storedBudget, storedMode: $storedMode, currency: primaryCurrency) { budget, mode in
+                    TodayBudget.pace(budget: budget,
+                                     rows: expenses.filter { MonthNavigator.isSameMonth($0.date, as: now) },
+                                     originals: fixedOriginals, plans: FixedPlan.decode(storedPlans),
+                                     primary: primaryCurrency, month: now, now: now, mode: mode)
+                }
             }
             .confirmsDelete(of: $pendingDelete, primaryCurrency: primaryCurrency, undoable: true) {
                 delete($0)
@@ -510,10 +524,13 @@ private struct KeepsTime: ViewModifier {
         content
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { now = .now }
+                // A budget or a fixed expense changed in «Más» also changes the widgets.
+                if phase == .background { WidgetBridge.refresh() }
             }
             .task(id: now) {
                 try? RecurringExpenses.logDue(in: context, now: now)
                 try? ExpenseRecorder.repairBankMerchants(in: context)
+                WidgetBridge.refresh()
             }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
@@ -633,7 +650,10 @@ private struct HeroTotal: View {
 
     @State private var counted: Double = 0
 
-    private var allowanceValue: Double { NSDecimalNumber(decimal: allowance ?? 0).doubleValue }
+    /// Today already went past its share: the figure says by how much, in red.
+    private var isOverToday: Bool { (allowance ?? 0) < 0 }
+
+    private var allowanceValue: Double { NSDecimalNumber(decimal: (allowance ?? 0).magnitude).doubleValue }
 
     /// The figure on its way up: whole money, like the final one.
     private var countedText: String {
@@ -645,7 +665,7 @@ private struct HeroTotal: View {
     }
 
     private var allowanceText: String {
-        let amount = allowance ?? 0
+        let amount = (allowance ?? 0).magnitude
         if let iso = summary.primary.isoCode {
             return amount.formatted(currencyStyle(iso).precision(.fractionLength(0)))
         }
@@ -682,7 +702,7 @@ private struct HeroTotal: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if allowance != nil {
-                Text("Hoy puedes gastar")
+                Text(isOverToday ? "Hoy te pasaste" : "Hoy puedes gastar")
                     .font(.ticket(.captionStrong))
                     .tracking(Theme.Tracking.caption)
                     .textCase(.uppercase)
@@ -695,7 +715,7 @@ private struct HeroTotal: View {
                     .accessibilityLabel(allowanceText)
                     .font(.ticket(.hero))
                     .tracking(Theme.Tracking.hero)
-                    .foregroundStyle(Theme.brass)
+                    .foregroundStyle(isOverToday ? Theme.danger : Theme.brass)
                     // The «$» carries its own air on the left (3 pt at this size, measured): pulled
                     // back so the figure lines up with «Hoy puedes gastar» above it.
                     .padding(.leading, Theme.Space.outset)

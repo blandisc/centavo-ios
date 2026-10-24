@@ -142,7 +142,14 @@ struct BudgetPage: View {
         if isCurrentMonth {
             parts.append("A hoy podrías llevar \(money(pace.expectedToDate)).")
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
-            if !isOver { parts.append("Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).") }
+            if pace.carriedOver.magnitude >= 1 {
+                parts.append("Vas \(wholeMoney(pace.carriedOver.magnitude)) "
+                             + (pace.carriedOver > 0 ? "abajo" : "arriba") + " del ritmo.")
+            }
+            if !isOver {
+                parts.append(pace.isOverToday ? "Hoy te pasaste por \(wholeMoney(pace.dailyAllowance.magnitude))."
+                             : "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).")
+            }
         }
         return parts.joined(separator: " ")
     }

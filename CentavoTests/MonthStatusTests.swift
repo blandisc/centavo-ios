@@ -45,14 +45,23 @@ final class MonthStatusTests: XCTestCase {
         XCTAssertTrue(line.contains("Hoy puedes gastar"), "No dice cuánto hoy: \(line)")
     }
 
-    /// What today spent comes off today, as on the screen (audit 2026-10-22, #3).
-    func testSpendingTodayComesOffToday() throws {
+    /// Every day so far gives its share and what was spent comes off it whole, today's too
+    /// (owner's decision, 2026-10-22).
+    func testCarriesEveryDayOverWhole() throws {
         add(100, daysAgo: 1)
-        // October 15th: 17 days left. (1,800 − 100) / 17 = 100, minus the 30 of today.
+        // October 15th: 1,800 × 15 / 31 = 870.97, minus the 100 of yesterday and the 30 of today.
         add(30)
         let line = try XCTUnwrap(budgetLine(1800))
         XCTAssertTrue(line.contains("1,670.00 del presupuesto"), line)
-        XCTAssertTrue(line.hasSuffix("70."), line)
+        XCTAssertTrue(line.hasSuffix("Hoy puedes gastar $740."), line)
+    }
+
+    /// Past today's share, Siri says by how much instead of a negative figure.
+    func testSaysWhenTodayWentPastItsShare() throws {
+        // 310 a month is 10 a day: 150 by the 15th, and today spent 200.
+        add(200)
+        let line = try XCTUnwrap(budgetLine(310))
+        XCTAssertTrue(line.hasSuffix("Hoy ya te pasaste por $50."), line)
     }
 
     /// «Te quedan» says what is free once the fixed ones still to come are set apart, and
@@ -66,8 +75,8 @@ final class MonthStatusTests: XCTestCase {
         let line = try XCTUnwrap(budgetLine(2300))
         XCTAssertTrue(line.contains("1,600.00 libres"), line)
         XCTAssertTrue(line.contains("600.00 apartados para fijos"), line)
-        // (2,300 − 100 − 600) / 17 = 94.1 → 94.
-        XCTAssertTrue(line.hasSuffix("94."), line)
+        // (2,300 − 600) × 15 / 31 = 822.58, minus the 100 of yesterday.
+        XCTAssertTrue(line.hasSuffix("722."), line)
     }
 
     func testSaysByHowMuchTheBudgetWasBlown() throws {
