@@ -83,6 +83,24 @@ final class FlowTests: XCTestCase {
         return element
     }
 
+    /// Scrolls a list row until the month bar is no longer sitting on it. `swipeUp()` starts
+    /// mid-screen and can change the carousel page, so this drags from the list itself.
+    ///
+    /// The demo's Uber of today («No cuenta») is two lines of meta and pushed Cinépolis
+    /// under the glass of «OCT 2026»; a swipe there hits the bar instead of the row. The
+    /// app is fine: SwipeToDelete still works on a row you can actually touch.
+    private func uncoverListRow(_ app: XCUIApplication, _ element: XCUIElement) {
+        let bar = app.toolbars.firstMatch
+        for _ in 0..<8 {
+            guard element.exists else { return }
+            let limit = bar.exists ? bar.frame.minY : app.windows.firstMatch.frame.maxY
+            if element.frame.maxY <= limit { return }
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
+            start.press(forDuration: 0.05,
+                        thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)))
+        }
+    }
+
     /// Whether a payment is in the list, without the long search `row` does when it is not:
     /// these months are short, so two swipes reach the bottom.
     private func hasRow(_ app: XCUIApplication, containing text: String) -> Bool {
@@ -411,8 +429,9 @@ final class FlowTests: XCTestCase {
 
     func testDeslizarUnGastoPideBorrarlo() {
         let app = launch(demo: true)
-        let cinepolis = row(app, containing: "Cinépolis")
-        require(cinepolis, "No hay fila de Cinépolis").swipeLeft(velocity: .fast)
+        let cinepolis = require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis")
+        uncoverListRow(app, cinepolis)
+        cinepolis.swipeLeft(velocity: .fast)
         let confirm = require(app.buttons["Borrar"], "Deslizar no pidió confirmación")
         confirm.tap()
         XCTAssertTrue(waitForDisappearance(row(app, containing: "Cinépolis")), "El gasto sigue en la lista")
@@ -421,6 +440,7 @@ final class FlowTests: XCTestCase {
     func testDeslizarPocoMuestraBorrarYTocarLoCierra() {
         let app = launch(demo: true)
         let cinepolis = require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis")
+        uncoverListRow(app, cinepolis)
         let start = cinepolis.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: cinepolis.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5)),
                     withVelocity: .slow, thenHoldForDuration: 0.1)
