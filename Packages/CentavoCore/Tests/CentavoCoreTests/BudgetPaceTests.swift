@@ -61,12 +61,12 @@ import Testing
         #expect(makePace(budget: -500, spent: 100, on: Self.day(2026, 10, 12)) == nil)
     }
 
-    @Test func theRestSpreadsOverTheDaysLeftTodayIncluded() throws {
-        // October 12th: 20 days left (12…31). 6,906.50 / 20 = 345.33 → 345.
+    @Test func everyDaySoFarCountsTodayIncluded() throws {
+        // 8,000 ÷ 31 = 258.06 a day; 12 days = 3,096.77, minus the 1,093.50 already spent.
         let pace = try #require(makePace(budget: 8000, spent: Decimal(string: "1093.50")!,
                                          on: Self.day(2026, 10, 12)))
         #expect(pace.daysLeft == 20)
-        #expect(pace.dailyAllowance == 345)
+        #expect(pace.dailyAllowance == 2003)
     }
 
     @Test func theLastDayGetsAllThatIsLeft() throws {
@@ -75,8 +75,129 @@ import Testing
         #expect(pace.dailyAllowance == 600)
     }
 
-    @Test func aBlownBudgetLeavesNothingPerDay() throws {
+    @Test func aBlownBudgetGoesNegative() throws {
+        // 1,000 ÷ 31 × 5 = 161.29 − 1,500 = −1,338.71, rounded toward less money.
         let pace = try #require(makePace(budget: 1000, spent: 1500, on: Self.day(2026, 10, 5)))
-        #expect(pace.dailyAllowance == 0)
+        #expect(pace.dailyAllowance == -1339)
+        #expect(pace.isOverToday)
+    }
+}
+
+/// What a day leaves over or overspends goes whole to the next one (owner's decision,
+/// 2026-10-22). November has 30 days, so 21,000 is $700 a day.
+@Suite struct BudgetPaceCarryOverTests {
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
+        return calendar
+    }()
+
+    private static func day(_ day: Int, hour: Int = 12) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
+    }
+
+    private func pace(budget: Decimal = 21_000, spent: Decimal, today: Decimal = 0, fixed: Decimal = 0,
+                      fixedToday: Decimal = 0, reserved: Decimal = 0, on day: Int) -> BudgetPace? {
+        BudgetPace(budget: budget, spent: spent, spentToday: today, fixedSpent: fixed,
+                   fixedToday: fixedToday, reserved: reserved, on: Self.day(day), calendar: Self.calendar)
+    }
+
+    @Test func theFirstDayStartsWithTheDailyBase() throws {
+        let pace = try #require(pace(spent: 0, on: 1))
+        #expect(pace.dailyBase == 700)
+        #expect(pace.carriedOver == 0)
+        #expect(pace.dailyAllowance == 700)
+        let spent = try #require(self.pace(spent: 300, today: 300, on: 1))
+        #expect(spent.dailyAllowance == 400)
+    }
+
+    @Test func whatADayLeavesGoesWholeToTheNext() throws {
+        // Spent 300 on the 1st: the 2nd can spend 700 + 400.
+        let pace = try #require(pace(spent: 300, on: 2))
+        #expect(pace.carriedOver == 400)
+        #expect(pace.dailyAllowance == 1100)
+    }
+
+    @Test func overspendingTodayGoesNegative() throws {
+        // Spending 1,500 on the 2nd: 1,100 − 1,500.
+        let pace = try #require(pace(spent: 1800, today: 1500, on: 2))
+        #expect(pace.dailyAllowance == -400)
+        #expect(pace.isOverToday)
+        #expect(!pace.isOverBudget)
+    }
+
+    @Test func whatADayOverspendsComesWholeOffTheNext() throws {
+        // 700 × 3 − (300 + 1,500).
+        let pace = try #require(pace(spent: 1800, on: 3))
+        #expect(pace.carriedOver == -400)
+        #expect(pace.dailyAllowance == 300)
+    }
+
+    @Test func theMonthsFixedExpensesComeOffTheBaseAndNotOffTheDays() throws {
+        // 22,000 − 600 of rent charged on the 1st − 400 still to come = 21,000: $700 a day.
+        // The rent is not what the 1st spent: the 2nd still gets 1,100.
+        let pace = try #require(pace(budget: 22_000, spent: 900, fixed: 600, reserved: 400, on: 2))
+        #expect(pace.fixedMonth == 1000)
+        #expect(pace.dailyBase == 700)
+        #expect(pace.dailyAllowance == 1100)
+        #expect(pace.expectedToDate == 2000)
+    }
+
+    @Test func aFixedExpenseChargedTodayDoesNotEatToday() throws {
+        let pace = try #require(pace(budget: 22_000, spent: 900, today: 600, fixed: 600, fixedToday: 600,
+                                     reserved: 400, on: 2))
+        #expect(pace.variableToday == 0)
+        #expect(pace.dailyAllowance == 1100)
+    }
+
+    @Test func aRefundTodayGivesTodayBack() throws {
+        let pace = try #require(pace(spent: 200, today: -100, on: 2))
+        #expect(pace.dailyAllowance == 1200)
+    }
+
+    @Test func roundsDownTowardLessMoney() throws {
+        // 10,000 ÷ 30 = 333.33.
+        let pace = try #require(pace(budget: 10_000, spent: 0, on: 1))
+        #expect(pace.dailyAllowance == 333)
+        let over = try #require(self.pace(budget: 10_000, spent: 500, today: 500, on: 1))
+        #expect(over.dailyAllowance == -167)
+    }
+
+    @Test func theLastDayIsWhatIsFreeOfTheMonth() throws {
+        let pace = try #require(pace(budget: 22_000, spent: 15_600, fixed: 600, reserved: 400, on: 30))
+        #expect(pace.dailyAllowance == 6_000)
+        #expect(pace.free == 6_000)
+    }
+
+    @Test func freeIsWhatIsLeftAfterTheFixedOnesAndNeverNegative() throws {
+        let pace = try #require(pace(spent: 20_700, reserved: 500, on: 22))
+        #expect(pace.remaining == 300)
+        #expect(pace.free == 0)
+    }
+}
+
+/// Which expenses count as today's.
+@Suite struct BudgetPaceTodayTests {
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
+        return calendar
+    }()
+
+    private static func day(_ day: Int, hour: Int = 12) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
+    }
+
+    @Test func todayIsTheDayOfTheDateInTheMainCurrency() {
+        let amounts = [
+            ExpenseAmount(value: 3000, currencyMarker: "MXN", date: Self.day(21)),
+            ExpenseAmount(value: 600, currencyMarker: "$", date: Self.day(22, hour: 0)),
+            ExpenseAmount(value: 30, currencyMarker: "MXN", date: Self.day(22, hour: 23)),
+            ExpenseAmount(value: 20, currencyMarker: "USD", date: Self.day(22)),
+            ExpenseAmount(value: 99, currencyMarker: "MXN", date: Self.day(23, hour: 0)),
+        ]
+        let today = MonthSummarizer.dayTotal(amounts, onDayOf: Self.day(22), primary: "MXN",
+                                             calendar: Self.calendar)
+        #expect(today == 630)
     }
 }

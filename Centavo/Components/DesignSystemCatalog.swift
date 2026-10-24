@@ -90,6 +90,11 @@ struct DesignSystemCatalog: View {
                     SecondaryButton("Después") {}
                 }
 
+                section("Progreso por pasos") {
+                    StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")
+                    StepDots(current: 2, of: 8)
+                }
+
                 section("Formas y tarjetas") {
                     Text("Sin gastos todavía").font(.ticket(.bodyStrong)).foregroundStyle(Theme.ink)
                         .padding(Theme.Space.xlx)

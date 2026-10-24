@@ -14,6 +14,8 @@ struct BudgetPage: View {
     var outside: Decimal = 0
     /// Where the month's money went, biggest first. Empty when nothing is filed.
     var shares: [CategoryShare] = []
+    /// What came back this month, which `shares` leave out (`CategoryShare.returned`).
+    var returned: Decimal = 0
     /// One thing worth knowing about the month (see `MonthNote`), this month only.
     var note: String?
     /// The category whose expenses the list shows, if one was tapped in the mosaic.
@@ -88,7 +90,7 @@ struct BudgetPage: View {
 
     private var whereItGoes: some View {
         WhereItGoes(shares: shares, style: WhereItGoesStyle(rawValue: storedStyle) ?? .bar, money: money,
-                    selected: selectedCategory, onSelect: onSelectCategory)
+                    returned: returned, selected: selectedCategory, onSelect: onSelectCategory)
     }
 
     // MARK: Without a budget
@@ -142,7 +144,14 @@ struct BudgetPage: View {
         if isCurrentMonth {
             parts.append("A hoy podrías llevar \(money(pace.expectedToDate)).")
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
-            if !isOver { parts.append("Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).") }
+            if pace.carriedOver.magnitude >= 1 {
+                parts.append("Vas \(wholeMoney(pace.carriedOver.magnitude)) "
+                             + (pace.carriedOver > 0 ? "abajo" : "arriba") + " del ritmo.")
+            }
+            if !isOver {
+                parts.append(pace.isOverToday ? "Hoy te pasaste por \(wholeMoney(pace.dailyAllowance.magnitude))."
+                             : "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).")
+            }
         }
         if outside != 0 { parts.append("Fuera del presupuesto, \(money(outside)).") }
         return parts.joined(separator: " ")

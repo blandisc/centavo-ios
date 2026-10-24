@@ -93,6 +93,45 @@ final class UncountedExpenseTests: XCTestCase {
         XCTAssertNil(expense.countedAmount)
     }
 
+    /// Today's spending, «Hoy puedes gastar» in both modes and the widgets' sums leave it out:
+    /// the month reads the same as if it had never been there.
+    func testTodayAndTheWidgetsLeaveItOut() throws {
+        let now = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 12))!
+        let coffee = Expense(amount: 80, currencyMarker: "MXN", merchant: "Café", date: now, category: "Café")
+        let trip = Expense(amount: 230, currencyMarker: "MXN", merchant: "Uber", date: now, category: "Transporte")
+        let yesterday = Expense(amount: 500, currencyMarker: "MXN", merchant: "Uber",
+                                date: now.addingTimeInterval(-86_400), category: "Transporte")
+        let rent = Expense(amount: 3000, currencyMarker: "MXN", merchant: "Renta", date: now)
+        rent.repeatsMonthly = true
+        [trip, yesterday, rent].forEach { $0.markUncounted(.reimbursed) }
+
+        for mode in [AllowanceMode.carry, .spread] {
+            let with = TodayBudget.snapshot(budget: 9000, rows: [coffee, trip, yesterday, rent], originals: [rent],
+                                            plans: [], primary: "MXN", month: now, now: now, mode: mode)
+            let without = TodayBudget.snapshot(budget: 9000, rows: [coffee], originals: [],
+                                               plans: [], primary: "MXN", month: now, now: now, mode: mode)
+            XCTAssertEqual(with.spent, 80)
+            XCTAssertEqual(with.spentToday, 80, "Lo gastado hoy contó el Uber")
+            XCTAssertEqual(with.fixedSpent, 0)
+            XCTAssertEqual(with.fixedToday, 0)
+            XCTAssertEqual(with.slices.map(\.name), ["Café"], "«En qué se va» del widget lo contó")
+            XCTAssertEqual(with.pace(at: now)?.dailyAllowance, without.pace(at: now)?.dailyAllowance,
+                           "«Hoy puedes gastar» cambió en modo \(mode)")
+        }
+    }
+
+    func testSiriSaysTheSameTodayWithOrWithoutIt() throws {
+        let now = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 12))!
+        context.insert(Expense(amount: 80, currencyMarker: "MXN", merchant: "Café", date: now))
+        try context.save()
+        let before = try MonthStatus.totalSentence(in: context, budget: 9000, now: now, primary: "MXN")
+        let trip = Expense(amount: 230, currencyMarker: "MXN", merchant: "Uber", date: now)
+        trip.markUncounted(.reimbursed)
+        context.insert(trip)
+        try context.save()
+        XCTAssertEqual(try MonthStatus.totalSentence(in: context, budget: 9000, now: now, primary: "MXN"), before)
+    }
+
     func testTheMonthsNoteStillSeesADoubleChargeThatDoesNotCount() {
         let now = Date.now
         let first = Expense(amount: 650, currencyMarker: "MXN", merchant: "Uber", date: now.addingTimeInterval(-1_200))

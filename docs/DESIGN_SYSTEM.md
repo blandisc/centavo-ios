@@ -116,9 +116,12 @@ Símbolos SF: `.font(Theme.Symbol.regular)` o `.font(Theme.Symbol.large)`.
 | `categoryTile` | 58 | Botón de categoría |
 | `iconColumn` / `iconColumnNarrow` / `iconColumnWide` | 28 / 22 / 32 | **Base de `@ScaledMetric`** para la columna del ícono |
 | `rowTile`, `rowTileSymbol`, `categorySymbol`, `glyph`, `stepNumber` | 32, 15, 22, 14, 16 | **Base de `@ScaledMetric`** |
+| `stepEmblem` | 44 | **Base de `@ScaledMetric`**: el emblema de latón de cada paso (bienvenida y guía del atajo), del alto de un renglón de título, con `Theme.Space.m` de hueco |
 | `pageDot`, `pageDotCurrent`, `legendDot`, `dayTick`, `todayMarkWidth`, `mapPreview` | | Piezas de gráficas y de la lista |
 
-Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`.
+Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`, `Tokens+Onboarding.swift`.
+
+**Widgets** (`CentavoWidgets/`, también los revisa el lint): su caja la fija el sistema, así que tienen roles de letra propios (`.font(.widget(.caption))`, `WidgetTextStyle`) y sus medidas en `Theme/Tokens+Widgets.swift`. Los colores salen de `Ink`, que usa los de `Theme` a todo color y el tono único del sistema cuando iOS tiñe el widget o lo pone en la pantalla bloqueada.
 
 ### Trazos, guiones, opacidad, interletrado, encogimiento y movimiento
 
@@ -154,6 +157,9 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swi
 | `TicketOutline` / `.ticketOutline(_:)` | Ticket en blanco punteado (estado vacío, aviso) | `.ticketOutline(.emphasis)` |
 | `.ticketPanel()` | Panel callado (`surface`, radio `panel`) | nota, vista previa |
 | `.selectableCard(selected:)` | Opción como tarjeta con borde latón al elegirla | monedas en la bienvenida |
+| `StepEmblem` | Emblema de latón decorativo que acompaña al título; oculto con letra de accesibilidad | Se usa dentro de `StepHeader`, no sola |
+| `StepHeader` | Encabezado reutilizable de cada paso: «Paso X de N» + emblema junto al título | `StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")` |
+| `StepDots` | Avance de pasos por puntitos en la barra inferior; decorativo (la etiqueta «Paso X de N» lleva el progreso) | `StepDots(current: 2, of: 5)` |
 | `.choiceTile(selected:)` | Cuadro chico de elección (categoría, símbolo) | cuadrícula de íconos |
 | `Perforation()` | Línea punteada entre renglones del ticket | `.overlay(alignment: .top) { Perforation() }` |
 | `.confirmsDelete(of:…)` | Preguntar antes de borrar un gasto | lista y hoja de gasto |

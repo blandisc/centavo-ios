@@ -36,13 +36,16 @@ struct WhereItGoes: View {
     var style: WhereItGoesStyle = .bar
     let money: (Decimal) -> String
     /// The category whose expenses the list shows, if one was tapped.
+    /// What came back this month (`CategoryShare.returned`): the shares leave it out, so the
+    /// figure on top, the same as «Llevas», is the lines minus this.
+    var returned: Decimal = 0
     var selected: CategoryShare?
     var onSelect: (CategoryShare?) -> Void = { _ in }
 
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    private var total: Decimal { shares.reduce(0) { $0 + $1.amount } }
+    private var total: Decimal { shares.reduce(0) { $0 + $1.amount } - returned }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
@@ -85,6 +88,21 @@ struct WhereItGoes: View {
                 ShareMosaicChart(lines: lines, money: money, selected: selected, onSelect: onSelect)
             case .hidden:
                 EmptyView()
+            }
+            if returned > 0 {
+                HStack {
+                    Text("Menos devoluciones")
+                    Spacer(minLength: Theme.Space.s)
+                    Text("−" + money(returned))
+                        .foregroundStyle(Theme.ink)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(Theme.MinimumScale.figure)
+                }
+                .font(.ticket(.detail))
+                .foregroundStyle(Theme.muted)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("en-que-se-va-devoluciones")
             }
         }
         .accessibilityElement(children: .contain)

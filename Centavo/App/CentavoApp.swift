@@ -7,6 +7,7 @@ struct CentavoApp: App {
     init() {
         TicketFont.register()
         if Store.syncsBudget { BudgetSync.start() }
+        WidgetBridge.start()
         #if DEBUG
         // The UI tests wait for every animation to settle; without them each step is quicker.
         if ProcessInfo.processInfo.arguments.contains("-centavo-sin-animaciones") {

@@ -43,7 +43,41 @@ final class MonthStatusTests: XCTestCase {
         let line = try XCTUnwrap(budgetLine(500))
         XCTAssertTrue(line.hasPrefix("Te quedan"), line)
         XCTAssertTrue(line.contains("350.00"), line)
-        XCTAssertTrue(line.contains("al día"), "No dice cuánto por día: \(line)")
+        XCTAssertTrue(line.contains("Hoy puedes gastar"), "No dice cuánto hoy: \(line)")
+    }
+
+    /// Every day so far gives its share and what was spent comes off it whole, today's too
+    /// (owner's decision, 2026-10-22).
+    func testCarriesEveryDayOverWhole() throws {
+        add(100, daysAgo: 1)
+        // October 15th: 1,800 × 15 / 31 = 870.97, minus the 100 of yesterday and the 30 of today.
+        add(30)
+        let line = try XCTUnwrap(budgetLine(1800))
+        XCTAssertTrue(line.contains("1,670.00 del presupuesto"), line)
+        XCTAssertTrue(line.hasSuffix("Hoy puedes gastar $740."), line)
+    }
+
+    /// Past today's share, Siri says by how much instead of a negative figure.
+    func testSaysWhenTodayWentPastItsShare() throws {
+        // 310 a month is 10 a day: 150 by the 15th, and today spent 200.
+        add(200)
+        let line = try XCTUnwrap(budgetLine(310))
+        XCTAssertTrue(line.hasSuffix("Hoy ya te pasaste por $50."), line)
+    }
+
+    /// «Te quedan» says what is free once the fixed ones still to come are set apart, and
+    /// names those, so it squares with «Hoy puedes gastar» (audit 2026-10-22, #4).
+    func testSaysWhatIsFreeAndWhatIsSetApartForFixedOnes() throws {
+        let rent = Expense(amount: 600, currencyMarker: "$", merchant: "Renta",
+                           date: Calendar.current.date(byAdding: .day, value: -20, to: now)!)
+        rent.repeatsMonthly = true  // Next charge: October 25th, still to come.
+        context.insert(rent)
+        add(100, daysAgo: 1)
+        let line = try XCTUnwrap(budgetLine(2300))
+        XCTAssertTrue(line.contains("1,600.00 libres"), line)
+        XCTAssertTrue(line.contains("600.00 apartados para fijos"), line)
+        // (2,300 − 600) × 15 / 31 = 822.58, minus the 100 of yesterday.
+        XCTAssertTrue(line.hasSuffix("722."), line)
     }
 
     func testSaysByHowMuchTheBudgetWasBlown() throws {

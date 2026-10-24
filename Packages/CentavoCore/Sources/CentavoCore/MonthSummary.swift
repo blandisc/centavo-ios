@@ -128,6 +128,18 @@ public enum MonthSummarizer {
         )
     }
 
+    /// What `reference`'s day added up to in `primary`, refunds included: the part of the
+    /// month's total that «Hoy puedes gastar» takes from today alone.
+    public static func dayTotal(
+        _ amounts: [ExpenseAmount],
+        onDayOf reference: Date,
+        primary: String,
+        calendar: Calendar = .current
+    ) -> Decimal {
+        let today = amounts.filter { calendar.isDate($0.date, inSameDayAs: reference) }
+        return summarize(today, inMonthOf: reference, primary: primary, calendar: calendar).primary.amount
+    }
+
     /// Biggest spend first. Ties go to the named category, then alphabetically, so the
     /// list never shuffles between redraws.
     private static func biggestFirst(_ left: CategoryTotal, _ right: CategoryTotal) -> Bool {
@@ -167,7 +179,8 @@ public struct CategoryShare: Equatable, Sendable {
     public static let colored = 4
 
     /// Where the month went, biggest first, adding up to everything spent (refunds that left
-    /// a category in the negative don't count, or the shares would stop adding up). Past
+    /// a category in the negative don't count, or the shares would stop adding up; `returned`
+    /// says how much they took off, so the lines still square with the month). Past
     /// `limit` lines, the smallest are gathered in one «Otras» line. Empty when nothing is
     /// filed under a name: "100 % sin categoría" says nothing.
     public static func top(_ categories: [CategoryTotal], limit: Int = colored + 1) -> [CategoryShare] {
@@ -194,13 +207,22 @@ public struct CategoryShare: Equatable, Sendable {
         return isRest ? members.contains { Self.key($0) == key } : Self.key(self.category) == key
     }
 
+    /// What came back across the month: the categories (or the unfiled) that refunds left in
+    /// the negative, which `top` leaves out of the shares. The lines minus this is the month's
+    /// total, the same as «Llevas».
+    public static func returned(_ categories: [CategoryTotal]) -> Decimal {
+        categories.filter { $0.amount < 0 }.reduce(Decimal(0)) { $0 - $1.amount }
+    }
+
     /// The same line in another reading of the month (its amount may have changed since).
     public func isSameLine(as other: CategoryShare) -> Bool {
         isRest == other.isRest && (isRest || Self.key(category) == Self.key(other.category))
     }
 
+    /// Trimmed like the month trims it, so «Café » filters the same expenses it adds up.
     static func key(_ category: String?) -> String? {
-        guard let name = category, !name.isEmpty else { return nil }
+        guard let name = category?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !name.isEmpty else { return nil }
         return name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 }

@@ -6,7 +6,7 @@ numbers in layout modifiers, fixed font sizes, literal or system colors, hand-ma
 prominent buttons, aggressive minimumScaleFactor… See docs/DESIGN_SYSTEM.md.
 
 Usage: Tools/lint-design.sh [--quiet] [--summary] [files…]
-(no files = every .swift under Centavo/Screens, Centavo/Components and Centavo/App)
+(no files = every .swift under Centavo/Screens, Centavo/Components, Centavo/App and CentavoWidgets)
 
 Per-line exception: end the line with `// ds-allow: <why>`. The reason is required; every
 exception is counted and listed at the end, so they stay visible in review.
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "Centavo"
 
 # The code that draws views. Model/, Intents/ and the rest hold no layout.
-UI_DIRS = [APP / "Screens", APP / "Components", APP / "App"]
+UI_DIRS = [APP / "Screens", APP / "Components", APP / "App", ROOT / "CentavoWidgets"]
 
 # Where the tokens are defined: the only place allowed to write the raw values.
 TOKEN_DIRS = [APP / "Theme"]

@@ -22,13 +22,16 @@ targets:
         excludes: [Info.plist]
     dependencies:
       - package: CentavoCore
+      - target: CentavoWidgets
     scheme:
       testTargets: [CentavoTests, CentavoUITests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
-        # iCloud sync. A free developer account cannot sign it: build with
-        # CODE_SIGN_ENTITLEMENTS= (empty) and the app keeps everything on the phone only.
+        # iCloud sync and the App Group shared with the widgets. A free developer account
+        # cannot sign iCloud, and xcodebuild gives it profiles without the App Group: build with
+        # CODE_SIGN_ENTITLEMENTS=Centavo/CentavoGratis.entitlements (for both targets: only the
+        # shared Keychain group) and the app keeps everything on the phone only.
         CODE_SIGN_ENTITLEMENTS: Centavo/Centavo.entitlements
         INFOPLIST_KEY_UIBackgroundModes: remote-notification
         GENERATE_INFOPLIST_FILE: YES
@@ -42,6 +45,34 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.finance
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
+  CentavoWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CentavoWidgets
+        excludes: [Info.plist, "*.entitlements"]
+      # The look and the money format are the app's own, shared file by file.
+      - path: Centavo/Theme
+      - path: Centavo/Resources/Fonts
+        buildPhase: resources
+    dependencies:
+      - package: CentavoCore
+    info:
+      path: CentavoWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Al día
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CentavoKeychainGroup: $(AppIdentifierPrefix)com.blandisc.centavo.shared
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.widgets
+        # The App Group and the shared Keychain group (the fallback a free account can sign).
+        CODE_SIGN_ENTITLEMENTS: CentavoWidgets/CentavoWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
   CentavoUITests:
     type: bundle.ui-testing
     platform: iOS

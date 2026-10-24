@@ -101,17 +101,24 @@ import Testing
         #expect(summary.categories.first?.amount == 500)
     }
 
-    @Test func markingTodaysExpenseRaisesWhatCanGoTodayByItsAmount() throws {
-        let before = summarize([amount(2000), amount(310)])
-        let after = summarize([amount(2000), amount(310, counted: 0)])
-        let paceBefore = try #require(BudgetPace(budget: 8000, spent: before.primary.amount,
-                                                 on: Self.day(15), calendar: Self.calendar))
-        let paceAfter = try #require(BudgetPace(budget: 8000, spent: after.primary.amount,
-                                                on: Self.day(15), calendar: Self.calendar))
-        #expect(paceAfter.remaining - paceBefore.remaining == 310)
-        // 17 days left, today included: (8000 − 2000) / 17 = 352.94 against (8000 − 2310) / 17 = 334.70.
-        #expect(paceBefore.dailyAllowance == 334)
-        #expect(paceAfter.dailyAllowance == 352)
+    @Test(arguments: [AllowanceMode.carry, .spread])
+    func markingTodaysExpenseRaisesWhatCanGoTodayByItsAmount(mode: AllowanceMode) throws {
+        func pace(_ amounts: [ExpenseAmount]) -> BudgetPace? {
+            BudgetPace(budget: 8000, spent: summarize(amounts).primary.amount,
+                       spentToday: MonthSummarizer.dayTotal(amounts, onDayOf: Self.day(15), primary: "MXN",
+                                                            calendar: Self.calendar),
+                       mode: mode, on: Self.day(15), calendar: Self.calendar)
+        }
+        let before = try #require(pace([amount(2000, day: 10), amount(310, day: 15)]))
+        let after = try #require(pace([amount(2000, day: 10), amount(310, counted: 0, day: 15)]))
+        #expect(after.remaining - before.remaining == 310)
+        #expect(after.dailyAllowance - before.dailyAllowance == 310)
+    }
+
+    @Test func todaysTotalLeavesItOut() {
+        let today = [amount(80, day: 15), amount(230, counted: 0, day: 15), amount(1000, counted: 500, day: 15),
+                     amount(400, day: 14)]
+        #expect(MonthSummarizer.dayTotal(today, onDayOf: Self.day(15), primary: "MXN", calendar: Self.calendar) == 580)
     }
 
     @Test func whereItGoesHasNoRefundLineWhenTheTripIsLeftOutInsteadOfCompensated() {

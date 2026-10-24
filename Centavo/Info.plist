@@ -8,5 +8,20 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- The shared Keychain group for the widgets' snapshot (WidgetSnapshotStore). -->
+	<key>CentavoKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)com.blandisc.centavo.shared</string>
+	<!-- centavo://anotar and centavo://presupuesto, from the widgets. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.blandisc.centavo</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>centavo</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
