@@ -76,10 +76,8 @@ struct ExpenseListView: View {
     }
 
     var body: some View {
-        let amounts = expenses.map {
-            ExpenseAmount(value: $0.amount, currencyMarker: $0.currencyMarker,
-                          date: $0.date, category: $0.category)
-        }
+        // What doesn't count is left out here, the same way Siri leaves it out (`MonthStatus`).
+        let amounts = expenses.map(\.asAmount)
         // `expenses` is newest first, so the oldest is the last one. You can browse back
         // as far as that, and no further; deleting it pulls the limit forward.
         let earliest = MonthNavigator.earliestOffset(oldest: expenses.last?.date, now: now)
@@ -149,6 +147,7 @@ struct ExpenseListView: View {
                             spent: summary.primary,
                             pace: pace,
                             isCurrentMonth: isCurrent,
+                            outside: summary.outside,
                             shares: CategoryShare.top(summary.categories),
                             note: fact?.line,
                             selectedCategory: selectedCategory,
@@ -218,6 +217,15 @@ struct ExpenseListView: View {
                                 pendingDelete = expense
                             }
                             .contextMenu {
+                                // One touch, without opening the sheet. The first time it is
+                                // «Me lo reembolsan»; after that, the reason it had before.
+                                if expense.isUncounted {
+                                    Button("Sí cuenta", systemImage: "checkmark.circle") { expense.markCounted() }
+                                } else {
+                                    Button("No cuenta", systemImage: "nosign") {
+                                        expense.markUncounted(expense.reason ?? .reimbursed)
+                                    }
+                                }
                                 Button("Borrar gasto", systemImage: "trash", role: .destructive) {
                                     pendingDelete = expense
                                 }
@@ -768,6 +776,8 @@ private struct LedgerRow: View {
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = Theme.Size.rowTileSymbol
 
     private var isRefund: Bool { expense.amount < 0 }
+    /// Grey and struck through, never brass: brass already means money that came back.
+    private var isUncounted: Bool { expense.isUncounted }
 
     /// The category's icon on a small tile, the same icons as «En qué se va».
     private var categoryTile: some View {
@@ -778,15 +788,18 @@ private struct LedgerRow: View {
             .resizable()
             .scaledToFit()
             .fontWeight(.medium)
-            .foregroundStyle(category == nil ? Theme.muted : Theme.brass)
+            .foregroundStyle(category == nil || isUncounted ? Theme.muted : Theme.brass)
             .frame(width: iconSize, height: iconSize)
             .frame(width: tileSize, height: tileSize)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
             .accessibilityHidden(true)
     }
 
-    private var meta: String? {
-        let parts = [isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
+    /// «No cuenta · Me lo reembolsan» goes first, so the line says it and not only the strike.
+    /// VoiceOver hears «no cuenta para el presupuesto» with the amount instead.
+    private func meta(spoken: Bool = false) -> String? {
+        let parts = [isUncounted && !spoken ? "No cuenta" : nil, isUncounted ? expense.reason?.title : nil,
+                     isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
                      expense.category, expense.card]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
@@ -805,22 +818,26 @@ private struct LedgerRow: View {
     }
 
     @ViewBuilder private var metaText: some View {
-        if let meta {
-            Text(meta)
+        if let line = meta() {
+            Text(line)
                 .font(.ticket(.hint))
                 .tracking(Theme.Tracking.detail)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.leading)
+                .accessibilityLabel(meta(spoken: true) ?? "")
         }
     }
 
     private var amountText: some View {
-        Text(ledgerAmount(for: expense, primary: primaryCurrency))
+        let amount = ledgerAmount(for: expense, primary: primaryCurrency)
+        return Text(amount)
             .font(.ticket(.body))
-            .foregroundStyle(isRefund ? Theme.brass : Theme.ink)
+            .strikethrough(isUncounted, color: Theme.muted)
+            .foregroundStyle(isUncounted ? Theme.muted : isRefund ? Theme.brass : Theme.ink)
             .lineLimit(1)
             .fixedSize()
+            .accessibilityLabel(isUncounted ? "\(amount), no cuenta para el presupuesto" : amount)
     }
 
     var body: some View {
@@ -875,6 +892,7 @@ private struct DeletedExpense: Identifiable {
     let date: Date, category: String?, rawAmount: String?
     let repeatsMonthly: Bool?, repeatsThrough: Date?, isRepeat: Bool?
     let displayName: String?, categorySource: String?, repeatRule: String?, repeatDay: Int?
+    let countedAmount: Decimal?, uncountedReason: String?
 
     init(_ e: Expense) {
         amount = e.amount; currencyMarker = e.currencyMarker; merchant = e.merchant; card = e.card
@@ -882,6 +900,7 @@ private struct DeletedExpense: Identifiable {
         repeatsMonthly = e.repeatsMonthly; repeatsThrough = e.repeatsThrough; isRepeat = e.isRepeat
         displayName = e.displayName; categorySource = e.categorySource
         repeatRule = e.repeatRule; repeatDay = e.repeatDay
+        countedAmount = e.countedAmount; uncountedReason = e.uncountedReason
     }
 
     func make() -> Expense {
@@ -890,6 +909,7 @@ private struct DeletedExpense: Identifiable {
         e.repeatsMonthly = repeatsMonthly; e.repeatsThrough = repeatsThrough; e.isRepeat = isRepeat
         e.displayName = displayName; e.categorySource = categorySource
         e.repeatRule = repeatRule; e.repeatDay = repeatDay
+        e.countedAmount = countedAmount; e.uncountedReason = uncountedReason
         return e
     }
 }
@@ -1003,7 +1023,8 @@ struct DayGroup: Identifiable {
         return groups
     }
 
-    /// What went that day in the month's currency (refunds subtract); others ride apart.
+    /// What went that day in the month's currency (refunds subtract, what doesn't count adds
+    /// nothing); others ride apart.
     func total(in primary: String) -> String? {
         let mine = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == primary }
         // A day only in other money still says how much: «USD 24.99».
@@ -1011,12 +1032,12 @@ struct DayGroup: Identifiable {
             guard let first = items.first else { return nil }
             let code = CurrencyResolver.isoCode(for: first.currencyMarker, primary: primary)
             let same = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == code }
-            let sum = same.reduce(Decimal(0)) { $0 + $1.amount }
+            let sum = same.reduce(Decimal(0)) { $0 + $1.counted }
             let number = sum.magnitude.formatted(.number.precision(.fractionLength(2)))
             let label = String((code ?? first.currencyMarker ?? "").prefix(4))
             return (sum < 0 ? "+" : "") + (label.isEmpty ? number : "\(label) \(number)")
         }
-        let sum = mine.reduce(Decimal(0)) { $0 + $1.amount }
+        let sum = mine.reduce(Decimal(0)) { $0 + $1.counted }
         // Money that came back reads like the ledger's refunds: «+$230.00».
         return (sum < 0 ? "+" : "") + formatMoney(sum.magnitude, isoCode: primary, label: primary)
     }

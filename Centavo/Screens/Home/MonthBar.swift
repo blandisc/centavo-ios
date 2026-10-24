@@ -15,6 +15,9 @@ struct MonthBar: View {
     let wholeMoney: (Decimal) -> String
     /// Whether «Llevas» is the screen's own total (the hero shows «Hoy puedes gastar» instead).
     let carriesTotal: Bool
+    /// What was left out of the budget («No cuenta»), shown under the sum so nothing goes
+    /// missing without a word. Zero shows nothing.
+    var outside: Decimal = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = Theme.Size.monthBarTrack
@@ -51,6 +54,7 @@ struct MonthBar: View {
             .buttonStyle(.plain)
             .sensoryFeedback(.selection, trigger: showsSum)
             .accessibilityHint(showsSum ? "Oculta la cuenta" : "Muestra la cuenta")
+            .accessibilityIdentifier("barra-del-mes")
 
             // Each figure where what it measures is: «Llevas» under the brass, «Presupuesto» at
             // the bar's end, «Podrías llevar» over the rule (owner's choice, 2026-10-22).
@@ -253,6 +257,12 @@ struct MonthBar: View {
                 sumLine("÷ Días que faltan", "\(days)")
                 Divider().overlay(Theme.hairline)
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
+            }
+            if outside != 0 {
+                // Not part of the sum: what was spent but doesn't count, said apart.
+                Divider().overlay(Theme.hairline)
+                sumLine("Fuera del presupuesto", wholeMoney(outside))
+                    .accessibilityIdentifier("fuera-del-presupuesto")
             }
         }
         .font(.ticket(.detail))
