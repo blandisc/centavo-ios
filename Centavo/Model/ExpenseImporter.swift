@@ -30,9 +30,15 @@ enum ExpenseImporter {
             seen.insert(k)
             let category = record.category
                 ?? CategoryMemory.remembered(for: record.merchant, rules: rules, latest: latest, hidden: hidden)
-            context.insert(Expense(amount: record.amount, currencyMarker: record.currency,
-                                   merchant: record.merchant, card: record.card,
-                                   date: record.date, category: category))
+            let expense = Expense(amount: record.amount, currencyMarker: record.currency,
+                                  merchant: record.merchant, card: record.card,
+                                  date: record.date, category: category)
+            if !record.counts {
+                // Without a reason in the file it just doesn't count; none is made up.
+                expense.countedAmount = 0
+                expense.uncountedReason = record.uncountedReason?.rawValue
+            }
+            context.insert(expense)
             summary.added += 1
         }
         if summary.added > 0 { try context.save() }

@@ -6,13 +6,17 @@ public struct ExpenseAmount: Equatable, Sendable {
     public var currencyMarker: String?
     public var date: Date
     public var category: String?
+    /// The part of the expense left out of the budget («No cuenta»), already taken out of
+    /// `value`. Zero for an expense that counts in full, which is nearly all of them.
+    public var excluded: Decimal
 
     public init(value: Decimal, currencyMarker: String? = nil, date: Date,
-                category: String? = nil) {
+                category: String? = nil, excluded: Decimal = 0) {
         self.value = value
         self.currencyMarker = currencyMarker
         self.date = date
         self.category = category
+        self.excluded = excluded
     }
 }
 
@@ -52,11 +56,16 @@ public struct MonthSummary: Equatable, Sendable {
     public let others: [MoneyTotal]
     /// The primary-currency total broken down by category, biggest first.
     public let categories: [CategoryTotal]
+    /// What was left out of the budget this month, in the primary currency: «Fuera del
+    /// presupuesto». Not part of `primary`.
+    public let outside: Decimal
 
-    public init(primary: MoneyTotal, others: [MoneyTotal], categories: [CategoryTotal]) {
+    public init(primary: MoneyTotal, others: [MoneyTotal], categories: [CategoryTotal],
+                outside: Decimal = 0) {
         self.primary = primary
         self.others = others
         self.categories = categories
+        self.outside = outside
     }
 }
 
@@ -79,6 +88,7 @@ public enum MonthSummarizer {
         // Two spellings of one category are one category, but the screen shows the
         // spelling you used most recently.
         var categoryNames: [String?: String?] = [:]
+        var outside: Decimal = 0
 
         for amount in amounts
         where calendar.isDate(amount.date, equalTo: reference, toGranularity: .month) {
@@ -89,6 +99,9 @@ public enum MonthSummarizer {
             codes[label] = iso
 
             guard label == primaryCode else { continue }
+            outside += amount.excluded
+            // None of it counts: it is in no category either (not even a zero line).
+            guard amount.value != 0 || amount.excluded == 0 else { continue }
             let name = amount.category?.trimmingCharacters(in: .whitespacesAndNewlines)
             let named = (name?.isEmpty ?? true) ? nil : name
             let key = named?.folding(options: [.caseInsensitive, .diacriticInsensitive],
@@ -110,7 +123,8 @@ public enum MonthSummarizer {
             primary: MoneyTotal(isoCode: primaryCode, label: primaryCode,
                                 amount: totals[primaryCode] ?? 0),
             others: others,
-            categories: categories
+            categories: categories,
+            outside: outside
         )
     }
 

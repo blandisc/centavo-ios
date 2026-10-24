@@ -137,6 +137,43 @@ final class ScreenshotTests: XCTestCase {
         snap("11-letra-grande-calendario")
     }
 
+    // MARK: «No cuenta» (el Uber de hoy de la demo, «Me lo reembolsan»)
+
+    /// The demo's Uber of today, the expense that doesn't count.
+    private func uncountedRow(_ app: XCUIApplication) -> XCUIElement {
+        let uber = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Uber'")).firstMatch
+        for _ in 0..<4 where !uber.isHittable { app.swipeUp() }
+        return uber
+    }
+
+    func testNoCuentaHoja() {
+        let app = launch()
+        uncountedRow(app).tap()
+        XCTAssertTrue(app.switches["cuenta-presupuesto"].waitForExistence(timeout: 5), "No está el interruptor")
+        snap("nc-01-hoja-no-cuenta")
+        let reason = app.buttons["motivo"].exists ? app.buttons["motivo"]
+            : app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Motivo'")).firstMatch
+        reason.tap()
+        sleep(1)
+        snap("nc-02-motivo-abierto")
+    }
+
+    func testNoCuentaLista() {
+        let app = launch()
+        _ = uncountedRow(app)
+        sleep(1)
+        snap("nc-03-lista-no-cuenta")
+    }
+
+    func testNoCuentaDesglose() {
+        let app = launch()
+        let bar = app.buttons["barra-del-mes"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5), "No está la barra del presupuesto")
+        bar.tap()
+        sleep(1)
+        snap("nc-04-desglose-fuera-del-presupuesto")
+    }
+
     func testMesAnterior() {
         let app = launch()
         app.buttons["Mes anterior"].tap()

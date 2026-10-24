@@ -10,6 +10,8 @@ struct BudgetPage: View {
     let pace: BudgetPace?
     /// A month that is over has no "today": the whole budget was due, so the marker goes.
     let isCurrentMonth: Bool
+    /// What was left out of the budget («No cuenta»): said in the sum, never silently gone.
+    var outside: Decimal = 0
     /// Where the month's money went, biggest first. Empty when nothing is filed.
     var shares: [CategoryShare] = []
     /// What came back this month, which `shares` leave out (`CategoryShare.returned`).
@@ -122,7 +124,7 @@ struct BudgetPage: View {
         // A month where more came back than went out is 0 %, not "-5 %".
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         return MonthBar(pace: pace, isCurrentMonth: isCurrentMonth, money: money, wholeMoney: wholeMoney,
-                        carriesTotal: isCurrentMonth && !isOver)
+                        carriesTotal: isCurrentMonth && !isOver, outside: outside)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("presupuesto-ticket")
             .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver,
@@ -151,6 +153,7 @@ struct BudgetPage: View {
                              : "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).")
             }
         }
+        if outside != 0 { parts.append("Fuera del presupuesto, \(money(outside)).") }
         return parts.joined(separator: " ")
     }
 

@@ -18,6 +18,10 @@ struct ExpenseEditorView: View {
     /// The expense's currency. New ones start in the month's currency.
     @State private var currency = CurrencyPreference.current
     @State private var isRefund = false
+    /// «Cuenta para el presupuesto», on unless it was left out.
+    @State private var counts = true
+    /// Why it doesn't count; kept while the switch goes back and forth.
+    @State private var reason = UncountedReason.reimbursed
     @State private var merchant = ""
     @State private var card = ""
     @State private var category = ""
@@ -56,8 +60,10 @@ struct ExpenseEditorView: View {
         guard let expense else {
             let changedCard = UserCatalog.same(card, defaultSource) ? "" : card
             return !(amountText + merchant + changedCard + category).trimmingCharacters(in: .whitespaces).isEmpty
+                || !counts
         }
         return parsed?.value != expense.amount.magnitude || isRefund != (expense.amount < 0)
+            || counts == expense.isUncounted || (!counts && reason != (expense.reason ?? .reimbursed))
             || merchant != expense.merchant || card != (expense.card ?? "")
             || category != (expense.category ?? "") || date != expense.date
             || repeatsMonthly != (expense.repeatsMonthly == true)
@@ -79,6 +85,7 @@ struct ExpenseEditorView: View {
         var parts = [(isRefund ? "+" : "") + money, name]
         let cardName = card.trimmingCharacters(in: .whitespaces)
         if !cardName.isEmpty { parts.append(cardName) }
+        if !counts { parts.append("No cuenta") }
         return parts.joined(separator: " · ")
     }
 
@@ -137,6 +144,32 @@ struct ExpenseEditorView: View {
                 } footer: {
                     if let shown = expense?.displayName, shown != expense?.merchant, merchant == expense?.merchant {
                         HintText("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
+                    }
+                }
+                .listRowBackground(Theme.surface)
+
+                // After the amount and the merchant, so «Comercio» stays above «Guardar» while
+                // the decimal pad is open. In the amount section it sat on the save bar and a
+                // tap never focused the field.
+                Section {
+                    Toggle(isOn: $counts) {
+                        SectionLabel("Cuenta para el presupuesto")
+                    }
+                    .tint(Theme.brass)
+                    .accessibilityIdentifier("cuenta-presupuesto")
+                    if !counts {
+                        Picker(selection: $reason) {
+                            ForEach(UncountedReason.allCases) { Text($0.title).tag($0) }
+                        } label: {
+                            SectionLabel("Motivo")
+                        }
+                        .pickerStyle(.menu)
+                        .tint(Theme.brass)
+                        .accessibilityIdentifier("motivo")
+                    }
+                } footer: {
+                    if !counts {
+                        HintText("Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar».")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -450,6 +483,8 @@ struct ExpenseEditorView: View {
                                             primary: CurrencyPreference.current)
             ?? CurrencyPreference.current
         isRefund = expense.amount < 0
+        counts = !expense.isUncounted
+        reason = expense.reason ?? .reimbursed
         amountText = expense.amount.magnitude
             .formatted(.number.precision(.fractionLength(2)).grouping(.never))
         merchant = expense.merchant
@@ -480,6 +515,17 @@ struct ExpenseEditorView: View {
         date = min(entry.date, .now)
         if let source = entry.source { card = source }
         sentence = ""
+    }
+
+    /// «Cuenta para el presupuesto»: off leaves it out for the chosen reason; back on counts it
+    /// in full and keeps the reason for next time.
+    private func setCounts(_ expense: Expense) {
+        if counts {
+            if expense.isUncounted { expense.markCounted() }
+        } else if !expense.isUncounted || reason != (expense.reason ?? .reimbursed) {
+            // Untouched, an expense that came without a reason (an old CSV) keeps none.
+            expense.markUncounted(reason)
+        }
     }
 
     /// Turning it on starts counting from the expense's own month; turning it off stops it.
@@ -527,6 +573,7 @@ struct ExpenseEditorView: View {
             }
             expense.category = categoryName.isEmpty ? nil : categoryName
             expense.date = date
+            setCounts(expense)
             if expense.isRepeat != true { setRepeats(expense) }
         } else {
             let new = Expense(
@@ -540,6 +587,7 @@ struct ExpenseEditorView: View {
             if !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: name) }
             // A place picked from the suggestions reads as it did before.
             new.displayName = history.first { $0.merchant == name }?.displayName
+            setCounts(new)
             setRepeats(new)
             context.insert(new)
             // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.

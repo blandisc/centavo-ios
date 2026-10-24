@@ -25,7 +25,10 @@ struct ExpensesCSVFile: Transferable {
                 card: expense.card,
                 // A suggestion nobody confirmed is not a category: imported back, it would be
                 // taken for a choice.
-                category: expense.hasSuggestedCategory ? nil : expense.category
+                category: expense.hasSuggestedCategory ? nil : expense.category,
+                // The real amount above; whether it counts goes in a column of its own.
+                counts: !expense.isUncounted,
+                uncountedReason: expense.reason
             )
         }
         suggestedName = "AlDia-\(now.formatted(.iso8601.year().month().day())).csv"

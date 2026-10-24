@@ -22,7 +22,7 @@ import Testing
     }
 
     @Test func writesAHeaderEvenWithNoExpenses() {
-        #expect(csv([]) == "Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría\r\n")
+        #expect(csv([]) == "Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría,Cuenta,Motivo\r\n")
     }
 
     @Test func writesOneRowPerExpenseWithCRLFEndings() {
@@ -31,8 +31,8 @@ import Testing
                           amount: 89, currency: "MXN", card: "BBVA", category: "Despensa"),
         ])
         #expect(out == """
-        Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría\r
-        2026-10-09T08:30:00-06:00,Oxxo,89.00,MXN,BBVA,Despensa\r
+        Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría,Cuenta,Motivo\r
+        2026-10-09T08:30:00-06:00,Oxxo,89.00,MXN,BBVA,Despensa,Sí,\r
 
         """)
     }
@@ -70,7 +70,23 @@ import Testing
         #expect(lines([
             ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Efectivo",
                           amount: 50, currency: "MXN", card: nil, category: nil),
-        ])[1].hasSuffix(",MXN,,"))
+        ])[1].hasSuffix(",MXN,,,Sí,"))
+    }
+
+    @Test func anExpenseThatDoesNotCountKeepsItsRealAmountAndSaysWhy() {
+        let row = lines([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Uber", amount: 230, currency: "MXN",
+                          category: "Transporte", counts: false, uncountedReason: .reimbursed),
+        ])[1]
+        #expect(row.hasSuffix(",230.00,MXN,,Transporte,No,Me lo reembolsan"))
+    }
+
+    @Test func aReasonIsOnlyWrittenForWhatDoesNotCount() {
+        let row = lines([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Uber", amount: 230, currency: "MXN",
+                          counts: true, uncountedReason: .betweenAccounts),
+        ])[1]
+        #expect(row.hasSuffix(",Sí,"))
     }
 
     @Test func quotesFieldsThatWouldBreakTheFormat() {

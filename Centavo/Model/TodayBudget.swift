@@ -12,8 +12,9 @@ enum TodayBudget {
                          primary: String, month: Date, now: Date = .now,
                          mode: AllowanceMode = .saved) -> WidgetSnapshot {
         let isCurrent = MonthNavigator.isSameMonth(month, as: now)
-        let all = rows.map(\.amountLine)
-        let fixed = rows.filter(\.isFixed).map(\.amountLine)
+        // What counts (`Expense.asAmount`): «no cuenta» stays out of today, the month and the widgets.
+        let all = rows.map(\.asAmount)
+        let fixed = rows.filter(\.isFixed).map(\.asAmount)
         let summary = MonthSummarizer.summarize(all, inMonthOf: month, primary: primary)
         let fixedSpent = MonthSummarizer.summarize(fixed, inMonthOf: month, primary: primary).primary.amount
         // The fixed expenses still to come come off the month's daily amount, like the charged ones.
@@ -58,9 +59,3 @@ extension AllowanceMode {
     }
 }
 
-extension Expense {
-    /// As the month's sums see it.
-    var amountLine: ExpenseAmount {
-        ExpenseAmount(value: amount, currencyMarker: currencyMarker, date: date, category: category)
-    }
-}

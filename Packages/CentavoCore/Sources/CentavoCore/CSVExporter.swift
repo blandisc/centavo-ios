@@ -9,27 +9,39 @@ public struct ExpenseRecord: Equatable, Sendable {
     public var currency: String
     public var card: String?
     public var category: String?
+    /// Whether it counts toward the budget. `amount` is always the real amount.
+    public var counts: Bool
+    /// Why it doesn't count, when it doesn't and someone said.
+    public var uncountedReason: UncountedReason?
 
     public init(date: Date, merchant: String, amount: Decimal,
-                currency: String, card: String? = nil, category: String? = nil) {
+                currency: String, card: String? = nil, category: String? = nil,
+                counts: Bool = true, uncountedReason: UncountedReason? = nil) {
         self.date = date
         self.merchant = merchant
         self.amount = amount
         self.currency = currency
         self.card = card
         self.category = category
+        self.counts = counts
+        self.uncountedReason = uncountedReason
     }
 }
 
 /// Writes expenses as RFC 4180 CSV — the format Numbers, Excel and every
 /// spreadsheet on the planet opens without asking questions.
 public enum CSVExporter {
-    public static let header = ["Fecha", "Comercio", "Monto", "Moneda", "Tarjeta", "Categoría"]
+    public static let header = ["Fecha", "Comercio", "Monto", "Moneda", "Tarjeta", "Categoría",
+                                "Cuenta", "Motivo"]
+
+    /// What «Cuenta» says: whether the expense counts toward the budget.
+    public static let countsText = "Sí", uncountedText = "No"
 
     /// Oldest first, so the file reads like a ledger.
     ///
     /// Dates carry their UTC offset and amounts use a dot for decimals, both so a
-    /// spreadsheet in any locale reads them the same way. Refunds keep their minus.
+    /// spreadsheet in any locale reads them the same way. Refunds keep their minus. An
+    /// expense that doesn't count keeps its real amount, with «No» under «Cuenta».
     public static func csv(from records: [ExpenseRecord],
                            timeZone: TimeZone = .current) -> String {
         let dateStyle = Date.ISO8601FormatStyle(timeZone: timeZone)
@@ -42,6 +54,8 @@ public enum CSVExporter {
                 defused(record.currency),
                 defused(record.card ?? ""),
                 defused(record.category ?? ""),
+                record.counts ? countsText : uncountedText,
+                record.counts ? "" : record.uncountedReason?.title ?? "",
             ]
         }
         return ([header] + rows)

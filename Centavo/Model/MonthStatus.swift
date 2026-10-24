@@ -20,7 +20,7 @@ enum MonthStatus {
     static func budgetSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
                                primary: String = primaryCurrency) throws -> String? {
         let rows = try monthRows(in: context, now: now)
-        let summary = MonthSummarizer.summarize(rows.map(\.amountLine), inMonthOf: now, primary: primary)
+        let summary = MonthSummarizer.summarize(rows.map(\.asAmount), inMonthOf: now, primary: primary)
         let originals = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.repeatsMonthly == true }))
         guard let pace = TodayBudget.pace(budget: budget, rows: rows, originals: originals, plans: FixedPlan.saved,
                                           primary: primary, month: now, now: now) else {
@@ -75,7 +75,7 @@ enum MonthStatus {
     }
 
     private static func monthAmounts(in context: ModelContext, now: Date) throws -> [ExpenseAmount] {
-        try monthRows(in: context, now: now).map(\.amountLine)
+        try monthRows(in: context, now: now).map(\.asAmount)
     }
 
     private static func monthRows(in context: ModelContext, now: Date) throws -> [Expense] {
