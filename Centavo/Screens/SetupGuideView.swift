@@ -7,8 +7,9 @@ import SwiftUI
 /// Atajos screen as it will look and showing where to tap. Connecting the amount is two taps
 /// in a row that nobody guesses, so that step plays them out on a loop, like a short video.
 ///
-/// Each step reads like the welcome: a brass emblem, a «Paso X de 8» caption, a title, a short
-/// lead and the content; the dots between the bottom-bar buttons show where the person is.
+/// Each step reads like the welcome: a «Paso X de 8» caption with the brass emblem beside the
+/// title, a short lead and the content; the dots between the bottom-bar buttons show where the
+/// person is.
 struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
     /// Payments the automation saved (only it keeps the raw Wallet text): proof that it works.
@@ -77,18 +78,7 @@ struct SetupGuideView: View {
     private func page(_ guide: GuideStep, number: Int) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                StepEmblem(systemImage: guide.symbol)
-
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text("Paso \(number) de \(steps.count)")
-                        .ticketCaption()
-                        .accessibilityLabel("Paso \(number) de \(steps.count)")
-                    Text(guide.title)
-                        .font(.ticket(.pageTitle))
-                        .foregroundStyle(Theme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                StepHeader(step: number, of: steps.count, title: guide.title, systemImage: guide.symbol)
 
                 if let lead = guide.lead {
                     Text(lead)

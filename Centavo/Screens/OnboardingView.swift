@@ -5,7 +5,7 @@ import SwiftUI
 /// The first time Al día opens empty: what it does, the currency, the budget, the fixed
 /// expenses and the Wallet automation, one short page each. Every page can be skipped.
 ///
-/// Each page reads the same way: a brass emblem, a «Paso X de 5» caption, a title, a short
+/// Each page reads the same way: a «Paso X de 5» caption, a brass emblem beside the title, a short
 /// lead and the content; the dots between the bottom-bar buttons show where the person is.
 struct OnboardingView: View {
     /// Called when it is done; `openGuide` asks for the Wallet guide right after.
@@ -256,15 +256,7 @@ struct OnboardingView: View {
                                      @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                // Decorative; with accessibility text it stays out of the way (StepEmblem).
-                StepEmblem(systemImage: symbol)
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text("Paso \(page + 1) de \(pages)").ticketCaption()
-                    Text(title)
-                        .font(.ticket(.pageTitle))
-                        .foregroundStyle(Theme.ink)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                StepHeader(step: page + 1, of: pages, title: title, systemImage: symbol)
                 Text(lead)
                     .font(.ticket(.body))
                     .foregroundStyle(Theme.muted)

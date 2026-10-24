@@ -155,7 +155,8 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swi
 | `TicketOutline` / `.ticketOutline(_:)` | Ticket en blanco punteado (estado vacío, aviso) | `.ticketOutline(.emphasis)` |
 | `.ticketPanel()` | Panel callado (`surface`, radio `panel`) | nota, vista previa |
 | `.selectableCard(selected:)` | Opción como tarjeta con borde latón al elegirla | monedas en la bienvenida |
-| `StepEmblem` | Emblema de latón que encabeza cada paso (bienvenida, guía del atajo); decorativo y oculto con letra de accesibilidad | `StepEmblem(systemImage: "wallet.pass")` |
+| `StepEmblem` | Emblema de latón decorativo que acompaña al título; oculto con letra de accesibilidad | Se usa dentro de `StepHeader`, no sola |
+| `StepHeader` | Encabezado reutilizable de cada paso: «Paso X de N» + emblema junto al título | `StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")` |
 | `StepDots` | Avance de pasos por puntitos en la barra inferior; decorativo (la etiqueta «Paso X de N» lleva el progreso) | `StepDots(current: 2, of: 5)` |
 | `.choiceTile(selected:)` | Cuadro chico de elección (categoría, símbolo) | cuadrícula de íconos |
 | `Perforation()` | Línea punteada entre renglones del ticket | `.overlay(alignment: .top) { Perforation() }` |

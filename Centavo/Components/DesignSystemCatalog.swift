@@ -91,14 +91,7 @@ struct DesignSystemCatalog: View {
                 }
 
                 section("Progreso por pasos") {
-                    StepEmblem(systemImage: "wallet.pass")
-                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                        Text("Paso 3 de 8").ticketCaption()
-                        Text("Conecta el importe")
-                            .font(.ticket(.pageTitle))
-                            .foregroundStyle(Theme.ink)
-                            .accessibilityAddTraits(.isHeader)
-                    }
+                    StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")
                     StepDots(current: 2, of: 8)
                 }
 
