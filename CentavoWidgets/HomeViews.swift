@@ -30,20 +30,20 @@ struct HoyView: View {
     // MARK: Small
 
     private var small: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
             Caption(text: state.caption, color: ink.muted)
             Figure(text: money.whole(state.figure), color: figureColor)
             Verdict(state: state, money: money, ink: ink)
-            Spacer(minLength: 6)
+            Spacer(minLength: Theme.Space.xs)
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink)
                 // Only «Llevas $X» under the bar, in full (the budget is in the medium one).
                 keyText("Llevas", money.whole(pace.spent), ink: ink)
-                    .font(.ticket(12, weight: .medium, relativeTo: .footnote))
+                    .font(.widget(.spent))
                     .textCase(.uppercase)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .padding(.top, 6)
+                    .minimumScaleFactor(Theme.MinimumScale.widgetLabel)
+                    .padding(.top, Theme.Space.xs)
             } else {
                 SetBudgetBox(ink: ink)
             }
@@ -54,32 +54,32 @@ struct HoyView: View {
     // MARK: Medium
 
     private var medium: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            HStack(alignment: .top, spacing: Theme.Space.s) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                     Caption(text: state.caption, color: ink.muted)
-                    HStack(alignment: .lastTextBaseline, spacing: 8) {
-                        Figure(text: money.whole(state.figure), color: figureColor, size: 38)
+                    HStack(alignment: .lastTextBaseline, spacing: Theme.Space.s) {
+                        Figure(text: money.whole(state.figure), color: figureColor, style: .figureLarge)
                         if case .overBudget = state {
                             Verdict(state: state, money: money, ink: ink).fixedSize()
                         }
                     }
                 }
-                Spacer(minLength: 4)
+                Spacer(minLength: Theme.Space.xxs)
                 if state.pace != nil, !isOverBudget {
                     Verdict(state: state, money: money, ink: ink, twoLines: true)
-                        .padding(.top, 2)
+                        .padding(.top, Theme.Space.xxxs)
                 }
                 AddButton(ink: ink)
             }
-            Spacer(minLength: 6)
+            Spacer(minLength: Theme.Space.xs)
             if let pace = state.pace {
                 if !pace.isOverBudget {
                     annotation(pace)
                 }
-                MonthStrip(pace: pace, ink: ink, height: 12, tiles: true)
+                MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripTall, tiles: true)
                 keys(pace)
-                    .padding(.top, 6)
+                    .padding(.top, Theme.Space.xs)
             } else {
                 Link(destination: .setBudget) { SetBudgetBox(ink: ink, subtitle: true) }
             }
@@ -97,37 +97,41 @@ struct HoyView: View {
         GeometryReader { proxy in
             let share = min(max(NSDecimalNumber(decimal: pace.expectedToDate / pace.budget).doubleValue, 0), 1)
             let text = keyText("Podrías llevar", money.whole(pace.expectedToDate), ink: ink)
-                .font(.ticket(9, relativeTo: .caption2))
+                .font(.widget(.key))
                 .textCase(.uppercase)
                 .lineLimit(1)
                 .fixedSize()
+            let inset = Theme.Size.widgetAnnotationInset
+            // Past half the bar, the text ends at the rule; before it, it starts there.
+            let fromRight = share > 0.5
+            let edge: Edge.Set = fromRight ? .trailing : .leading
+            let distance = max(0, proxy.size.width * (fromRight ? 1 - share : share) - inset)
             text
-                .frame(width: proxy.size.width, alignment: share > 0.5 ? .trailing : .leading)
-                .padding(share > 0.5 ? .trailing : .leading,
-                         share > 0.5 ? max(0, proxy.size.width * (1 - share) - 2) : max(0, proxy.size.width * share - 2))
+                .frame(width: proxy.size.width, alignment: fromRight ? .trailing : .leading)
+                .padding(edge, distance)
         }
-        .frame(height: 12)
-        .padding(.bottom, 8)
+        .frame(height: Theme.Size.widgetAnnotation)
+        .padding(.bottom, Theme.Space.s)
     }
 
     private func keys(_ pace: BudgetPace) -> some View {
-        HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 1.5)
+        HStack(spacing: Theme.Space.xs) {
+            RoundedRectangle(cornerRadius: Theme.Radius.widgetTile)
                 .fill(pace.isOverBudget ? ink.danger : ink.brass)
-                .frame(width: 7, height: 7)
+                .frame(width: Theme.Size.widgetKeySquare, height: Theme.Size.widgetKeySquare)
                 .widgetAccentable()
             keyText("Llevas", money.whole(pace.spent), ink: ink)
-            Spacer(minLength: 4)
+            Spacer(minLength: Theme.Space.xxs)
             if pace.fixedMonth > 0, !pace.isOverBudget {
                 keyText("Fijos", money.whole(pace.fixedMonth), ink: ink)
-                Spacer(minLength: 4)
+                Spacer(minLength: Theme.Space.xxs)
             }
             keyText("Presupuesto", money.whole(pace.budget), ink: ink)
         }
-        .font(.ticket(9, relativeTo: .caption2))
+        .font(.widget(.key))
         .textCase(.uppercase)
         .lineLimit(1)
-        .minimumScaleFactor(0.6)
+        .minimumScaleFactor(Theme.MinimumScale.figure)
     }
 }
 
@@ -142,13 +146,14 @@ struct WhereItGoesView: View {
     private var slices: [WidgetSnapshot.Slice] { entry.month?.slices ?? [] }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: Theme.Space.ml) {
             today
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             Rectangle()
                 .fill(.clear)
-                .frame(width: 1)
-                .overlay(Rectangle().stroke(ink.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                .frame(width: Theme.Size.widgetDivider)
+                .overlay(Rectangle().stroke(ink.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                             dash: Theme.Dash.perforation)))
             whereItGoes
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -156,20 +161,20 @@ struct WhereItGoesView: View {
     }
 
     private var today: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
             Caption(text: state.caption, color: ink.muted)
             Figure(text: money.whole(state.figure),
-                   color: state.pace == nil ? ink.primary : state.isBad ? ink.danger : ink.brass, size: 32)
+                   color: state.pace == nil ? ink.primary : state.isBad ? ink.danger : ink.brass, style: .figureCompact)
             Verdict(state: state, money: money, ink: ink)
-            Spacer(minLength: 4)
+            Spacer(minLength: Theme.Space.xxs)
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink)
                 keyText("Llevas", money.whole(pace.spent), ink: ink)
-                    .font(.ticket(9, relativeTo: .caption2))
+                    .font(.widget(.key))
                     .textCase(.uppercase)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .padding(.top, 4)
+                    .minimumScaleFactor(Theme.MinimumScale.figure)
+                    .padding(.top, Theme.Space.xxs)
             } else {
                 SetBudgetBox(ink: ink)
             }
@@ -177,59 +182,61 @@ struct WhereItGoesView: View {
     }
 
     private func color(_ index: Int, _ slice: WidgetSnapshot.Slice) -> Color {
-        guard ink.full else { return .primary.opacity([1, 0.75, 0.5, 0.3][min(index, 3)]) }
-        return slice.isRest ? Theme.categoryRest : Theme.categories[min(index, Theme.categories.count - 1)]
+        ink.category(index, isRest: slice.isRest)
     }
 
     private var whereItGoes: some View {
         let total = slices.reduce(Decimal(0)) { $0 + $1.amount }
-        return VStack(alignment: .leading, spacing: 5) {
+        return VStack(alignment: .leading, spacing: Theme.Space.widgetRowGap) {
             Caption(text: "En qué se va", color: ink.muted)
             if slices.isEmpty || total <= 0 {
                 Spacer()
                 Text("Sin categorías este mes")
-                    .font(.ticket(10, relativeTo: .caption))
+                    .font(.widget(.note))
                     .foregroundStyle(ink.muted)
                 Spacer()
             } else {
                 GeometryReader { proxy in
-                    HStack(spacing: 2) {
+                    let gap = Theme.Size.widgetStripGap
+                    let room = proxy.size.width - gap * CGFloat(slices.count - 1)
+                    HStack(spacing: gap) {
                         ForEach(Array(slices.enumerated()), id: \.offset) { index, slice in
-                            RoundedRectangle(cornerRadius: 1.5)
+                            let share = CGFloat(NSDecimalNumber(decimal: slice.amount / total).doubleValue)
+                            RoundedRectangle(cornerRadius: Theme.Radius.widgetTile)
                                 .fill(color(index, slice))
-                                .frame(width: max(2, (proxy.size.width - 2 * CGFloat(slices.count - 1))
-                                    * CGFloat(NSDecimalNumber(decimal: slice.amount / total).doubleValue)))
+                                .frame(width: max(gap, room * share))
                         }
                     }
                 }
-                .frame(height: 6)
+                .frame(height: Theme.Size.widgetStripThin)
                 .clipShape(Capsule())
                 .widgetAccentable()
-                .padding(.bottom, 2)
+                .padding(.bottom, Theme.Space.xxxs)
                 ForEach(Array(slices.enumerated()), id: \.offset) { index, slice in
                     row(slice, color: color(index, slice), share: NSDecimalNumber(decimal: slice.amount / total).doubleValue)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: Theme.Space.none)
             }
         }
     }
 
     private func row(_ slice: WidgetSnapshot.Slice, color: Color, share: Double) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 1.5).fill(color).frame(width: 7, height: 7)
+        HStack(spacing: Theme.Space.widgetRowGap) {
+            RoundedRectangle(cornerRadius: Theme.Radius.widgetTile).fill(color)
+                .frame(width: Theme.Size.widgetKeySquare, height: Theme.Size.widgetKeySquare)
             Text(slice.isRest ? "Otras" : slice.name ?? "Sin categoría")
                 .foregroundStyle(ink.primary)
                 .textCase(.uppercase)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Spacer(minLength: 2)
+            Spacer(minLength: Theme.Space.xxxs)
             Text(money.whole(slice.amount)).foregroundStyle(ink.primary)
             Text(share.formatted(.percent.precision(.fractionLength(0))))
                 .foregroundStyle(ink.muted)
-                .frame(minWidth: 26, alignment: .trailing)
+                .frame(minWidth: Theme.Size.widgetPercentColumn, alignment: .trailing)
         }
-        .font(.ticket(9, relativeTo: .caption2))
+        .font(.widget(.key))
         .lineLimit(1)
-        .minimumScaleFactor(0.7)
+        .minimumScaleFactor(Theme.MinimumScale.widgetRow)
     }
 }

@@ -80,37 +80,20 @@ struct Money {
     }
 }
 
-/// Colors that hold in every rendering mode: the app's own in full color, and the system's
-/// one tone with opacities when iOS tints the widget, makes it clear or puts it on the
-/// lock screen (the shape still says what each piece is).
-struct Ink {
-    let mode: WidgetRenderingMode
-    var full: Bool { mode == .fullColor }
-
-    var primary: Color { full ? Theme.ink : .primary }
-    var muted: Color { full ? Theme.muted : .primary.opacity(0.7) }
-    var brass: Color { full ? Theme.brass : .primary }
-    var good: Color { full ? Theme.good : .primary }
-    var danger: Color { full ? Theme.danger : .primary }
-    var track: Color { full ? Theme.raised : .primary.opacity(0.22) }
-    var reserved: Color { full ? Theme.brassLow : .primary.opacity(0.55) }
-    var hairline: Color { full ? Theme.hairline : .primary.opacity(0.3) }
-}
-
 /// «HOY PUEDES GASTAR»: small tracked capitals, like the app's captions.
 struct Caption: View {
     let text: String
     var color: Color
-    var size: CGFloat = 10
+    var style = WidgetTextStyle.caption
 
     var body: some View {
         Text(text)
-            .font(.ticket(size, weight: .semibold, relativeTo: .caption2))
-            .tracking(1.3)
+            .font(.widget(style))
+            .tracking(Theme.Tracking.widgetCaption)
             .textCase(.uppercase)
             .foregroundStyle(color)
             .lineLimit(1)
-            .minimumScaleFactor(0.6)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
     }
 }
 
@@ -118,17 +101,17 @@ struct Caption: View {
 struct Figure: View {
     let text: String
     let color: Color
-    var size: CGFloat = 36
+    var style = WidgetTextStyle.figure
 
     var body: some View {
         Text(text)
-            .font(.ticket(size, weight: .medium, relativeTo: .largeTitle))
-            .tracking(-1)
+            .font(.widget(style))
+            .tracking(Theme.Tracking.widgetFigure)
             .foregroundStyle(color)
             .lineLimit(1)
-            .minimumScaleFactor(0.45)
+            .minimumScaleFactor(Theme.MinimumScale.widgetFigure)
             .widgetAccentable()
-            .padding(.leading, -2)
+            .padding(.leading, Theme.Space.widgetOutset)
     }
 }
 
@@ -137,15 +120,14 @@ struct Verdict: View {
     let state: DayState
     let money: Money
     let ink: Ink
-    var size: CGFloat = 11
     /// The medium widget's top right corner says it in two lines: «Vas $376 abajo / del ritmo».
     var twoLines = false
 
     var body: some View {
         content
-            .font(.ticket(size, relativeTo: .footnote))
+            .font(.widget(.verdict))
             .lineLimit(twoLines ? 2 : 1)
-            .minimumScaleFactor(0.6)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
             .multilineTextAlignment(twoLines ? .trailing : .leading)
     }
 
@@ -178,10 +160,10 @@ struct Verdict: View {
 struct MonthStrip: View {
     let pace: BudgetPace
     let ink: Ink
-    var height: CGFloat = 8
+    var height = Theme.Size.widgetStrip
     var tiles = false
 
-    private let gap: CGFloat = 2
+    private let gap = Theme.Size.widgetStripGap
 
     private func fraction(_ part: Decimal) -> CGFloat {
         CGFloat(min(max(NSDecimalNumber(decimal: part / pace.budget).doubleValue, 0), 1))
@@ -194,43 +176,45 @@ struct MonthStrip: View {
             let spentW = width * (over ? 1 : fraction(pace.spent))
             let reservedW = over ? 0 : width * fraction(pace.reserved)
             let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))
-            let days = over ? 0 : min(max(pace.daysLeft, 1), 31)
+            let days = over ? 0 : min(max(pace.daysLeft, 1), Theme.Size.widgetMaxDays)
             let slotW = days > 0 ? (freeW - gap * CGFloat(days - 1)) / CGFloat(days) : 0
             let markX = width * fraction(pace.expectedToDate)
+            let markOffset = min(max(markX - Theme.Size.widgetMarkHalf, 0), width - Theme.Size.todayMarkWidth)
             ZStack(alignment: .leading) {
                 HStack(spacing: gap) {
                     if spentW > 0 {
-                        RoundedRectangle(cornerRadius: 2)
+                        RoundedRectangle(cornerRadius: Theme.Radius.bar)
                             .fill(over ? ink.danger : ink.brass)
                             .frame(width: spentW)
                             .widgetAccentable()
                     }
                     if reservedW > 0 {
-                        RoundedRectangle(cornerRadius: 2)
-                            .strokeBorder(ink.reserved, style: StrokeStyle(lineWidth: 1, dash: [2, 1.5]))
+                        RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                            .strokeBorder(ink.reserved, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                           dash: Theme.Dash.widgetReserved))
                             .frame(width: reservedW)
                     }
-                    if tiles, slotW >= 2 {
+                    if tiles, slotW >= gap {
                         ForEach(0..<days, id: \.self) { index in
-                            RoundedRectangle(cornerRadius: 1.5)
-                                .fill(index == 0 ? ink.brass.opacity(0.45) : ink.track)
+                            RoundedRectangle(cornerRadius: Theme.Radius.widgetTile)
+                                .fill(index == 0 ? ink.brass.opacity(Theme.Opacity.widgetToday) : ink.track)
                                 .frame(width: slotW)
                         }
                     } else if !over, freeW > 0 {
-                        RoundedRectangle(cornerRadius: 2).fill(ink.track)
+                        RoundedRectangle(cornerRadius: Theme.Radius.bar).fill(ink.track)
                     }
                 }
                 .clipShape(Capsule())
                 if !over {
                     Capsule()
                         .fill(ink.primary)
-                        .frame(width: 2, height: height + 4)
-                        .offset(x: min(max(markX - 1, 0), width - 2))
+                        .frame(width: Theme.Size.todayMarkWidth, height: height + Theme.Size.widgetMarkExtra)
+                        .offset(x: markOffset)
                 }
             }
             .frame(height: height)
         }
-        .frame(height: height + 4)
+        .frame(height: height + Theme.Size.widgetMarkExtra)
     }
 }
 
@@ -245,10 +229,10 @@ struct AddButton: View {
     var body: some View {
         Link(destination: URL(string: "centavo://anotar")!) {
             Image(systemName: "plus")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(ink.full ? Theme.onBrass : Color.primary)
-                .frame(width: 36, height: 36)
-                .background(ink.full ? Theme.brass : Color.primary.opacity(0.2), in: Circle())
+                .font(Theme.Symbol.widgetAdd)
+                .foregroundStyle(ink.onAdd)
+                .frame(width: Theme.Size.widgetAddButton, height: Theme.Size.widgetAddButton)
+                .background(ink.addBackground, in: Circle())
                 .widgetAccentable()
         }
         .accessibilityLabel("Anotar gasto")
@@ -261,18 +245,19 @@ struct SetBudgetBox: View {
     var subtitle = false
 
     var body: some View {
-        VStack(spacing: 3) {
-            Caption(text: "Fijar presupuesto", color: ink.brass, size: subtitle ? 10 : 9)
+        VStack(spacing: Theme.Space.widgetCaptionGap) {
+            Caption(text: "Fijar presupuesto", color: ink.brass, style: subtitle ? .caption : .captionSmall)
             if subtitle {
-                Caption(text: "Para ver cuánto te queda", color: ink.muted, size: 8)
+                Caption(text: "Para ver cuánto te queda", color: ink.muted, style: .captionTiny)
             }
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, Theme.Space.xs)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Space.s)
         .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(ink.full ? Theme.outline : .primary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            RoundedRectangle(cornerRadius: Theme.Radius.ticket)
+                .strokeBorder(ink.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                             dash: Theme.Dash.widgetTicket))
         }
     }
 }

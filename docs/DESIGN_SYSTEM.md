@@ -121,6 +121,8 @@ Símbolos SF: `.font(Theme.Symbol.regular)` o `.font(Theme.Symbol.large)`.
 
 Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`, `Tokens+Onboarding.swift`.
 
+**Widgets** (`CentavoWidgets/`, también los revisa el lint): su caja la fija el sistema, así que tienen roles de letra propios (`.font(.widget(.caption))`, `WidgetTextStyle`) y sus medidas en `Theme/Tokens+Widgets.swift`. Los colores salen de `Ink`, que usa los de `Theme` a todo color y el tono único del sistema cuando iOS tiñe el widget o lo pone en la pantalla bloqueada.
+
 ### Trazos, guiones, opacidad, interletrado, encogimiento y movimiento
 
 | Grupo | Tokens |

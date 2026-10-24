@@ -39,19 +39,19 @@ struct LockView: View {
         Gauge(value: todayUsed) {
             Text("Hoy")
         } currentValueLabel: {
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Space.none) {
                 Text(state.pace == nil ? money.whole(state.figure) : signed)
-                    .font(.ticket(15, weight: .semibold, relativeTo: .body))
+                    .font(.widget(.ringFigure))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.4)
+                    .minimumScaleFactor(Theme.MinimumScale.ringFigure)
                     .widgetAccentable()
                 Text(state.pace == nil ? "mes" : "hoy")
-                    .font(.ticket(8, weight: .semibold, relativeTo: .caption2))
+                    .font(.widget(.captionTiny))
                     .textCase(.uppercase)
-                    .tracking(0.8)
-                    .opacity(0.8)
+                    .tracking(Theme.Tracking.compactLabel)
+                    .opacity(Theme.Opacity.widgetSecondary)
             }
-            .padding(.horizontal, 2)
+            .padding(.horizontal, Theme.Space.xxxs)
         }
         .gaugeStyle(.accessoryCircularCapacity)
         .widgetURL(state.pace == nil ? .setBudget : nil)
@@ -61,18 +61,18 @@ struct LockView: View {
     // MARK: Rectangular
 
     private var rectangular: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Caption(text: state.caption, color: .primary.opacity(0.8), size: 9)
+        VStack(alignment: .leading, spacing: Theme.Space.widgetHair) {
+            Caption(text: state.caption, color: ink.lockCaption, style: .captionSmall)
             Text(state.pace == nil ? money.whole(state.figure) : signed)
-                .font(.ticket(22, weight: .semibold, relativeTo: .title2))
-                .tracking(-0.5)
+                .font(.widget(.lockFigure))
+                .tracking(Theme.Tracking.figure)
                 .lineLimit(1)
-                .minimumScaleFactor(0.5)
+                .minimumScaleFactor(Theme.MinimumScale.lockFigure)
                 .widgetAccentable()
             if let pace = state.pace {
-                MonthStrip(pace: pace, ink: ink, height: 6)
+                MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripThin)
             } else if case .noBudget(_, let today) = state {
-                Caption(text: "Sin presupuesto · hoy \(money.whole(today))", color: .primary.opacity(0.8), size: 8)
+                Caption(text: "Sin presupuesto · hoy \(money.whole(today))", color: ink.lockCaption, style: .captionTiny)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
