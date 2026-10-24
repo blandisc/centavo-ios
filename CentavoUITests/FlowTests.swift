@@ -65,7 +65,7 @@ final class FlowTests: XCTestCase {
         let amountField = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amountField.tap()
         amountField.typeAmount(amount)
-        let merchantField = app.textFields["comercio"]
+        let merchantField = require(app.textFields["comercio"], "No está el comercio")
         merchantField.tap()
         merchantField.typeText(merchant)
         if refund {

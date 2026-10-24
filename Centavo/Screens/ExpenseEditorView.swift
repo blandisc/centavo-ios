@@ -120,22 +120,6 @@ struct ExpenseEditorView: View {
                     }
                     .tint(Theme.brass)
                     .accessibilityIdentifier("devolucion")
-                    // A work trip paid back, money to your own account: in the list, in no total.
-                    Toggle(isOn: $counts) {
-                        SectionLabel("Cuenta para el presupuesto")
-                    }
-                    .tint(Theme.brass)
-                    .accessibilityIdentifier("cuenta-presupuesto")
-                    if !counts {
-                        Picker(selection: $reason) {
-                            ForEach(UncountedReason.allCases) { Text($0.title).tag($0) }
-                        } label: {
-                            SectionLabel("Motivo")
-                        }
-                        .pickerStyle(.menu)
-                        .tint(Theme.brass)
-                        .accessibilityIdentifier("motivo")
-                    }
                     // The decimal pad cannot type "USD" or "€", so the currency is a choice.
                     Picker("Moneda", selection: $currency) {
                         ForEach(currencies, id: \.self) { Text($0).tag($0) }
@@ -144,10 +128,6 @@ struct ExpenseEditorView: View {
                     .accessibilityIdentifier("moneda")
                 } header: {
                     Text("Monto").ticketCaption()
-                } footer: {
-                    if !counts {
-                        HintText("Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar».")
-                    }
                 }
                 .listRowBackground(Theme.surface)
 
@@ -164,6 +144,32 @@ struct ExpenseEditorView: View {
                 } footer: {
                     if let shown = expense?.displayName, shown != expense?.merchant, merchant == expense?.merchant {
                         HintText("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
+                    }
+                }
+                .listRowBackground(Theme.surface)
+
+                // After the amount and the merchant, so «Comercio» stays above «Guardar» while
+                // the decimal pad is open. In the amount section it sat on the save bar and a
+                // tap never focused the field.
+                Section {
+                    Toggle(isOn: $counts) {
+                        SectionLabel("Cuenta para el presupuesto")
+                    }
+                    .tint(Theme.brass)
+                    .accessibilityIdentifier("cuenta-presupuesto")
+                    if !counts {
+                        Picker(selection: $reason) {
+                            ForEach(UncountedReason.allCases) { Text($0.title).tag($0) }
+                        } label: {
+                            SectionLabel("Motivo")
+                        }
+                        .pickerStyle(.menu)
+                        .tint(Theme.brass)
+                        .accessibilityIdentifier("motivo")
+                    }
+                } footer: {
+                    if !counts {
+                        HintText("Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar».")
                     }
                 }
                 .listRowBackground(Theme.surface)
