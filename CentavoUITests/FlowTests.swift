@@ -643,7 +643,10 @@ final class FlowTests: XCTestCase {
         let app = launch()
         fillExpense(app, amount: "8500", merchant: "Renta")
         let toggle = app.switches["se-repite"]
-        for _ in 0..<3 where !toggle.isHittable { scrollForm(app) }
+        // «Cuenta para el presupuesto» sits above this switch, so it starts under
+        // «Guardar»: isHittable is true there, but the knob tap lands on Guardar
+        // and the sheet closes. Scroll until the save bar is clear of it.
+        for _ in 0..<8 where !isClear(toggle, app) { scrollForm(app) }
         require(toggle, "No ofrece repetir cada mes")
         turnOn(toggle, "Se repite cada mes")
         app.buttons["hoja-guardar"].tap()
