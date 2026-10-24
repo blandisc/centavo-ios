@@ -7,5 +7,7 @@ import SwiftUI
 
 extension Theme.Size {
     /// Scaled. Side of the brass emblem tile that heads each step page (welcome and guide).
-    static let stepEmblem: CGFloat = 52
+    /// About one title line tall: short titles («Conecta el importe») still fit on one line
+    /// on an iPhone 17 Pro at the default text size, with `Theme.Space.m` beside them.
+    static let stepEmblem: CGFloat = 44
 }

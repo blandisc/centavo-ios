@@ -48,7 +48,7 @@ struct StepHeader: View {
             Text("Paso \(step) de \(of)")
                 .ticketCaption()
                 .accessibilityLabel("Paso \(step) de \(of)")
-            HStack(spacing: Theme.Space.l) {
+            HStack(spacing: Theme.Space.m) {
                 StepEmblem(systemImage: systemImage)
                 Text(title)
                     .font(.ticket(.pageTitle))

@@ -116,7 +116,7 @@ Símbolos SF: `.font(Theme.Symbol.regular)` o `.font(Theme.Symbol.large)`.
 | `categoryTile` | 58 | Botón de categoría |
 | `iconColumn` / `iconColumnNarrow` / `iconColumnWide` | 28 / 22 / 32 | **Base de `@ScaledMetric`** para la columna del ícono |
 | `rowTile`, `rowTileSymbol`, `categorySymbol`, `glyph`, `stepNumber` | 32, 15, 22, 14, 16 | **Base de `@ScaledMetric`** |
-| `stepEmblem` | 52 | **Base de `@ScaledMetric`**: el emblema de latón de cada paso (bienvenida y guía del atajo) |
+| `stepEmblem` | 44 | **Base de `@ScaledMetric`**: el emblema de latón de cada paso (bienvenida y guía del atajo), del alto de un renglón de título, con `Theme.Space.m` de hueco |
 | `pageDot`, `pageDotCurrent`, `legendDot`, `dayTick`, `todayMarkWidth`, `mapPreview` | | Piezas de gráficas y de la lista |
 
 Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`, `Tokens+Onboarding.swift`.
