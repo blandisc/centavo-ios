@@ -65,6 +65,8 @@ struct ExpenseListView: View {
     /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
     @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
+    /// What of the screen's entrance has already played (`Entrance`).
+    @State private var entrance = Entrance()
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
@@ -110,13 +112,16 @@ struct ExpenseListView: View {
             // Not a `List`: a list snaps a row to its new height, and the carousel's height has
             // to ease with the list below it (it leapt and wobbled, measured frame by frame).
             ScrollView {
-            LazyVStack(alignment: .leading, spacing: Theme.Space.none) {
+            // The top (hero, carousel, filters) is not lazy: it is a handful of views, and a lazy
+            // one dropped them when scrolled far, taking the carousel's page and the entrance with
+            // it. Only the days below are lazy.
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
                 if searching {
                     SearchHeaderRow(count: listed.count)
                         .ticketRow(bottom: Theme.Space.s)
                 } else {
                     HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
-                              pace: pace)
+                              pace: pace, entrance: entrance)
                         // With a budget the verdict sits right under the figure, one step away.
                         .ticketRow(bottom: pace != nil && !expenses.isEmpty ? Theme.Space.s : Theme.Space.xl)
 
@@ -131,7 +136,7 @@ struct ExpenseListView: View {
                     // A budget with nothing spent yet still has its days to show.
                     if let pace {
                         BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
-                                   onSetBudget: { showingBudget = true })
+                                   entrance: entrance, onSetBudget: { showingBudget = true })
                             .ticketRow(bottom: Theme.Space.xl)
                     }
                     EmptyTicket { showingSetup = true }
@@ -143,7 +148,9 @@ struct ExpenseListView: View {
                                                               primary: primaryCurrency, today: now),
                             selectedDay: selectedDay,
                             onSelectDay: { day in
-                                withAnimation(Theme.Motion.quick) { selectedDay = day; selectedCategory = nil }
+                                // The list changes at once: easing it left the old rows fading
+                                // over the new ones, under the calendar, for half a second.
+                                Theme.Motion.instantly { selectedDay = day; selectedCategory = nil }
                             },
                             spent: summary.primary,
                             pace: pace,
@@ -153,7 +160,11 @@ struct ExpenseListView: View {
                             returned: CategoryShare.returned(summary.categories),
                             note: fact?.line,
                             selectedCategory: selectedCategory,
-                            onSelectCategory: { line in selectedCategory = line; selectedDay = nil },
+                            onSelectCategory: { line in
+                                Theme.Motion.instantly { selectedCategory = line; selectedDay = nil }
+                            },
+                            entrance: entrance,
+                            equalHeights: whereItGoesStyle != WhereItGoesStyle.hidden.rawValue,
                             onSetBudget: { showingBudget = true },
                             currency: primaryCurrency
                         )
@@ -175,14 +186,14 @@ struct ExpenseListView: View {
 
                         if let day = selectedDay {
                             FilterRow(title: "Día \(day)", count: shownExpenses.count) {
-                                withAnimation(Theme.Motion.quick) { selectedDay = nil }
+                                Theme.Motion.instantly { selectedDay = nil }
                             }
                             .ticketRow()
                         }
                         if let line = selectedCategory {
                             FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
                                       count: shownExpenses.count) {
-                                withAnimation(Theme.Motion.quick) { selectedCategory = nil }
+                                Theme.Motion.instantly { selectedCategory = nil }
                             }
                             .ticketRow()
                         }
@@ -197,43 +208,45 @@ struct ExpenseListView: View {
                                 .ticketRow()
                         }
                     }
-                    ForEach(groups) { group in
-                        // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
-                        DayDivider(day: group.day, total: group.total(in: primaryCurrency), now: now)
-                            .ticketRow()
-                        ForEach(group.items) { expense in
-                            // The divider already draws the line above a day's first row.
-                            LedgerRow(expense: expense, primaryCurrency: primaryCurrency,
-                                      perforated: expense.id != group.items.first?.id)
-                                // A tap, not a Button: a button also fires when a swipe lets go
-                                // on it, and a tap gives up as soon as the finger moves. While
-                                // a row is open, a tap on another only closes it, as in a list.
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    if openRow != nil { openRow = nil } else { editing = expense }
-                                }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityAddTraits(.isButton)
+                }
+                LazyVStack(alignment: .leading, spacing: Theme.Space.none) {
+                        ForEach(groups) { group in
+                            // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
+                            DayDivider(day: group.day, total: group.total(in: primaryCurrency), now: now)
                                 .ticketRow()
-                            .swipeToDelete(id: expense.persistentModelID, openRow: $openRow) {
-                                pendingDelete = expense
-                            }
-                            .contextMenu {
-                                // One touch, without opening the sheet. The first time it is
-                                // «Me lo reembolsan»; after that, the reason it had before.
-                                if expense.isUncounted {
-                                    Button("Sí cuenta", systemImage: "checkmark.circle") { expense.markCounted() }
-                                } else {
-                                    Button("No cuenta", systemImage: "nosign") {
-                                        expense.markUncounted(expense.reason ?? .reimbursed)
+                            ForEach(group.items) { expense in
+                                // The divider already draws the line above a day's first row.
+                                LedgerRow(expense: expense, primaryCurrency: primaryCurrency,
+                                          perforated: expense.id != group.items.first?.id)
+                                    // A tap, not a Button: a button also fires when a swipe lets go
+                                    // on it, and a tap gives up as soon as the finger moves. While
+                                    // a row is open, a tap on another only closes it, as in a list.
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        if openRow != nil { openRow = nil } else { editing = expense }
                                     }
-                                }
-                                Button("Borrar gasto", systemImage: "trash", role: .destructive) {
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityAddTraits(.isButton)
+                                    .ticketRow()
+                                .swipeToDelete(id: expense.persistentModelID, openRow: $openRow) {
                                     pendingDelete = expense
+                                }
+                                .contextMenu {
+                                    // One touch, without opening the sheet. The first time it is
+                                    // «Me lo reembolsan»; after that, the reason it had before.
+                                    if expense.isUncounted {
+                                        Button("Sí cuenta", systemImage: "checkmark.circle") { expense.markCounted() }
+                                    } else {
+                                        Button("No cuenta", systemImage: "nosign") {
+                                            expense.markUncounted(expense.reason ?? .reimbursed)
+                                        }
+                                    }
+                                    Button("Borrar gasto", systemImage: "trash", role: .destructive) {
+                                        pendingDelete = expense
+                                    }
                                 }
                             }
                         }
-                    }
                 }
             }
             .padding(.top, Theme.Space.s)
@@ -647,7 +660,20 @@ private struct HeroTotal: View {
     let now: Date
     let isCurrentMonth: Bool
     let pace: BudgetPace?
+    /// Remembers the count-up, so it plays when the app opens and not when the row is rebuilt.
+    let entrance: Entrance
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(summary: MonthSummary, viewed: Date, now: Date, isCurrentMonth: Bool, pace: BudgetPace?,
+         entrance: Entrance) {
+        self.summary = summary
+        self.viewed = viewed
+        self.now = now
+        self.isCurrentMonth = isCurrentMonth
+        self.pace = pace
+        self.entrance = entrance
+        _counted = State(initialValue: entrance.heroFigure)
+    }
 
     /// This month, with a budget not yet blown, the figure to decide by is what can still go
     /// today; the month's total becomes the line under it.
@@ -708,7 +734,9 @@ private struct HeroTotal: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
+        // The caption, the figure and the verdict under it are one group: closer to each other
+        // than the sections are (they were as far apart as two sections, so nothing read as a unit).
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             if allowance != nil {
                 Text(isOverToday ? "Hoy te pasaste" : "Hoy puedes gastar")
                     .font(.ticket(.captionStrong))
@@ -727,14 +755,18 @@ private struct HeroTotal: View {
                     // The «$» carries its own air on the left (3 pt at this size, measured): pulled
                     // back so the figure lines up with «Hoy puedes gastar» above it.
                     .padding(.leading, Theme.Space.outset)
+                    .padding(.vertical, Theme.Space.heroTrim)
                     .lineLimit(1)
                     .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText(value: counted))
                     .onAppear {
+                        // Starts from where it last counted to: a rebuilt row is already there.
+                        defer { entrance.heroFigure = allowanceValue }
                         guard !reduceMotion else { counted = allowanceValue; return }
                         withAnimation(Theme.Motion.countUp) { counted = allowanceValue }
                     }
                     .onChange(of: allowanceValue) { _, value in
+                        entrance.heroFigure = value
                         withAnimation(reduceMotion ? nil : Theme.Motion.quick) { counted = value }
                     }
 
@@ -745,6 +777,7 @@ private struct HeroTotal: View {
                     .font(.ticket(.hero))
                     .tracking(Theme.Tracking.hero)
                     .foregroundStyle(Theme.ink)
+                    .padding(.vertical, Theme.Space.heroTrim)
                     .lineLimit(1)
                     .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText())

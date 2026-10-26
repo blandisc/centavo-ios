@@ -73,36 +73,4 @@ public enum ShareMosaic {
         }
         return tiles.compactMap { $0 }
     }
-
-    /// How much of a category fits in its block, from roomiest to barest.
-    public enum Fit: Equatable, Sendable {
-        /// Icon and name on top, amount and share below.
-        case full
-        /// Short and wide: icon, name and amount on one line.
-        case line
-        /// Narrow and tall: icon on top, the name running up the side.
-        case vertical
-        /// Only the icon.
-        case icon
-    }
-
-    /// `lineHeight` is one line of the block's text at the current text size, and `charWidth`
-    /// one character of it, so the choice follows Dynamic Type.
-    public static func fit(width: Double, height: Double, name: String,
-                           lineHeight: Double, charWidth: Double) -> Fit {
-        let padding = 16.0
-        let nameWidth = Double(name.count) * charWidth + lineHeight + 6 // icon + gap
-        let amountWidth = 9 * charWidth
-        if width - padding >= max(nameWidth, amountWidth) * 0.8, height - padding >= lineHeight * 3.4 {
-            return .full
-        }
-        if height - padding >= lineHeight, width - padding >= nameWidth + amountWidth {
-            return .line
-        }
-        if height - padding >= Double(name.count) * charWidth * 0.8 + lineHeight + 6,
-           width - padding >= lineHeight {
-            return .vertical
-        }
-        return .icon
-    }
 }

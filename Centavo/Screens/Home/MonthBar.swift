@@ -18,16 +18,21 @@ struct MonthBar: View {
     /// What was left out of the budget («No cuenta»), shown under the sum so nothing goes
     /// missing without a word. Zero shows nothing.
     var outside: Decimal = 0
+    /// Remembers that the bar has drawn itself, so a rebuilt one is already drawn (`Entrance`).
+    var entrance = Entrance()
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = Theme.Size.monthBarTrack
-    @State private var width: CGFloat = Theme.Space.none
-    @State private var shown = false
+    @State private var measuredWidth: CGFloat = Theme.Space.none
+    @State private var drawn = false
     @State private var showsSum = false
 
     private let gap: CGFloat = Theme.Size.monthBarGap
     /// Whether the bar has been measured yet.
     private var hasWidth: Bool { width > 0 }
+    private var width: CGFloat { measuredWidth > Theme.Space.none ? measuredWidth : entrance.barWidth }
+    /// Drawn: this view's entrance has played, or the app's has (a rebuilt bar starts drawn).
+    private var shown: Bool { drawn || entrance.barShown }
     private var isOver: Bool { pace.remaining < 0 }
     private var days: Int { isCurrentMonth && !isOver ? min(max(pace.daysLeft, 1), 31) : 0 }
 
@@ -79,7 +84,11 @@ struct MonthBar: View {
         .padding(.top, verdictLine == nil ? Theme.Space.s : Theme.Space.none)
         .animation(reduceMotion ? nil : Theme.Motion.toggle, value: verdictLine == nil)
         .onAppear {
-            if reduceMotion { shown = true } else { withAnimation { shown = true } }
+            if reduceMotion { drawn = true } else { withAnimation { drawn = true } }
+        }
+        // Only once it is drawn: setting it sooner would skip the entrance on a re-render.
+        .onChange(of: drawn) { _, isDrawn in
+            if isDrawn { entrance.barShown = true }
         }
     }
 
@@ -101,7 +110,10 @@ struct MonthBar: View {
             Color.clear
                 .frame(height: trackHeight)
                 .frame(maxWidth: .infinity)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
+                    measuredWidth = $0
+                    entrance.barWidth = $0
+                }
                 .overlay(alignment: .leading) {
                     HStack(spacing: gap) {
                         // What went: grows in from nothing, with a little bounce.

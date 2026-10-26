@@ -33,14 +33,4 @@ import Testing
         #expect(ShareMosaic.layout([0, 0], width: 300, height: 100).isEmpty)
         #expect(ShareMosaic.layout([1], width: 0, height: 100).isEmpty)
     }
-
-    @Test func aBlockShowsWhatFits() {
-        let fit = { (w: Double, h: Double, name: String) in
-            ShareMosaic.fit(width: w, height: h, name: name, lineHeight: 14, charWidth: 7.2)
-        }
-        #expect(fit(170, 150, "Ropa") == .full)
-        #expect(fit(240, 40, "Servicios") == .line)
-        #expect(fit(48, 140, "Salidas") == .vertical)
-        #expect(fit(46, 46, "Suscripciones") == .icon)
-    }
 }

@@ -208,6 +208,8 @@ extension Theme {
     enum Motion {
         /// A tap's answer: selection, a filter, a small figure rolling.
         static let quick: Animation = .snappy
+        /// A ring or a tint answering a tap (a day, a category): short enough to feel instant.
+        static let select: Animation = .easeOut(duration: 0.12)
         /// A page changing.
         static let page: Animation = .snappy(duration: 0.3)
         /// A swipe settling, a dot sliding.
@@ -238,6 +240,12 @@ extension Theme {
             static let legend: Animation = .easeOut(duration: 0.4).delay(0.9)
             /// Bars start this tall (fraction of their height) and grow to full.
             static let barStart: CGFloat = 0.3
+        }
+
+        /// Runs `body` with no animation at all: a filter that swaps a list must not fade the old
+        /// rows over the new ones.
+        static func instantly(_ body: () -> Void) {
+            withTransaction(Transaction(animation: nil), body)
         }
 
         /// `animation`, or none with «Reducir movimiento» on.

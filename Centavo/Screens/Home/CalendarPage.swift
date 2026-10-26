@@ -22,7 +22,10 @@ struct CalendarPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
+            // The budget page opens with the verdict, which belongs to the hero above it; this
+            // page opens with its own heading, a section apart from the figure.
             Text("Cada día del mes").ticketCaption()
+                .padding(.top, Theme.Space.m)
             Grid(horizontalSpacing: Theme.Space.xxs, verticalSpacing: Theme.Space.xxs) {
                 GridRow {
                     ForEach(Array(model.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
@@ -48,6 +51,8 @@ struct CalendarPage: View {
                                             isSelected: selectedDay == day.number)
                                 }
                                 .buttonStyle(.plain)
+                                // The ring is drawn outside the cell: over its neighbours, not under.
+                                .zIndex(selectedDay == day.number || day.isToday ? 1 : 0)
                                 // A day that has not come has nothing to show.
                                 .disabled(day.state == .future)
                                 .accessibilityAddTraits(selectedDay == day.number ? .isSelected : [])
@@ -69,6 +74,7 @@ private struct DayCell: View {
     let height: CGFloat
     let currency: String
     var isSelected = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var fill: Color {
         switch day.state {
@@ -122,6 +128,7 @@ private struct DayCell: View {
                     RoundedRectangle(cornerRadius: Theme.Radius.ticket).stroke(Theme.brass, lineWidth: Theme.Stroke.strong).padding(Theme.Space.outset)
                 }
             }
+            .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion), value: isSelected)
             .overlay {
                 if day.isToday && !isSelected {
                     RoundedRectangle(cornerRadius: Theme.Radius.ticket).stroke(Theme.ink, lineWidth: Theme.Stroke.emphasis).padding(Theme.Space.outset)

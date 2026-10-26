@@ -116,6 +116,13 @@ final class ScreenshotTests: XCTestCase {
         snap("04-principal-mosaico-ropa")
     }
 
+    func testPrincipalMosaicoDetalle() {
+        let app = launch(["-whereItGoesStyle", "mosaic"])
+        app.buttons["categoria-Despensa"].press(forDuration: 1.2)
+        sleep(1)
+        snap("03b-principal-mosaico-detalle")
+    }
+
     func testPrincipalSinEnQueSeVa() {
         let app = launch(["-whereItGoesStyle", "hidden"])
         XCTAssertFalse(app.otherElements["en-que-se-va"].exists, "Se ve «En qué se va» aunque está apagado")

@@ -21,6 +21,8 @@ struct BudgetPage: View {
     /// The category whose expenses the list shows, if one was tapped in the mosaic.
     var selectedCategory: CategoryShare?
     var onSelectCategory: (CategoryShare?) -> Void = { _ in }
+    /// What of the screen's entrance has played (`Entrance`), handed to the month bar.
+    var entrance = Entrance()
     let onSetBudget: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = Theme.Size.budgetBar
@@ -124,7 +126,7 @@ struct BudgetPage: View {
         // A month where more came back than went out is 0 %, not "-5 %".
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         return MonthBar(pace: pace, isCurrentMonth: isCurrentMonth, money: money, wholeMoney: wholeMoney,
-                        carriesTotal: isCurrentMonth && !isOver, outside: outside)
+                        carriesTotal: isCurrentMonth && !isOver, outside: outside, entrance: entrance)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("presupuesto-ticket")
             .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver,

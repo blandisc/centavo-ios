@@ -415,6 +415,33 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Liverpool"), "No regresó a todo el mes")
     }
 
+    /// Con «En qué se va» a la vista (barra o mosaico), el presupuesto y el calendario miden lo mismo:
+    /// los puntitos del carrusel, y la lista de abajo, no se mueven al cambiar de página.
+    func testElCarruselMideLoMismoEnSusDosPaginas() {
+        for style in ["bar", "mosaic"] {
+            let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", style])
+            let dot = require(app.buttons["Calendario"], "No hay puntito del calendario (\(style))")
+            let before = dot.frame.minY
+            dot.tap()
+            require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Día 12'")).firstMatch,
+                    "No abrió el calendario (\(style))")
+            XCTAssertEqual(dot.frame.minY, before, accuracy: 1,
+                           "Los puntitos se movieron al pasar al calendario (\(style))")
+            app.terminate()
+        }
+    }
+
+    /// Mantener presionado un bloque del mosaico abre su detalle completo (el bloque puede ser
+    /// demasiado chico para su nombre y su monto) y ofrece ver sus gastos.
+    func testMantenerPresionadoUnBloqueOfreceVerSusGastos() {
+        let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
+        require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").press(forDuration: 1.2)
+        snap("flujo-mosaico-detalle")
+        require(app.buttons["Ver sus gastos"], "No ofrece ver los gastos de la categoría").tap()
+        require(app.buttons["ver-todo-el-mes"], "No filtró por la categoría")
+        require(row(app, containing: "Liverpool"), "No muestra el gasto de Ropa")
+    }
+
     func testTocarUnaCategoriaMuestraSoloSusGastos() {
         let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
         require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").tap()

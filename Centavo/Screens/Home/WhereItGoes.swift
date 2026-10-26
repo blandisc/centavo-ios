@@ -151,6 +151,7 @@ private struct ShareBarChart: View {
     let money: (Decimal) -> String
 
     @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = Theme.Size.shareBar
+    @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.shareChartHeight
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -176,6 +177,8 @@ private struct ShareBarChart: View {
                 }
             }
         }
+        // As tall as the mosaic, however many categories there are.
+        .frame(minHeight: min(scaledHeight, Theme.Size.shareChartMaxHeight), alignment: .top)
     }
 }
 
@@ -277,13 +280,12 @@ private struct ShareMosaicChart: View {
     let selected: CategoryShare?
     let onSelect: (CategoryShare?) -> Void
 
-    @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.mosaicHeight
-    @ScaledMetric(relativeTo: .footnote) private var textSize: CGFloat = Theme.Size.mosaicText
+    @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.shareChartHeight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Grows a little with the text, but stays a part of the screen.
-    private var height: CGFloat { min(scaledHeight, Theme.Size.mosaicMaxHeight) }
+    private var height: CGFloat { min(scaledHeight, Theme.Size.shareChartMaxHeight) }
 
     private func isSelected(_ line: CategoryLine) -> Bool {
         selected.map { line.share.isSameLine(as: $0) } ?? false
@@ -291,7 +293,8 @@ private struct ShareMosaicChart: View {
 
     private func toggle(_ line: CategoryLine) {
         let wasSelected = isSelected(line)
-        withAnimation(reduceMotion ? nil : Theme.Motion.quick) { onSelect(wasSelected ? nil : line.share) }
+        // The list under the chart changes at once; only the blocks' ring and dimming ease.
+        Theme.Motion.instantly { onSelect(wasSelected ? nil : line.share) }
     }
 
     var body: some View {
@@ -306,7 +309,8 @@ private struct ShareMosaicChart: View {
                     }
                     .buttonStyle(.plain)
                     .modifier(MosaicTileDress(line: line, isSelected: isSelected(line),
-                                              anySelected: selected != nil, money: money))
+                                              anySelected: selected != nil, money: money,
+                                              onToggle: { toggle(line) }))
                 }
             }
         } else {
@@ -323,17 +327,13 @@ private struct ShareMosaicChart: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Array(zip(lines, tiles)), id: \.0.id) { line, tile in
                     Button { toggle(line) } label: {
-                        MosaicTile(line: line, amount: money(line.share.amount),
-                                   fit: ShareMosaic.fit(width: tile.width - Theme.Size.mosaicGap,
-                                                        height: tile.height - Theme.Size.mosaicGap,
-                                                        name: line.name,
-                                                        lineHeight: textSize * Theme.Size.mosaicLineHeightRatio,
-                                                        charWidth: textSize * Theme.Size.mosaicCharWidthRatio))
+                        MosaicTile(line: line, amount: money(line.share.amount))
                     }
                     .buttonStyle(.plain)
                     .frame(width: tile.width - Theme.Size.mosaicGap, height: tile.height - Theme.Size.mosaicGap)
                     .modifier(MosaicTileDress(line: line, isSelected: isSelected(line),
-                                              anySelected: selected != nil, money: money))
+                                              anySelected: selected != nil, money: money,
+                                              onToggle: { toggle(line) }))
                     .offset(x: tile.x, y: tile.y)
                 }
             }
@@ -349,6 +349,8 @@ private struct MosaicTileDress: ViewModifier {
     let isSelected: Bool
     let anySelected: Bool
     let money: (Decimal) -> String
+    let onToggle: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
@@ -359,12 +361,66 @@ private struct MosaicTileDress: ViewModifier {
                         .strokeBorder(Theme.ink, lineWidth: Theme.Stroke.strong)
                 }
             }
+            // Pressed and held, a block shows all of it: its name in full, its amount and its share,
+            // which the block may have had no room for.
+            .contextMenu {
+                Button(isSelected ? "Ver todo el mes" : "Ver sus gastos",
+                       systemImage: isSelected ? "xmark" : "list.bullet", action: onToggle)
+            } preview: {
+                MosaicDetail(line: line, amount: money(line.share.amount))
+            }
             .opacity(!anySelected || isSelected ? Theme.Opacity.visible : Theme.Opacity.unselected)
+            .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion),
+                       value: isSelected || anySelected)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(line.spoken(money))
             .accessibilityHint(isSelected ? "Muestra todo el mes" : "Muestra sus gastos")
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             .accessibilityIdentifier("categoria-\(line.name)")
+    }
+}
+
+/// What pressing and holding a mosaic block shows: the whole category, nothing cut.
+private struct MosaicDetail: View {
+    let line: CategoryLine
+    let amount: String
+
+    @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = Theme.Size.glyph
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                Image(systemName: line.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .fontWeight(.semibold)
+                    .frame(width: iconSize, height: iconSize)
+                Text(line.name)
+                    .font(.ticket(.label))
+                    .textCase(.uppercase)
+                    .tracking(Theme.Tracking.detail)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if line.share.isRest {
+                Text("\(line.share.restCount) categorías")
+                    .font(.ticket(.detail))
+                    .opacity(Theme.Opacity.onTileSecondary)
+            }
+            Text(amount)
+                .font(.ticket(.display))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
+            Text("\(line.percent) de lo gastado")
+                .font(.ticket(.detail))
+                .monospacedDigit()
+                .opacity(Theme.Opacity.onTileSecondary)
+        }
+        .foregroundStyle(line.textColor)
+        .padding(Theme.Space.l)
+        .frame(width: Theme.Size.mosaicPreviewWidth, alignment: .leading)
+        .background(line.color)
+        .accessibilityHidden(true)
     }
 }
 
@@ -406,10 +462,14 @@ private struct MosaicStackedTile: View {
     }
 }
 
+/// A mosaic block: as much of the category as really fits, never cut. It tries, roomiest first,
+/// icon + name over amount + share, then one line of icon, name and amount, then the name alone,
+/// then the name running up the block (a tall, narrow one) with or without its icon, and last the icon. Each candidate is
+/// measured at its own size by `ViewThatFits` (no estimate of the text's width), so a name that
+/// does not fit across is not truncated: the next candidate is tried.
 private struct MosaicTile: View {
     let line: CategoryLine
     let amount: String
-    let fit: ShareMosaic.Fit
 
     @ScaledMetric(relativeTo: .footnote) private var iconSize: CGFloat = Theme.Size.glyph
 
@@ -427,56 +487,87 @@ private struct MosaicTile: View {
             .textCase(.uppercase)
             .tracking(Theme.Tracking.detail)
             .lineLimit(1)
+            .fixedSize()
+    }
+
+    private var nameRow: some View {
+        HStack(spacing: Theme.Space.xs) { icon; name }
     }
 
     var body: some View {
-        Group {
-            switch fit {
-            case .full:
-                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-                    HStack(spacing: Theme.Space.xs) { icon; name }
-                    Spacer(minLength: Theme.Space.xxs)
-                    Text(amount)
-                        .font(.ticket(.bodyStrong))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(Theme.MinimumScale.figure)
-                    Text(line.percent)
-                        .font(.ticket(.micro))
-                        .monospacedDigit()
-                        .opacity(Theme.Opacity.onTileSecondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            case .line:
-                HStack(spacing: Theme.Space.xs) {
-                    icon
-                    name
-                    Spacer(minLength: Theme.Space.xxs)
-                    Text(amount)
-                        .font(.ticket(.label))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            case .vertical:
-                // Too narrow for the name across: it runs up the block, as on a book's spine.
-                GeometryReader { proxy in
-                    VStack(spacing: Theme.Space.xs) {
-                        icon
-                        let room = max(proxy.size.height - iconSize - Theme.Space.xs, 0)
-                        name
-                            .frame(width: room, alignment: .leading)
-                            .rotationEffect(.degrees(-90))
-                            .frame(width: proxy.size.width, height: room)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                }
-            case .icon:
-                icon.frame(maxWidth: .infinity, maxHeight: .infinity)
+        ViewThatFits(in: [.horizontal, .vertical]) {
+            // Icon and name on top, amount and share below.
+            VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                nameRow
+                Spacer(minLength: Theme.Space.xxs)
+                Text(amount)
+                    .font(.ticket(.bodyStrong))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
+                Text(line.percent)
+                    .font(.ticket(.micro))
+                    .monospacedDigit()
+                    .opacity(Theme.Opacity.onTileSecondary)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            // Short and wide: all on one line.
+            HStack(spacing: Theme.Space.xs) {
+                nameRow
+                Spacer(minLength: Theme.Space.xxs)
+                Text(amount)
+                    .font(.ticket(.label))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+            // No room for the amount: the name is still worth more than a bare icon.
+            nameRow
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            // Tall and narrow: the name runs up the block, as on a book's spine.
+            VStack(spacing: Theme.Space.none) {
+                icon
+                Spacer(minLength: Theme.Space.xs)
+                Sideways { name }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            // A long name, tall room but not enough for the icon too: the name wins.
+            Sideways { name }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+
+            icon.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .foregroundStyle(line.textColor)
         .padding(Theme.Space.s)
         .contentShape(Rectangle())
+    }
+}
+
+/// Lays its one subview out turned a quarter to the left, taking the room the turned view takes
+/// (`rotationEffect` alone would keep the room of the unturned one).
+private struct Sideways<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        SidewaysLayout { content.rotationEffect(.degrees(-90)) }
+    }
+}
+
+private struct SidewaysLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let view = subviews.first else { return .zero }
+        let size = view.sizeThatFits(.unspecified)
+        return CGSize(width: size.height, height: size.width)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let view = subviews.first else { return }
+        view.place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+                   proposal: ProposedViewSize(view.sizeThatFits(.unspecified)))
     }
 }

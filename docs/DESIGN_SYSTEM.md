@@ -132,7 +132,7 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swi
 | `Theme.Opacity` | `hidden` 0 · `visible` 1 · `rule` 0.25 · `glow` 0.35 · `unselected` 0.4 · `paceBehind` 0.55 · `paceAhead` 0.8 · `onTileSecondary` 0.75. Solo marcas y rellenos; el texto usa `ink`/`muted`/`faint`. |
 | `Theme.Tracking` | `none` 0 · `hero` −2 · `amount` −1.5 · `figure` −0.5 · `name` 0.4 · `detail` 0.6 · `compactLabel` 0.8 · `tag` 1 · `label` 1.2 · `action` 1.4 · `caption` 1.6 · `title` 2 |
 | `Theme.MinimumScale` | `text` 0.75 (palabras) · `figure` 0.6 (una cifra en una línea). Último recurso: primero envuelve o apila. |
-| `Theme.Motion` | `quick` (toque) · `page` · `settle` · `resize` · `restyle` · `countUp` · `pulse` · `toggle` · `Entrance.*` (la barra del mes). Siempre con `accessibilityReduceMotion`: `Theme.Motion.animation(.quick, reduceMotion: reduceMotion)`. |
+| `Theme.Motion` | `quick` (toque) · `select` (aro o tinte al elegir, 0.12 s) · `instantly { }` (sin animación: un filtro que cambia una lista) · `page` · `settle` · `resize` · `restyle` · `countUp` · `pulse` · `toggle` · `Entrance.*` (la barra del mes). Siempre con `accessibilityReduceMotion`: `Theme.Motion.animation(.quick, reduceMotion: reduceMotion)`. |
 
 ---
 

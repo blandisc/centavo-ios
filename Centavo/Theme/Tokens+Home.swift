@@ -29,19 +29,17 @@ extension Theme.Size {
     /// Scaled. Least width of the share column under the bar.
     static let sharePercentColumn: CGFloat = 40
     /// Scaled. Least height of a category line under the bar.
-    static let shareRow: CGFloat = 24
-    /// Scaled. Height of the mosaic.
-    static let mosaicHeight: CGFloat = 156
-    /// The tallest the mosaic may grow with Dynamic Type.
-    static let mosaicMaxHeight: CGFloat = 260
-    /// Scaled. Text size the mosaic estimates its fit with.
-    static let mosaicText: CGFloat = 12
+    static let shareRow: CGFloat = 27
+    /// Scaled. Height of «En qué se va», the bar's and the mosaic's the same, so choosing one or the
+    /// other in «Más» moves nothing below it: the bar (10) and its gap (12) over five lines of 27.
+    static let shareChartHeight: CGFloat = 157
+    /// The tallest the chart may grow with Dynamic Type.
+    static let shareChartMaxHeight: CGFloat = 260
     /// The gap between mosaic blocks.
     static let mosaicGap: CGFloat = 3
-    /// Line height of a mosaic block's text, as a multiple of its size.
-    static let mosaicLineHeightRatio: CGFloat = 1.35
-    /// Width of a character of a mosaic block's text, as a multiple of its size.
-    static let mosaicCharWidthRatio: CGFloat = 0.66
+    /// Width of the card a mosaic block opens when pressed and held: wide enough for a long name
+    /// and a large amount, which the block itself may have had no room for.
+    static let mosaicPreviewWidth: CGFloat = 260
 
     /// Scaled. Height of the budget page's blank ticket.
     static let budgetBar: CGFloat = 84
@@ -62,4 +60,9 @@ extension Theme.Opacity {
 extension Theme.Space {
     /// −10 pt. Pulls a 44 pt row into the air around it.
     static let tuck: CGFloat = -10
+    /// −4 pt, above and below. The hero figure's line is taller than its digits (about 18 pt of
+    /// air over them and 15 under, measured): trimmed so the caption and the verdict sit a breath
+    /// from the figure (about 14 pt, ink to ink, measured on the simulator), closer than one
+    /// section is to the next (about 26 pt).
+    static let heroTrim: CGFloat = -4
 }
