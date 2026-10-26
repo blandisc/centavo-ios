@@ -58,6 +58,9 @@ struct CalendarPage: View {
                 }
             }
         }
+        // Today's ring and the selected day's sit 3 pt outside their cell; on the last row
+        // the carousel, sized to this page, cut them off.
+        .padding(.bottom, Theme.Space.xxs)
     }
 }
 

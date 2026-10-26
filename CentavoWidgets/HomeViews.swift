@@ -92,11 +92,11 @@ struct HoyView: View {
         return false
     }
 
-    /// «PODRÍAS LLEVAR $8,516», over the rule it names.
+    /// «PODRÍAS LLEVAR $8,516», over the rule it names; «Deberías» once past it.
     private func annotation(_ pace: BudgetPace) -> some View {
         GeometryReader { proxy in
             let share = min(max(NSDecimalNumber(decimal: pace.expectedToDate / pace.budget).doubleValue, 0), 1)
-            let text = keyText("Podrías llevar", money.whole(pace.expectedToDate), ink: ink)
+            let text = keyText(pace.isAheadOfPace ? "Deberías llevar" : "Podrías llevar", money.whole(pace.expectedToDate), ink: ink)
                 .font(.widget(.key))
                 .textCase(.uppercase)
                 .lineLimit(1)

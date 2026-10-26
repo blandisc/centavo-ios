@@ -15,7 +15,7 @@ import Testing
         calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
     }
 
-    private func pace(budget: Decimal = 9300, spent: Decimal, today: Decimal = 0, fixed: Decimal = 0,
+    private func sample(budget: Decimal = 9300, spent: Decimal, today: Decimal = 0, fixed: Decimal = 0,
                       fixedToday: Decimal = 0, reserved: Decimal = 0, on date: Date) -> BudgetPace? {
         BudgetPace(budget: budget, spent: spent, spentToday: today, fixedSpent: fixed, fixedToday: fixedToday,
                    reserved: reserved, mode: .spread, on: date, calendar: Self.calendar)
@@ -23,60 +23,61 @@ import Testing
 
     @Test func theDayStartsWithItsShareOfWhatIsLeft() throws {
         // October 22nd: 10 days left. (9,300 − 3,000) / 10 = 630.
-        let pace = try #require(pace(spent: 3000, on: Self.day(22)))
+        let pace = try #require(sample(spent: 3000, on: Self.day(22)))
         #expect(pace.mode == .spread)
         #expect(pace.daysLeft == 10)
         #expect(pace.dailyAllowance == 630)
     }
 
     @Test func spendingTodayComesOffToday() throws {
-        let spentIt = try #require(pace(spent: 3630, today: 630, on: Self.day(22)))
+        let spentIt = try #require(sample(spent: 3630, today: 630, on: Self.day(22)))
         #expect(spentIt.dailyAllowance == 0)
-        let some = try #require(pace(spent: Decimal(string: "3047.50")!, today: Decimal(string: "47.50")!,
+        let some = try #require(sample(spent: Decimal(string: "3047.50")!, today: Decimal(string: "47.50")!,
                                      on: Self.day(22)))
         #expect(some.dailyAllowance == 582)
         #expect(some.todayShare == 630)
     }
 
     @Test func goingPastTodaysShareShowsZeroNotLess() throws {
-        let pace = try #require(pace(spent: 4000, today: 1000, on: Self.day(22)))
+        let pace = try #require(sample(spent: 4000, today: 1000, on: Self.day(22)))
         #expect(pace.dailyAllowance == 0)
         #expect(!pace.isOverToday)
     }
 
     @Test func whatADayLeavesIsSpreadOverTheRestNotGivenToTomorrow() throws {
         // The 630 of the 22nd is now before today: (9,300 − 3,630) / 9 = 630.
-        let tomorrow = try #require(pace(spent: 3630, on: Self.day(23, hour: 0)))
+        let tomorrow = try #require(sample(spent: 3630, on: Self.day(23, hour: 0)))
         #expect(tomorrow.dailyAllowance == 630)
         // Spending 1,000 on the 22nd leaves less for every day after, not 370 less tomorrow.
-        let after = try #require(pace(spent: 4000, on: Self.day(23)))
+        let after = try #require(sample(spent: 4000, on: Self.day(23)))
         #expect(after.dailyAllowance == 588)
     }
 
     @Test func fixedExpensesStillToComeAreSetApart() throws {
         // (9,300 − 3,000 − 1,300) / 10 = 500, minus 200 today.
-        let pace = try #require(pace(spent: 3200, today: 200, reserved: 1300, on: Self.day(22)))
+        let pace = try #require(sample(spent: 3200, today: 200, reserved: 1300, on: Self.day(22)))
         #expect(pace.dailyAllowance == 300)
     }
 
     @Test func aFixedExpenseChargedTodayDoesNotEatTodaysShare() throws {
         // Rent of 1,300 was still to come when the 22nd began, and it was charged today:
         // (9,300 − 3,000 − 1,300) / 10 = 500, and today has spent nothing of its own.
-        let pace = try #require(pace(spent: 4300, today: 1300, fixed: 1300, fixedToday: 1300, on: Self.day(22)))
+        let pace = try #require(sample(spent: 4300, today: 1300, fixed: 1300, fixedToday: 1300, on: Self.day(22)))
         #expect(pace.dailyAllowance == 500)
         #expect(pace.variableToday == 0)
     }
 
     @Test func aRefundTodayGivesTodayBack() throws {
-        let pace = try #require(pace(spent: 2900, today: -100, on: Self.day(22)))
+        let pace = try #require(sample(spent: 2900, today: -100, on: Self.day(22)))
         #expect(pace.dailyAllowance == 730)
     }
 
     @Test func podriasLlevarIsTheBudgetSpreadEvenly() throws {
-        // 8,000 × 12 / 31 = 3,096.77; spent 1,093.50, so 2,003.27 under.
-        let pace = try #require(pace(budget: 8000, spent: Decimal(string: "1093.50")!, on: Self.day(12)))
+        // 8,000 × 12 / 31 = 3,096.77. The 11 days before today could take 2,838.71 and took
+        // 1,093.50: 1,745.21 under, the same as with «Acumular».
+        let pace = try #require(sample(budget: 8000, spent: Decimal(string: "1093.50")!, on: Self.day(12)))
         #expect(pace.expectedToDate == Decimal(string: "3096.77"))
-        #expect(pace.carriedOver == Decimal(string: "2003.27"))
+        #expect((pace.carriedOver - Decimal(string: "1745.21")!).magnitude < Decimal(string: "0.01")!)
         #expect(pace.dailyAllowance == 345)
     }
 
@@ -91,10 +92,67 @@ import Testing
         #expect(spread.dailyAllowance == 713)
     }
 
+    @Test func theRhythmSaysTheSameInBothModes() throws {
+        // «Podrías llevar» and what the days before left over don't depend on the mode, with
+        // fixed expenses, money spent today and a fixed expense still to come.
+        let calendar = Self.calendar
+        let date = calendar.date(from: DateComponents(year: 2026, month: 10, day: 18, hour: 12))!
+        for (spent, today) in [(Decimal(2_000), Decimal(0)), (5_400, 900), (9_100, 250)] {
+            let carry = try #require(BudgetPace(budget: 12_000, spent: spent, spentToday: today, fixedSpent: 1_500,
+                                                reserved: 800, on: date, calendar: calendar))
+            let spread = try #require(BudgetPace(budget: 12_000, spent: spent, spentToday: today, fixedSpent: 1_500,
+                                                 reserved: 800, mode: .spread, on: date, calendar: calendar))
+            #expect(carry.carriedOver == spread.carriedOver)
+            #expect(carry.expectedToDate == spread.expectedToDate)
+            #expect(carry.isAheadOfPace == spread.isAheadOfPace)
+        }
+    }
+
     @Test func anUnknownStoredChoiceIsCarry() {
         #expect(AllowanceMode(stored: nil) == .carry)
         #expect(AllowanceMode(stored: "") == .carry)
         #expect(AllowanceMode(stored: "repartir") == .spread)
         #expect(AllowanceMode(stored: "acumular") == .carry)
+    }
+}
+
+@Suite struct BudgetPaceRhythmTests {
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
+        return calendar
+    }()
+    private static let fifteenth = calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 12))!
+
+    private func both(spent: Decimal, today: Decimal = 0, fixed: Decimal = 0, reserved: Decimal = 0)
+        throws -> (carry: BudgetPace, spread: BudgetPace) {
+        let carry = try #require(BudgetPace(budget: 31_000, spent: spent, spentToday: today, fixedSpent: fixed,
+                                            reserved: reserved, on: Self.fifteenth, calendar: Self.calendar))
+        let spread = try #require(BudgetPace(budget: 31_000, spent: spent, spentToday: today, fixedSpent: fixed,
+                                             reserved: reserved, mode: .spread, on: Self.fifteenth, calendar: Self.calendar))
+        return (carry, spread)
+    }
+
+    @Test func withCarryTheBigFigureAlreadySaysItSoThereIsNoSentence() throws {
+        // $1,000 a day; parejo and $2,500 today: «Hoy te pasaste $1,500» is the whole story.
+        let (carry, _) = try both(spent: 16_500, today: 2_500)
+        #expect(carry.rhythm == nil)
+        #expect(carry.dailyAllowance == carry.expectedToDate - carry.spent)
+    }
+
+    @Test func withSpreadItMatchesTheBar() throws {
+        // Saved 4,000 before today, nothing today: 5,000 under the rule, though today only gets 1,235.
+        let (_, saved) = try both(spent: 10_000)
+        #expect(saved.rhythm == 5_000)
+        #expect(saved.dailyAllowance == 1_235)
+        // Parejo and $2,500 today: 1,500 over, the same the rule and «Deberías llevar» show.
+        let (_, today) = try both(spent: 16_500, today: 2_500)
+        #expect(today.rhythm == -1_500)
+        #expect(today.isAheadOfPace)
+    }
+
+    @Test func rentStillToComeDoesNotMakeItDisagreeWithTheBar() throws {
+        let (_, rent) = try both(spent: 14_000, reserved: 8_000)
+        #expect(rent.rhythm == rent.expectedToDate - rent.spent)
     }
 }

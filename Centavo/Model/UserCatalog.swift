@@ -24,6 +24,8 @@ enum UserCatalog {
     /// remembered category reads it: those are never filled in on their own. The picker
     /// does not, so one still used keeps showing there.
     static let deletedCategoriesKey = "deletedCategories"
+    /// The names the owner gave merchants by hand (`MerchantRenames`), synced too.
+    static let merchantRenamesKey = "merchantRenames"
 
     static func decodeNames(_ stored: String) -> [String] {
         (try? JSONDecoder().decode([String].self, from: Data(stored.utf8))) ?? []
@@ -76,6 +78,20 @@ enum UserCatalog {
         var rules = categoryRules
         rules.learn(category, for: merchant)
         saveRules(rules)
+    }
+
+    /// The names the owner gave merchants, for code outside a view (the Wallet intent).
+    static var merchantRenames: MerchantRenames {
+        MerchantRenames(stored: UserDefaults.standard.string(forKey: merchantRenamesKey) ?? "")
+    }
+
+    /// The owner renamed `old` to `new`: the next payment Wallet sends as `old` is saved as `new`.
+    static func learnRename(_ old: String, to new: String) {
+        var renames = merchantRenames
+        renames.rename(old, to: new)
+        let stored = renames.stored
+        UserDefaults.standard.set(stored, forKey: merchantRenamesKey)
+        if Store.syncsBudget { BudgetSync.push(stored, for: merchantRenamesKey) }
     }
 
     /// One of their categories was renamed: what was filed under the old name follows it.

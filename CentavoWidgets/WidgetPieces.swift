@@ -115,7 +115,10 @@ struct Figure: View {
     }
 }
 
-/// «Vas $376 abajo» under the figure: what the days before today left over or overspent.
+/// The line under the figure. With «Repartir», «Vas $376 abajo»: how far from the rule. With
+/// «Acumular» the figure already is that gap (alternative C, 2026-10-25), so the line names the
+/// rule instead, «Podrías llevar $3,226», which the small bars draw without a label; the medium
+/// one labels its rule over the bar and leaves the corner empty.
 struct Verdict: View {
     let state: DayState
     let money: Money
@@ -124,14 +127,16 @@ struct Verdict: View {
     var twoLines = false
 
     var body: some View {
-        content
-            .font(.widget(.verdict))
-            .lineLimit(twoLines ? 2 : 1)
-            .minimumScaleFactor(Theme.MinimumScale.figure)
-            .multilineTextAlignment(twoLines ? .trailing : .leading)
+        if let content {
+            content
+                .font(.widget(.verdict))
+                .lineLimit(twoLines ? 2 : 1)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
+                .multilineTextAlignment(twoLines ? .trailing : .leading)
+        }
     }
 
-    private var content: Text {
+    private var content: Text? {
         let tail = twoLines ? "\ndel ritmo" : ""
         switch state {
         case .noBudget(_, let today):
@@ -139,17 +144,16 @@ struct Verdict: View {
         case .overBudget:
             return Text("del presupuesto").foregroundStyle(ink.muted)
         case .overToday(let pace), .normal(let pace):
-            let carried = pace.carriedOver
-            if carried.magnitude >= 1 {
-                return Text("Vas ").foregroundStyle(ink.muted)
-                    + Text("\(money.whole(carried.magnitude)) \(carried > 0 ? "abajo" : "arriba")")
-                        .foregroundStyle(carried > 0 ? ink.good : ink.danger)
-                    + Text(tail).foregroundStyle(ink.muted)
+            guard let rhythm = pace.rhythm else {
+                if twoLines { return nil }
+                return Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(ink.muted)
+                    + Text(money.whole(pace.expectedToDate)).foregroundStyle(ink.primary)
             }
-            if pace.day == 1 {
-                return Text("Día 1 de \(pace.daysInMonth)" + (twoLines ? "\nmes nuevo" : "")).foregroundStyle(ink.muted)
-            }
-            return Text("Vas al ritmo").foregroundStyle(ink.muted)
+            if rhythm.magnitude < 1 { return Text("Vas al ritmo").foregroundStyle(ink.muted) }
+            return Text("Vas ").foregroundStyle(ink.muted)
+                + Text("\(money.whole(rhythm.magnitude)) \(rhythm > 0 ? "abajo" : "arriba")")
+                    .foregroundStyle(rhythm > 0 ? ink.good : ink.danger)
+                + Text(tail).foregroundStyle(ink.muted)
         }
     }
 }

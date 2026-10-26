@@ -28,6 +28,14 @@ import Testing
         #expect(!pace.isOverBudget)
     }
 
+    @Test func pastTheRuleItSaysDeberias() throws {
+        // By the 12th an even month is at 3,096.77: «Podrías llevar» under it, «Deberías» over.
+        let under = try #require(makePace(budget: 8000, spent: 3000, on: Self.day(2026, 10, 12)))
+        #expect(!under.isAheadOfPace)
+        let over = try #require(makePace(budget: 8000, spent: 3100, on: Self.day(2026, 10, 12)))
+        #expect(over.isAheadOfPace)
+    }
+
     @Test func theLastDayExpectsTheWholeBudget() throws {
         let pace = try #require(makePace(budget: 8000, spent: 0, on: Self.day(2026, 10, 31)))
         #expect(pace.expectedToDate == 8000)
@@ -96,31 +104,31 @@ import Testing
         calendar.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
     }
 
-    private func pace(budget: Decimal = 21_000, spent: Decimal, today: Decimal = 0, fixed: Decimal = 0,
+    private func sample(budget: Decimal = 21_000, spent: Decimal, today: Decimal = 0, fixed: Decimal = 0,
                       fixedToday: Decimal = 0, reserved: Decimal = 0, on day: Int) -> BudgetPace? {
         BudgetPace(budget: budget, spent: spent, spentToday: today, fixedSpent: fixed,
                    fixedToday: fixedToday, reserved: reserved, on: Self.day(day), calendar: Self.calendar)
     }
 
     @Test func theFirstDayStartsWithTheDailyBase() throws {
-        let pace = try #require(pace(spent: 0, on: 1))
+        let pace = try #require(sample(spent: 0, on: 1))
         #expect(pace.dailyBase == 700)
         #expect(pace.carriedOver == 0)
         #expect(pace.dailyAllowance == 700)
-        let spent = try #require(self.pace(spent: 300, today: 300, on: 1))
+        let spent = try #require(self.sample(spent: 300, today: 300, on: 1))
         #expect(spent.dailyAllowance == 400)
     }
 
     @Test func whatADayLeavesGoesWholeToTheNext() throws {
         // Spent 300 on the 1st: the 2nd can spend 700 + 400.
-        let pace = try #require(pace(spent: 300, on: 2))
+        let pace = try #require(sample(spent: 300, on: 2))
         #expect(pace.carriedOver == 400)
         #expect(pace.dailyAllowance == 1100)
     }
 
     @Test func overspendingTodayGoesNegative() throws {
         // Spending 1,500 on the 2nd: 1,100 − 1,500.
-        let pace = try #require(pace(spent: 1800, today: 1500, on: 2))
+        let pace = try #require(sample(spent: 1800, today: 1500, on: 2))
         #expect(pace.dailyAllowance == -400)
         #expect(pace.isOverToday)
         #expect(!pace.isOverBudget)
@@ -128,7 +136,7 @@ import Testing
 
     @Test func whatADayOverspendsComesWholeOffTheNext() throws {
         // 700 × 3 − (300 + 1,500).
-        let pace = try #require(pace(spent: 1800, on: 3))
+        let pace = try #require(sample(spent: 1800, on: 3))
         #expect(pace.carriedOver == -400)
         #expect(pace.dailyAllowance == 300)
     }
@@ -136,7 +144,7 @@ import Testing
     @Test func theMonthsFixedExpensesComeOffTheBaseAndNotOffTheDays() throws {
         // 22,000 − 600 of rent charged on the 1st − 400 still to come = 21,000: $700 a day.
         // The rent is not what the 1st spent: the 2nd still gets 1,100.
-        let pace = try #require(pace(budget: 22_000, spent: 900, fixed: 600, reserved: 400, on: 2))
+        let pace = try #require(sample(budget: 22_000, spent: 900, fixed: 600, reserved: 400, on: 2))
         #expect(pace.fixedMonth == 1000)
         #expect(pace.dailyBase == 700)
         #expect(pace.dailyAllowance == 1100)
@@ -144,33 +152,33 @@ import Testing
     }
 
     @Test func aFixedExpenseChargedTodayDoesNotEatToday() throws {
-        let pace = try #require(pace(budget: 22_000, spent: 900, today: 600, fixed: 600, fixedToday: 600,
+        let pace = try #require(sample(budget: 22_000, spent: 900, today: 600, fixed: 600, fixedToday: 600,
                                      reserved: 400, on: 2))
         #expect(pace.variableToday == 0)
         #expect(pace.dailyAllowance == 1100)
     }
 
     @Test func aRefundTodayGivesTodayBack() throws {
-        let pace = try #require(pace(spent: 200, today: -100, on: 2))
+        let pace = try #require(sample(spent: 200, today: -100, on: 2))
         #expect(pace.dailyAllowance == 1200)
     }
 
     @Test func roundsDownTowardLessMoney() throws {
         // 10,000 ÷ 30 = 333.33.
-        let pace = try #require(pace(budget: 10_000, spent: 0, on: 1))
+        let pace = try #require(sample(budget: 10_000, spent: 0, on: 1))
         #expect(pace.dailyAllowance == 333)
-        let over = try #require(self.pace(budget: 10_000, spent: 500, today: 500, on: 1))
+        let over = try #require(self.sample(budget: 10_000, spent: 500, today: 500, on: 1))
         #expect(over.dailyAllowance == -167)
     }
 
     @Test func theLastDayIsWhatIsFreeOfTheMonth() throws {
-        let pace = try #require(pace(budget: 22_000, spent: 15_600, fixed: 600, reserved: 400, on: 30))
+        let pace = try #require(sample(budget: 22_000, spent: 15_600, fixed: 600, reserved: 400, on: 30))
         #expect(pace.dailyAllowance == 6_000)
         #expect(pace.free == 6_000)
     }
 
     @Test func freeIsWhatIsLeftAfterTheFixedOnesAndNeverNegative() throws {
-        let pace = try #require(pace(spent: 20_700, reserved: 500, on: 22))
+        let pace = try #require(sample(spent: 20_700, reserved: 500, on: 22))
         #expect(pace.remaining == 300)
         #expect(pace.free == 0)
     }
