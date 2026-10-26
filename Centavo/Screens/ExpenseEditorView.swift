@@ -560,7 +560,11 @@ struct ExpenseEditorView: View {
                                                   primary: CurrencyPreference.current)
             if before != currency { expense.currencyMarker = currency }
             // A name typed here reads as typed, and the model leaves it alone.
-            if name != expense.merchant { expense.displayName = name }
+            if name != expense.merchant {
+                expense.displayName = name
+                // What Wallet sends with the old name from now on comes in with this one.
+                UserCatalog.learnRename(expense.merchant, to: name)
+            }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
             // Another category is a choice; keeping the suggested one leaves it a suggestion,

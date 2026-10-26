@@ -26,7 +26,8 @@ final class ExpenseRecorderTests: XCTestCase {
                         at date: Date? = nil, rules: CategoryRules = CategoryRules(),
                         hidden: [String] = []) throws -> CaptureOutcome {
         try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                   in: context, rules: rules, hidden: hidden, now: date ?? now)
+                                   in: context, rules: rules, hidden: hidden, renames: MerchantRenames(),
+                                   now: date ?? now)
     }
 
     private func filed(_ merchant: String, _ category: String?, daysAgo: Double) throws {
@@ -51,10 +52,10 @@ final class ExpenseRecorderTests: XCTestCase {
     func testOldCapturesWithTheBankAsMerchantAreRepaired() throws {
         let notice = "Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena"
         try ExpenseRecorder.record(amountText: "MXN 1,060.00", merchant: "American Express México",
-                                   card: nil, rawNotice: notice, in: context, now: now)
+                                   card: nil, rawNotice: notice, in: context, renames: MerchantRenames(), now: now)
         try ExpenseRecorder.record(amountText: "MXN 20.00", merchant: "Oxxo Roble", card: "HSBC México",
                                    rawNotice: "HSBC México\nMXN 20.00\nOxxo Roble", in: context,
-                                   now: now.addingTimeInterval(3_600))
+                                   renames: MerchantRenames(), now: now.addingTimeInterval(3_600))
         XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: []), 1)
         let rows = try saved()
         XCTAssertEqual(rows[0].merchant, "La Docena")
@@ -319,5 +320,24 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(expense.card, "Efectivo")
         XCTAssertEqual(expense.date, yesterday)
         XCTAssertEqual(expense.currencyMarker, "MXN")
+    }
+
+    /// A merchant renamed by hand comes back from Wallet with its new name, and with the
+    /// category it was filed under after the rename.
+    func testARenamedMerchantArrivesWithItsNewName() throws {
+        var renames = MerchantRenames()
+        renames.rename("OXXO SUC 1234", to: "Oxxo de la esquina")
+        try filed("Oxxo de la esquina", "Súper", daysAgo: 1)
+        try ExpenseRecorder.record(amountText: "$45.00", merchant: "OXXO SUC 1234", card: "BBVA",
+                                   in: context, rules: CategoryRules(), hidden: [], renames: renames, now: now)
+        let expense = try XCTUnwrap(saved().last)
+        XCTAssertEqual(expense.merchant, "Oxxo de la esquina")
+        XCTAssertEqual(expense.shownName, "Oxxo de la esquina")
+        XCTAssertEqual(expense.category, "Súper")
+        // Another branch was never renamed.
+        try ExpenseRecorder.record(amountText: "$20.00", merchant: "OXXO SUC 5678", card: "BBVA",
+                                   in: context, rules: CategoryRules(), hidden: [], renames: renames,
+                                   now: now.addingTimeInterval(3_600))
+        XCTAssertEqual(try saved().last?.merchant, "OXXO SUC 5678")
     }
 }

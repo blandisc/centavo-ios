@@ -163,9 +163,10 @@ struct MonthBar: View {
         return min(tilesX + k * step - gap / 2, width)
     }
 
-    /// «ESPERADO HOY $3,871», printed over its rule like a note on a ticket, kept inside the bar.
+    /// «PODRÍAS LLEVAR $3,871», printed over its rule like a note on a ticket, kept inside the bar.
+    /// Past the rule it is «Deberías llevar»: it is no longer room to spend.
     private func annotation(at x: CGFloat) -> some View {
-        (Text("Podrías llevar ").foregroundStyle(Theme.muted)
+        (Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(Theme.muted)
             + Text(wholeMoney(pace.expectedToDate)).foregroundStyle(Theme.ink))
             .font(.ticket(.micro))
             .tracking(Theme.Tracking.tag)

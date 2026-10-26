@@ -73,10 +73,11 @@ import Testing
     }
 
     @Test func podriasLlevarIsTheBudgetSpreadEvenly() throws {
-        // 8,000 × 12 / 31 = 3,096.77; spent 1,093.50, so 2,003.27 under.
+        // 8,000 × 12 / 31 = 3,096.77. The 11 days before today could take 2,838.71 and took
+        // 1,093.50: 1,745.21 under, the same as with «Acumular».
         let pace = try #require(pace(budget: 8000, spent: Decimal(string: "1093.50")!, on: Self.day(12)))
         #expect(pace.expectedToDate == Decimal(string: "3096.77"))
-        #expect(pace.carriedOver == Decimal(string: "2003.27"))
+        #expect((pace.carriedOver - Decimal(string: "1745.21")!).magnitude < Decimal(string: "0.01")!)
         #expect(pace.dailyAllowance == 345)
     }
 
@@ -89,6 +90,22 @@ import Testing
         #expect(carry.dailyAllowance == 1_100)
         // (21,000 − 300) / 29 = 713.79.
         #expect(spread.dailyAllowance == 713)
+    }
+
+    @Test func theRhythmSaysTheSameInBothModes() throws {
+        // «Vas $X del ritmo» and «Podrías llevar» don't depend on the mode, with fixed
+        // expenses, money spent today and a fixed expense still to come.
+        let calendar = Self.calendar
+        let date = calendar.date(from: DateComponents(year: 2026, month: 10, day: 18, hour: 12))!
+        for (spent, today) in [(Decimal(2_000), Decimal(0)), (5_400, 900), (9_100, 250)] {
+            let carry = try #require(BudgetPace(budget: 12_000, spent: spent, spentToday: today, fixedSpent: 1_500,
+                                                reserved: 800, on: date, calendar: calendar))
+            let spread = try #require(BudgetPace(budget: 12_000, spent: spent, spentToday: today, fixedSpent: 1_500,
+                                                 reserved: 800, mode: .spread, on: date, calendar: calendar))
+            #expect(carry.carriedOver == spread.carriedOver)
+            #expect(carry.expectedToDate == spread.expectedToDate)
+            #expect(carry.isAheadOfPace == spread.isAheadOfPace)
+        }
     }
 
     @Test func anUnknownStoredChoiceIsCarry() {

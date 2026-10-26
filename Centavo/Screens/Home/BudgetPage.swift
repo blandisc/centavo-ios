@@ -142,7 +142,7 @@ struct BudgetPage: View {
             parts.append((isCurrentMonth ? "Te quedan " : "Te quedaron ") + "\(remainingText).")
         }
         if isCurrentMonth {
-            parts.append("A hoy podrías llevar \(money(pace.expectedToDate)).")
+            parts.append("A hoy \(pace.isAheadOfPace ? "deberías" : "podrías") llevar \(money(pace.expectedToDate)).")
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
             if pace.carriedOver.magnitude >= 1 {
                 parts.append("Vas \(wholeMoney(pace.carriedOver.magnitude)) "

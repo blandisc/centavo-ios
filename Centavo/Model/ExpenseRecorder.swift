@@ -29,13 +29,17 @@ enum ExpenseRecorder {
         in context: ModelContext,
         rules: CategoryRules = UserCatalog.categoryRules,
         hidden: [String] = UserCatalog.notAutoAssigned,
+        renames: MerchantRenames = UserCatalog.merchantRenames,
         now: Date = .now
     ) throws -> CaptureOutcome {
         // Usually just the amount; `CaptureText` also finds it when the whole payment came.
         guard let parsed = CaptureText.amount(in: amountText) else { return .unreadable }
 
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
+        let sent = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
+        // A merchant renamed by hand comes back with its new name.
+        let renamed = renames.name(for: sent)
+        let merchantName = renamed ?? sent
         // A card that is only spaces is no card: it would print as an empty gap in the ledger.
         let cardName = card?.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCard = (cardName?.isEmpty ?? true) ? nil : cardName
@@ -61,6 +65,7 @@ enum ExpenseRecorder {
         expense.latitude = place?.latitude
         expense.longitude = place?.longitude
         before.apply(to: expense, withName: true)
+        if let renamed { expense.displayName = renamed }
         // Only what Wallet sends gets a cleaner reading: a name someone typed is theirs.
         if expense.displayName == nil { expense.displayName = MerchantName.readable(merchantName) }
         context.insert(expense)

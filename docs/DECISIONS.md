@@ -343,3 +343,9 @@ Aprobado por Fernando (alternativa A de tres y el cambio de esquema; propuesta e
 - **Gastos fijos:** las copias heredan la marca.
 - **CSV:** el monto real y dos columnas nuevas, «Cuenta» (Sí/No) y «Motivo». Al importar, solo un «No» deja fuera; un CSV sin esas columnas cuenta todo.
 - **Fuera por ahora:** reglas automáticas por tarjeta o comercio, un parámetro en el Atajo, la parte («mi mitad») y convertir las compensaciones ya anotadas.
+
+## 2026-10-25 · Pendientes: «Deberías llevar», ritmo igual en los dos modos, nombres recordados
+Pedidos del dueño.
+- **«Deberías llevar»** sustituye a «Podrías llevar» cuando lo gastado pasa la rayita (`BudgetPace.isAheadOfPace`: `spent > expectedToDate`, la misma condición que pinta de rojo lo rayado). En la barra, el widget mediano y VoiceOver.
+- **El ritmo no depende del modo.** «Vas $X abajo/arriba del ritmo» es siempre lo que sobró o faltó de los días anteriores, sin fijos (la definición del 2026-10-22), y «Podrías llevar» es siempre fijos cobrados + monto por día × días transcurridos. Esto reemplaza lo dicho el 2026-10-23 para «Repartir» (presupuesto parejo contra todo lo gastado): con el mismo mes, los dos modos daban cifras distintas para la misma frase. El modo solo cambia «Hoy puedes gastar» y la cuenta al tocar la barra.
+- **Comercios renombrados (`MerchantRenames`, CentavoCore):** al cambiar el nombre en la hoja del gasto se guarda «nombre de Wallet → nombre tuyo» por `MerchantKey` (mayúsculas, acentos y espacios no cuentan; otra sucursal sí). `ExpenseRecorder.record` lo aplica antes de todo, así el comercio, el nombre que se ve, la categoría recordada y el filtro de repetidos usan el nombre nuevo. Renombrar dos veces lleva al último nombre; regresar al original lo olvida. Se guarda en la clave `merchantRenames` y se sincroniza como las demás (`BudgetSync`). Solo Wallet: lo que se dicta a Siri o se escribe se queda como se dijo. No cambia gastos ya guardados.

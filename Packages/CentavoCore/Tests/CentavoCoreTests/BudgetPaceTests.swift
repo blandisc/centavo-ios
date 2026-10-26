@@ -28,6 +28,14 @@ import Testing
         #expect(!pace.isOverBudget)
     }
 
+    @Test func pastTheRuleItSaysDeberias() throws {
+        // By the 12th an even month is at 3,096.77: «Podrías llevar» under it, «Deberías» over.
+        let under = try #require(makePace(budget: 8000, spent: 3000, on: Self.day(2026, 10, 12)))
+        #expect(!under.isAheadOfPace)
+        let over = try #require(makePace(budget: 8000, spent: 3100, on: Self.day(2026, 10, 12)))
+        #expect(over.isAheadOfPace)
+    }
+
     @Test func theLastDayExpectsTheWholeBudget() throws {
         let pace = try #require(makePace(budget: 8000, spent: 0, on: Self.day(2026, 10, 31)))
         #expect(pace.expectedToDate == 8000)

@@ -45,12 +45,12 @@ public struct BudgetPace: Equatable, Sendable {
     /// Fixed expenses of the month: the ones already charged (`fixedSpent`) and the ones still
     /// to come (`reserved`). They come off the budget before it is cut into days.
     public var fixedMonth: Decimal { fixedSpent + reserved }
-    /// What the days before today left over (positive) or overspent (negative), outside the
-    /// fixed expenses: «vas $400 abajo del ritmo». Zero on the 1st. With `.spread`, what an
-    /// even month would have spent by today minus what was spent, today included.
+    /// What the days before today left over (positive) or overspent (negative) against an even
+    /// month, outside the fixed expenses: «vas $400 abajo del ritmo». Zero on the 1st. The same
+    /// in both modes (owner, 2026-10-25): the mode only changes «Hoy puedes gastar».
     public let carriedOver: Decimal
-    /// What today could spend before anything was spent today: `dailyBase` + `carriedOver`.
-    /// Not rounded.
+    /// What today could spend before anything was spent today. With `.carry`, `dailyBase` +
+    /// `carriedOver`. Not rounded.
     public let todayShare: Decimal
     /// What can still go today, in whole units: `todayShare` minus what today spent outside the
     /// fixed expenses, rounded down (telling someone they can spend a peso more than they have
@@ -77,6 +77,8 @@ public struct BudgetPace: Equatable, Sendable {
     public let mode: AllowanceMode
 
     public var isOverBudget: Bool { spent > budget }
+    /// Spent more than an even month would have by today: «Deberías llevar», not «Podrías».
+    public var isAheadOfPace: Bool { spent > expectedToDate }
     /// Today already spent more than it could.
     public var isOverToday: Bool { dailyAllowance < 0 }
 
@@ -89,8 +91,8 @@ public struct BudgetPace: Equatable, Sendable {
     /// With `.spread`, what was left when the day began (budget − spent before today − fixed
     /// expenses still to come) is shared over the days left, today included, and what today
     /// spent outside the fixed expenses comes off today's share; never below zero. Fixed
-    /// expenses already charged count as spent, `dailyBase` and `todayShare` are today's share,
-    /// and «Podrías llevar» is the budget spread evenly over the month.
+    /// expenses already charged count as spent, and `dailyBase` and `todayShare` are today's
+    /// share. «Podrías llevar» and «vas $X del ritmo» measure what they do with `.carry`.
     public init?(budget: Decimal?, spent: Decimal, spentToday: Decimal = 0,
                  fixedSpent: Decimal = 0, fixedToday: Decimal = 0, reserved: Decimal = 0,
                  mode: AllowanceMode = .carry, on date: Date, calendar: Calendar = .current) {
@@ -112,29 +114,26 @@ public struct BudgetPace: Equatable, Sendable {
         self.spentToday = spentToday
         self.mode = mode
         self.variableToday = spentToday - fixedToday
-        if mode == .spread {
-            // A fixed expense charged today was still to come when the day began: it comes off
-            // what is shared, not off today's share.
-            let share = (budget - (spent - variableToday) - self.reserved) / Decimal(days - day + 1)
-            let expected = Self.cents(budget * Decimal(day) / Decimal(days))
-            self.dailyBase = share
-            self.todayShare = share
-            self.carriedOver = expected - spent
-            self.expectedToDate = expected
-            self.dailyAllowance = max(0, Self.whole(share - variableToday))
-            return
-        }
         // Multiplied before dividing: 1,000 ÷ 31 × 31 is 999.99… in Decimal, and the last day
         // has to get exactly what is left.
         let pool = budget - fixedSpent - self.reserved
         let length = Decimal(days)
-        self.dailyBase = pool / length
         let variableBefore = (spent - spentToday) - (fixedSpent - fixedToday)
         let throughToday = pool * Decimal(day) / length
         self.carriedOver = pool * Decimal(day - 1) / length - variableBefore
+        self.expectedToDate = Self.cents(fixedSpent + throughToday)
+        if mode == .spread {
+            // A fixed expense charged today was still to come when the day began: it comes off
+            // what is shared, not off today's share.
+            let share = (budget - (spent - variableToday) - self.reserved) / Decimal(days - day + 1)
+            self.dailyBase = share
+            self.todayShare = share
+            self.dailyAllowance = max(0, Self.whole(share - variableToday))
+            return
+        }
+        self.dailyBase = pool / length
         self.todayShare = throughToday - variableBefore
         self.dailyAllowance = Self.whole(todayShare - variableToday)
-        self.expectedToDate = Self.cents(fixedSpent + throughToday)
     }
 
     /// Rounded down, toward less money: $189.70 is $189 and −$300.20 is −$301.
