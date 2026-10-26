@@ -46,9 +46,13 @@ public struct BudgetPace: Equatable, Sendable {
     /// to come (`reserved`). They come off the budget before it is cut into days.
     public var fixedMonth: Decimal { fixedSpent + reserved }
     /// What the days before today left over (positive) or overspent (negative) against an even
-    /// month, outside the fixed expenses: «vas $400 abajo del ritmo». Zero on the 1st. The same
-    /// in both modes (owner, 2026-10-25): the mode only changes «Hoy puedes gastar».
+    /// month, outside the fixed expenses: «+ Sobró de otros días» in the sum. Zero on the 1st.
     public let carriedOver: Decimal
+    /// «Vas $X abajo/arriba del ritmo»: how far below (positive) or above (negative) the rule
+    /// what was spent is, today and charged fixed expenses included, so it always matches the
+    /// bar. `nil` with `.carry`, where «Hoy puedes gastar» already is that difference to the peso
+    /// and the sentence only repeated it (owner's choice, alternative C, 2026-10-25).
+    public var rhythm: Decimal? { mode == .spread ? expectedToDate - spent : nil }
     /// What today could spend before anything was spent today. With `.carry`, `dailyBase` +
     /// `carriedOver`. Not rounded.
     public let todayShare: Decimal
@@ -92,7 +96,7 @@ public struct BudgetPace: Equatable, Sendable {
     /// expenses still to come) is shared over the days left, today included, and what today
     /// spent outside the fixed expenses comes off today's share; never below zero. Fixed
     /// expenses already charged count as spent, and `dailyBase` and `todayShare` are today's
-    /// share. «Podrías llevar» and «vas $X del ritmo» measure what they do with `.carry`.
+    /// share. «Podrías llevar» is the same as with `.carry`.
     public init?(budget: Decimal?, spent: Decimal, spentToday: Decimal = 0,
                  fixedSpent: Decimal = 0, fixedToday: Decimal = 0, reserved: Decimal = 0,
                  mode: AllowanceMode = .carry, on date: Date, calendar: Calendar = .current) {

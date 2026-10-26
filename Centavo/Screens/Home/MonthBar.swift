@@ -38,11 +38,17 @@ struct MonthBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            // Right under «Hoy puedes gastar», the one sentence that judges the month.
-            verdict
-                .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
-                .animation(reduceMotion ? nil : Theme.Motion.Entrance.legend, value: shown)
-                .padding(.bottom, isCurrentMonth ? Theme.Space.l : Theme.Space.s)
+            // Right under «Hoy puedes gastar», the one sentence that judges the month. With
+            // «Acumular» there is none (the figure already says it) and the bar moves up into
+            // its place; choosing «Repartir» unfolds it from under the figure.
+            if let line = verdictLine {
+                verdict(line)
+                    .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                    .animation(reduceMotion ? nil : Theme.Motion.Entrance.legend, value: shown)
+                    .padding(.bottom, isCurrentMonth ? Theme.Space.l : Theme.Space.s)
+                    .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity),
+                                            removal: .opacity))
+            }
 
             Button {
                 withAnimation(reduceMotion ? nil : Theme.Motion.toggle) { showsSum.toggle() }
@@ -69,6 +75,9 @@ struct MonthBar: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        // Without the sentence the bar would sit flush under the figure.
+        .padding(.top, verdictLine == nil ? Theme.Space.s : Theme.Space.none)
+        .animation(reduceMotion ? nil : Theme.Motion.toggle, value: verdictLine == nil)
         .onAppear {
             if reduceMotion { shown = true } else { withAnimation { shown = true } }
         }
@@ -224,25 +233,26 @@ struct MonthBar: View {
             .accessibilityIdentifier(carriesTotal ? "total-mes" : "llevas")
     }
 
-    /// «Vas $400 abajo del ritmo»: what the days before today left over (or overspent), which
-    /// today gets on top of its own amount. A plain sentence, only the judgement in color.
-    private var verdict: some View {
-        let carried = pace.carriedOver
-        let (before, colored, after, good): (String, String, String, Bool) = {
-            if isOver {
-                return ("Te pasaste ", wholeMoney(pace.remaining.magnitude), " del presupuesto", false)
-            }
-            if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.remaining), " de sobra", true) }
-            if carried.magnitude >= 1 {
-                return carried > 0 ? ("Vas ", "\(wholeMoney(carried)) abajo", " del ritmo", true)
-                    : ("Vas ", "\(wholeMoney(-carried)) arriba", " del ritmo", false)
-            }
-            if pace.day == 1 { return ("Día 1 de \(pace.daysInMonth)", "", " · mes nuevo", true) }
-            return ("Vas ", "justo", " al ritmo", true)
-        }()
-        return (Text(before).foregroundStyle(Theme.muted)
-            + Text(colored).foregroundStyle(good ? Theme.good : Theme.danger)
-            + Text(after).foregroundStyle(Theme.muted))
+    /// The sentence under the figure, in three pieces (only the judgement in color), or `nil`
+    /// when there is nothing the figure does not already say.
+    private typealias Line = (before: String, colored: String, after: String, good: Bool)
+
+    /// «Te pasaste $X del presupuesto», «Cerraste con $X de sobra» and, with «Repartir», «Vas
+    /// $400 abajo del ritmo»: how far from the rule, the same gap the bar shows. With
+    /// «Acumular», «Hoy puedes gastar» already is that gap, so no sentence (alternative C).
+    private var verdictLine: Line? {
+        if isOver { return ("Te pasaste ", wholeMoney(pace.remaining.magnitude), " del presupuesto", false) }
+        if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.remaining), " de sobra", true) }
+        guard let rhythm = pace.rhythm else { return nil }
+        if rhythm.magnitude < 1 { return ("Vas ", "justo", " al ritmo", true) }
+        return rhythm > 0 ? ("Vas ", "\(wholeMoney(rhythm)) abajo", " del ritmo", true)
+            : ("Vas ", "\(wholeMoney(-rhythm)) arriba", " del ritmo", false)
+    }
+
+    private func verdict(_ line: Line) -> some View {
+        (Text(line.before).foregroundStyle(Theme.muted)
+            + Text(line.colored).foregroundStyle(line.good ? Theme.good : Theme.danger)
+            + Text(line.after).foregroundStyle(Theme.muted))
             .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("veredicto")

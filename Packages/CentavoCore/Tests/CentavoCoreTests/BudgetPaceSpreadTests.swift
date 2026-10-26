@@ -93,8 +93,8 @@ import Testing
     }
 
     @Test func theRhythmSaysTheSameInBothModes() throws {
-        // «Vas $X del ritmo» and «Podrías llevar» don't depend on the mode, with fixed
-        // expenses, money spent today and a fixed expense still to come.
+        // «Podrías llevar» and what the days before left over don't depend on the mode, with
+        // fixed expenses, money spent today and a fixed expense still to come.
         let calendar = Self.calendar
         let date = calendar.date(from: DateComponents(year: 2026, month: 10, day: 18, hour: 12))!
         for (spent, today) in [(Decimal(2_000), Decimal(0)), (5_400, 900), (9_100, 250)] {
@@ -113,5 +113,46 @@ import Testing
         #expect(AllowanceMode(stored: "") == .carry)
         #expect(AllowanceMode(stored: "repartir") == .spread)
         #expect(AllowanceMode(stored: "acumular") == .carry)
+    }
+}
+
+@Suite struct BudgetPaceRhythmTests {
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
+        return calendar
+    }()
+    private static let fifteenth = calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 12))!
+
+    private func both(spent: Decimal, today: Decimal = 0, fixed: Decimal = 0, reserved: Decimal = 0)
+        throws -> (carry: BudgetPace, spread: BudgetPace) {
+        let carry = try #require(BudgetPace(budget: 31_000, spent: spent, spentToday: today, fixedSpent: fixed,
+                                            reserved: reserved, on: Self.fifteenth, calendar: Self.calendar))
+        let spread = try #require(BudgetPace(budget: 31_000, spent: spent, spentToday: today, fixedSpent: fixed,
+                                             reserved: reserved, mode: .spread, on: Self.fifteenth, calendar: Self.calendar))
+        return (carry, spread)
+    }
+
+    @Test func withCarryTheBigFigureAlreadySaysItSoThereIsNoSentence() throws {
+        // $1,000 a day; parejo and $2,500 today: «Hoy te pasaste $1,500» is the whole story.
+        let (carry, _) = try both(spent: 16_500, today: 2_500)
+        #expect(carry.rhythm == nil)
+        #expect(carry.dailyAllowance == carry.expectedToDate - carry.spent)
+    }
+
+    @Test func withSpreadItMatchesTheBar() throws {
+        // Saved 4,000 before today, nothing today: 5,000 under the rule, though today only gets 1,235.
+        let (_, saved) = try both(spent: 10_000)
+        #expect(saved.rhythm == 5_000)
+        #expect(saved.dailyAllowance == 1_235)
+        // Parejo and $2,500 today: 1,500 over, the same the rule and «Deberías llevar» show.
+        let (_, today) = try both(spent: 16_500, today: 2_500)
+        #expect(today.rhythm == -1_500)
+        #expect(today.isAheadOfPace)
+    }
+
+    @Test func rentStillToComeDoesNotMakeItDisagreeWithTheBar() throws {
+        let (_, rent) = try both(spent: 14_000, reserved: 8_000)
+        #expect(rent.rhythm == rent.expectedToDate - rent.spent)
     }
 }
