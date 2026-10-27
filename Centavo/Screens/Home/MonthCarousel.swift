@@ -36,6 +36,9 @@ struct MonthCarousel: View {
     @State private var restingPage = 0
     @State private var landings = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Each page is as wide as the screen: measured by the list, not `containerRelativeFrame`,
+    /// which stayed at the landscape width when the phone turned back upright.
+    @Environment(\.listWidth) private var listWidth
 
     /// Pages of different heights (no «En qué se va»): the carousel's height is the one between
     /// them that the swipe has reached, so the calendar comes out like a ticket from the printer,
@@ -68,7 +71,7 @@ struct MonthCarousel: View {
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
-                        .containerRelativeFrame(.horizontal)
+                        .frame(width: listWidth)
                         .id(0)
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
@@ -76,7 +79,7 @@ struct MonthCarousel: View {
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
-                        .containerRelativeFrame(.horizontal)
+                        .frame(width: listWidth)
                         .id(1)
                 }
                 .scrollTargetLayout()

@@ -130,6 +130,29 @@ final class FlowTests: XCTestCase {
         snap("flujo-anotar")
     }
 
+    // MARK: Girar el teléfono
+
+    /// Back from landscape, the screen fits the phone again: the budget page in view and each
+    /// row starting at the left margin, not left wider and pushed off to the left (owner, 2026-10-27).
+    func testAlVolverDeHorizontalLaPantallaSeAcomoda() {
+        let app = launch(demo: true, budget: true)
+        let page = require(app.descendants(matching: .any)["presupuesto-ticket"], "No está el presupuesto")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        sleep(2)
+        snap("horizontal")
+        XCUIDevice.shared.orientation = .portrait
+        sleep(2)
+        snap("de-vuelta-vertical")
+
+        let screen = app.windows.firstMatch.frame
+        XCTAssertTrue(page.frame.minX >= screen.minX && page.frame.maxX <= screen.maxX,
+                      "El presupuesto quedó fuera de la pantalla: \(page.frame) en \(screen)")
+        let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "$")).element(boundBy: 0)
+        require(first, "No hay renglones")
+        XCTAssertGreaterThanOrEqual(first.frame.minX, screen.minX, "Los renglones quedaron corridos: \(first.frame)")
+        XCTAssertLessThanOrEqual(first.frame.maxX, screen.maxX, "Los renglones quedaron anchos: \(first.frame)")
+    }
+
     func testUnaDevolucionRestaDelTotal() {
         let app = launch()
         fillExpense(app, amount: "100", merchant: "Tienda")
