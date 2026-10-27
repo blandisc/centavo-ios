@@ -53,6 +53,16 @@ public struct BudgetPace: Equatable, Sendable {
     /// bar. `nil` with `.carry`, where «Hoy puedes gastar» already is that difference to the peso
     /// and the sentence only repeated it (owner's choice, alternative C, 2026-10-25).
     public var rhythm: Decimal? { mode == .spread ? expectedToDate - spent : nil }
+    /// «Llevas» in whole units, rounded to the nearest peso.
+    public var spentShown: Decimal { Self.whole(spent, .plain) }
+    /// The gap the screen states between «Podrías llevar» and «Llevas», in whole units:
+    /// «Hoy puedes gastar» with `.carry` (rounded down, like the figure) and «Vas $X» with
+    /// `.spread` (to the nearest peso).
+    public var gapShown: Decimal { rhythm.map { Self.whole($0, .plain) } ?? dailyAllowance }
+    /// «Podrías llevar» in whole units: `spentShown` plus `gapShown`, so the two numbers on the
+    /// bar always subtract to the figure the screen states. Rounding each one on its own made
+    /// $21,060 − $20,720 read $340 next to «Hoy puedes gastar $339».
+    public var expectedShown: Decimal { spentShown + gapShown }
     /// What today could spend before anything was spent today. With `.carry`, `dailyBase` +
     /// `carriedOver`. Not rounded.
     public let todayShare: Decimal
@@ -141,10 +151,10 @@ public struct BudgetPace: Equatable, Sendable {
     }
 
     /// Rounded down, toward less money: $189.70 is $189 and −$300.20 is −$301.
-    private static func whole(_ value: Decimal) -> Decimal {
+    private static func whole(_ value: Decimal, _ mode: NSDecimalNumber.RoundingMode = .down) -> Decimal {
         var input = value
         var output = Decimal()
-        NSDecimalRound(&output, &input, 0, .down)
+        NSDecimalRound(&output, &input, 0, mode)
         return output
     }
 
