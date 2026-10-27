@@ -150,6 +150,39 @@ public struct BudgetPace: Equatable, Sendable {
         self.dailyAllowance = Self.whole(todayShare - variableToday)
     }
 
+    /// The sum behind «Hoy puedes gastar», in whole units, with each line picked so the ticket
+    /// adds up to the peso. Rounding every line on its own could leave it $1 off.
+    public struct Sum: Equatable, Sendable {
+        /// «Presupuesto − Llevas = Te quedan» (negative once the budget is blown).
+        public let budget: Decimal
+        public let spent: Decimal
+        public let remaining: Decimal
+        /// What today spent outside the fixed expenses (negative when more came back).
+        public let variableToday: Decimal
+        /// `.carry`: «Por día», and «Sobró de otros días» (negative: «Te pasaste otros días»),
+        /// so `perDay + carriedOver − variableToday` is `dailyAllowance`. The leftover peso
+        /// goes to «Sobró», which is already a difference; on the 1st, with no days before, to
+        /// «Por día».
+        public let perDay: Decimal
+        public let carriedOver: Decimal
+        /// `.spread`: «Llevas antes de hoy» and «Para hoy», so `forToday − variableToday` is
+        /// `dailyAllowance` (unless today went past it: the figure never goes below zero).
+        public let spentBeforeToday: Decimal
+        public let forToday: Decimal
+    }
+
+    public var sum: Sum {
+        let budget = Self.whole(budget, .plain)
+        let spent = spentShown
+        let variable = Self.whole(variableToday, .plain)
+        var perDay = Self.whole(dailyBase, .plain)
+        var carried = Decimal(0)
+        if day > 1 { carried = dailyAllowance + variable - perDay } else { perDay = dailyAllowance + variable }
+        let forToday = todayShare >= variableToday ? dailyAllowance + variable : Self.whole(todayShare, .plain)
+        return Sum(budget: budget, spent: spent, remaining: budget - spent, variableToday: variable,
+                   perDay: perDay, carriedOver: carried, spentBeforeToday: spent - variable, forToday: forToday)
+    }
+
     /// Rounded down, toward less money: $189.70 is $189 and −$300.20 is −$301.
     private static func whole(_ value: Decimal, _ mode: NSDecimalNumber.RoundingMode = .down) -> Decimal {
         var input = value
