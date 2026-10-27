@@ -48,6 +48,10 @@ extension Theme.Size {
     /// Scaled. The big figure's point size, to estimate its width.
     static let figureText: CGFloat = 22
 
+    /// The most of the carousel's bottom edge that fades while its height follows a swipe
+    /// (halfway through it; none at rest).
+    static let carouselFold: CGFloat = 28
+
     /// How far the page dots shift toward the dot's side to look centered.
     static let pageDotShift: CGFloat = 3
 }

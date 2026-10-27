@@ -26,57 +26,32 @@ struct MonthCarousel: View {
     var currency = CurrencyPreference.fallback
 
     @State private var page: Int? = 0
-    /// Each page's own height. The carousel is as tall as the page it is going to, so a
-    /// short budget page (no «En qué se va») leaves no empty band above the list.
+    /// Each page's own height.
     @State private var heights: [Int: CGFloat] = [:]
-    /// The page the carousel is sized for. It changes once per swipe, as soon as the finger
-    /// says where it is going, and the height eases there in one animation while the page
-    /// slides in. A height that followed the finger frame by frame relaid the whole list
-    /// below on every frame and felt rough (#77); one that changed when the page settled
-    /// leapt (before #74).
-    @State private var sizedFor = 0
+    /// How far the carousel is from the budget (0) to the calendar (1), frame by frame, by finger
+    /// or by a tapped dot alike.
+    @State private var progress: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var onBudgetPage: Bool { (page ?? 0) == 0 }
 
-    private var height: CGFloat? { heights[sizedFor] ?? heights.values.max() }
-
-
-    /// How far a swipe is from the budget (0) to the calendar (1), in tenths: only the
-    /// tenths cross into `resize`, not every frame.
-    private static func stage(_ geometry: ScrollGeometry) -> Int {
-        guard geometry.containerSize.width > 0 else { return 0 }
-        let progress = geometry.contentOffset.x / geometry.containerSize.width
-        return Int((min(max(progress, 0), 1) * 10).rounded())
+    /// Pages of different heights (no «En qué se va»): the carousel's height is the one between
+    /// them that the swipe has reached, so the calendar comes out like a ticket from the printer,
+    /// row by row with the finger, and is whole the moment it lands. An eased height that ran on
+    /// its own clock ended after the page and left the last row cut for a moment (owner, 2026-10-26).
+    private var height: CGFloat? {
+        guard let budget = heights[0], let calendar = heights[1] else { return heights.values.max() }
+        return budget + (calendar - budget) * progress
     }
 
-    /// The stage the last swipe step reached, to know which way the finger is going.
-    @State private var lastStage = 0
+    /// How much of the bottom edge fades while the height moves: none at rest, the most halfway.
+    private var fold: CGFloat {
+        equalHeights ? Theme.Space.none : Theme.Size.carouselFold * min(progress, 1 - progress) * 2
+    }
 
-    /// Heading for a taller page, the height starts growing a tenth of the way, so the page
-    /// lands whole; heading for a shorter one, it starts shrinking halfway, while the page is
-    /// still moving, so the list below rises with the swipe instead of after it. The way is
-    /// read from the swipe itself, not from the scroll position: that one names the other
-    /// page halfway and made the list go down, up and down.
-    private func resize(for stage: Int) {
-        defer { lastStage = stage }
-        // Pages the same height: nothing to ease, and no state to change while the finger moves.
-        guard !equalHeights else { return }
-        let target: Int
-        if stage == 0 || stage == 10 {
-            target = stage == 0 ? 0 : 1
-        } else if stage == lastStage {
-            return
-        } else {
-            let heading = stage > lastStage ? 1 : 0
-            let travel = Double(heading == 1 ? stage : 10 - stage) / 10
-            let grows = (heights[heading] ?? 0) >= (heights[1 - heading] ?? 0)
-            target = travel >= (grows ? 0.1 : 0.5) ? heading : 1 - heading
-        }
-        guard target != sizedFor else { return }
-        // As quick as the page itself (0.3 s): the 0.4 s ease finished after the page had landed, and
-        // until then the taller page's last row was cut (calendar with «En qué se va» hidden).
-        withAnimation(reduceMotion ? nil : Theme.Motion.page) { sizedFor = target }
+    private static func progress(_ geometry: ScrollGeometry) -> CGFloat {
+        guard geometry.containerSize.width > 0 else { return 0 }
+        return min(max(geometry.contentOffset.x / geometry.containerSize.width, 0), 1)
     }
 
     private let pageNames = ["Presupuesto", "Calendario"]
@@ -107,15 +82,30 @@ struct MonthCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
-            // Only crossing a stage reaches `resize`: the swipe itself changes no state.
-            .onScrollGeometryChange(for: Int.self, of: Self.stage) { _, stage in resize(for: stage) }
+            // Only pages of different heights need to know where the swipe is.
+            .onScrollGeometryChange(for: CGFloat.self, of: Self.progress) { _, value in
+                if !equalHeights { progress = value }
+            }
             // With both pages about as tall, the row of pages is as tall as the taller one by itself
             // and the carousel takes that: no height measured and set back, which on the owner's
             // iPhone settled on the calendar's and cut «En qué se va». Otherwise each page keeps
-            // its own height and the carousel eases between them.
+            // its own height and the carousel goes from one to the other with the swipe.
             .frame(height: equalHeights ? nil : height, alignment: .top)
-            // While the height eases, nothing of the taller page draws over the list. With both pages
-            // the same height nothing eases, and a pressed mosaic block, which iOS lifts a little
+            // While it grows or shrinks, the bottom edge fades like paper coming out, not a cut.
+            .mask(alignment: .top) {
+                if equalHeights {
+                    // Nothing moves; room for a pressed mosaic block to lift (see below).
+                    Rectangle().padding(-Theme.Space.xxl)
+                } else {
+                    VStack(spacing: Theme.Space.none) {
+                        Rectangle()
+                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                            .frame(height: fold)
+                    }
+                }
+            }
+            // While the height moves, nothing of the taller page draws over the list. With both pages
+            // the same height nothing moves, and a pressed mosaic block, which iOS lifts a little
             // larger before its detail opens, must not be cut at the carousel's edge (owner's iPhone).
             .scrollClipDisabled(equalHeights)
             .clipShape(Rectangle().inset(by: equalHeights ? -Theme.Space.xxl : Theme.Space.none))
@@ -127,8 +117,8 @@ struct MonthCarousel: View {
             HStack(spacing: Theme.Space.xxs) {
                 ForEach(pageNames.indices, id: \.self) { index in
                     Button {
+                        // The height follows the scroll, so it comes along with the page.
                         withAnimation(reduceMotion ? nil : Theme.Motion.page) { page = index }
-                        withAnimation(reduceMotion ? nil : Theme.Motion.page) { sizedFor = index }
                     } label: {
                         Capsule()
                             .fill(page == index ? Theme.ink : Theme.dimmed)
