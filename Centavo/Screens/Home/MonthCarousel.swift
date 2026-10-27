@@ -74,7 +74,9 @@ struct MonthCarousel: View {
             target = travel >= (grows ? 0.1 : 0.5) ? heading : 1 - heading
         }
         guard target != sizedFor else { return }
-        withAnimation(reduceMotion ? nil : Theme.Motion.resize) { sizedFor = target }
+        // As quick as the page itself (0.3 s): the 0.4 s ease finished after the page had landed, and
+        // until then the taller page's last row was cut (calendar with «En qué se va» hidden).
+        withAnimation(reduceMotion ? nil : Theme.Motion.page) { sizedFor = target }
     }
 
     private let pageNames = ["Presupuesto", "Calendario"]
@@ -117,14 +119,16 @@ struct MonthCarousel: View {
             // larger before its detail opens, must not be cut at the carousel's edge (owner's iPhone).
             .scrollClipDisabled(equalHeights)
             .clipShape(Rectangle().inset(by: equalHeights ? -Theme.Space.xxl : Theme.Space.none))
-            // A page that changes height in place (choosing «No mostrar» in «Más») eases too.
-            .animation(reduceMotion ? nil : Theme.Motion.restyle, value: heights[sizedFor])
+            // A page that changes height in place (choosing «No mostrar» in «Más») eases too. Keyed
+            // on the pages' heights, not the current one's: that one also changes on a page change,
+            // and this slow ease then won over the page's own and the calendar's last row stayed cut.
+            .animation(reduceMotion ? nil : Theme.Motion.restyle, value: heights)
 
             HStack(spacing: Theme.Space.xxs) {
                 ForEach(pageNames.indices, id: \.self) { index in
                     Button {
                         withAnimation(reduceMotion ? nil : Theme.Motion.page) { page = index }
-                        withAnimation(reduceMotion ? nil : Theme.Motion.restyle) { sizedFor = index }
+                        withAnimation(reduceMotion ? nil : Theme.Motion.page) { sizedFor = index }
                     } label: {
                         Capsule()
                             .fill(page == index ? Theme.ink : Theme.dimmed)
