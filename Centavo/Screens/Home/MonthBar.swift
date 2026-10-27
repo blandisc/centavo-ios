@@ -223,7 +223,7 @@ struct MonthBar: View {
     /// «Presupuesto $8,000», at the end of the bar it measures.
     private var budgetKey: some View {
         (Text("Presupuesto ").foregroundStyle(Theme.muted)
-            + Text(wholeMoney(pace.budget)).foregroundStyle(Theme.ink))
+            + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink))
             .lineLimit(1)
             .minimumScaleFactor(Theme.MinimumScale.figure)
     }
@@ -253,8 +253,8 @@ struct MonthBar: View {
     /// $400 abajo del ritmo»: how far from the rule, the same gap the bar shows. With
     /// «Acumular», «Hoy puedes gastar» already is that gap, so no sentence (alternative C).
     private var verdictLine: Line? {
-        if isOver { return ("Te pasaste ", wholeMoney(pace.remaining.magnitude), " del presupuesto", false) }
-        if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.remaining), " de sobra", true) }
+        if isOver { return ("Te pasaste ", wholeMoney(pace.sum.remaining.magnitude), " del presupuesto", false) }
+        if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.sum.remaining), " de sobra", true) }
         guard pace.rhythm != nil else { return nil }
         let rhythm = pace.gapShown
         if rhythm == 0 { return ("Vas ", "justo", " al ritmo", true) }
@@ -274,41 +274,42 @@ struct MonthBar: View {
     /// The sum behind «Hoy puedes gastar», like a ticket's lines: what is left of the month,
     /// then the day's amount, what the days before left over or overspent, and today.
     private var sum: some View {
-        VStack(spacing: Theme.Space.xs) {
-            sumLine("Presupuesto", wholeMoney(pace.budget))
-            sumLine("− Llevas", wholeMoney(pace.spent))
-            sumLine(isOver ? "= Te pasaste" : "= Te quedan", wholeMoney(pace.remaining.magnitude))
+        let sum = pace.sum
+        return VStack(spacing: Theme.Space.xs) {
+            sumLine("Presupuesto", wholeMoney(sum.budget))
+            sumLine("− Llevas", wholeMoney(sum.spent))
+            sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
             if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
                 Divider().overlay(Theme.hairline)
-                sumLine("Presupuesto", wholeMoney(pace.budget))
-                sumLine("− Llevas antes de hoy", wholeMoney(pace.spent - pace.variableToday))
+                sumLine("Presupuesto", wholeMoney(sum.budget))
+                sumLine("− Llevas antes de hoy", wholeMoney(sum.spentBeforeToday))
                 if pace.reserved > 0 {
                     sumLine("− Fijos por venir", wholeMoney(pace.reserved))
                 }
                 sumLine("÷ Días que faltan", "\(pace.daysLeft)")
-                sumLine("= Para hoy", wholeMoney(pace.todayShare))
-                if pace.variableToday != 0 {
-                    sumLine(pace.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
-                            wholeMoney(pace.variableToday.magnitude))
+                sumLine("= Para hoy", wholeMoney(sum.forToday))
+                if sum.variableToday != 0 {
+                    sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
+                            wholeMoney(sum.variableToday.magnitude))
                 }
                 Divider().overlay(Theme.hairline)
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
             } else if days > 0 {
                 Divider().overlay(Theme.hairline)
                 if pace.fixedMonth > 0 {
-                    sumLine("Presupuesto", wholeMoney(pace.budget))
+                    sumLine("Presupuesto", wholeMoney(sum.budget))
                     sumLine("− Fijos del mes", wholeMoney(pace.fixedMonth))
                 }
                 sumLine("÷ Días del mes", "\(pace.daysInMonth)")
-                sumLine("= Por día", wholeMoney(pace.dailyBase))
+                sumLine("= Por día", wholeMoney(sum.perDay))
                 if pace.day > 1 {
-                    sumLine(pace.carriedOver >= 0 ? "+ Sobró de otros días" : "− Te pasaste otros días",
-                            wholeMoney(pace.carriedOver.magnitude))
+                    sumLine(sum.carriedOver >= 0 ? "+ Sobró de otros días" : "− Te pasaste otros días",
+                            wholeMoney(sum.carriedOver.magnitude))
                 }
-                if pace.variableToday != 0 {
-                    sumLine(pace.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
-                            wholeMoney(pace.variableToday.magnitude))
+                if sum.variableToday != 0 {
+                    sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
+                            wholeMoney(sum.variableToday.magnitude))
                 }
                 Divider().overlay(Theme.hairline)
                 sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",

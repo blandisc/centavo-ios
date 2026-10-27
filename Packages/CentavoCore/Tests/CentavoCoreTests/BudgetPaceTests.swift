@@ -50,6 +50,35 @@ import Testing
         #expect(spread.expectedShown == 3096)
     }
 
+    @Test func theSumAddsUpToThePeso() throws {
+        // October, 8,000 a month: $258.06 a day. Rounded line by line, cents could leave the
+        // ticket $1 off «Hoy puedes gastar».
+        let date = Self.day(2026, 10, 12)
+        for spent in ["2757.40", "2757.60", "3096.10", "3500.55", "0.49"] {
+            for today in ["0", "10.60", "10.40", "-5.50"] {
+                let spent = Decimal(string: spent)!, today = Decimal(string: today)!
+                for mode in AllowanceMode.allCases {
+                    let pace = try #require(BudgetPace(budget: 8000, spent: spent + today, spentToday: today,
+                                                       mode: mode, on: date, calendar: Self.calendar))
+                    let sum = pace.sum
+                    #expect(sum.budget - sum.spent == sum.remaining)
+                    if mode == .carry {
+                        #expect(sum.perDay + sum.carriedOver - sum.variableToday == pace.dailyAllowance)
+                        #expect(sum.perDay == 258)
+                    } else if pace.todayShare >= pace.variableToday {
+                        #expect(sum.forToday - sum.variableToday == pace.dailyAllowance)
+                    }
+                }
+            }
+        }
+        // On the 1st there are no days before: «Por día» takes the peso.
+        let first = try #require(BudgetPace(budget: 8000, spent: Decimal(string: "10.60")!,
+                                            spentToday: Decimal(string: "10.60")!,
+                                            on: Self.day(2026, 10, 1), calendar: Self.calendar))
+        #expect(first.sum.perDay - first.sum.variableToday == first.dailyAllowance)
+        #expect(first.sum.carriedOver == 0)
+    }
+
     @Test func theLastDayExpectsTheWholeBudget() throws {
         let pace = try #require(makePace(budget: 8000, spent: 0, on: Self.day(2026, 10, 31)))
         #expect(pace.expectedToDate == 8000)
