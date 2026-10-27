@@ -46,6 +46,11 @@ struct MonthCarousel: View {
         return budget + (calendar - budget) * scroll.value
     }
 
+    /// How much of the bottom edge fades while the height moves: none at rest, the most halfway.
+    private var fold: CGFloat {
+        equalHeights ? Theme.Space.none : Theme.Size.carouselFold * min(scroll.value, 1 - scroll.value) * 2
+    }
+
     private static func progress(_ geometry: ScrollGeometry) -> CGFloat {
         guard geometry.containerSize.width > 0 else { return 0 }
         return min(max(geometry.contentOffset.x / geometry.containerSize.width, 0), 1)
@@ -93,6 +98,20 @@ struct MonthCarousel: View {
             // iPhone settled on the calendar's and cut «En qué se va». Otherwise each page keeps
             // its own height and the carousel goes from one to the other with the swipe.
             .frame(height: equalHeights ? nil : height, alignment: .top)
+            // While it grows or shrinks, the bottom edge fades like paper coming out, not a cut (the
+            // owner preferred it to a perforated edge).
+            .mask(alignment: .top) {
+                if equalHeights {
+                    // Nothing moves; room for a pressed mosaic block to lift (see below).
+                    Rectangle().padding(-Theme.Space.xxl)
+                } else {
+                    VStack(spacing: Theme.Space.none) {
+                        Rectangle()
+                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                            .frame(height: fold)
+                    }
+                }
+            }
             // While the height moves, nothing of the taller page draws over the list. With both pages
             // the same height nothing moves, and a pressed mosaic block, which iOS lifts a little
             // larger before its detail opens, must not be cut at the carousel's edge (owner's iPhone).
@@ -102,11 +121,6 @@ struct MonthCarousel: View {
             // on the pages' heights, not the current one's: that one also changes on a page change,
             // and this slow ease then won over the page's own and the calendar's last row stayed cut.
             .animation(reduceMotion ? nil : Theme.Motion.restyle, value: heights)
-            // While it grows or shrinks, its bottom edge is the ticket's perforation: paper coming
-            // out of the printer, not a cut.
-            .overlay(alignment: .bottom) {
-                if !equalHeights { TearEdge(scroll: scroll) }
-            }
 
             PageDots(names: pageNames, scroll: scroll) { index in
                 // The height follows the scroll, so it comes along with the page.
@@ -121,21 +135,6 @@ struct MonthCarousel: View {
 @MainActor @Observable
 private final class ScrollProgress {
     var value: CGFloat = 0
-}
-
-/// The perforation along the carousel's bottom edge while it is between two heights.
-private struct TearEdge: View {
-    let scroll: ScrollProgress
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var moving: Bool { scroll.value > 0 && scroll.value < 1 }
-
-    var body: some View {
-        Perforation()
-            .padding(.horizontal, Theme.Space.screen)
-            .opacity(moving ? Theme.Opacity.visible : Theme.Opacity.hidden)
-            .animation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion), value: moving)
-    }
 }
 
 /// The two page dots. The lit pill travels with the swipe: it narrows on the page being left and
