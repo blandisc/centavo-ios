@@ -60,6 +60,8 @@ struct MonthCarousel: View {
     /// page halfway and made the list go down, up and down.
     private func resize(for stage: Int) {
         defer { lastStage = stage }
+        // Pages the same height: nothing to ease, and no state to change while the finger moves.
+        guard !equalHeights else { return }
         let target: Int
         if stage == 0 || stage == 10 {
             target = stage == 0 ? 0 : 1
@@ -110,15 +112,18 @@ struct MonthCarousel: View {
             // iPhone settled on the calendar's and cut «En qué se va». Otherwise each page keeps
             // its own height and the carousel eases between them.
             .frame(height: equalHeights ? nil : height, alignment: .top)
-            // While the height eases, nothing of the taller page draws over the list.
-            .clipped()
+            // While the height eases, nothing of the taller page draws over the list. With both pages
+            // the same height nothing eases, and a pressed mosaic block, which iOS lifts a little
+            // larger before its detail opens, must not be cut at the carousel's edge (owner's iPhone).
+            .scrollClipDisabled(equalHeights)
+            .clipShape(Rectangle().inset(by: equalHeights ? -Theme.Space.xxl : Theme.Space.none))
             // A page that changes height in place (choosing «No mostrar» in «Más») eases too.
             .animation(reduceMotion ? nil : Theme.Motion.restyle, value: heights[sizedFor])
 
             HStack(spacing: Theme.Space.xxs) {
                 ForEach(pageNames.indices, id: \.self) { index in
                     Button {
-                        withAnimation { page = index }
+                        withAnimation(reduceMotion ? nil : Theme.Motion.page) { page = index }
                         withAnimation(reduceMotion ? nil : Theme.Motion.restyle) { sizedFor = index }
                     } label: {
                         Capsule()
