@@ -29,8 +29,6 @@ struct MonthCarousel: View {
     /// Each page's own height. The carousel is as tall as the page it is going to, so a
     /// short budget page (no «En qué se va») leaves no empty band above the list.
     @State private var heights: [Int: CGFloat] = [:]
-    /// What each page needs, before it is stretched to match the other.
-    @State private var needs: [Int: CGFloat] = [:]
     /// The page the carousel is sized for. It changes once per swipe, as soon as the finger
     /// says where it is going, and the height eases there in one animation while the page
     /// slides in. A height that followed the finger frame by frame relaid the whole list
@@ -43,9 +41,6 @@ struct MonthCarousel: View {
 
     private var height: CGFloat? { heights[sizedFor] ?? heights.values.max() }
 
-    /// The height both pages share, when they share one. An exact height, not a least one: a least
-    /// height took the carousel's own (the scroll view proposes it) and never came back down.
-    private var sharedHeight: CGFloat? { equalHeights ? needs.values.max() : nil }
 
     /// How far a swipe is from the budget (0) to the calendar (1), in tenths: only the
     /// tenths cross into `resize`, not every frame.
@@ -91,8 +86,6 @@ struct MonthCarousel: View {
                                onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget)
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { needs[0] = $0 }
-                        .frame(height: sharedHeight, alignment: .top)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .containerRelativeFrame(.horizontal)
                         .id(0)
@@ -101,8 +94,6 @@ struct MonthCarousel: View {
                                  currency: currency)
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { needs[1] = $0 }
-                        .frame(height: sharedHeight, alignment: .top)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .containerRelativeFrame(.horizontal)
                         .id(1)
@@ -114,7 +105,11 @@ struct MonthCarousel: View {
             .scrollIndicators(.hidden)
             // Only crossing a stage reaches `resize`: the swipe itself changes no state.
             .onScrollGeometryChange(for: Int.self, of: Self.stage) { _, stage in resize(for: stage) }
-            .frame(height: height, alignment: .top)
+            // With both pages about as tall, the row of pages is as tall as the taller one by itself
+            // and the carousel takes that: no height measured and set back, which on the owner's
+            // iPhone settled on the calendar's and cut «En qué se va». Otherwise each page keeps
+            // its own height and the carousel eases between them.
+            .frame(height: equalHeights ? nil : height, alignment: .top)
             // While the height eases, nothing of the taller page draws over the list.
             .clipped()
             // A page that changes height in place (choosing «No mostrar» in «Más») eases too.
