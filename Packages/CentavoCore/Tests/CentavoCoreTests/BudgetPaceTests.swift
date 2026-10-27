@@ -36,6 +36,20 @@ import Testing
         #expect(over.isAheadOfPace)
     }
 
+    @Test func theBarSubtractsToTheFigureItStates() throws {
+        // 3,096.77 − 2,757.40 = 339.37: rounded one by one, $3,097 − $2,757 read $340 next to
+        // «Hoy puedes gastar $339». «Podrías llevar» is «Llevas» plus the figure instead.
+        let carry = try #require(makePace(budget: 8000, spent: Decimal(string: "2757.40")!,
+                                          on: Self.day(2026, 10, 12)))
+        #expect(carry.dailyAllowance == 339)
+        #expect(carry.spentShown == 2757)
+        #expect(carry.expectedShown == 3096)
+        let spread = try #require(BudgetPace(budget: 8000, spent: Decimal(string: "2757.40")!, mode: .spread,
+                                             on: Self.day(2026, 10, 12), calendar: Self.calendar))
+        #expect(spread.gapShown == 339)
+        #expect(spread.expectedShown == 3096)
+    }
+
     @Test func theLastDayExpectsTheWholeBudget() throws {
         let pace = try #require(makePace(budget: 8000, spent: 0, on: Self.day(2026, 10, 31)))
         #expect(pace.expectedToDate == 8000)

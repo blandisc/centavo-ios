@@ -188,7 +188,7 @@ struct MonthBar: View {
     /// Past the rule it is «Deberías llevar»: it is no longer room to spend.
     private func annotation(at x: CGFloat) -> some View {
         (Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(Theme.muted)
-            + Text(wholeMoney(pace.expectedToDate)).foregroundStyle(Theme.ink))
+            + Text(wholeMoney(pace.expectedShown)).foregroundStyle(Theme.ink))
             .font(.ticket(.micro))
             .tracking(Theme.Tracking.tag)
             .textCase(.uppercase)
@@ -238,7 +238,7 @@ struct MonthBar: View {
     }
 
     private var totalText: some View {
-        Text(wholeMoney(pace.spent))
+        Text(wholeMoney(pace.spentShown))
             .foregroundStyle(Theme.ink)
             .contentTransition(.numericText())
             .accessibilityLabel(money(pace.spent))
@@ -255,8 +255,9 @@ struct MonthBar: View {
     private var verdictLine: Line? {
         if isOver { return ("Te pasaste ", wholeMoney(pace.remaining.magnitude), " del presupuesto", false) }
         if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.remaining), " de sobra", true) }
-        guard let rhythm = pace.rhythm else { return nil }
-        if rhythm.magnitude < 1 { return ("Vas ", "justo", " al ritmo", true) }
+        guard pace.rhythm != nil else { return nil }
+        let rhythm = pace.gapShown
+        if rhythm == 0 { return ("Vas ", "justo", " al ritmo", true) }
         return rhythm > 0 ? ("Vas ", "\(wholeMoney(rhythm)) abajo", " del ritmo", true)
             : ("Vas ", "\(wholeMoney(-rhythm)) arriba", " del ritmo", false)
     }

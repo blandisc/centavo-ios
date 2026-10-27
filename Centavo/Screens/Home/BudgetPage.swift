@@ -144,9 +144,9 @@ struct BudgetPage: View {
             parts.append((isCurrentMonth ? "Te quedan " : "Te quedaron ") + "\(remainingText).")
         }
         if isCurrentMonth {
-            parts.append("A hoy \(pace.isAheadOfPace ? "deberías" : "podrías") llevar \(money(pace.expectedToDate)).")
+            parts.append("A hoy \(pace.isAheadOfPace ? "deberías" : "podrías") llevar \(wholeMoney(pace.expectedShown)).")
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
-            if let rhythm = pace.rhythm, rhythm.magnitude >= 1 {
+            if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
                 parts.append("Vas \(wholeMoney(rhythm.magnitude)) " + (rhythm > 0 ? "abajo" : "arriba") + " del ritmo.")
             }
             if !isOver {

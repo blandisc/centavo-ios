@@ -77,6 +77,7 @@
 - «Anotar gasto» pasa del botón flotante a la barra superior (botón «+»); las flechas de mes, a la barra inferior.
 - Los pagos se borran deslizándolos hacia la izquierda (con confirmación), como en cualquier lista de iOS.
 ### Fixed
+- **La barra cuadra con la cifra:** «Podrías llevar» menos «Llevas» ya da justo «Hoy puedes gastar» (o el «Vas $X abajo del ritmo»). Antes cada cifra se redondeaba por su lado y podía salir $21,060 − $20,720 = $340 junto a «Hoy puedes gastar $339».
 - Un pago de Wallet que llega con el monto y la tarjeta juntos («Oxxo $89.00 1234») ya se anota con su monto ($89.00); antes los cuatro dígitos de la tarjeta se pegaban al monto y el pago se perdía.
 - Un número junto al nombre del banco («BBVA 1234», «Nu 1234») ya no se anota como un gasto en una moneda llamada «BBVA».
 - Un monto que no es dinero («0.005», «$1,234.567», «1.2.3», «1e5») ya no se lee mil veces más grande o como otra cifra: se rechaza.
