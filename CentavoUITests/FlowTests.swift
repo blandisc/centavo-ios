@@ -132,25 +132,48 @@ final class FlowTests: XCTestCase {
 
     // MARK: Girar el teléfono
 
-    /// Back from landscape, the screen fits the phone again: the budget page in view and each
-    /// row starting at the left margin, not left wider and pushed off to the left (owner, 2026-10-27).
-    func testAlVolverDeHorizontalLaPantallaSeAcomoda() {
+    /// Back from landscape, the screen fits the phone again: each row starting at the left
+    /// margin, not left wider and pushed off to the left; and the carousel resting square on its
+    /// page, on either page and after several turns, not halfway with the other one peeking in
+    /// and the calendar cut short (owner, 2026-10-27).
+    func testAlGirarLaPantallaSeAcomoda() {
         let app = launch(demo: true, budget: true)
-        let page = require(app.descendants(matching: .any)["presupuesto-ticket"], "No está el presupuesto")
-        XCUIDevice.shared.orientation = .landscapeLeft
-        sleep(2)
-        snap("horizontal")
-        XCUIDevice.shared.orientation = .portrait
-        sleep(2)
-        snap("de-vuelta-vertical")
+        let budget = app.descendants(matching: .any)["pagina-presupuesto"]
+        let calendar = app.descendants(matching: .any)["pagina-calendario"]
+        require(budget, "No está el carrusel")
 
-        let screen = app.windows.firstMatch.frame
-        XCTAssertTrue(page.frame.minX >= screen.minX && page.frame.maxX <= screen.maxX,
-                      "El presupuesto quedó fuera de la pantalla: \(page.frame) en \(screen)")
-        let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "$")).element(boundBy: 0)
-        require(first, "No hay renglones")
-        XCTAssertGreaterThanOrEqual(first.frame.minX, screen.minX, "Los renglones quedaron corridos: \(first.frame)")
-        XCTAssertLessThanOrEqual(first.frame.maxX, screen.maxX, "Los renglones quedaron anchos: \(first.frame)")
+        func turn(_ orientation: UIDeviceOrientation) {
+            XCUIDevice.shared.orientation = orientation
+            sleep(2)
+        }
+        func expectResting(on page: XCUIElement, _ moment: String) {
+            snap(moment)
+            let screen = app.windows.firstMatch.frame
+            XCTAssertTrue(page.frame.minX >= screen.minX && page.frame.maxX <= screen.maxX,
+                          "\(moment): la página quedó cortada: \(page.frame) en \(screen)")
+            if screen.width < screen.height {
+                // Upright, the page's content runs from margin to margin (24 pt each side).
+                XCTAssertEqual(page.frame.minX, 24, accuracy: 1, "\(moment): la página quedó corrida: \(page.frame)")
+                XCTAssertEqual(page.frame.width, screen.width - 48, accuracy: 1,
+                               "\(moment): la página no mide lo que la pantalla: \(page.frame) en \(screen)")
+            }
+            let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "$")).element(boundBy: 0)
+            XCTAssertGreaterThanOrEqual(row.frame.minX, screen.minX, "\(moment): renglones corridos: \(row.frame)")
+            XCTAssertLessThanOrEqual(row.frame.maxX, screen.maxX, "\(moment): renglones anchos: \(row.frame)")
+        }
+
+        turn(.landscapeLeft)
+        expectResting(on: budget, "horizontal-presupuesto")
+        app.buttons["Calendario"].tap()
+        sleep(1)
+        turn(.portrait)
+        expectResting(on: calendar, "vertical-calendario")
+        turn(.landscapeRight)
+        expectResting(on: calendar, "horizontal-calendario")
+        app.buttons["Presupuesto"].tap()
+        sleep(1)
+        turn(.portrait)
+        expectResting(on: budget, "vertical-presupuesto")
     }
 
     func testUnaDevolucionRestaDelTotal() {

@@ -435,7 +435,8 @@ struct ExpenseListView: View {
             }
         }
         // Measured on the whole screen, not on the scroll view: the scroll view takes its
-        // content's width, so a width read there stayed at the landscape one.
+        // content's width, so a width read there stayed at the landscape one. Its size is
+        // already inside the sides kept clear in landscape (the Dynamic Island).
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
     }
 }
