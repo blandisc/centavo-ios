@@ -80,8 +80,6 @@ struct MonthCarousel: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .frame(width: listWidth)
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("pagina-presupuesto")
                         .id(0)
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
@@ -90,8 +88,6 @@ struct MonthCarousel: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .frame(width: listWidth)
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("pagina-calendario")
                         .id(1)
                 }
                 .scrollTargetLayout()
