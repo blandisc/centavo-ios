@@ -57,9 +57,14 @@ struct MonthCarousel: View {
         equalHeights ? Theme.Space.none : Theme.Size.carouselFold * min(scroll.value, 1 - scroll.value) * 2
     }
 
+    /// Measured against a page's width (half the row of two) and counting the inset: in landscape
+    /// the scroll view also spans the strip kept clear for the Dynamic Island and starts the pages
+    /// past it, so the calendar never got past 0.93 and its height, which follows this, left the
+    /// last row cut (measured, 2026-10-27).
     private static func progress(_ geometry: ScrollGeometry) -> CGFloat {
-        guard geometry.containerSize.width > 0 else { return 0 }
-        return min(max(geometry.contentOffset.x / geometry.containerSize.width, 0), 1)
+        let page = geometry.contentSize.width / 2
+        guard page > 0 else { return 0 }
+        return min(max((geometry.contentOffset.x + geometry.contentInsets.leading) / page, 0), 1)
     }
 
     private let pageNames = ["Presupuesto", "Calendario"]

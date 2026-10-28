@@ -79,6 +79,7 @@
 ### Fixed
 - **Girar el teléfono:** al volver de horizontal a vertical, la pantalla principal se quedaba con el ancho de horizontal, corrida a la izquierda y con el presupuesto en blanco. Ahora se acomoda al ancho de la pantalla.
 - **Girar el teléfono, el carrusel:** al girar, el carrusel se quedaba entre sus dos páginas: el calendario se asomaba a la derecha («CAD…»), «Llevas» salía cortado y el calendario quedaba tapado abajo. Ahora vuelve justo a la página en la que estabas, y en horizontal la otra página ya no se ve junto a la isla.
+- **Calendario en horizontal:** el último renglón del calendario salía tapado y desvanecido. El carrusel no contaba el espacio de la isla y creía que no había llegado del todo al calendario; ahora toma su altura completa.
 - **La barra cuadra con la cifra:** «Podrías llevar» menos «Llevas» ya da justo «Hoy puedes gastar» (o el «Vas $X abajo del ritmo»). Antes cada cifra se redondeaba por su lado y podía salir $21,060 − $20,720 = $340 junto a «Hoy puedes gastar $339». El desglose que se abre al tocar la barra (Por día, Sobró de otros días, Gastado hoy…) también suma justo, renglón por renglón.
 - Un pago de Wallet que llega con el monto y la tarjeta juntos («Oxxo $89.00 1234») ya se anota con su monto ($89.00); antes los cuatro dígitos de la tarjeta se pegaban al monto y el pago se perdía.
 - Un número junto al nombre del banco («BBVA 1234», «Nu 1234») ya no se anota como un gasto en una moneda llamada «BBVA».

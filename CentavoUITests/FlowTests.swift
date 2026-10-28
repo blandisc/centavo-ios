@@ -151,6 +151,10 @@ final class FlowTests: XCTestCase {
             let screen = app.windows.firstMatch.frame
             XCTAssertTrue(page.frame.minX >= screen.minX && page.frame.maxX <= screen.maxX,
                           "\(moment): la página quedó cortada: \(page.frame) en \(screen)")
+            // The carousel is as tall as the page: the dots right under it, not over its last row.
+            let dots = app.buttons["Presupuesto"]
+            XCTAssertGreaterThanOrEqual(dots.frame.minY, page.frame.maxY - 1,
+                                        "\(moment): la página quedó tapada: \(page.frame), puntos en \(dots.frame)")
             if screen.width < screen.height {
                 // Upright, the page's content runs from margin to margin (24 pt each side).
                 XCTAssertEqual(page.frame.minX, 24, accuracy: 1, "\(moment): la página quedó corrida: \(page.frame)")
