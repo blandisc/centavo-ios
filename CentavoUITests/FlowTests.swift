@@ -138,28 +138,33 @@ final class FlowTests: XCTestCase {
     /// and the calendar cut short (owner, 2026-10-27).
     func testAlGirarLaPantallaSeAcomoda() {
         let app = launch(demo: true, budget: true)
-        let budget = app.descendants(matching: .any)["pagina-presupuesto"]
-        let calendar = app.descendants(matching: .any)["pagina-calendario"]
+        let budget = app.otherElements["presupuesto-ticket"]
         require(budget, "No está el carrusel")
 
         func turn(_ orientation: UIDeviceOrientation) {
             XCUIDevice.shared.orientation = orientation
             sleep(2)
         }
-        func expectResting(on page: XCUIElement, _ moment: String) {
+        /// Where the calendar page stands: from its first day to its last.
+        func calendarFrame() -> CGRect {
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Día "))
+                .allElementsBoundByIndex.map(\.frame).reduce(CGRect.null) { $0.union($1) }
+        }
+        func expectResting(onCalendar: Bool, _ moment: String) {
             snap(moment)
             let screen = app.windows.firstMatch.frame
-            XCTAssertTrue(page.frame.minX >= screen.minX && page.frame.maxX <= screen.maxX,
-                          "\(moment): la página quedó cortada: \(page.frame) en \(screen)")
+            let page = onCalendar ? calendarFrame() : budget.frame
+            XCTAssertTrue(page.minX >= screen.minX && page.maxX <= screen.maxX,
+                          "\(moment): la página quedó cortada: \(page) en \(screen)")
             // The carousel is as tall as the page: the dots right under it, not over its last row.
             let dots = app.buttons["Presupuesto"]
-            XCTAssertGreaterThanOrEqual(dots.frame.minY, page.frame.maxY - 1,
-                                        "\(moment): la página quedó tapada: \(page.frame), puntos en \(dots.frame)")
+            XCTAssertGreaterThanOrEqual(dots.frame.minY, page.maxY - 1,
+                                        "\(moment): la página quedó tapada: \(page), puntos en \(dots.frame)")
             if screen.width < screen.height {
                 // Upright, the page's content runs from margin to margin (24 pt each side).
-                XCTAssertEqual(page.frame.minX, 24, accuracy: 1, "\(moment): la página quedó corrida: \(page.frame)")
-                XCTAssertEqual(page.frame.width, screen.width - 48, accuracy: 1,
-                               "\(moment): la página no mide lo que la pantalla: \(page.frame) en \(screen)")
+                XCTAssertEqual(page.minX, 24, accuracy: 1, "\(moment): la página quedó corrida: \(page)")
+                XCTAssertEqual(page.width, screen.width - 48, accuracy: 1,
+                               "\(moment): la página no mide lo que la pantalla: \(page) en \(screen)")
             }
             let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "$")).element(boundBy: 0)
             XCTAssertGreaterThanOrEqual(row.frame.minX, screen.minX, "\(moment): renglones corridos: \(row.frame)")
@@ -167,17 +172,17 @@ final class FlowTests: XCTestCase {
         }
 
         turn(.landscapeLeft)
-        expectResting(on: budget, "horizontal-presupuesto")
+        expectResting(onCalendar: false, "horizontal-presupuesto")
         app.buttons["Calendario"].tap()
         sleep(1)
         turn(.portrait)
-        expectResting(on: calendar, "vertical-calendario")
+        expectResting(onCalendar: true, "vertical-calendario")
         turn(.landscapeRight)
-        expectResting(on: calendar, "horizontal-calendario")
+        expectResting(onCalendar: true, "horizontal-calendario")
         app.buttons["Presupuesto"].tap()
         sleep(1)
         turn(.portrait)
-        expectResting(on: budget, "vertical-presupuesto")
+        expectResting(onCalendar: false, "vertical-presupuesto")
     }
 
     func testUnaDevolucionRestaDelTotal() {
