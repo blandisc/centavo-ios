@@ -67,6 +67,10 @@ struct ExpenseListView: View {
     @State private var showingFixed = false
     /// What of the screen's entrance has already played (`Entrance`).
     @State private var entrance = Entrance()
+    /// The list's width, measured. Each line takes it from here and not from
+    /// `containerRelativeFrame`, which kept the landscape width after turning the phone back
+    /// upright and left the whole screen wider and pushed off to the left (owner, 2026-10-27).
+    @State private var listWidth: CGFloat?
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
 
@@ -251,6 +255,7 @@ struct ExpenseListView: View {
             }
             .padding(.top, Theme.Space.s)
             .padding(.bottom, Theme.Space.xxl)
+            .environment(\.listWidth, listWidth)
             }
             // Scrolling closes a row left open by a swipe, as in a system list.
             .onScrollPhaseChange { _, phase in
@@ -429,6 +434,9 @@ struct ExpenseListView: View {
                 }
             }
         }
+        // Measured on the whole screen, not on the scroll view: the scroll view takes its
+        // content's width, so a width read there stayed at the landscape one.
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
     }
 }
 
@@ -638,15 +646,32 @@ private extension ExpenseListView {
     }
 }
 
+extension EnvironmentValues {
+    /// The main list's width, measured, for what has to be exactly as wide (see `listWidth`).
+    @Entry var listWidth: CGFloat?
+}
+
 private extension View {
     /// A line of the ticket: the side margins and the space under it.
     func ticketRow(bottom: CGFloat = 0, horizontal: CGFloat = Theme.Space.screen) -> some View {
-        self
-            // Exactly the screen's width less the margins, as a list row was: a long name
-            // can't widen the line past the screen.
-            .containerRelativeFrame(.horizontal, alignment: .leading) { length, _ in
-                max(length - 2 * horizontal, 0)
-            }
+        modifier(TicketRow(bottom: bottom, horizontal: horizontal))
+    }
+}
+
+private struct TicketRow: ViewModifier {
+    let bottom: CGFloat
+    let horizontal: CGFloat
+    @Environment(\.listWidth) private var listWidth
+
+    /// Exactly the screen's width less the margins, as a list row was: a long name can't widen
+    /// the line past the screen.
+    private var width: CGFloat? {
+        listWidth.map { max($0 - horizontal - horizontal, Theme.Space.none) }
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .frame(width: width, alignment: .leading)
             .padding(.horizontal, horizontal)
             .padding(.bottom, bottom)
     }
