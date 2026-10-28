@@ -25,7 +25,10 @@ struct MonthCarousel: View {
     let onSetBudget: () -> Void
     var currency = CurrencyPreference.fallback
 
-    @State private var page: Int? = 0
+    @State private var position = ScrollPosition(idType: Int.self)
+    /// The page shown or on its way, by finger or by dot, to put the carousel back on it when
+    /// the phone turns.
+    @State private var page = 0
     /// Each page's own height.
     @State private var heights: [Int: CGFloat] = [:]
     /// How far the carousel is from the budget (0) to the calendar (1), frame by frame, by finger
@@ -72,6 +75,8 @@ struct MonthCarousel: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .frame(width: listWidth)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("pagina-presupuesto")
                         .id(0)
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
@@ -80,12 +85,20 @@ struct MonthCarousel: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .frame(width: listWidth)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("pagina-calendario")
                         .id(1)
                 }
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $page)
+            .scrollPosition($position, anchor: .leading)
+            // Turning the phone changes the pages' width but not where the scroll stands, so it
+            // was left between two pages: the other one peeking in and, with the height following
+            // the scroll, the calendar cut short. Back square on the page it rested on.
+            .onChange(of: listWidth) { _, _ in
+                Theme.Motion.instantly { position.scrollTo(id: page, anchor: .leading) }
+            }
             .scrollIndicators(.hidden)
             .onScrollGeometryChange(for: CGFloat.self, of: Self.progress) { _, value in scroll.value = value }
             // A light tick when the page lands on the other one, like a ticket torn off; none while
@@ -93,6 +106,7 @@ struct MonthCarousel: View {
             .onScrollPhaseChange { _, phase in
                 guard phase == .idle else { return }
                 let landed = scroll.value < 0.5 ? 0 : 1
+                page = landed
                 if landed != restingPage { restingPage = landed; landings += 1 }
             }
             .sensoryFeedback(.selection, trigger: landings)
@@ -105,8 +119,10 @@ struct MonthCarousel: View {
             // owner preferred it to a perforated edge).
             .mask(alignment: .top) {
                 if equalHeights {
-                    // Nothing moves; room for a pressed mosaic block to lift (see below).
-                    Rectangle().padding(-Theme.Space.xxl)
+                    // Nothing moves; room above and below for a pressed mosaic block to lift (see
+                    // below). Not to the sides: in landscape the next page showed there, in the
+                    // strip kept clear for the Dynamic Island.
+                    Rectangle().padding(.vertical, -Theme.Space.xxl)
                 } else {
                     VStack(spacing: Theme.Space.none) {
                         Rectangle()
@@ -119,7 +135,7 @@ struct MonthCarousel: View {
             // the same height nothing moves, and a pressed mosaic block, which iOS lifts a little
             // larger before its detail opens, must not be cut at the carousel's edge (owner's iPhone).
             .scrollClipDisabled(equalHeights)
-            .clipShape(Rectangle().inset(by: equalHeights ? -Theme.Space.xxl : Theme.Space.none))
+            .mask { Rectangle().padding(.vertical, equalHeights ? -Theme.Space.xxl : Theme.Space.none) }
             // A page that changes height in place (choosing «No mostrar» in «Más») eases too. Keyed
             // on the pages' heights, not the current one's: that one also changes on a page change,
             // and this slow ease then won over the page's own and the calendar's last row stayed cut.
@@ -127,7 +143,8 @@ struct MonthCarousel: View {
 
             PageDots(names: pageNames, scroll: scroll) { index in
                 // The height follows the scroll, so it comes along with the page.
-                withAnimation(reduceMotion ? nil : Theme.Motion.page) { page = index }
+                page = index
+                withAnimation(reduceMotion ? nil : Theme.Motion.page) { position.scrollTo(id: index, anchor: .leading) }
             }
             .frame(maxWidth: .infinity)
         }
