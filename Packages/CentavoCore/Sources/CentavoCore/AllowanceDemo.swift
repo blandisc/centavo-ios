@@ -7,7 +7,9 @@ import Foundation
 /// - `.carry` («Se acumula»): all of it goes to the next day.
 /// - `.spread` («Se reparte»): it is shared evenly over every day still to come.
 ///
-/// Whole money. Only for the drawing: the real figures come from `BudgetPace`.
+/// Only for the drawing: the real figures come from `BudgetPace`. The week is chosen so that
+/// every share is whole money and exact, so what moves always adds up to what was left
+/// (a rounded share once gave six days +$7 out of $40).
 public struct AllowanceDemo: Equatable, Sendable {
     /// One day of the toy month.
     public struct Day: Equatable, Sendable {
@@ -38,15 +40,18 @@ public struct AllowanceDemo: Equatable, Sendable {
     }
 
     public static let perDay: Decimal = 100
-    /// A week with a light day, a heavy one and some in between, so both rules show.
-    public static let spending: [Decimal] = [60, 130, 90, 40, 120, 100, 80]
+    /// A week with light days and heavy ones, so both rules show; with `.spread` every
+    /// leftover divides evenly by the days still to come ($30 / 6, −$35 / 5, $28 / 4…).
+    public static let spending: [Decimal] = [70, 140, 70, 60, 130, 100, 80]
 
     public let mode: AllowanceMode
+    public let budgetPerDay: Decimal
     public let days: [Day]
     public let moves: [Move]
 
     public init(mode: AllowanceMode, perDay: Decimal = Self.perDay, spending: [Decimal] = Self.spending) {
         self.mode = mode
+        budgetPerDay = perDay
         var allowances = Array(repeating: perDay, count: spending.count)
         var days: [Day] = []
         var moves: [Move] = []
@@ -60,7 +65,7 @@ public struct AllowanceDemo: Equatable, Sendable {
                 moves.append(Move(from: index, to: [index + 1], each: day.left))
                 allowances[index + 1] += day.left
             case .spread:
-                let each = Self.whole(day.left / Decimal(later.count))
+                let each = day.left / Decimal(later.count)
                 moves.append(Move(from: index, to: later, each: each))
                 for target in later { allowances[target] += each }
             }
@@ -69,10 +74,8 @@ public struct AllowanceDemo: Equatable, Sendable {
         self.moves = moves
     }
 
-    private static func whole(_ value: Decimal) -> Decimal {
-        var input = value
-        var output = Decimal()
-        NSDecimalRound(&output, &input, 0, .plain)
-        return output
-    }
+    /// What the week could spend in all (`perDay` × days).
+    public var budget: Decimal { budgetPerDay * Decimal(days.count) }
+    /// What the week spent in all.
+    public var spent: Decimal { days.reduce(0) { $0 + $1.spent } }
 }

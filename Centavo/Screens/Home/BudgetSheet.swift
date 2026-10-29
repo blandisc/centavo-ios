@@ -59,7 +59,7 @@ struct BudgetSheet: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("modo")
                     AllowanceExplainer(mode: mode, currency: currency)
-                        .padding(.vertical, Theme.Space.xs)
+                        .padding(.top, Theme.Space.xs)
                 } header: {
                     Text("Lo que no gastas un día").ticketCaption()
                 } footer: {

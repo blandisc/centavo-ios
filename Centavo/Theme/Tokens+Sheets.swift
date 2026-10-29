@@ -14,12 +14,11 @@ extension Theme.Size {
 
 extension Theme.Size {
     /// The budget sheet's drawing of «Se acumula» / «Se reparte» (`AllowanceExplainer`): its
-    /// whole height, the tallest bar, the amount that bar stands for, a coin, the caption.
+    /// whole height, the tallest bar, the amount that bar stands for and a coin.
     static let explainerHeight: CGFloat = 124
     static let explainerBars: CGFloat = 76
-    static let explainerScale: CGFloat = 200
+    static let explainerScale: CGFloat = 160
     static let explainerCoin: CGFloat = 16
-    static let explainerCaption: CGFloat = 34
 }
 
 extension Theme.Motion {
@@ -27,15 +26,18 @@ extension Theme.Motion {
     enum Explainer {
         /// Seconds before the week starts, each day's beat, before a coin leaves, while it
         /// travels, and at the end before it starts over.
-        static let start: Double = 0.8
-        static let dayBeat: Double = 1.0
-        static let coinWait: Double = 0.05
-        static let travelTime: Double = 0.95
-        static let end: Double = 2.4
+        /// Slow enough to read each line (owner, 2026-10-29).
+        static let start: Double = 1.2
+        static let dayBeat: Double = 1.8
+        static let coinWait: Double = 0.1
+        static let travelTime: Double = 1.3
+        static let end: Double = 3.6
+        /// How often a wait looks whether it was paused or resumed.
+        static let tick: Double = 0.1
         /// A day filling or an outline growing.
-        static let fill: Animation = .smooth(duration: 0.6)
+        static let fill: Animation = .smooth(duration: 0.8)
         /// A coin going to its day: smooth, no bounce.
-        static let travel: Animation = .smooth(duration: 0.9)
+        static let travel: Animation = .smooth(duration: 1.2)
     }
 }
 

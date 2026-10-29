@@ -5,7 +5,8 @@ import SwiftUI
 /// spending under both rules. Each column is a day (the outline is what it could spend, the
 /// fill what it spent, red past the outline); when a day ends, what it left over or overspent
 /// leaves it as a coin and goes to tomorrow («Se acumula») or splits over every day still to
-/// come («Se reparte»). It plays on a loop; with «Reducir movimiento» it stands still, done.
+/// come («Se reparte»). It plays on a loop and a tap pauses it (to read a day before the next
+/// one); with «Reducir movimiento» it stands still, done.
 struct AllowanceExplainer: View {
     let mode: AllowanceMode
     let currency: String
@@ -16,6 +17,7 @@ struct AllowanceExplainer: View {
     @State private var today: Int?
     @State private var coins: [Coin] = []
     @State private var caption = ""
+    @State private var paused = false
 
     private static let count = AllowanceDemo.spending.count
     private static let start = Array(repeating: AllowanceDemo.perDay, count: count)
@@ -49,17 +51,29 @@ struct AllowanceExplainer: View {
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottomLeading)
             }
             .frame(height: Theme.Size.explainerHeight)
-            Text(caption)
-                .font(.ticket(.detail))
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: Theme.Size.explainerCaption, alignment: .topLeading)
-                .contentTransition(.opacity)
+            // Two lines kept from the start, so the card doesn't jump when a day's line wraps,
+            // and nothing more: a fixed height left a blank line under the text.
+            ZStack(alignment: .topLeading) {
+                Text(verbatim: " \n ").hidden()
+                // Paused, a pause mark leads the line being read (up in the drawing, the coins
+                // would run over it).
+                (paused ? Text("\(Image(systemName: "pause.fill")) ").foregroundStyle(Theme.muted) : Text(verbatim: ""))
+                    + Text(caption).foregroundStyle(Theme.ink)
+            }
+            .font(.ticket(.detail))
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard !reduceMotion else { return }
+            paused.toggle()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(mode == .carry
             ? "Ejemplo: lo que sobra un día pasa completo al día siguiente; lo que te pasas se le quita."
             : "Ejemplo: lo que sobra o falta un día se reparte parejo entre todos los días que quedan.")
+        .accessibilityAction(named: paused ? "Seguir" : "Pausar") { paused.toggle() }
         .task(id: mode) { await play() }
     }
 
@@ -110,7 +124,7 @@ struct AllowanceExplainer: View {
         width / 2 + CGFloat(index) * (width + gap)
     }
 
-    /// Room for the biggest day (the toy week never passes $200).
+    /// Room for the biggest day (the toy week never passes $160).
     private func height(_ amount: Decimal) -> CGFloat {
         let value = CGFloat(NSDecimalNumber(decimal: max(amount, 0)).doubleValue)
         return Theme.Size.explainerBars * value / Theme.Size.explainerScale
@@ -131,6 +145,7 @@ struct AllowanceExplainer: View {
     }
 
     private func play() async {
+        paused = false
         reset()
         if reduceMotion {
             // Still and finished: every day spent and every move already made.
@@ -168,6 +183,7 @@ struct AllowanceExplainer: View {
                     : "Día \(index + 1): \(result) → \(move.each >= 0 ? "+" : "−")\(whole(move.each.magnitude)) a cada uno de los \(move.to.count) días que quedan."
                 guard await pause(Theme.Motion.Explainer.dayBeat) else { return }
             }
+            caption = "Fin: gastaste \(whole(demo.spent)) de \(whole(demo.budget)); sobraron \(whole(demo.budget - demo.spent)), igual con las dos reglas."
             guard await pause(Theme.Motion.Explainer.end) else { return }
             withAnimation(Theme.Motion.Explainer.fill) { reset() }
         }
@@ -175,9 +191,15 @@ struct AllowanceExplainer: View {
 
     /// Waits, and says whether to go on: a switch of rule cancels this run, and a sleep that
     /// ended just as it was cancelled must not take one more step over the new run (it once
-    /// filled day 5 of «Se reparte» while it was on day 2).
+    /// filled day 5 of «Se reparte» while it was on day 2). Time stands still while paused.
     private func pause(_ seconds: Double) async -> Bool {
-        (try? await Task.sleep(for: .seconds(seconds))) != nil && !Task.isCancelled
+        var remaining = seconds
+        while remaining > 0 || paused {
+            let step = paused ? Theme.Motion.Explainer.tick : min(Theme.Motion.Explainer.tick, remaining)
+            guard (try? await Task.sleep(for: .seconds(step))) != nil, !Task.isCancelled else { return false }
+            if !paused { remaining -= step }
+        }
+        return true
     }
 }
 
