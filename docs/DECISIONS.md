@@ -435,3 +435,8 @@ A pedido del dueño (sección «Peso» del análisis `docs/research/analisis-ux-
 - **Capturas de la guía en HEIC** en lugar de JPG (calidad 70): mismas imágenes, 40 % menos peso.
 - **Se quitó código que nada usaba:** los dibujos de Atajos para iOS 27 que ya se reemplazaron con capturas reales, los restos del modelo de IA que se quitó el 2026-10-20 (`FactCheck`, `CategoryPick.prompt`/`examples`, `MerchantName.isFaithful`) y el catálogo del sistema de diseño en Release (solo vive en Debug, para el lienzo de Xcode).
 - **Build:** `DEAD_CODE_STRIPPING` encendido, y la CI baja el binario fijo de xcodegen en vez de instalarlo con Homebrew.
+
+## 2026-10-29 · Letra mínima de 12 en la app
+Aprobado por el dueño. Lo que lleva información no baja de 12 puntos: `caption`, `captionStrong` y `hint` (eran 11) y `micro` y `microStrong` (eran 10) pasan a 12. Sigue siendo «Noche ticket»: la misma tipografía y las mismas mayúsculas espaciadas en las etiquetas, solo más grandes. Todos crecen con Dynamic Type como antes.
+- **Los widgets quedan fuera por ahora:** su caja la fija el sistema, y su letra (de 8 a 11) no puede crecer sin rediseñar qué cabe en cada tamaño. Se trata aparte.
+

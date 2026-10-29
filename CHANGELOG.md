@@ -17,6 +17,7 @@
 
 ### Changed
 - **La pantalla principal va más rápida con historiales largos.** Se ve igual. Solo lee el mes que estás viendo y hace sus cuentas una vez por cambio, no cada vez que deslizas un renglón o tecleas. La búsqueda responde al dejar de teclear un momento (0.2 s).
+- **Letra mínima de 12 puntos en la app:** encabezados, pistas, el día de cada grupo, las letras del calendario y las notas de la barra se leen mejor. Antes iban de 10 y 11.
 - **La pantalla vacía** ya no muestra un «$0.00» gigante: ofrece «Anotar un gasto», «Fijar presupuesto» y «Conectar Wallet».
 - **«En qué se va» en barra:** tocar una categoría filtra la lista, como ya pasaba en el mosaico.
 - **Al filtrar un día o una categoría** se ve cuánto suman: «Día 12 · 2 gastos · $310».

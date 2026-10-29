@@ -71,11 +71,11 @@ Se usa así: `.font(.ticket(.body))`. Nunca `.ticket(15, …)` ni `.font(.system
 | `.footnoteStrong` | 13 semibold | footnote | `Tracking.action` / `.title` | Títulos de barra, acciones en mayúsculas |
 | `.detail` | 12 regular | footnote | — | Notas bajo un campo, resúmenes |
 | `.label` | 12 semibold | footnote | `Tracking.label` | Etiquetas y botones compactos |
-| `.caption` | 11 regular | caption | `Tracking.caption` | Encabezados de sección (`ticketCaption()`) |
-| `.captionStrong` | 11 semibold | caption | `Tracking.caption` | Encabezado de la cifra héroe |
-| `.hint` | 11 regular | caption2 | `Tracking.detail` | Pistas (`HintText`), detalles de fila |
-| `.micro` | 10 regular | caption2 | — | Ejes, letras de la semana, total del día |
-| `.microStrong` | 10 semibold | caption2 | `Tracking.action` | Nombre del día en la lista |
+| `.caption` | 12 regular | caption | `Tracking.caption` | Encabezados de sección (`ticketCaption()`) |
+| `.captionStrong` | 12 semibold | caption | `Tracking.caption` | Encabezado de la cifra héroe |
+| `.hint` | 12 regular | caption2 | `Tracking.detail` | Pistas (`HintText`), detalles de fila |
+| `.micro` | 12 regular | caption2 | — | Ejes, letras de la semana, total del día |
+| `.microStrong` | 12 semibold | caption2 | `Tracking.action` | Nombre del día en la lista |
 
 Símbolos SF: `.font(Theme.Symbol.regular)` o `.font(Theme.Symbol.large)`.
 
