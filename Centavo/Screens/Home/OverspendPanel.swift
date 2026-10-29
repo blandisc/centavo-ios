@@ -71,7 +71,7 @@ struct OverspendPanel: View {
                     otherPaths
                     adjustButton
                 }
-                .transition(.opacity)
+                .transition(.unfold)
             }
         }
         .padding(Theme.Space.l)
@@ -85,7 +85,9 @@ struct OverspendPanel: View {
     /// The way to aim for: stop spending (or, the last day, how it closes).
     private var leadPath: some View {
         path(plan.daysAfterToday > 0 ? "Sin gastar más" : "Cierras",
-             detail: plan.daysAfterToday > 0 && plan.fixedToCome > 0 ? "solo los fijos que faltan" : nil,
+             // Why it is more than «de más» today: the fixed expenses still arrive.
+             detail: plan.daysAfterToday > 0 && plan.fixedToCome > 0
+                 ? "+ \(whole(plan.fixedToCome)) de fijos que faltan" : nil,
              closes: plan.stop.closesOver, leads: true)
     }
 

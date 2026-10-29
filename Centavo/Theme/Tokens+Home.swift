@@ -77,5 +77,18 @@ extension Theme.Motion {
     static let undoLongSeconds: Double = 15
     /// A panel folding or unfolding in place: slow enough to follow, no bounce.
     static let fold: Animation = .smooth(duration: 0.42)
+    /// What unfolds shows once there is room for it, so it never draws over what is moving
+    /// down below; folding, it goes first and the room closes after (owner, 2026-10-29).
+    static let revealIn: Animation = .easeOut(duration: 0.22).delay(0.2)
+    static let revealOut: Animation = .easeIn(duration: 0.12)
+}
+
+extension AnyTransition {
+    /// What a panel shows when it unfolds (`Theme.Motion.fold`): fades in after the room
+    /// opens, fades out before it closes. Use it for every fold, so they all move alike.
+    static var unfold: AnyTransition {
+        .asymmetric(insertion: .opacity.animation(Theme.Motion.revealIn),
+                    removal: .opacity.animation(Theme.Motion.revealOut))
+    }
 }
 

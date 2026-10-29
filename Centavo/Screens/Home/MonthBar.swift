@@ -62,7 +62,7 @@ struct MonthBar: View {
             }
 
             Button {
-                withAnimation(reduceMotion ? nil : Theme.Motion.toggle) { showsSum.toggle() }
+                withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
             } label: {
                 bar
             }
@@ -81,9 +81,11 @@ struct MonthBar: View {
 
 
             if showsSum {
+                // It unfolds in place, like «Para cerrar el mes»: the page grows and the sum fades
+                // in under the bar, no slide and no bounce (owner, 2026-10-29).
                 sum
                     .padding(.top, Theme.Space.s)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(.unfold)
             }
         }
         // Without the sentence the bar would sit flush under the figure.
@@ -235,8 +237,7 @@ struct MonthBar: View {
         .fixedSize()
     }
 
-    /// «Presupuesto $8,000», at the end of the bar it measures; past it, «· de más $366». The
-    /// chevron says the bar opens the sum behind the figures.
+    /// «Presupuesto $8,000», at the end of the bar it measures; past it, «· de más $366».
     private var budgetKeyText: Text {
         var text = Text("Presupuesto ").foregroundStyle(Theme.muted)
         text = text + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
@@ -244,15 +245,21 @@ struct MonthBar: View {
             text = text + Text(" · de más ").foregroundStyle(Theme.muted)
             text = text + Text(wholeMoney(pace.sum.remaining.magnitude)).foregroundStyle(Theme.danger)
         }
-        let chevron = Image(systemName: showsSum ? "chevron.up" : "chevron.down")
-        return text + Text(" ") + Text(chevron).foregroundStyle(Theme.faint)
+        return text
     }
 
     /// «Presupuesto $8,000», at the end of the bar it measures.
     private var budgetKey: some View {
-        budgetKeyText
-            .lineLimit(1)
-            .minimumScaleFactor(Theme.MinimumScale.figure)
+        HStack(spacing: Theme.Space.xs) {
+            budgetKeyText
+                .lineLimit(1)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
+            // Says the bar opens the sum; it turns with it instead of swapping.
+            Image(systemName: "chevron.down")
+                .foregroundStyle(Theme.faint)
+                .rotationEffect(.degrees(showsSum ? 180 : 0))
+                .accessibilityHidden(true)
+        }
     }
 
     /// The key's little square, the same shape as the bar's pieces.

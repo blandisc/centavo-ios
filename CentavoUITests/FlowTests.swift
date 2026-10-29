@@ -930,6 +930,25 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("último pago"), "Dice: \(health.label)")
     }
 
+    /// Tapping the bar unfolds the sum in place and tapping again folds it (2026-10-29).
+    func testLaCuentaSeAbreYSeCierraAlTocarLaBarra() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-demo", "-monthlyBudget", "2000", "-planCerradoMes", "2026-10"]
+        app.launch()
+        let bar = require(app.buttons["barra-del-mes"], "No hay barra del presupuesto", timeout: 20)
+        sleep(2)
+        bar.tap()
+        require(app.descendants(matching: .any)["la-cuenta"], "La barra no abrió la cuenta")
+        sleep(2)
+        snap("cuenta-abierta")
+        bar.tap()
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                             object: app.descendants(matching: .any)["la-cuenta"])
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 3), .completed, "La cuenta no se cerró")
+        sleep(1)
+    }
+
     func testSinPagosDeWalletInvitaAConfigurarYAbreLaGuia() {
         let app = launch(budget: true, extra: ["-centavo-demo-large"])
         let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
