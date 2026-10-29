@@ -38,6 +38,26 @@ enum MonthStatus {
         return left + (pace.isOverToday ? " Hoy ya te pasaste por \(today)." : " Hoy puedes gastar \(today).")
     }
 
+    /// «¿Cuánto puedo gastar hoy?»: "Hoy puedes gastar $290." The screen's big figure, out loud,
+    /// with nothing else; "Hoy ya te pasaste por $120." or "Te pasaste del presupuesto por
+    /// $230.00." past it, and how to get there with no budget.
+    static func todaySentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
+                              primary: String = primaryCurrency) throws -> String {
+        let rows = try monthRows(in: context, now: now)
+        let summary = MonthSummarizer.summarize(rows.map(\.asAmount), inMonthOf: now, primary: primary)
+        let originals = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.repeatsMonthly == true }))
+        guard let pace = TodayBudget.pace(budget: budget, rows: rows, originals: originals, plans: FixedPlan.saved,
+                                          primary: primary, month: now, now: now) else {
+            return "Aún no tienes presupuesto. Fíjalo en Al día para saber cuánto puedes gastar cada día."
+        }
+        if pace.remaining < 0 {
+            return "Te pasaste del presupuesto por \(money(pace.remaining.magnitude, summary.primary))."
+        }
+        let today = pace.dailyAllowance.magnitude.formatted(currencyStyle(summary.primary.isoCode ?? primary)
+                                                             .precision(.fractionLength(0)))
+        return pace.isOverToday ? "Hoy ya te pasaste por \(today)." : "Hoy puedes gastar \(today)."
+    }
+
     /// "Llevas $2,366.00 este mes, más USD 24.99 aparte. Te quedan $5,634.00 del presupuesto. Hoy…"
     static func totalSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
                               primary: String = primaryCurrency) throws -> String {

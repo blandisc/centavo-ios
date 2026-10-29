@@ -26,6 +26,8 @@ struct QuickExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // On the widgets before returning: Siri may suspend the app right after.
+        defer { WidgetBridge.refreshAfterIntent() }
         let context = container.mainContext
         try? RecurringExpenses.logDue(in: context)
         let sources = UserCatalog.decode(UserDefaults.standard.string(forKey: UserCatalog.sourcesKey) ?? "")

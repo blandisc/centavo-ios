@@ -14,38 +14,83 @@ struct HoyView: View {
 
     var body: some View {
         Group {
-            if family == .systemMedium { medium } else { small }
+            if state.isNeverOpened {
+                neverOpened
+            } else if family == .systemMedium {
+                medium
+            } else {
+                small
+            }
         }
-        .widgetURL(state.pace == nil ? .setBudget : nil)
+        .widgetURL(state.tapURL)
     }
+
+    /// One sentence for VoiceOver over what the widget shows; the «+» and «Fijar presupuesto»
+    /// stay buttons of their own.
+    private var spoken: String { entry.spoken(state, money) }
 
     private var figureColor: Color {
         switch state {
-        case .noBudget: ink.primary
+        case .neverOpened, .noBudget: ink.primary
         case .overBudget, .overToday: ink.danger
         case .normal: ink.brass
         }
+    }
+
+    // MARK: Never opened
+
+    /// Before the app ever wrote to the widgets: no numbers, just what to do. A tap opens the app.
+    private var neverOpened: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+            Caption(text: state.caption, color: ink.muted)
+            Spacer(minLength: Theme.Space.xs)
+            NeverOpenedBox(ink: ink, subtitle: true)
+            Spacer(minLength: Theme.Space.none)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
     }
 
     // MARK: Small
 
     private var small: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+            // VoiceOver reads the caption as the whole widget in one sentence, then the «+».
             Caption(text: state.caption, color: ink.muted)
-            Figure(text: money.whole(state.figure), color: figureColor)
-            Verdict(state: state, money: money, ink: ink)
+                .accessibilityLabel(spoken)
+            // The «+» beside the figure: the corner that opens «Anotar gasto». The rest of the
+            // widget still opens the app (or the budget sheet) as before.
+            HStack(alignment: .center, spacing: Theme.Space.xxs) {
+                Figure(text: money.whole(state.figure), color: figureColor)
+                    .accessibilityHidden(true)
+                Spacer(minLength: Theme.Space.none)
+                AddButton(ink: ink, compact: true)
+            }
+            Group {
+                if let note = entry.staleNote {
+                    StaleNote(text: note, ink: ink)
+                } else {
+                    Verdict(state: state, money: money, ink: ink)
+                }
+            }
+            .accessibilityHidden(true)
             Spacer(minLength: Theme.Space.xs)
             if let pace = state.pace {
-                MonthStrip(pace: pace, ink: ink)
-                // Only «Llevas $X» under the bar, in full (the budget is in the medium one).
-                keyText("Llevas", money.whole(pace.spent), ink: ink)
-                    .font(.widget(.spent))
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-                    .minimumScaleFactor(Theme.MinimumScale.widgetLabel)
-                    .padding(.top, Theme.Space.xs)
+                Group {
+                    MonthStrip(pace: pace, ink: ink)
+                    // Only «Llevas $X» under the bar, in full (the budget is in the medium one).
+                    keyText("Llevas", money.whole(pace.spent), ink: ink)
+                        .font(.widget(.spent))
+                        .textCase(.uppercase)
+                        .lineLimit(1)
+                        .minimumScaleFactor(Theme.MinimumScale.widgetLabel)
+                        .padding(.top, Theme.Space.xs)
+                }
+                .accessibilityHidden(true)
             } else {
                 SetBudgetBox(ink: ink)
+                    .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -57,29 +102,40 @@ struct HoyView: View {
         VStack(alignment: .leading, spacing: Theme.Space.none) {
             HStack(alignment: .top, spacing: Theme.Space.s) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    // VoiceOver reads the caption as the whole widget in one sentence.
                     Caption(text: state.caption, color: ink.muted)
+                        .accessibilityLabel(spoken)
                     HStack(alignment: .lastTextBaseline, spacing: Theme.Space.s) {
                         Figure(text: money.whole(state.figure), color: figureColor, style: .figureLarge)
                         if case .overBudget = state {
                             Verdict(state: state, money: money, ink: ink).fixedSize()
                         }
                     }
+                    .accessibilityHidden(true)
+                    if let note = entry.staleNote {
+                        StaleNote(text: note, ink: ink)
+                            .accessibilityHidden(true)
+                    }
                 }
                 Spacer(minLength: Theme.Space.xxs)
-                if state.pace != nil, !isOverBudget {
+                if state.pace != nil, !isOverBudget, entry.staleNote == nil {
                     Verdict(state: state, money: money, ink: ink, twoLines: true)
                         .padding(.top, Theme.Space.xxxs)
+                        .accessibilityHidden(true)
                 }
                 AddButton(ink: ink)
             }
             Spacer(minLength: Theme.Space.xs)
             if let pace = state.pace {
-                if !pace.isOverBudget {
-                    annotation(pace)
+                Group {
+                    if !pace.isOverBudget {
+                        annotation(pace)
+                    }
+                    MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripTall, tiles: true)
+                    keys(pace)
+                        .padding(.top, Theme.Space.xs)
                 }
-                MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripTall, tiles: true)
-                keys(pace)
-                    .padding(.top, Theme.Space.xs)
+                .accessibilityHidden(true)
             } else {
                 Link(destination: .setBudget) { SetBudgetBox(ink: ink, subtitle: true) }
             }
@@ -146,18 +202,35 @@ struct WhereItGoesView: View {
     private var slices: [WidgetSnapshot.Slice] { entry.month?.slices ?? [] }
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.ml) {
-            today
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            Rectangle()
-                .fill(.clear)
-                .frame(width: Theme.Size.widgetDivider)
-                .overlay(Rectangle().stroke(ink.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
-                                                                             dash: Theme.Dash.perforation)))
-            whereItGoes
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        if state.isNeverOpened {
+            // Nothing to split yet: the same «Abre Al día una vez» as the other layout.
+            HoyView(entry: entry)
+        } else {
+            HStack(alignment: .top, spacing: Theme.Space.ml) {
+                today
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                Rectangle()
+                    .fill(.clear)
+                    .frame(width: Theme.Size.widgetDivider)
+                    .overlay(Rectangle().stroke(ink.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                                 dash: Theme.Dash.perforation)))
+                whereItGoes
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            .widgetURL(state.tapURL)
+            // No buttons here: VoiceOver reads it all as one sentence.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
         }
-        .widgetURL(state.pace == nil ? .setBudget : nil)
+    }
+
+    /// «Hoy puedes gastar $290. En qué se va: Comida $2,450, Despensa $1,980 y Otras $2,390».
+    private var spoken: String {
+        let total = slices.reduce(Decimal(0)) { $0 + $1.amount }
+        guard !slices.isEmpty, total > 0 else { return entry.spoken(state, money) }
+        let parts = slices.map { "\($0.isRest ? "Otras" : $0.name ?? "Sin categoría") \(money.whole($0.amount))" }
+        return entry.spoken(state, money) + ". En qué se va: " + parts.formatted(.list(type: .and)
+            .locale(Locale(identifier: "es_MX")))
     }
 
     private var today: some View {
@@ -165,7 +238,11 @@ struct WhereItGoesView: View {
             Caption(text: state.caption, color: ink.muted)
             Figure(text: money.whole(state.figure),
                    color: state.pace == nil ? ink.primary : state.isBad ? ink.danger : ink.brass, style: .figureCompact)
-            Verdict(state: state, money: money, ink: ink)
+            if let note = entry.staleNote {
+                StaleNote(text: note, ink: ink)
+            } else {
+                Verdict(state: state, money: money, ink: ink)
+            }
             Spacer(minLength: Theme.Space.xxs)
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink)

@@ -66,7 +66,13 @@ struct DayProvider: TimelineProvider {
         let now = self.now
         let today = calendar.startOfDay(for: now)
         let midnights = (1...2).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
-        let entries = [DayEntry(date: now, snapshot: snapshot)] + midnights.map { DayEntry(date: $0, snapshot: snapshot) }
+        // The moment it turns a day old, so «Actualizado hace 1 día» shows up on time.
+        let last = midnights.last ?? now
+        let stale = [snapshot?.takenAt.addingTimeInterval(WidgetSnapshot.freshFor)]
+            .compactMap { $0 }
+            .filter { $0 > now && $0 < last }
+        let moments = (midnights + stale).sorted()
+        let entries = [DayEntry(date: now, snapshot: snapshot)] + moments.map { DayEntry(date: $0, snapshot: snapshot) }
         return Timeline(entries: entries, policy: .atEnd)
     }
 }

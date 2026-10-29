@@ -4,6 +4,9 @@ import WidgetKit
 
 /// Where the month stands, as every widget tells it (the same four cases as the app).
 enum DayState {
+    /// The app never wrote a snapshot (never opened, or no App Group nor shared Keychain): there
+    /// is nothing to show, and «Sin presupuesto» would be a lie.
+    case neverOpened
     /// No budget: the month's total and today's, and an invitation to set one.
     case noBudget(spent: Decimal, today: Decimal)
     /// The month went past its budget: «Te pasaste $430».
@@ -14,7 +17,9 @@ enum DayState {
 
     init(_ entry: DayEntry) {
         let month = entry.month
-        if let pace = entry.pace {
+        if entry.snapshot == nil {
+            self = .neverOpened
+        } else if let pace = entry.pace {
             self = pace.isOverBudget ? .overBudget(pace) : pace.isOverToday ? .overToday(pace) : .normal(pace)
         } else {
             self = .noBudget(spent: month?.spent ?? 0, today: month?.spentToday ?? 0)
@@ -23,14 +28,37 @@ enum DayState {
 
     var pace: BudgetPace? {
         switch self {
-        case .noBudget: nil
+        case .neverOpened, .noBudget: nil
         case .overBudget(let pace), .overToday(let pace), .normal(let pace): pace
+        }
+    }
+
+    /// Where a tap on the whole widget goes: the budget sheet without a budget, else the app.
+    var tapURL: URL? {
+        if case .noBudget = self { return .setBudget }
+        return nil
+    }
+
+    var isNeverOpened: Bool {
+        if case .neverOpened = self { return true }
+        return false
+    }
+
+    /// The widget in one sentence, for VoiceOver: the lock screen and the home screen alike.
+    func spoken(_ money: Money) -> String {
+        switch self {
+        case .neverOpened: "Abre Al día una vez para ver cuánto puedes gastar hoy"
+        case .noBudget(let spent, let today): "Llevas \(money.whole(spent)) este mes, hoy \(money.whole(today))"
+        case .overBudget: "Te pasaste del presupuesto por \(money.whole(figure))"
+        case .overToday: "Hoy te pasaste por \(money.whole(figure))"
+        case .normal: "Hoy puedes gastar \(money.whole(figure))"
         }
     }
 
     /// The caption over the big figure.
     var caption: String {
         switch self {
+        case .neverOpened: "Al día"
         case .noBudget: "Llevas en " + Date.now.formatted(.dateTime.month(.wide).locale(Locale(identifier: "es_MX")))
         case .overBudget: "Te pasaste"
         case .overToday: "Hoy te pasaste"
@@ -41,6 +69,7 @@ enum DayState {
     /// The big figure's amount, always positive: the caption says which way it goes.
     var figure: Decimal {
         switch self {
+        case .neverOpened: 0
         case .noBudget(let spent, _): spent
         case .overBudget(let pace): pace.remaining.magnitude
         case .overToday(let pace), .normal(let pace): pace.dailyAllowance.magnitude
@@ -139,6 +168,8 @@ struct Verdict: View {
     private var content: Text? {
         let tail = twoLines ? "\ndel ritmo" : ""
         switch state {
+        case .neverOpened:
+            return nil
         case .noBudget(_, let today):
             return Text("hoy \(money.whole(today))").foregroundStyle(ink.muted)
         case .overBudget:
@@ -228,18 +259,69 @@ func keyText(_ label: String, _ value: String, ink: Ink) -> Text {
 }
 
 /// The brass «+» that opens «Anotar gasto» in the app.
+///
+/// The medium one is a `Link`. A small widget has no links (only the tap on the whole widget),
+/// so its smaller «+» is a button that runs `OpenAddExpenseIntent`, which opens the app on the sheet.
 struct AddButton: View {
     let ink: Ink
+    var compact = false
+
     var body: some View {
-        Link(destination: URL(string: "centavo://anotar")!) {
-            Image(systemName: "plus")
-                .font(Theme.Symbol.widgetAdd)
-                .foregroundStyle(ink.onAdd)
-                .frame(width: Theme.Size.widgetAddButton, height: Theme.Size.widgetAddButton)
-                .background(ink.addBackground, in: Circle())
-                .widgetAccentable()
+        if compact {
+            Button(intent: OpenAddExpenseIntent()) { circle }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Anotar gasto")
+        } else {
+            Link(destination: .addExpense) { circle }
+                .accessibilityLabel("Anotar gasto")
         }
-        .accessibilityLabel("Anotar gasto")
+    }
+
+    private var circle: some View {
+        let side = compact ? Theme.Size.widgetAddButtonSmall : Theme.Size.widgetAddButton
+        return Image(systemName: "plus")
+            .font(compact ? Theme.Symbol.widgetAddSmall : Theme.Symbol.widgetAdd)
+            .foregroundStyle(ink.onAdd)
+            .frame(width: side, height: side)
+            .background(ink.addBackground, in: Circle())
+            .widgetAccentable()
+    }
+}
+
+/// «Actualizado hace 2 días»: the app has not written the widgets in a day or more.
+struct StaleNote: View {
+    let text: String
+    let ink: Ink
+
+    var body: some View {
+        Text(text)
+            .font(.widget(.verdict))
+            .foregroundStyle(ink.muted)
+            .lineLimit(1)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
+    }
+}
+
+extension DayEntry {
+    /// «Actualizado hace X», only once what the app left is a day old or more.
+    var staleNote: String? {
+        guard let days = snapshot?.daysOld(at: date) else { return nil }
+        return days == 1 ? "Actualizado hace 1 día" : "Actualizado hace \(days) días"
+    }
+
+    /// The widget in one sentence for VoiceOver, with how old it is when it is old.
+    func spoken(_ state: DayState, _ money: Money) -> String {
+        [state.spoken(money), staleNote].compactMap { $0 }.joined(separator: ". ")
+    }
+}
+
+/// «ABRE AL DÍA UNA VEZ»: the widget before the app ever wrote to it. A tap opens the app.
+struct NeverOpenedBox: View {
+    let ink: Ink
+    var subtitle = false
+
+    var body: some View {
+        TicketBox(title: "Abre Al día una vez", detail: subtitle ? "Para ver cuánto puedes gastar hoy" : nil, ink: ink)
     }
 }
 
@@ -249,10 +331,21 @@ struct SetBudgetBox: View {
     var subtitle = false
 
     var body: some View {
+        TicketBox(title: "Fijar presupuesto", detail: subtitle ? "Para ver cuánto te queda" : nil, ink: ink)
+    }
+}
+
+/// A brass caption in a dashed box, like the app's blank ticket, with an optional line under it.
+struct TicketBox: View {
+    let title: String
+    let detail: String?
+    let ink: Ink
+
+    var body: some View {
         VStack(spacing: Theme.Space.widgetCaptionGap) {
-            Caption(text: "Fijar presupuesto", color: ink.brass, style: subtitle ? .caption : .captionSmall)
-            if subtitle {
-                Caption(text: "Para ver cuánto te queda", color: ink.muted, style: .captionTiny)
+            Caption(text: title, color: ink.brass, style: detail != nil ? .caption : .captionSmall)
+            if let detail {
+                Caption(text: detail, color: ink.muted, style: .captionTiny)
             }
         }
         .padding(.horizontal, Theme.Space.xs)
@@ -268,4 +361,5 @@ struct SetBudgetBox: View {
 
 extension URL {
     static let setBudget = URL(string: "centavo://presupuesto")!
+    static let addExpense = URL(string: "centavo://anotar")!
 }
