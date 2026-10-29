@@ -50,67 +50,114 @@ struct CatalogSettingsView: View {
         })
     }
 
+    /// Cards that came with payments (Wallet names them) but were never set up here: they
+    /// show beside the saved ones, so the screen is never empty for someone using Wallet.
+    private var detectedCards: [String] {
+        var names: [String] = []
+        for expense in expenses {
+            guard let card = expense.card?.trimmingCharacters(in: .whitespaces), !card.isEmpty,
+                  !sources.contains(where: { UserCatalog.same($0.name, card) }),
+                  !names.contains(where: { UserCatalog.same($0, card) }) else { continue }
+            names.append(card)
+        }
+        return names
+    }
+
+    /// Every category in one place: yours first, then the usual ones and any other used.
+    private var allCategories: [(name: String, icon: String, isCustom: Bool)] {
+        categories.map { ($0.name, $0.icon, true) }
+            + others.map { ($0, CategoryStyle.icon(for: $0, custom: categories), false) }
+    }
+
+    private let columns = [GridItem(.adaptive(minimum: Theme.Size.catalogTile), spacing: Theme.Space.s)]
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(sources) { source in
-                        Button { editing = .source(source) } label: {
-                            row(source, isDefault: UserCatalog.same(source.name, defaultSource))
-                        }
-                        // No role: a destructive swipe would take the row out before the question.
-                        .swipeActions(edge: .trailing) {
-                            Button("Borrar", systemImage: "trash") { confirmingRemoval = .source(source) }
-                                .tint(Theme.danger)
-                        }
-                        .contextMenu {
-                            Button("Usar por defecto", systemImage: "star") { defaultSource = source.name }
-                            Button("Borrar", systemImage: "trash", role: .destructive) {
-                                confirmingRemoval = .source(source)
+                    LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                        ForEach(sources) { source in
+                            let isDefault = UserCatalog.same(source.name, defaultSource)
+                            Menu {
+                                if !isDefault {
+                                    Button("Usar por defecto", systemImage: "star") { defaultSource = source.name }
+                                }
+                                Button("Editar", systemImage: "pencil") { editing = .source(source) }
+                                Button("Borrar", systemImage: "trash", role: .destructive) {
+                                    confirmingRemoval = .source(source)
+                                }
+                            } label: {
+                                CatalogTile(name: source.name, icon: source.icon,
+                                            badge: isDefault ? "star.fill" : nil)
                             }
+                            .accessibilityLabel(isDefault ? "\(source.name), predeterminada" : source.name)
+                            .accessibilityIdentifier("fuente-\(source.name)")
                         }
+                        ForEach(detectedCards, id: \.self) { card in
+                            Menu {
+                                Button("Usar por defecto", systemImage: "star") {
+                                    save(LabeledIcon(name: card, icon: "creditcard"), replacing: nil)
+                                    defaultSource = card
+                                }
+                                Button("Elegir ícono", systemImage: "square.grid.2x2") {
+                                    editing = .source(LabeledIcon(name: card, icon: "creditcard"))
+                                }
+                            } label: {
+                                CatalogTile(name: card, icon: "creditcard", note: "De tus pagos")
+                            }
+                            .accessibilityLabel("\(card), llegó en tus pagos")
+                            .accessibilityIdentifier("fuente-\(card)")
+                        }
+                        Button { editing = .source(nil) } label: {
+                            CatalogTile(name: "Agregar", icon: "plus", isAction: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Agregar tarjeta o efectivo")
+                        .accessibilityIdentifier("agregar-fuente")
                     }
-                    addButton("Agregar tarjeta o efectivo", identifier: "agregar-fuente") {
-                        editing = .source(nil)
-                    }
+                    .padding(.vertical, Theme.Space.xs)
                 } header: {
                     Text("Cómo pagas").ticketCaption()
                 } footer: {
-                    NoteText(sources.isEmpty
-                             ? "Agrega tus tarjetas y el efectivo. La predeterminada ya viene elegida cuando anotas a mano."
-                             : "La de la estrella ya viene elegida cuando anotas a mano. Toca una para cambiarla, usarla por defecto o borrarla.")
+                    NoteText("La de la estrella ya viene elegida cuando anotas a mano. Las de tus pagos llegaron con Wallet; toca una para usarla por defecto o darle ícono.")
                 }
                 .listRowBackground(Theme.surface)
 
                 Section {
-                    ForEach(categories) { category in
-                        Button { editing = .category(category) } label: { row(category, isDefault: false) }
-                            .swipeActions(edge: .trailing) {
-                                Button("Borrar", systemImage: "trash") { confirmingRemoval = .category(category) }
-                                    .tint(Theme.danger)
+                    LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                        ForEach(allCategories, id: \.name) { item in
+                            let shown = shows(item.name)
+                            Menu {
+                                Button(shown.wrappedValue ? "Ocultar al anotar" : "Mostrar al anotar",
+                                       systemImage: shown.wrappedValue ? "eye.slash" : "eye") {
+                                    withAnimation(Theme.Motion.quick) { shown.wrappedValue.toggle() }
+                                }
+                                if item.isCustom, let custom = categories.first(where: { $0.name == item.name }) {
+                                    Button("Editar", systemImage: "pencil") { editing = .category(custom) }
+                                    Button("Borrar", systemImage: "trash", role: .destructive) {
+                                        confirmingRemoval = .category(custom)
+                                    }
+                                }
+                            } label: {
+                                CatalogTile(name: item.name, icon: item.icon,
+                                            badge: shown.wrappedValue ? nil : "eye.slash",
+                                            dimmed: !shown.wrappedValue)
                             }
-                    }
-                    addButton("Nueva categoría", identifier: "agregar-categoria") { editing = .category(nil) }
-                } header: {
-                    Text("Tus categorías").ticketCaption()
-                } footer: {
-                    NoteText("Toca una para cambiarla o borrarla; también puedes deslizarla a la izquierda. Borrar una no cambia los gastos que ya la tienen.")
-                }
-                .listRowBackground(Theme.surface)
-
-                Section {
-                    ForEach(others, id: \.self) { name in
-                        Toggle(isOn: shows(name)) {
-                            IconRow(name, systemImage: CategoryStyle.icon(for: name, custom: categories))
+                            .accessibilityLabel(shown.wrappedValue ? item.name : "\(item.name), oculta")
+                            .accessibilityIdentifier("mostrar-\(item.name)")
                         }
-                        .tint(Theme.brass)
-                        .frame(minHeight: Theme.Size.tapTarget)
-                        .accessibilityIdentifier("mostrar-\(name)")
+                        Button { editing = .category(nil) } label: {
+                            CatalogTile(name: "Nueva", icon: "plus", isAction: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Nueva categoría")
+                        .accessibilityIdentifier("agregar-categoria")
                     }
+                    .padding(.vertical, Theme.Space.xs)
                 } header: {
-                    Text("Categorías de siempre").ticketCaption()
+                    Text("Categorías").ticketCaption()
                 } footer: {
-                    NoteText("Apaga las que no uses y ya no saldrán al anotar. Los gastos que ya la tienen no cambian.")
+                    NoteText("Toca una para ocultarla al anotar, o para cambiar las tuyas. Los gastos que ya la tienen no cambian.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -213,25 +260,61 @@ struct CatalogSettingsView: View {
         storedSources = UserCatalog.encode(list)
         if UserCatalog.same(defaultSource, source.name) { defaultSource = list.first?.name ?? "" }
     }
+}
 
-    private func row(_ item: LabeledIcon, isDefault: Bool) -> some View {
-        IconRow(item.name, systemImage: item.icon) {
-            if isDefault {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(Theme.brass)
-                    .accessibilityLabel("Predeterminada")
+/// One card or category on «Tarjetas y categorías»: its icon over its name, in a small
+/// square tile, compact enough that a dozen fit without scrolling. A badge in the corner
+/// marks the default card (★) or a hidden category; a hidden one is dimmed.
+private struct CatalogTile: View {
+    let name: String
+    let icon: String
+    var note: String?
+    var badge: String?
+    var dimmed = false
+    var isAction = false
+
+    @ScaledMetric(relativeTo: .body) private var symbolBox = Theme.Size.categorySymbol
+
+    var body: some View {
+        VStack(spacing: Theme.Space.xxs) {
+            Image(systemName: icon)
+                .font(Theme.Symbol.regular)
+                .foregroundStyle(isAction ? Theme.brass : Theme.brass)
+                .frame(height: symbolBox)
+            Text(name)
+                .font(.ticket(.detail))
+                .foregroundStyle(isAction ? Theme.brass : Theme.ink)
+                // One word per tile: it shrinks a little rather than break («Suscripcione/s»).
+                .lineLimit(1)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
+            if let note {
+                Text(note)
+                    .font(.ticket(.micro))
+                    .foregroundStyle(Theme.faint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(Theme.MinimumScale.text)
             }
         }
-        .contentShape(Rectangle())
-    }
-
-    private func addButton(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: "plus")
-                .font(.ticket(.footnoteStrong))
-                .foregroundStyle(Theme.brass)
-                .frame(minHeight: Theme.Size.tapTarget)
+        .padding(Theme.Space.s)
+        .frame(maxWidth: .infinity, minHeight: Theme.Size.categoryTile)
+        .background(isAction ? Color.clear : Theme.raised,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.Radius.control)
+                .strokeBorder(isAction ? Theme.brassLow : Theme.hairline,
+                              style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                 dash: isAction ? Theme.Dash.ticket : []))
         }
-        .accessibilityIdentifier(identifier)
+        .overlay(alignment: .topTrailing) {
+            if let badge {
+                Image(systemName: badge)
+                    .font(.ticket(.micro))
+                    .foregroundStyle(badge == "star.fill" ? Theme.brass : Theme.faint)
+                    .padding(Theme.Space.xs)
+                    .accessibilityHidden(true)
+            }
+        }
+        .opacity(dimmed ? Theme.Opacity.unselected : Theme.Opacity.visible)
+        .contentShape(Rectangle())
     }
 }

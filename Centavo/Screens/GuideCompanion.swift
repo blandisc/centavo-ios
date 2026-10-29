@@ -1,5 +1,6 @@
 import AVFoundation
 import AVKit
+import os
 import SwiftUI
 
 /// The floating guide: the setup guide's pictures in a Picture in Picture window that stays
@@ -55,21 +56,38 @@ final class GuideCompanion: NSObject {
         show()
     }
 
-    /// Floats the window on the first picture of `step`, then opens `url` (Atajos) under it.
-    /// Without Picture in Picture it just opens `url`.
-    func float(from step: Int, thenOpen url: URL) {
+    private static let log = Logger(subsystem: "com.blandisc.centavo", category: "guia-flotante")
+
+    /// Floats the window on the first picture of `step`, then opens `url` (Atajos) under it;
+    /// with no `url` it only floats (a preview from the thumbnail). Atajos always opens: if the
+    /// window can't start, or the system never answers, it opens anyway (on the owner's iPhone
+    /// a start went unanswered and nothing opened, 2026-10-29).
+    func float(from step: Int, thenOpen url: URL?) {
         if let first = pages.firstIndex(where: { $0.step == step }) { index = first }
         show()
         prepareController()
         guard let controller, controller.isPictureInPicturePossible else {
-            UIApplication.shared.open(url)
+            Self.log.notice("No se puede flotar: posible=\(self.controller?.isPictureInPicturePossible ?? false)")
+            if let url { UIApplication.shared.open(url) }
             return
         }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback,
-                                                         options: [.mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback,
+                                                            options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            Self.log.error("Sesión de audio: \(error.localizedDescription)")
+        }
         openWhenFloating = url
         controller.startPictureInPicture()
+        guard url != nil else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Theme.Motion.companionFallback))
+            guard let self, let url = self.openWhenFloating else { return }
+            Self.log.notice("La ventana no arrancó a tiempo; se abre Atajos sin ella")
+            self.openWhenFloating = nil
+            await UIApplication.shared.open(url)
+        }
     }
 
     func stop() {
@@ -245,7 +263,9 @@ extension GuideCompanion: AVPictureInPictureControllerDelegate {
 
     nonisolated func pictureInPictureController(_ controller: AVPictureInPictureController,
                                                 failedToStartPictureInPictureWithError error: any Error) {
+        let message = error.localizedDescription
         MainActor.assumeIsolated {
+            Self.log.error("No arrancó: \(message)")
             if let url = openWhenFloating { UIApplication.shared.open(url) }
             openWhenFloating = nil
             endSession()

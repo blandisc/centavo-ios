@@ -257,6 +257,18 @@ struct ExpenseListView: View {
                         offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
                 }
                 if GuideDebug.opensAtLaunch { showingSetup = true }
+                #if DEBUG
+                // Screenshots of a sheet: `-centavo-abrir catalogos|fijos|ajustes`.
+                let args = ProcessInfo.processInfo.arguments
+                if let at = args.firstIndex(of: "-centavo-abrir"), at + 1 < args.count {
+                    switch args[at + 1] {
+                    case "catalogos": showingCatalogs = true
+                    case "fijos": showingFixed = true
+                    case "ajustes": showingSettings = true
+                    default: break
+                    }
+                }
+                #endif
                 guard !onboarded else { return }
                 // A reinstall or a new phone: the expenses are still coming from iCloud.
                 let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere

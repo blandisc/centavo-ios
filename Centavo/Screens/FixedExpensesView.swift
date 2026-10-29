@@ -12,7 +12,8 @@ struct FixedExpensesView: View {
     @Query(filter: #Predicate<Expense> { $0.isRepeat == true }) private var copies: [Expense]
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
-    @State private var adding = false
+    /// The new fixed expense being written, with the name of a suggestion if one was tapped.
+    @State private var adding: NewFixed?
     @State private var editing: Expense?
     /// A fixed expense about to stop or be deleted, waiting for the answer.
     @State private var confirming: FixedItem?
@@ -37,24 +38,34 @@ struct FixedExpensesView: View {
         FixedOutlook.reserved(originals: originals, plans: FixedPlan.decode(storedPlans), primary: primary)
     }
 
+    private struct NewFixed: Identifiable {
+        let name: String
+        var id: String { name }
+    }
+
+    /// Common fixed expenses, one tap each, not already there.
+    private var suggestions: [String] {
+        ["Renta", "Luz", "Internet", "Celular", "Netflix", "Spotify", "Gimnasio", "Agua", "Gas"]
+            .filter { name in !items.contains { UserCatalog.same($0.name, name) } }
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    HStack {
-                        summaryFigure("Ya llegaron", money(arrived, primary))
-                        Spacer()
-                        summaryFigure("Faltan", money(coming, primary), brass: true)
-                    }
-                    .frame(minHeight: Theme.Size.tapTarget)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("fijos-resumen")
-                } header: {
-                    Text("Este mes").ticketCaption()
-                } footer: {
-                    NoteText("Lo que falta ya se aparta de «Hoy puedes gastar», y cada uno se anota solo el día que llega.")
+                    explainer
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                 }
-                .listRowBackground(Theme.surface)
+
+                if !items.isEmpty {
+                    Section {
+                        monthSummary
+                    } header: {
+                        Text("Este mes").ticketCaption()
+                    }
+                    .listRowBackground(Theme.surface)
+                }
 
                 Section {
                     ForEach(items) { item in
@@ -71,7 +82,7 @@ struct FixedExpensesView: View {
                                 }
                             }
                     }
-                    Button { adding = true } label: {
+                    Button { adding = NewFixed(name: "") } label: {
                         Label("Agregar gasto fijo", systemImage: "plus")
                             .font(.ticket(.footnoteStrong))
                             .foregroundStyle(Theme.brass)
@@ -81,11 +92,21 @@ struct FixedExpensesView: View {
                 } header: {
                     Text("Tus gastos fijos").ticketCaption()
                 } footer: {
-                    NoteText(items.isEmpty
-                             ? "La renta, la limpieza de cada lunes, Netflix: anótalos una vez y se anotan solos el día que llegan."
-                             : "Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
+                    if !items.isEmpty {
+                        NoteText("Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
+                    }
                 }
                 .listRowBackground(Theme.surface)
+
+                if !suggestions.isEmpty {
+                    Section {
+                        suggestionChips
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    } header: {
+                        Text(items.isEmpty ? "Empieza con uno" : "¿Te falta alguno?").ticketCaption()
+                    }
+                }
             }
             .ticketForm()
             .navigationBarTitleDisplayMode(.inline)
@@ -112,7 +133,7 @@ struct FixedExpensesView: View {
                 Text(item.original != nil ? "Lo ya anotado se queda; los siguientes ya no llegan."
                      : "Todavía no se anota nada; ya no empezará.")
             }
-            .sheet(isPresented: $adding) { FixedPlanSheet() }
+            .sheet(item: $adding) { FixedPlanSheet(initialName: $0.name) }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
             .onAppear { try? RecurringExpenses.logDue(in: context) }
         }
@@ -146,6 +167,82 @@ struct FixedExpensesView: View {
         .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    /// What the screen is for, said once at the top: a new person did not know (owner, 2026-10-29).
+    private var explainer: some View {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            StepEmblem(systemImage: "repeat")
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("Lo que pagas siempre")
+                    .font(.ticket(.headline))
+                    .foregroundStyle(Theme.ink)
+                Text("La renta, la luz, tus suscripciones. Anótalos una vez: Al día los registra solos el día que toca y desde hoy los aparta de lo que puedes gastar.")
+                    .font(.ticket(.footnote))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, Theme.Space.s)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The month's fixed expenses as one bar: what already came (brass) and what is still to
+    /// come (dotted), the part «Hoy puedes gastar» already sets apart.
+    private var monthSummary: some View {
+        let total = arrived + coming
+        let share = total > 0 ? NSDecimalNumber(decimal: arrived / total).doubleValue : 0
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(money(total, primary))
+                    .font(.ticket(.heading))
+                    .foregroundStyle(Theme.ink)
+                Text("en fijos")
+                    .font(.ticket(.footnote))
+                    .foregroundStyle(Theme.muted)
+            }
+            GeometryReader { proxy in
+                HStack(spacing: Theme.Space.xxxs) {
+                    RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                        .fill(Theme.brass)
+                        .frame(width: proxy.size.width * share)
+                    RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                        .strokeBorder(Theme.brassLow, style: StrokeStyle(lineWidth: Theme.Stroke.emphasis,
+                                                                         dash: Theme.Dash.dotted))
+                }
+            }
+            .frame(height: Theme.Size.legendDot)
+            .accessibilityHidden(true)
+            HStack {
+                summaryFigure("Ya cobrado", money(arrived, primary))
+                Spacer()
+                summaryFigure("Por venir", money(coming, primary), brass: true)
+            }
+            NoteText("Lo que está por venir ya no cuenta en «Hoy puedes gastar».", color: Theme.faint)
+        }
+        .padding(.vertical, Theme.Space.s)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("fijos-resumen")
+    }
+
+    private var suggestionChips: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Space.s) {
+                ForEach(suggestions, id: \.self) { name in
+                    Button { adding = NewFixed(name: name) } label: {
+                        Label(name, systemImage: "plus")
+                            .font(.ticket(.footnote))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.horizontal, Theme.Space.m)
+                            .frame(minHeight: Theme.Size.tapTarget)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("sugerencia-fijo-\(name)")
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
     }
 
     private func summaryFigure(_ label: String, _ amount: String, brass: Bool = false) -> some View {
@@ -197,6 +294,11 @@ struct FixedPlanSheet: View {
     @State private var knownCategories: [String] = []
     @State private var knownCards: [String] = []
     @FocusState private var amountFocused: Bool
+
+    /// `initialName`: a suggestion tapped on «Gastos fijos» («Renta»), already written.
+    init(initialName: String = "") {
+        _merchant = State(initialValue: initialName)
+    }
 
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
     private var sources: [LabeledIcon] { UserCatalog.decode(storedSources) }

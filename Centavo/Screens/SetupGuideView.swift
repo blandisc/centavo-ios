@@ -153,13 +153,25 @@ struct SetupGuideView: View {
     private var launcher: some View {
         HStack(spacing: Theme.Space.m) {
             if GuideCompanion.isSupported {
-                CompanionLayerView(companion: companion)
-                    .frame(width: thumbWidth, height: thumbHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Theme.hairline)
-                    }
-                    .accessibilityHidden(true)
+                // Tapping the thumbnail floats it here, to see it before going to Atajos.
+                Button { companion.float(from: step, thenOpen: nil) } label: {
+                    CompanionLayerView(companion: companion)
+                        .frame(width: thumbWidth, height: thumbHeight)
+                        .overlay {
+                            Image(systemName: "play.fill")
+                                .font(Theme.Symbol.regular)
+                                .foregroundStyle(Theme.ink)
+                                .padding(Theme.Space.xs)
+                                .background(Theme.background.opacity(Theme.Opacity.paceAhead), in: Circle())
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Ver la guía flotante")
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Theme.hairline)
+                }
+                .accessibilityIdentifier("guia-ver-flotante")
             }
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 if GuideCompanion.isSupported {
