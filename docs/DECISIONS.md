@@ -394,3 +394,9 @@ Pendientes de la revisión del 2026-10-29 (`docs/research/analisis-ux-ui-tecnico
 ## 2026-10-29 · Captura más liviana
 - **Recordar la categoría de un comercio mira solo el último año** (máximo 2,000 gastos, los más nuevos primero). Antes cada pago de Wallet leía todo el historial, en segundo plano y con poco tiempo. Un comercio que no se usa desde hace más de un año empieza de cero; una categoría elegida como regla («Recordar mi categoría») sigue ganando.
 - **La reparación de nombres de bancos lee solo lo que llegó desde la última vez** (fecha guardada en `UserDefaults`). Si cambia la lista de tarjetas, lo vuelve a leer todo, porque una tarjeta nueva puede volver legible un renglón viejo.
+## 2026-10-29 · Peso de la app
+A pedido del dueño (sección «Peso» del análisis `docs/research/analisis-ux-ui-tecnico-2026-10-29.md`). Nada visible cambia.
+- **Tipografía recortada.** Las tres IBM Plex Mono (que viajan dos veces: en la app y en los widgets) solo llevan latín básico, Latin-1, Latin Extendido-A, acentos combinables, puntuación general («», —, …, •, ·), símbolos de moneda (U+20A0–20CF), flechas y los signos que usa el código (−, ✓, ⏩…). Pasan de 412 KB a 228 KB cada juego. Un carácter fuera de esa lista (por ejemplo, un comercio en griego o cirílico) se dibuja con la letra del sistema en lugar de Plex. Si algún día hace falta, se vuelve a generar desde las fuentes originales con `pyftsubset`.
+- **Capturas de la guía en HEIC** en lugar de JPG (calidad 70): mismas imágenes, 40 % menos peso.
+- **Se quitó código que nada usaba:** los dibujos de Atajos para iOS 27 que ya se reemplazaron con capturas reales, los restos del modelo de IA que se quitó el 2026-10-20 (`FactCheck`, `CategoryPick.prompt`/`examples`, `MerchantName.isFaithful`) y el catálogo del sistema de diseño en Release (solo vive en Debug, para el lienzo de Xcode).
+- **Build:** `DEAD_CODE_STRIPPING` encendido, y la CI baja el binario fijo de xcodegen en vez de instalarlo con Homebrew.

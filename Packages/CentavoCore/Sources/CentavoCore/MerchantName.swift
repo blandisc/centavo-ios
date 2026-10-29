@@ -45,36 +45,6 @@ public enum MerchantName {
         return result == trimmed ? nil : result
     }
 
-    /// Whether `candidate` only rewrites `original` (expands an abbreviation, adds accents,
-    /// splits glued words) instead of naming another place. What the model proposes is used
-    /// only when this holds: «Taq Guero» may become «Taquería El Güero», never «7-Eleven».
-    public static func isFaithful(_ candidate: String, to original: String) -> Bool {
-        let name = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, name.count <= 40 else { return false }
-        let mine = MerchantCatalog.tokens(original)
-        let theirs = MerchantCatalog.tokens(name).filter { !smallWords.contains($0) }
-        guard !theirs.isEmpty else { return false }
-        // No digits that were not there: a number is a fact, not a spelling.
-        let digits = theirs.filter { $0.contains(where: \.isNumber) }
-        guard digits.allSatisfy(mine.contains) else { return false }
-        // The processor, the city or «suc» are not the shop («Clip», «Merpago», «Suc»).
-        guard !theirs.contains(where: { processors.contains($0) || places.contains($0) || branchWords.contains($0) })
-        else { return false }
-        // Dropping a word is not a respelling: «Uber» is not «Uber Eats», «Taquilla» not «Taq Guero».
-        let plain = MerchantCatalog.tokens(readable(original) ?? original).filter { !smallWords.contains($0) }
-        let covered = plain.allSatisfy { word in
-            theirs.contains { $0 == word || $0.hasPrefix(word) } || theirs.joined().contains(word)
-        }
-        guard covered else { return false }
-        // Every word comes from the original, whole or as the start of it («taq» → «taqueria»)...
-        let everyWordKnown = theirs.allSatisfy { word in
-            mine.contains { $0 == word || ($0.count >= 3 && word.hasPrefix($0)) }
-        }
-        // ...or the letters are the original's, only split differently («esteticavale»).
-        let glued = theirs.joined()
-        return everyWordKnown || (glued.count >= 4 && mine.joined().contains(glued))
-    }
-
     /// Brands whose name Wallet mangles, as their own name. Longer first, so «Uber Eats» is
     /// not «Uber».
     static let brands: [(words: [String], name: String)] = [

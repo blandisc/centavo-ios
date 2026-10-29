@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Debug only: nothing in the shipped app shows it.
+#if DEBUG
 /// Every token and component of «Noche ticket» on one scrolling page, for the Xcode canvas.
 /// Not reachable from the app: it exists for its `#Preview`s and as a living reference
 /// (docs/DESIGN_SYSTEM.md). Add each new token or component here.
@@ -199,3 +201,5 @@ struct RecipeSheet: View {
 }
 
 #Preview("Receta de hoja") { RecipeSheet().ticketPreview() }
+
+#endif
