@@ -56,13 +56,37 @@ final class ExpenseRecorderTests: XCTestCase {
         try ExpenseRecorder.record(amountText: "MXN 20.00", merchant: "Oxxo Roble", card: "HSBC México",
                                    rawNotice: "HSBC México\nMXN 20.00\nOxxo Roble", in: context,
                                    renames: MerchantRenames(), now: now.addingTimeInterval(3_600))
-        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: []), 1)
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: [], defaults: nil), 1)
         let rows = try saved()
         XCTAssertEqual(rows[0].merchant, "La Docena")
         XCTAssertEqual(rows[0].card, "American Express México")
         XCTAssertEqual(rows[0].shownName, "La Docena")
         XCTAssertEqual(rows[1].merchant, "Oxxo Roble")
-        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: []), 0)
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: [], defaults: nil), 0)
+    }
+
+    /// The repair runs on every return to the app: after its first run it only reads what
+    /// came since, unless the list of cards changed.
+    func testTheRepairOnlyReadsWhatCameSinceItsLastRun() throws {
+        let suite = "repair-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let notice = "Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena"
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: [], defaults: defaults,
+                                                               now: now), 0)
+        // An old line written before the last run (as if left by an older version): not read again.
+        context.insert(Expense(amount: 1_060, currencyMarker: "MXN", merchant: "American Express México",
+                               date: now.addingTimeInterval(-3_600)))
+        let old = try XCTUnwrap(try saved().first)
+        old.rawNotice = notice
+        try context.save()
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: [], defaults: defaults,
+                                                               now: now.addingTimeInterval(60)), 0)
+        XCTAssertEqual(old.merchant, "American Express México")
+        // A new list of cards reads everything again.
+        XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: ["Amex"], defaults: defaults,
+                                                               now: now.addingTimeInterval(120)), 1)
+        XCTAssertEqual(old.merchant, "La Docena")
     }
 
     func testABlankMerchantBecomesSinComercio() throws {
@@ -214,6 +238,41 @@ final class ExpenseRecorderTests: XCTestCase {
         try record("$89.00", "OXXO")
         let capture = try XCTUnwrap(saved().last)
         XCTAssertEqual(capture.category, "Despensa")
+    }
+
+    /// «Borrar el último gasto» finds the newest one up to now, never a fixed one.
+    func testTheLastExpenseIsTheNewestThatIsNotFixed() throws {
+        try filed("Oxxo", nil, daysAgo: 2)
+        try filed("Starbucks", nil, daysAgo: 1)
+        let rent = Expense(amount: 9_000, currencyMarker: "$", merchant: "Renta", date: now.addingTimeInterval(-60))
+        rent.isRepeat = true
+        context.insert(rent)
+        context.insert(Expense(amount: 10, currencyMarker: "$", merchant: "Mañana", date: now.addingTimeInterval(86_400)))
+        try context.save()
+        XCTAssertEqual(try ExpenseRecorder.lastLogged(in: context, now: now)?.merchant, "Starbucks")
+    }
+
+    /// A category said to Siri is used as is, over the memory.
+    func testACategorySaidToSiriWins() throws {
+        try filed("Fonda Lupita", "Comida", daysAgo: 3)
+        _ = try ExpenseRecorder.recordByHand(amountText: "120", merchant: "Fonda Lupita", category: "Antojos",
+                                         in: context, primary: "MXN", rules: CategoryRules(), hidden: [], now: now)
+        XCTAssertEqual(try saved().last?.category, "Antojos")
+    }
+
+    /// The memory looks back a year: a merchant last filed before that starts over, while a
+    /// category chosen as a rule still wins.
+    func testTheMemoryLooksBackOneYearButARuleStillWins() throws {
+        try filed("Fonda Lupita", "Comida", daysAgo: 400)
+        try record("$89.00", "Fonda Lupita")
+        XCTAssertNil(try saved().last?.category, "Más de un año: no se recuerda")
+        try filed("Fonda Chabelita", "Comida", daysAgo: 300)
+        try record("$95.00", "Fonda Chabelita", at: now.addingTimeInterval(3_600))
+        XCTAssertEqual(try saved().last?.category, "Comida")
+        var rules = CategoryRules()
+        rules.learn("Antojos", for: "Fonda Lupita")
+        try record("$99.00", "Fonda Lupita", at: now.addingTimeInterval(7_200), rules: rules)
+        XCTAssertEqual(try saved().last?.category, "Antojos")
     }
 
     /// «Recordar mi categoría»: the owner's newest decision beats the newest expense.

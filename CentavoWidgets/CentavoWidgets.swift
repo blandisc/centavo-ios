@@ -9,6 +9,7 @@ struct CentavoWidgets: WidgetBundle {
     var body: some Widget {
         HoyWidget()
         HoyBloqueoWidget()
+        AddExpenseControl()
     }
 }
 

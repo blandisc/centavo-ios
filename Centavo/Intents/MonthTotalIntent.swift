@@ -13,6 +13,8 @@ struct MonthTotalIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // A fixed expense now due may have been saved: on the widgets before returning.
+        defer { WidgetBridge.refreshAfterIntent() }
         try? RecurringExpenses.logDue(in: container.mainContext)
         let sentence = try MonthStatus.totalSentence(in: container.mainContext,
                                                      budget: MonthStatus.savedBudget)

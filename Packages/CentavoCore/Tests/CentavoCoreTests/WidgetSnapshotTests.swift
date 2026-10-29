@@ -42,6 +42,15 @@ import Testing
         #expect(pace.dailyAllowance == 700)
     }
 
+    /// «Actualizado hace X» only once the app left it a day ago or more.
+    @Test func aSnapshotIsStaleOnlyAfterADay() {
+        #expect(snapshot.daysOld(at: Self.date(11, 1, hour: 23)) == nil)
+        #expect(snapshot.daysOld(at: Self.date(11, 2, hour: 19)) == nil)
+        #expect(snapshot.daysOld(at: Self.date(11, 2, hour: 20)) == 1)
+        #expect(snapshot.daysOld(at: Self.date(11, 4, hour: 21)) == 3)
+        #expect(snapshot.daysOld(at: Self.date(10, 30)) == nil)
+    }
+
     @Test func noBudgetNoPace() {
         var none = snapshot
         none.budget = nil

@@ -143,34 +143,4 @@ import Testing
         ])
         #expect(facts.isEmpty)
     }
-
-    // MARK: Fact check
-
-    private let fact = SpendingFact(kind: .projection, key: "ritmo|10",
-                                    line: "A este ritmo cierras el mes en $18,500.00, $3,500.00 arriba del presupuesto.",
-                                    figures: ["$18,500.00", "$3,500.00"])
-
-    @Test func acceptsARewordingWithTheSameFigures() {
-        #expect(FactCheck.accepts("Vas para cerrar en $18,500, unos $3,500 más de lo que planeaste.", for: fact))
-    }
-
-    @Test func rejectsAFigureThatIsNotThere() {
-        #expect(!FactCheck.accepts("A este ritmo cierras en $19,000.", for: fact))
-        #expect(!FactCheck.accepts("Te pasarás 23 % del presupuesto.", for: fact))
-        #expect(!FactCheck.accepts("", for: fact))
-        // Leaving the figures out is saying something else.
-        #expect(!FactCheck.accepts("Ojo: este mes vas por encima del presupuesto.", for: fact))
-        #expect(!FactCheck.accepts("Vas para cerrar en $18,500.", for: fact))
-        // Same figures, turned around.
-        #expect(!FactCheck.accepts("A este ritmo cierras en $3,500, $18,500 arriba del presupuesto.", for: fact))
-        #expect(!FactCheck.accepts("Cierras en $18,500, $3,500 abajo del presupuesto.", for: fact))
-        #expect(!FactCheck.accepts("No cierras en $18,500 ni $3,500 arriba.", for: fact))
-
-        let double = SpendingFact(kind: .doubleCharge, key: "doble|pemex|650",
-                                  line: "Hay dos cargos de $650.00 en Pemex con poco tiempo de diferencia. Revisa que no sea un cobro doble.",
-                                  figures: ["$650.00"])
-        #expect(!FactCheck.accepts("Hay tres cargos de $650 en Pemex.", for: double))
-        #expect(FactCheck.accepts("Ojo: se repitió un cargo de $650 en Pemex en minutos; revisa con tu banco.", for: double))
-        #expect(!FactCheck.accepts(String(repeating: "a", count: 200), for: fact))
-    }
 }

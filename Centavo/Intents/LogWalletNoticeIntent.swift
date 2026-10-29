@@ -37,6 +37,8 @@ struct LogWalletNoticeIntent: AppIntent {
     // every purchase (owner, 2026-10-22). The expense just appears in the list.
     func perform() async throws -> some IntentResult {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // On the widgets before returning: Atajos may suspend the app right after the payment.
+        defer { WidgetBridge.refreshAfterIntent() }
         let context = container.mainContext
         try? RecurringExpenses.logDue(in: context)
         // The subtitle goes after the amount, where the reader expects the concept.
