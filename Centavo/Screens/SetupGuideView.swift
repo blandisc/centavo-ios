@@ -33,11 +33,6 @@ struct SetupGuideView: View {
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
 
-    /// How far the dot row slides toward its side to look centered (see the welcome).
-    private var stepDotShift: CGFloat {
-        step < steps.count / 2 ? Theme.Size.pageDotShift : -Theme.Size.pageDotShift
-    }
-
     var body: some View {
         NavigationStack {
             TabView(selection: $step) {
@@ -80,9 +75,9 @@ struct SetupGuideView: View {
                     StepDots(current: step, of: steps.count)
                         // The «Paso X de 8» caption above each title carries the progress.
                         .accessibilityHidden(true)
-                        // The lit pill is wider than the dot, so centering the eight slots left
-                        // the current one off the middle (measured): shift it toward its side.
-                        .offset(x: stepDotShift)
+                        // Room inside the bar's glass: shifted toward a side, the last dot was
+                        // cut by the capsule's edge (owner, 2026-10-29).
+                        .padding(.horizontal, Theme.Space.s)
                     Spacer()
                     Button("Paso siguiente", systemImage: "chevron.right") {
                         withAnimation { step += 1 }
