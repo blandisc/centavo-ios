@@ -13,6 +13,8 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    # Drops code nothing calls from the binary.
+    DEAD_CODE_STRIPPING: YES
 targets:
   Centavo:
     type: application

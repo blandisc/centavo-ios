@@ -20,6 +20,7 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- **La app pesa menos, sin cambiar nada de lo que ves:** la tipografía solo lleva las letras latinas, los signos y los símbolos de moneda que usa (unos 370 KB menos entre la app y los widgets), las capturas de la guía pasan a HEIC (unos 220 KB menos) y se quitó código que ya nada usaba.
 - **«Deberías llevar»:** cuando ya llevas más de lo que irías gastando parejo, la nota sobre la barra dice «Deberías llevar $X» en vez de «Podrías llevar $X». También en el widget mediano y en VoiceOver.
 - **«Vas $X arriba/abajo del ritmo» solo sale donde dice algo nuevo.** Con «Acumular» se quita: «Hoy puedes gastar» ya es exactamente la distancia a la rayita, y la frase repetía o contradecía la barra. La barra sube a su lugar, sin hueco. Con «Repartir» la frase mide contra la rayita (la misma diferencia que ves en la barra, lo de hoy incluido) y se despliega bajo la cifra al elegir ese modo. En los widgets pequeños, con «Acumular», ese renglón dice «Podrías llevar $X» (o «Deberías»), la etiqueta que su barra no tenía. «Podrías llevar» es igual en los dos modos.
 - **Calendario:** la última fila ya no se corta. El aro de hoy y el del día elegido se ven completos aunque caigan en la última semana.
