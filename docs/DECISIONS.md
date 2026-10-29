@@ -440,3 +440,12 @@ A pedido del dueño (sección «Peso» del análisis `docs/research/analisis-ux-
 Aprobado por el dueño. Lo que lleva información no baja de 12 puntos: `caption`, `captionStrong` y `hint` (eran 11) y `micro` y `microStrong` (eran 10) pasan a 12. Sigue siendo «Noche ticket»: la misma tipografía y las mismas mayúsculas espaciadas en las etiquetas, solo más grandes. Todos crecen con Dynamic Type como antes.
 - **Los widgets quedan fuera por ahora:** su caja la fija el sistema, y su letra (de 8 a 11) no puede crecer sin rediseñar qué cabe en cada tamaño. Se trata aparte.
 
+## 2026-10-29 · Pulido: plan del mes, tarjetas y categorías, gastos fijos, guía flotante
+Pedidos del dueño.
+- **«Para cerrar el mes» es un solo panel que se pliega en su lugar:** el mismo título abierto y cerrado («Para cerrar el mes · 2 días más»), con una flecha que gira y, cerrado, una línea («Sin gastar más, cierras $X arriba»). Reemplaza la ✕ y la línea suelta «Ver cómo cerrar el mes». Cada camino muestra a la derecha la cifra con la que cierras («$866 / de más»).
+- **Tarjetas y categorías en mosaicos con menú**, en vez de una lista con interruptores:
+  - Las tarjetas que llegaron en los pagos y no están dadas de alta se muestran como «De tus pagos». Usarlas por defecto o darles ícono las da de alta.
+  - Una categoría oculta se ve tenue con un ojo tachado.
+- **Gastos fijos empieza explicando para qué sirve.** El resumen del mes (una barra de cobrado y por venir) solo sale si hay fijos, y se agregan sugerencias de un toque que abren la hoja con el nombre puesto.
+- **La guía flotante nunca deja a la persona sin Atajos:** si en 1.2 s la ventanita no arrancó (en el iPhone del dueño no abría nada), Atajos se abre sin ella. Queda una bitácora (`guia-flotante`) para saber por qué. Tocar la miniatura la muestra sin salir de la app.
+

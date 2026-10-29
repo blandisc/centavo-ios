@@ -8,8 +8,8 @@ import SwiftUI
 /// The first line is the one to aim for and reads in brass; the others are context. The last
 /// day of the month there is nothing left to choose, so only the closing line shows.
 ///
-/// It can be closed: then only one quiet line stays, to open it again. Closed is remembered
-/// for the rest of that month (a new month that goes over shows it again).
+/// It folds to its title and one line (the way to aim for), and unfolds in place. Folded is
+/// remembered for the rest of that month (a new month that goes over shows it open again).
 struct OverspendPanel: View {
     let plan: OverspendPlan
     let currency: String
@@ -23,7 +23,7 @@ struct OverspendPanel: View {
     private var isClosed: Bool { closedMonth == month }
 
     private func setClosed(_ closed: Bool) {
-        withAnimation(Theme.Motion.animation(Theme.Motion.toggle, reduceMotion: reduceMotion)) {
+        withAnimation(Theme.Motion.animation(Theme.Motion.restyle, reduceMotion: reduceMotion)) {
             closedMonth = closed ? month : ""
         }
     }
@@ -36,119 +36,125 @@ struct OverspendPanel: View {
         plan.daysAfterToday == 1 ? "1 día" : "\(plan.daysAfterToday) días"
     }
 
+    private var title: String {
+        plan.daysAfterToday > 0 ? "Para cerrar el mes · \(daysText) más" : "Hoy cierra el mes"
+    }
+
+    /// One panel that folds and unfolds in place: the same title open or closed, with the
+    /// first way (stop spending) as its summary when closed, and a chevron that turns.
     var body: some View {
-        if isClosed { reopen } else { panel }
-    }
-
-    /// The minimal view: one line that opens the plan again.
-    private var reopen: some View {
-        Button { setClosed(false) } label: {
-            HStack(spacing: Theme.Space.xs) {
-                Text("Ver cómo cerrar el mes")
-                Image(systemName: "chevron.down").accessibilityHidden(true)
-            }
-            .font(.ticket(.detail))
-            .foregroundStyle(Theme.muted)
-            .frame(minHeight: Theme.Size.tapTarget, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("abrir-plan")
-        .transition(.opacity)
-    }
-
-    private var panel: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(plan.daysAfterToday > 0 ? "Para cerrar el mes · \(daysText.lowercased()) más"
-                                             : "Hoy cierra el mes")
-                    .ticketCaption()
-                Spacer(minLength: Theme.Space.s)
-                Button("Cerrar", systemImage: "xmark") { setClosed(true) }
-                    .labelStyle(.iconOnly)
-                    .font(.ticket(.detail))
-                    .foregroundStyle(Theme.faint)
-                    .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
-                    .contentShape(Rectangle())
-                    .padding(.vertical, -Theme.Space.ml)
-                    .accessibilityIdentifier("cerrar-plan")
-            }
-            if plan.daysAfterToday > 0 {
-                VStack(spacing: Theme.Space.sm) {
-                    path("Sin gastar más", detail: plan.fixedToCome > 0 ? "solo los fijos que faltan" : nil,
-                         closes: plan.stop.closesOver, leads: true)
-                    Divider().overlay(Theme.hairline)
-                    // With fixed expenses eating the whole budget there was nothing a day:
-                    // the same as stopping, so it is not said twice.
-                    if plan.budgetRate.perDay > 0 {
-                        path("\(whole(plan.budgetRate.perDay)) al día", detail: "lo que tocaba por día",
-                             closes: plan.budgetRate.closesOver)
-                    }
-                    if plan.currentRate.perDay > 0 {
-                    path("\(whole(plan.currentRate.perDay)) al día", detail: "tu ritmo de este mes",
-                         closes: plan.currentRate.closesOver)
-                    }
+            Button { setClosed(!isClosed) } label: {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                    Text(title).ticketCaption()
+                    Spacer(minLength: Theme.Space.s)
+                    Image(systemName: "chevron.down")
+                        .font(.ticket(.detail))
+                        .foregroundStyle(Theme.faint)
+                        .rotationEffect(.degrees(isClosed ? 0 : 180))
+                        .accessibilityHidden(true)
                 }
-            } else {
-                path("Cierras", detail: nil, closes: plan.stop.closesOver, leads: true)
-            }
-            Button(action: onAdjust) {
-                Label("Ajustar presupuesto", systemImage: "slider.horizontal.3")
-                    .font(.ticket(.footnoteStrong))
-                    .tracking(Theme.Tracking.action)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.brass)
-                    .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
-                    .contentShape(Rectangle())
+                .frame(minHeight: Theme.Size.compactRow)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("ajustar-presupuesto")
+            .accessibilityValue(isClosed ? "Cerrado" : "Abierto")
+            .accessibilityHint(isClosed ? "Muestra cómo cerrar el mes" : "Lo deja en una línea")
+            .accessibilityIdentifier(isClosed ? "abrir-plan" : "cerrar-plan")
+
+            if isClosed {
+                closedSummary
+                    .transition(.opacity)
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    paths
+                    adjustButton
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .padding(Theme.Space.l)
+        .padding(.horizontal, Theme.Space.l)
+        .padding(.vertical, isClosed ? Theme.Space.m : Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ticketPanel()
+        .clipped()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("para-cerrar-el-mes")
-        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    /// One way to spend the rest: what it is on the left, where the month closes on the right.
-    private func path(_ title: String, detail: String?, closes: Decimal, leads: Bool = false) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                label(title, detail: detail, leads: leads)
-                Spacer(minLength: Theme.Space.s)
-                closing(closes, leads: leads)
+    /// Closed: one line, the way to aim for.
+    private var closedSummary: some View {
+        (Text(plan.daysAfterToday > 0 ? "Sin gastar más, " : "").foregroundStyle(Theme.brass)
+            + Text("cierras ").foregroundStyle(Theme.muted)
+            + Text(whole(plan.stop.closesOver)).foregroundStyle(Theme.ink)
+            + Text(" arriba").foregroundStyle(Theme.muted))
+            .font(.ticket(.footnote))
+    }
+
+    @ViewBuilder private var paths: some View {
+        if plan.daysAfterToday > 0 {
+            VStack(spacing: Theme.Space.sm) {
+                path("Sin gastar más", detail: plan.fixedToCome > 0 ? "solo los fijos que faltan" : nil,
+                     closes: plan.stop.closesOver, leads: true)
+                Divider().overlay(Theme.hairline)
+                // With fixed expenses eating the whole budget there was nothing a day:
+                // the same as stopping, so it is not said twice.
+                if plan.budgetRate.perDay > 0 {
+                    path("\(whole(plan.budgetRate.perDay)) al día", detail: "lo que tocaba por día",
+                         closes: plan.budgetRate.closesOver)
+                }
+                if plan.currentRate.perDay > 0 {
+                    path("\(whole(plan.currentRate.perDay)) al día", detail: "tu ritmo de este mes",
+                         closes: plan.currentRate.closesOver)
+                }
             }
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                label(title, detail: detail, leads: leads)
-                closing(closes, leads: leads)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            path("Cierras", detail: nil, closes: plan.stop.closesOver, leads: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 
-    private func label(_ title: String, detail: String?, leads: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-            Text(title)
-                .font(.ticket(leads ? .bodyStrong : .body))
-                .foregroundStyle(leads ? Theme.brass : Theme.ink)
-            if let detail {
-                Text(detail)
+    private var adjustButton: some View {
+        Button(action: onAdjust) {
+            Label("Ajustar presupuesto", systemImage: "slider.horizontal.3")
+                .font(.ticket(.footnoteStrong))
+                .tracking(Theme.Tracking.action)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("ajustar-presupuesto")
+    }
+
+    /// One way to spend the rest: what it is on the left, how far over the month closes on the
+    /// right («$866 / de más»), the same shape on every line.
+    private func path(_ title: String, detail: String?, closes: Decimal, leads: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                Text(title)
+                    .font(.ticket(leads ? .bodyStrong : .body))
+                    .foregroundStyle(leads ? Theme.brass : Theme.ink)
+                if let detail {
+                    Text(detail)
+                        .font(.ticket(.detail))
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: Theme.Space.s)
+            VStack(alignment: .trailing, spacing: Theme.Space.xxxs) {
+                Text(whole(closes))
+                    .font(.ticket(.bodyStrong))
+                    .foregroundStyle(leads ? Theme.ink : Theme.danger)
+                    .monospacedDigit()
+                Text("de más")
                     .font(.ticket(.detail))
                     .foregroundStyle(Theme.muted)
             }
         }
-    }
-
-    private func closing(_ amount: Decimal, leads: Bool) -> some View {
-        (Text("cierras ").foregroundStyle(Theme.muted)
-            + Text(whole(amount)).foregroundStyle(leads ? Theme.ink : Theme.danger)
-            + Text(" arriba").foregroundStyle(Theme.muted))
-            .font(.ticket(.callout))
-            .monospacedDigit()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title)\(detail.map { ", \($0)" } ?? ""): cierras \(whole(closes)) arriba")
     }
 }
 

@@ -257,6 +257,7 @@ struct ExpenseListView: View {
                         offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
                 }
                 if GuideDebug.opensAtLaunch { showingSetup = true }
+                openRequestedSheet()
                 guard !onboarded else { return }
                 // A reinstall or a new phone: the expenses are still coming from iCloud.
                 let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere
@@ -792,6 +793,20 @@ private extension ExpenseListView {
         let date = Date(timeIntervalSinceReferenceDate: unreadDate)
         guard now.timeIntervalSince(date) < 2 * 24 * 3600 else { return nil }
         return lastCapture.map { date > $0 } ?? true ? unreadText : nil
+    }
+
+    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes`.
+    private func openRequestedSheet() {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        guard let at = args.firstIndex(of: "-centavo-abrir"), at + 1 < args.count else { return }
+        switch args[at + 1] {
+        case "catalogos": showingCatalogs = true
+        case "fijos": showingFixed = true
+        case "ajustes": showingSettings = true
+        default: break
+        }
+        #endif
     }
 
     /// Closes «Ajustes», then does what was asked from it: two sheets can't be up at once.

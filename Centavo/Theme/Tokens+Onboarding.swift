@@ -58,4 +58,6 @@ extension Theme.Motion {
 
     /// The floating guide: seconds each picture stays when it plays by itself.
     static let companionPage: Double = 8
+    /// Seconds to wait for the window before opening Atajos without it.
+    static let companionFallback: Double = 1.2
 }

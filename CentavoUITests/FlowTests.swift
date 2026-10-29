@@ -348,6 +348,8 @@ final class FlowTests: XCTestCase {
         let app = launch(demo: true)
         app.buttons["Más"].tap()
         require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
+        // The cards that came with payments show up without setting them up.
+        require(app.buttons["fuente-BBVA"], "No aparecen las tarjetas de los pagos")
 
         func create(_ add: String, _ name: String, icon: String) {
             require(app.buttons[add], "No se puede agregar").tap()
@@ -364,15 +366,11 @@ final class FlowTests: XCTestCase {
         create("agregar-fuente", "Nu", icon: "creditcard.fill")
         create("agregar-fuente", "Efectivo", icon: "banknote")
         create("agregar-categoria", "Mascotas", icon: "pawprint")
-        // «Usar por defecto» lives in the card's own sheet (2026-10-29), not in a hidden swipe.
-        let cashRow = require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Efectivo")).firstMatch,
-                              "No aparece el efectivo")
-        cashRow.tap()
-        let byDefault = require(app.switches["usar-por-defecto"], "No deja elegir la predeterminada")
-        turnOn(byDefault, "Usar por defecto")
-        app.buttons["guardar-nuevo"].tap()
-        require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@",
-                                                 "Efectivo", "Predeterminada")).firstMatch,
+        // Each card is a tile whose menu makes it the default (2026-10-29).
+        require(app.buttons["fuente-Efectivo"], "No aparece el efectivo").tap()
+        require(app.buttons["Usar por defecto"], "No deja elegir la predeterminada").tap()
+        require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS[c] %@",
+                                                 "Efectivo", "predeterminada")).firstMatch,
                 "La estrella no pasó al efectivo")
         snap("flujo-tarjetas-y-categorias")
         app.buttons["Listo"].tap()
@@ -607,11 +605,12 @@ final class FlowTests: XCTestCase {
         let app = launch()
         app.buttons["Más"].tap()
         require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
-        let cafe = app.switches["mostrar-Café"]
+        // A tile per category (2026-10-29); its menu hides it.
+        let cafe = app.buttons["mostrar-Café"]
         for _ in 0..<4 where !cafe.isHittable { app.swipeUp() }
-        require(cafe, "No se pueden ocultar las categorías de siempre")
+        require(cafe, "No se pueden ocultar las categorías de siempre").tap()
+        require(app.buttons["Ocultar al anotar"], "El menú no ofrece ocultarla").tap()
         snap("flujo-ocultar-categoria")
-        cafe.switches.firstMatch.tap()
         app.buttons["Listo"].tap()
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
