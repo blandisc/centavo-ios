@@ -396,6 +396,18 @@ Aprobado por el dueño, sobre el análisis del mismo día.
 - **Mantener presionado un gasto:** «Categoría» (cuenta como elección tuya y se recuerda para ese comercio) y «Anotar otra vez» (copia el monto, comercio, tarjeta y categoría con la fecha de hoy).
 
 
+## 2026-10-29 · Hoja del gasto: lo común primero
+Aprobado por Fernando (propuesta 8 del análisis `docs/research/analisis-ux-ui-tecnico-2026-10-29.md`, con las marcadas ⚠︎). Reemplaza los interruptores «Es una devolución» (2026-10-12) y «Cuenta para el presupuesto» (2026-10-23) y el selector segmentado MXN | USD | EUR (2026-10-16). Lo que hacen no cambia.
+- **Orden:** Monto → Comercio → Categoría → ¿Con qué pagaste?. Lo demás va en «Más detalles», cerrado por omisión, con su resumen en el renglón («Hoy · Gasto»). Se abre solo al editar un gasto que ya tiene algo ahí (devolución, «No cuenta», se repite, es copia de un fijo o tiene ubicación).
+- **La moneda es una cápsula «MXN ▾» junto al monto** (un `Menu` con MXN, USD y EUR, más la del gasto si llegó en otra). Se sigue guardando con su código ISO.
+- **«Tipo: Gasto / Devolución / No cuenta»** en un solo `Picker`, dentro de «Más detalles». Devolución = monto negativo; «No cuenta» = `countedAmount` 0 con su «Motivo» justo debajo. Un gasto ya guardado como devolución que no cuenta conserva su signo al editarlo.
+- **Comercio opcional con categoría:** con monto y categoría se puede guardar sin comercio, y el gasto se llama como la categoría («Despensa»). Sin categoría el comercio sigue siendo obligatorio («Falta el comercio»). Ese nombre no se aprende como comercio (ni renombre ni categoría recordada).
+- **Categorías:** primero la sugerida o la que ya tiene, luego las 5 más usadas (con poco historial, las de siempre), y «Ver todas» para el resto (`CategoryShortlist`, en `CentavoCore`).
+- **«Dilo en una frase» vive junto al monto** (ícono de globo). Si la frase no trae monto lo dice: «No encontré un monto en «…». Escríbelo arriba.»
+- **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.
+- **Origen de Wallet:** al pie de un gasto que llegó de Wallet, «Llegó de Wallet · 28 oct 14:32» y el texto del aviso tal como llegó.
+- **Rendimiento (R10):** la hoja ya no consulta todo el historial en vivo; lo lee una vez al abrir, y las sugerencias de comercio y la categoría recordada se recalculan solo al cambiar el comercio.
+- **También:** en «Tarjetas y categorías», «Usar por defecto» es un interruptor dentro de la hoja de la tarjeta (ya no un deslizar escondido) y borrar una tarjeta o categoría pregunta antes. En «Gastos fijos», «Dejar de repetir» y «Borrar» preguntan antes, y «Nuevo gasto fijo» tiene Categoría y Tarjeta opcionales (`FixedPlan.card`, opcional: los planes guardados antes se leen igual). VoiceOver lee los íconos con su nombre en español.
 ## 2026-10-29 · Widgets: «+» en el pequeño, una sola frase para VoiceOver, «Abre Al día una vez» y «Actualizado hace X»
 Pendientes de la revisión del 2026-10-29 (`docs/research/analisis-ux-ui-tecnico-2026-10-29.md`), aprobados por el dueño.
 - **El pequeño tiene «+»** junto a la cifra, más chico que el del mediano (`Theme.Size.widgetAddButtonSmall`). El pequeño no admite `Link`, así que es un botón con `OpenAddExpenseIntent`, que abre la app en «Anotar gasto». Tocar el resto del widget sigue igual: abre la app, o la hoja del presupuesto si no hay. La cifra se encoge un poco si no cabe junto al «+».

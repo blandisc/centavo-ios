@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- **Anotar sin comercio:** con el monto y la categoría ya se puede guardar; el gasto se llama como la categoría («Despensa»).
+- **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.
+- **«Llegó de Wallet · 28 oct 14:32»** al pie de un gasto que anotó la automatización, con el texto del aviso tal como llegó.
+- **«Nuevo gasto fijo» con categoría y tarjeta** (opcionales). La categoría empieza con la sugerida para el nombre.
 - **Te pasaste del mes: un plan para cerrarlo.**
   - La cifra grande dice cuánto te pasaste, en rojo.
   - Un panel «Para cerrar el mes» muestra tres caminos para los días que faltan: sin gastar más, lo que tocaba por día o tu ritmo de este mes. Cada uno dice con cuánto de más cerrarías, y abajo está «Ajustar presupuesto».
@@ -46,6 +50,10 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- **Hoja del gasto: lo común primero.** Monto, comercio, categoría y con qué pagaste, en ese orden. La moneda es una cápsula «MXN ▾» junto al monto, y «Dilo en una frase» un ícono a su lado; si la frase no trae monto, ahora lo dice. «Es una devolución» y «Cuenta para el presupuesto» se vuelven un solo «Tipo: Gasto / Devolución / No cuenta», dentro de «Más detalles» con la fecha y «Se repite» (se abre solo si el gasto ya tiene algo ahí). Las categorías muestran primero la sugerida y tus 5 más usadas; «Ver todas» abre el resto. La hoja ya no recorre todo tu historial con cada letra que escribes.
+- **Tarjetas y categorías:** «Usar por defecto» ahora es un interruptor dentro de la hoja de cada tarjeta, y borrar una tarjeta o una categoría pregunta antes. El texto de abajo ya no dice «Toca una para borrarla» (tocarla la edita).
+- **Gastos fijos:** «Dejar de repetir» y «Borrar» preguntan antes. En la hoja de un fijo, el botón dice «Dejar de repetir» (ya hay fijos semanales).
+- **VoiceOver** lee los íconos de categorías y tarjetas en español («Carrito») y no con su nombre técnico («cart»).
 - **Widgets al día después de cada pago:** se actualizan antes de que Atajos o Siri terminen, no un momento después. Antes, a veces quedaban un pago atrás.
 - **Widgets más claros:** si la app nunca se ha abierto dicen «Abre Al día una vez» (antes «Sin presupuesto»), y si llevan más de un día sin actualizarse dicen «Actualizado hace X». Con VoiceOver, cada widget de inicio se lee como una sola frase («Hoy puedes gastar $290»).
 - **Captura más ligera:** para recordar la categoría de un comercio, cada pago lee solo el último año, no todo el historial. La reparación de nombres de bancos ya no repasa todos los gastos cada vez que vuelves a la app. Las letras de la app se buscan una sola vez.

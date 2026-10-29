@@ -69,8 +69,33 @@ final class FlowTests: XCTestCase {
         merchantField.tap()
         merchantField.typeText(merchant)
         if refund {
-            turnOn(app.switches["devolucion"], "Es una devolución")
+            pickKind(app, "Devolución")
         }
+    }
+
+    /// «Más detalles» open: «Tipo», «Fecha» and «Se repite» are under it.
+    private func openDetails(_ app: XCUIApplication) {
+        let details = app.buttons["mas-detalles"]
+        for _ in 0..<6 where !isClear(details, app) { scrollForm(app) }
+        require(details, "No está «Más detalles»")
+        if !app.buttons["tipo"].exists { details.tap() }
+        require(app.buttons["tipo"], "«Más detalles» no se abrió")
+    }
+
+    /// «Tipo» in the expense sheet: «Gasto», «Devolución» or «No cuenta».
+    private func pickKind(_ app: XCUIApplication, _ kind: String) {
+        openDetails(app)
+        let picker = app.buttons["tipo"]
+        for _ in 0..<4 where !isClear(picker, app) { scrollForm(app) }
+        picker.tap()
+        require(app.buttons[kind], "«Tipo» no ofrece «\(kind)»").tap()
+    }
+
+    /// The currency next to the amount, a menu since 2026-10-29.
+    private func pickCurrency(_ app: XCUIApplication, _ code: String) {
+        for _ in 0..<4 where !app.buttons["moneda"].isHittable { app.swipeDown() }
+        require(app.buttons["moneda"], "No está la moneda junto al monto").tap()
+        require(app.buttons[code], "La moneda no ofrece \(code)").tap()
     }
 
     /// The row for a payment. The list is lazy, so a row off screen is not in the hierarchy
@@ -205,7 +230,7 @@ final class FlowTests: XCTestCase {
         expectTotal(app, "$50.00")
 
         fillExpense(app, amount: "20", merchant: "Steam")
-        app.buttons["USD"].tap()
+        pickCurrency(app, "USD")
         app.buttons["hoja-guardar"].tap()
         let others = require(app.staticTexts["otras-monedas"], "El gasto en USD no salió aparte")
         XCTAssertTrue(others.label.contains("USD 20.00"), "Otras monedas dice: \(others.label)")
@@ -228,7 +253,7 @@ final class FlowTests: XCTestCase {
 
         for (amount, merchant) in [("100", "Oxxo"), ("200", "Soriana")] {
             fillExpense(app, amount: amount, merchant: merchant)
-            app.buttons["MXN"].tap()
+            pickCurrency(app, "MXN")
             app.buttons["hoja-guardar"].tap()
         }
         require(app.buttons["sumar-en-moneda"], "No ofreció sumar en pesos")
@@ -282,8 +307,10 @@ final class FlowTests: XCTestCase {
 
         // Picking a suggested merchant closes the keyboard, so the categories are in view.
         XCTAssertEqual(app.keyboards.count, 0, "El teclado siguió tapando las categorías")
+        // The demo never used Comida: it waits behind «Ver todas».
         let food = app.buttons["categoria-Comida"]
-        food.tap()
+        if !food.exists { require(app.buttons["ver-todas-categorias"], "No ofrece «Ver todas»").tap() }
+        require(food, "No está Comida en «Ver todas»").tap()
         XCTAssertTrue(app.buttons["categoria-Comida"].isSelected, "No cambió de categoría con un toque")
         XCTAssertFalse(app.buttons["categoria-Despensa"].isSelected)
         app.buttons["hoja-guardar"].tap()
@@ -337,10 +364,16 @@ final class FlowTests: XCTestCase {
         create("agregar-fuente", "Nu", icon: "creditcard.fill")
         create("agregar-fuente", "Efectivo", icon: "banknote")
         create("agregar-categoria", "Mascotas", icon: "pawprint")
+        // «Usar por defecto» lives in the card's own sheet (2026-10-29), not in a hidden swipe.
         let cashRow = require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Efectivo")).firstMatch,
                               "No aparece el efectivo")
-        cashRow.swipeRight()
-        require(app.buttons["Predeterminada"], "No deja elegir la predeterminada").tap()
+        cashRow.tap()
+        let byDefault = require(app.switches["usar-por-defecto"], "No deja elegir la predeterminada")
+        turnOn(byDefault, "Usar por defecto")
+        app.buttons["guardar-nuevo"].tap()
+        require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@",
+                                                 "Efectivo", "Predeterminada")).firstMatch,
+                "La estrella no pasó al efectivo")
         snap("flujo-tarjetas-y-categorias")
         app.buttons["Listo"].tap()
 
@@ -362,6 +395,8 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(require(cash, "No ofrece el efectivo").isSelected,
                       "La predeterminada no vino elegida")
         let pets = app.buttons["categoria-Mascotas"]
+        // Not used yet, so it may wait behind «Ver todas».
+        if !pets.exists, app.buttons["ver-todas-categorias"].exists { app.buttons["ver-todas-categorias"].tap() }
         for _ in 0..<4 where !pets.isSelected {
             if !pets.isHittable { app.swipeDown() }
             require(pets, "No ofrece la categoría propia").tap()
@@ -420,6 +455,37 @@ final class FlowTests: XCTestCase {
         app.textFields["monto"].tap()
         app.textFields["monto"].typeAmount("10")
         XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled, "Dejó guardar sin comercio")
+    }
+
+    /// 2026-10-29: amount and category are enough; the expense is named after the category.
+    func testSinComercioPeroConCategoriaSeGuarda() {
+        let app = launch()
+        app.buttons["Anotar gasto"].tap()
+        let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
+        amount.tap()
+        amount.typeAmount("75")
+        // «Siguiente» over the number pad goes on to the merchant.
+        require(app.buttons["siguiente-teclado"], "No hay «Siguiente» sobre el teclado").tap()
+        XCTAssertTrue(app.textFields["comercio"].value(forKey: "hasKeyboardFocus") as? Bool ?? false,
+                      "«Siguiente» no pasó al comercio")
+        scrollForm(app)
+        require(app.buttons["categoria-Despensa"], "No hay categorías").tap()
+        XCTAssertTrue(app.buttons["hoja-guardar"].isEnabled, "No dejó guardar con categoría y sin comercio")
+        app.buttons["hoja-guardar"].tap()
+        require(row(app, containing: "Despensa"), "No se guardó con el nombre de la categoría")
+    }
+
+    /// A sentence with no amount says so instead of doing nothing.
+    func testUnaFraseSinMontoLoDice() {
+        let app = launch()
+        app.buttons["Anotar gasto"].tap()
+        require(app.textFields["monto"], "No abrió la hoja de gasto")
+        require(app.buttons["en-una-frase"], "No está «Dilo en una frase»").tap()
+        let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
+        sentence.tap()
+        sentence.typeText("tacos ayer")
+        app.alerts.buttons["Llenar"].tap()
+        require(app.staticTexts["frase-sin-monto"], "No dijo que faltaba el monto")
     }
 
     // MARK: Editar y borrar
@@ -494,7 +560,7 @@ final class FlowTests: XCTestCase {
     /// demasiado chico para su nombre y su monto) y ofrece ver sus gastos.
     func testMantenerPresionadoUnBloqueOfreceVerSusGastos() {
         let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
-        require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").press(forDuration: 1.2)
+        require(app.buttons["parte-Ropa"], "No hay bloque de Ropa").press(forDuration: 1.2)
         snap("flujo-mosaico-detalle")
         require(app.buttons["Ver sus gastos"], "No ofrece ver los gastos de la categoría").tap()
         require(app.buttons["ver-todo-el-mes"], "No filtró por la categoría")
@@ -503,7 +569,7 @@ final class FlowTests: XCTestCase {
 
     func testTocarUnaCategoriaMuestraSoloSusGastos() {
         let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
-        require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").tap()
+        require(app.buttons["parte-Ropa"], "No hay bloque de Ropa").tap()
         require(app.buttons["ver-todo-el-mes"], "No dice que está filtrado")
         require(row(app, containing: "Liverpool"), "No muestra el gasto de Ropa")
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Cinépolis'")).firstMatch.exists,
@@ -706,14 +772,16 @@ final class FlowTests: XCTestCase {
         fillExpense(app, amount: "999999999999.99", merchant: longName)
         app.buttons["hoja-guardar"].tap()
         fillExpense(app, amount: "20", merchant: "Steam")
-        app.buttons["USD"].tap()
+        pickCurrency(app, "USD")
         app.buttons["hoja-guardar"].tap()
         fillExpense(app, amount: "30", merchant: "Devolución", refund: true)
         app.buttons["hoja-guardar"].tap()
         snap("extremos-principal")
 
         let screen = app.windows.firstMatch.frame
-        for element in [app.staticTexts["total-mes"], row(app, containing: "Farmacia")] {
+        // Past the budget the hero says by how much («te-pasaste») instead of the total.
+        let hero = app.staticTexts["te-pasaste"].exists ? app.staticTexts["te-pasaste"] : app.staticTexts["total-mes"]
+        for element in [hero, row(app, containing: "Farmacia")] {
             XCTAssertTrue(element.exists)
             XCTAssertGreaterThanOrEqual(element.frame.minX, screen.minX - 1, "Se sale: \(element.frame)")
             XCTAssertLessThanOrEqual(element.frame.maxX, screen.maxX + 1, "Se sale: \(element.frame)")
@@ -729,10 +797,11 @@ final class FlowTests: XCTestCase {
     func testUnGastoFijoSeMarcaComoFijo() {
         let app = launch()
         fillExpense(app, amount: "8500", merchant: "Renta")
+        openDetails(app)
         let toggle = app.switches["se-repite"]
-        // «Cuenta para el presupuesto» sits above this switch, so it starts under
-        // «Guardar»: isHittable is true there, but the knob tap lands on Guardar
-        // and the sheet closes. Scroll until the save bar is clear of it.
+        // «Se repite» is under «Más detalles», so it can start under «Guardar»: isHittable is
+        // true there, but the knob tap lands on Guardar and the sheet closes. Scroll until the
+        // save bar is clear of it.
         for _ in 0..<8 where !isClear(toggle, app) { scrollForm(app) }
         require(toggle, "No ofrece repetir cada mes")
         turnOn(toggle, "Se repite cada mes")
@@ -782,13 +851,13 @@ final class FlowTests: XCTestCase {
         for _ in 0..<6 where !section.isHittable { app.swipeUp() }
         require(section, "No aparece «En qué se va»")
         let lines = section.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'categoria-'"))
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'parte-'"))
         XCTAssertGreaterThanOrEqual(lines.count, 2, "«En qué se va» no tiene renglones de categoría")
         let window = app.windows.firstMatch.frame
         let whole = try! NSRegularExpression(pattern: #"^(.+): \$[\d,]+\.\d{2}, \d+\s?% de lo gastado$"#)
         for index in 0..<lines.count {
             let line = lines.element(boundBy: index)
-            let name = String(line.identifier.dropFirst("categoria-".count))
+            let name = String(line.identifier.dropFirst("parte-".count))
             let label = line.label
             let match = whole.firstMatch(in: label, range: NSRange(label.startIndex..., in: label))
             XCTAssertNotNil(match, "Renglón sin monto completo: «\(label)»")
@@ -814,12 +883,12 @@ final class FlowTests: XCTestCase {
         for _ in 0..<6 where !section.isHittable { app.swipeUp() }
         require(section, "No aparece «En qué se va»")
         let tiles = section.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'categoria-'"))
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'parte-'"))
         XCTAssertGreaterThanOrEqual(tiles.count, 2, "El mosaico no tiene bloques de categoría")
         let window = app.windows.firstMatch.frame
         for index in 0..<tiles.count {
             let tile = tiles.element(boundBy: index)
-            let name = String(tile.identifier.dropFirst("categoria-".count))
+            let name = String(tile.identifier.dropFirst("parte-".count))
             XCTAssertTrue(tile.label.hasPrefix(name), "Bloque sin el nombre «\(name)»: «\(tile.label)»")
             XCTAssertTrue(tile.label.contains("$"), "Bloque sin monto: «\(tile.label)»")
             XCTAssertLessThanOrEqual(tile.frame.maxX, window.maxX + 0.5, "«\(name)» se sale de la pantalla")

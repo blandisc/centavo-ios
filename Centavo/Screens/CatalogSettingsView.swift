@@ -12,6 +12,8 @@ struct CatalogSettingsView: View {
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @Query private var expenses: [Expense]
     @State private var editing: Editing?
+    /// A card or category about to be deleted, waiting for «Borrar».
+    @State private var confirmingRemoval: Editing?
 
     private enum Editing: Identifiable {
         case source(LabeledIcon?), category(LabeledIcon?)
@@ -56,16 +58,16 @@ struct CatalogSettingsView: View {
                         Button { editing = .source(source) } label: {
                             row(source, isDefault: UserCatalog.same(source.name, defaultSource))
                         }
-                        .swipeActions(edge: .leading) {
-                            Button("Predeterminada", systemImage: "star") { defaultSource = source.name }
-                                .tint(Theme.brass)
-                        }
+                        // No role: a destructive swipe would take the row out before the question.
                         .swipeActions(edge: .trailing) {
-                            Button("Borrar", systemImage: "trash", role: .destructive) { remove(source) }
+                            Button("Borrar", systemImage: "trash") { confirmingRemoval = .source(source) }
+                                .tint(Theme.danger)
                         }
                         .contextMenu {
                             Button("Usar por defecto", systemImage: "star") { defaultSource = source.name }
-                            Button("Borrar", systemImage: "trash", role: .destructive) { remove(source) }
+                            Button("Borrar", systemImage: "trash", role: .destructive) {
+                                confirmingRemoval = .source(source)
+                            }
                         }
                     }
                     addButton("Agregar tarjeta o efectivo", identifier: "agregar-fuente") {
@@ -76,7 +78,7 @@ struct CatalogSettingsView: View {
                 } footer: {
                     NoteText(sources.isEmpty
                              ? "Agrega tus tarjetas y el efectivo. La predeterminada ya viene elegida cuando anotas a mano."
-                             : "La de la estrella ya viene elegida cuando anotas a mano: desliza a la derecha para cambiarla. Toca una para borrarla.")
+                             : "La de la estrella ya viene elegida cuando anotas a mano. Toca una para cambiarla, usarla por defecto o borrarla.")
                 }
                 .listRowBackground(Theme.surface)
 
@@ -84,9 +86,8 @@ struct CatalogSettingsView: View {
                     ForEach(categories) { category in
                         Button { editing = .category(category) } label: { row(category, isDefault: false) }
                             .swipeActions(edge: .trailing) {
-                                Button("Borrar", systemImage: "trash", role: .destructive) {
-                                    removeCategory(category)
-                                }
+                                Button("Borrar", systemImage: "trash") { confirmingRemoval = .category(category) }
+                                    .tint(Theme.danger)
                             }
                     }
                     addButton("Nueva categoría", identifier: "agregar-categoria") { editing = .category(nil) }
@@ -128,7 +129,10 @@ struct CatalogSettingsView: View {
                     LabeledIconSheet(title: source == nil ? "Nueva tarjeta" : "Editar tarjeta",
                                      prompt: "BBVA, Nu, Efectivo…", icons: UserCatalog.sourceIcons,
                                      taken: sources.map(\.name), initial: source,
-                                     onDelete: source.map { item in { remove(item) } }) { saved in
+                                     onDelete: source.map { item in { remove(item) } },
+                                     isDefault: source.map { UserCatalog.same($0.name, defaultSource) }
+                                        ?? sources.isEmpty,
+                                     onSetDefault: setDefault) { saved in
                         save(saved, replacing: source)
                     }
                 case .category(let category):
@@ -147,6 +151,40 @@ struct CatalogSettingsView: View {
                     }
                 }
             }
+            .confirmationDialog(confirmationTitle, isPresented: confirmingBinding, titleVisibility: .visible,
+                                presenting: confirmingRemoval) { item in
+                Button("Borrar", role: .destructive) {
+                    switch item {
+                    case .source(let source?): remove(source)
+                    case .category(let category?): removeCategory(category)
+                    default: break
+                    }
+                }
+                Button("Conservar", role: .cancel) {}
+            } message: { _ in
+                Text("Los gastos que ya la tienen no cambian.")
+            }
+        }
+    }
+
+    private var confirmationTitle: String {
+        switch confirmingRemoval {
+        case .source(let item?), .category(let item?): "¿Borrar «\(item.name)»?"
+        default: ""
+        }
+    }
+
+    private var confirmingBinding: Binding<Bool> {
+        Binding(get: { confirmingRemoval != nil }, set: { if !$0 { confirmingRemoval = nil } })
+    }
+
+    /// «Usar por defecto» in the card's sheet: on makes it the one already chosen; off on the
+    /// current one leaves none chosen.
+    private func setDefault(_ name: String, _ on: Bool) {
+        if on {
+            defaultSource = name
+        } else if UserCatalog.same(defaultSource, name) {
+            defaultSource = ""
         }
     }
 

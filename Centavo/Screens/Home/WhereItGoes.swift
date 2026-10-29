@@ -280,7 +280,7 @@ private struct ShareBarLine: View {
         .frame(minHeight: rowHeight)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("categoria-\(line.name)")
+        .accessibilityIdentifier("parte-\(line.name)")
     }
 }
 
@@ -390,7 +390,7 @@ private struct MosaicTileDress: ViewModifier {
             .accessibilityLabel(line.spoken(money))
             .accessibilityHint(isSelected ? "Muestra todo el mes" : "Muestra sus gastos")
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-            .accessibilityIdentifier("categoria-\(line.name)")
+            .accessibilityIdentifier("parte-\(line.name)")
     }
 }
 
