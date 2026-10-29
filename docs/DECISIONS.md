@@ -372,3 +372,10 @@ A pedido del dueño («un onboarding con las mejores prácticas, animaciones e i
 - **Guía flotante (picture in picture) en vez de video grabado.** Las imágenes se dibujan al momento con las capturas reales que ya usa la guía. Así no hay que grabar nada, no se queda vieja con cada iOS (se rehace con `GuideScreenshotsTests`) y no pesa. Esas tres eran las razones por las que el 2026-10-15 se descartó un video. ⏪ y ⏩ cambian de toque, y ▶︎ avanza solo cada 8 s.
 - **Requiere el modo en segundo plano «audio»,** que es el que Apple pide para picture in picture. La app no reproduce sonido y no interrumpe la música (`mixWithOthers`). El simulador no tiene picture in picture: se verifica en el iPhone.
 
+
+## 2026-10-29 · Peso de la app
+A pedido del dueño (sección «Peso» del análisis `docs/research/analisis-ux-ui-tecnico-2026-10-29.md`). Nada visible cambia.
+- **Tipografía recortada.** Las tres IBM Plex Mono (que viajan dos veces: en la app y en los widgets) solo llevan latín básico, Latin-1, Latin Extendido-A, acentos combinables, puntuación general («», —, …, •, ·), símbolos de moneda (U+20A0–20CF), flechas y los signos que usa el código (−, ✓, ⏩…). Pasan de 412 KB a 228 KB cada juego. Un carácter fuera de esa lista (por ejemplo, un comercio en griego o cirílico) se dibuja con la letra del sistema en lugar de Plex. Si algún día hace falta, se vuelve a generar desde las fuentes originales con `pyftsubset`.
+- **Capturas de la guía en HEIC** en lugar de JPG (calidad 70): mismas imágenes, 40 % menos peso.
+- **Se quitó código que nada usaba:** los dibujos de Atajos para iOS 27 que ya se reemplazaron con capturas reales, los restos del modelo de IA que se quitó el 2026-10-20 (`FactCheck`, `CategoryPick.prompt`/`examples`, `MerchantName.isFaithful`) y el catálogo del sistema de diseño en Release (solo vive en Debug, para el lienzo de Xcode).
+- **Build:** `DEAD_CODE_STRIPPING` encendido, y la CI baja el binario fijo de xcodegen en vez de instalarlo con Homebrew.
