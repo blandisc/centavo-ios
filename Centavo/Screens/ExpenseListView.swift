@@ -9,8 +9,14 @@ import UniformTypeIdentifiers
 /// The look is the approved "Noche ticket" (dark, brass, receipt type). The structure is
 /// Apple's: a real navigation bar and bottom bar (Liquid Glass on iOS 26), a `List` with
 /// swipe-to-delete, system menus and sheets.
+///
+/// This view is the frame (bars, sheets, what syncs); what scrolls is `HomeContent`, which asks
+/// the store for the month on screen only and works its numbers out in `HomeModel`, once per
+/// change instead of on every redraw.
 struct ExpenseListView: View {
-    @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
+    /// Every expense, by date only: how many there are, the newest and the oldest. Nothing
+    /// else of each row is read here, so a long history costs little.
+    @Query(HomeModel.dated) private var dated: [Expense]
     /// The newest payment the Wallet automation saved (only it keeps the raw text). Asked of
     /// the store, one row, instead of scanning every expense on each redraw.
     @Query(Self.latestCapture) private var latestCaptures: [Expense]
@@ -48,18 +54,14 @@ struct ExpenseListView: View {
     @State private var selectedDay: Int?
     /// The category tapped in «En qué se va»: the list shows only its expenses.
     @State private var selectedCategory: CategoryShare?
-    /// The expense row left open by a swipe, showing «Borrar».
-    @State private var openRow: AnyHashable?
+    /// The search, the row left open by a swipe and the screen's numbers, worked out once.
+    @State private var model = HomeModel()
     @AppStorage(UnreadNotice.textKey) private var unreadText = ""
     @AppStorage(UnreadNotice.dateKey) private var unreadDate = 0.0
     @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
     @State private var importMessage: String?
-    /// What is being searched, as typed or dictated: «uber de octubre arriba de 200».
-    @State private var searchText = ""
-    /// The category the on-device model took the search words to mean, when they matched
-    /// nothing as written («cafecitos» → «Café»).
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
@@ -80,9 +82,6 @@ struct ExpenseListView: View {
     /// Months are written the way the days of the list are, whatever the phone's language.
     static let mexico = Locale(identifier: "es_MX")
 
-    /// The fixed expenses' first charges, to know what is still to come this month.
-    private var fixedOriginals: [Expense] { expenses.filter { $0.repeatsMonthly == true } }
-
     /// Changes the currency the month adds up in. The budget is a bare number, and 8,000
     /// pesos must not quietly become 8,000 dollars, so it asks about it.
     private func setPrimary(_ code: String) {
@@ -93,212 +92,37 @@ struct ExpenseListView: View {
     }
 
     var body: some View {
-        // What doesn't count is left out here, the same way Siri leaves it out (`MonthStatus`).
-        let amounts = expenses.map(\.asAmount)
-        // `expenses` is newest first, so the oldest is the last one. You can browse back
-        // as far as that, and no further; deleting it pulls the limit forward.
-        let earliest = MonthNavigator.earliestOffset(oldest: expenses.last?.date, now: now)
+        // `dated` is newest first, so the oldest is the last one. You can browse back as far as
+        // that, and no further; deleting it pulls the limit forward.
+        let earliest = MonthNavigator.earliestOffset(oldest: dated.last?.date, now: now)
         let offset = min(0, max(monthOffset, earliest))
         let isCurrent = offset == 0
         let viewed = MonthNavigator.month(offsetBy: offset, from: now)
-        let monthExpenses = expenses.filter { MonthNavigator.isSameMonth($0.date, as: viewed) }
-        let shownExpenses = monthExpenses.filter { expense in
-            (selectedDay.map { Calendar.current.component(.day, from: expense.date) == $0 } ?? true)
-                && (selectedCategory?.contains(expense.category) ?? true)
-        }
-        let summary = MonthSummarizer.summarize(amounts, inMonthOf: viewed, primary: primaryCurrency)
-        let pace = TodayBudget.pace(budget: BudgetStore.amount(from: storedBudget), rows: monthExpenses,
-                                    originals: fixedOriginals, plans: FixedPlan.decode(storedPlans),
-                                    primary: primaryCurrency, month: viewed, now: now,
-                                    mode: AllowanceMode(stored: storedMode))
-        let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
-        let listed = searching ? searchResults : shownExpenses
-        let groups = DayGroup.split(listed)
-        let health = CaptureHealth(lastCapture: latestCaptures.first?.date, now: now)
-        let fact = isCurrent ? MonthNote.facts(expenses, now: now, primary: primaryCurrency,
-                                               budget: BudgetStore.amount(from: storedBudget)).first : nil
+        let lastCapture = latestCaptures.first?.date
 
         NavigationStack {
-            // Not a `List`: a list snaps a row to its new height, and the carousel's height has
-            // to ease with the list below it (it leapt and wobbled, measured frame by frame).
-            ScrollView {
-            // The top (hero, carousel, filters) is not lazy: it is a handful of views, and a lazy
-            // one dropped them when scrolled far, taking the carousel's page and the entrance with
-            // it. Only the days below are lazy.
-            VStack(alignment: .leading, spacing: Theme.Space.none) {
-                if searching {
-                    SearchHeaderRow(count: listed.count) { searchText = $0 }
-                        .ticketRow(bottom: Theme.Space.s)
-                } else if !(expenses.isEmpty && pace == nil) {
-                    // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
-                    // ticket below asks for the first step instead.
-                    HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
-                              pace: pace, entrance: entrance)
-                        // With a budget the verdict sits right under the figure, one step away.
-                        .ticketRow(bottom: pace != nil && !expenses.isEmpty ? Theme.Space.s : Theme.Space.xl)
-
-                    if isCurrent, let pace, let plan = OverspendPlan(pace: pace) {
-                        OverspendPanel(plan: plan, currency: primaryCurrency,
-                                       month: viewed.formatted(.iso8601.year().month()),
-                                       onAdjust: { showingBudget = true })
-                            .ticketRow(bottom: Theme.Space.l)
-                    }
-
-                    if isCurrent, let code = CurrencySuggestion.switchTo(
-                        markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
-                        offered: CurrencyPreference.offered) {
-                        CurrencySuggestionRow(code: code) { setPrimary(code) }
-                            .ticketRow(bottom: Theme.Space.xl)
-                    }
-                }
-                if expenses.isEmpty {
-                    // A budget with nothing spent yet still has its days to show.
-                    if let pace {
-                        BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
-                                   entrance: entrance, onSetBudget: { showingBudget = true })
-                            .ticketRow(bottom: Theme.Space.xl)
-                    }
-                    EmptyTicket(hasBudget: pace != nil, onAdd: { adding = true },
-                                onBudget: { showingBudget = true }, onSetup: { showingSetup = true })
-                        .ticketRow()
-                } else {
-                    if !searching {
-                        MonthCarousel(
-                            calendarModel: MonthCalendar.make(amounts, inMonthOf: viewed,
-                                                              primary: primaryCurrency, today: now),
-                            selectedDay: selectedDay,
-                            onSelectDay: { day in
-                                // The list changes at once: easing it left the old rows fading
-                                // over the new ones, under the calendar, for half a second.
-                                Theme.Motion.instantly { selectedDay = day; selectedCategory = nil }
-                            },
-                            spent: summary.primary,
-                            pace: pace,
-                            isCurrentMonth: isCurrent,
-                            outside: summary.outside,
-                            shares: CategoryShare.top(summary.categories),
-                            returned: CategoryShare.returned(summary.categories),
-                            // Past the budget the plan above already says where the month closes.
-                            note: (pace?.remaining ?? 0) < 0 ? nil : fact?.line,
-                            selectedCategory: selectedCategory,
-                            onSelectCategory: { line in
-                                Theme.Motion.instantly { selectedCategory = line; selectedDay = nil }
-                            },
-                            entrance: entrance,
-                            equalHeights: whereItGoesStyle != WhereItGoesStyle.hidden.rawValue,
-                            onSetBudget: { showingBudget = true },
-                            currency: primaryCurrency
-                        )
-                        // Edge to edge: each page keeps its own margin, so a swipe shows a gap
-                        // between them instead of two pages touching.
-                        .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
-
-                        // The Wallet line stays between the carousel and the list, not under «Hoy»:
-                        // it is about the capture, not about today's expenses (owner, 2026-10-21).
-                        if isCurrent, !ignoresWallet || unreadNotice(after: latestCaptures.first?.date) != nil {
-                            CaptureHealthRow(health: health, unread: unreadNotice(after: latestCaptures.first?.date),
-                                             openGuide: {
-                                                 // Seen: tapping the warning is the last time it shows.
-                                                 UnreadNotice.clear()
-                                                 showingSetup = true
-                                             })
-                                .ticketRow()
-                        }
-
-                        if let day = selectedDay {
-                            FilterRow(title: "Día \(day)", count: shownExpenses.count,
-                                      total: DayGroup(day: viewed, items: shownExpenses).total(in: primaryCurrency)) {
-                                Theme.Motion.instantly { selectedDay = nil }
-                            }
-                            .ticketRow()
-                        }
-                        if let line = selectedCategory {
-                            FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
-                                      count: shownExpenses.count,
-                                      total: DayGroup(day: viewed, items: shownExpenses).total(in: primaryCurrency)) {
-                                Theme.Motion.instantly { selectedCategory = nil }
-                            }
-                            .ticketRow()
-                        }
-                        if monthExpenses.isEmpty {
-                            Text("Sin gastos este mes")
-                                .font(.ticket(.footnote))
-                                .tracking(Theme.Tracking.action)
-                                .textCase(.uppercase)
-                                .foregroundStyle(Theme.muted)
-                                .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
-                                .overlay(alignment: .top) { Perforation() }
-                                .ticketRow()
-                        }
-                    }
-                }
-                LazyVStack(alignment: .leading, spacing: Theme.Space.none) {
-                        ForEach(groups) { group in
-                            // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
-                            DayDivider(day: group.day, total: group.total(in: primaryCurrency), now: now)
-                                .ticketRow()
-                            ForEach(group.items) { expense in
-                                // The divider already draws the line above a day's first row.
-                                LedgerRow(expense: expense, primaryCurrency: primaryCurrency,
-                                          perforated: expense.id != group.items.first?.id)
-                                    // A tap, not a Button: a button also fires when a swipe lets go
-                                    // on it, and a tap gives up as soon as the finger moves. While
-                                    // a row is open, a tap on another only closes it, as in a list.
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        if openRow != nil { openRow = nil } else { editing = expense }
-                                    }
-                                    .accessibilityElement(children: .combine)
-                                    .accessibilityAddTraits(.isButton)
-                                    .ticketRow()
-                                .swipeToDelete(id: expense.persistentModelID, openRow: $openRow) {
-                                    pendingDelete = expense
-                                }
-                                .contextMenu {
-                                    // One touch, without opening the sheet. The first time it is
-                                    // «Me lo reembolsan»; after that, the reason it had before.
-                                    if expense.isUncounted {
-                                        Button("Sí cuenta", systemImage: "checkmark.circle") { expense.markCounted() }
-                                    } else {
-                                        Button("No cuenta", systemImage: "nosign") {
-                                            expense.markUncounted(expense.reason ?? .reimbursed)
-                                        }
-                                    }
-                                    Menu {
-                                        ForEach(categoryChoices(for: expense), id: \.self) { name in
-                                            Button {
-                                                setCategory(name, of: expense)
-                                            } label: {
-                                                if expense.category == name {
-                                                    Label(name, systemImage: "checkmark")
-                                                } else {
-                                                    Text(name)
-                                                }
-                                            }
-                                        }
-                                    } label: {
-                                        Label("Categoría", systemImage: "tag")
-                                    }
-                                    Button("Anotar otra vez", systemImage: "arrow.counterclockwise") {
-                                        logAgain(expense)
-                                    }
-                                    Button("Borrar gasto", systemImage: "trash", role: .destructive) {
-                                        pendingDelete = expense
-                                    }
-                                }
-                            }
-                        }
-                }
-            }
-            .padding(.top, Theme.Space.s)
-            .padding(.bottom, Theme.Space.xxl)
-            .environment(\.listWidth, listWidth)
-            }
+            HomeContent(
+                model: model, viewed: viewed, now: now, isCurrent: isCurrent,
+                storeIsEmpty: dated.isEmpty,
+                stamp: StoreStamp(count: dated.count, newest: dated.first?.date),
+                settings: HomeSettings(budget: storedBudget, plans: storedPlans, currency: primaryCurrency,
+                                       mode: storedMode, whereItGoesStyle: whereItGoesStyle,
+                                       ignoresWallet: ignoresWallet),
+                catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories),
+                lastCapture: lastCapture, unread: unreadNotice(after: lastCapture),
+                selectedDay: selectedDay, selectedCategory: selectedCategory,
+                entrance: entrance, listWidth: listWidth, actions: actions
+            )
+            .equatable()
             // Scrolling closes a row left open by a swipe, as in a system list.
             .onScrollPhaseChange { _, phase in
-                if phase == .interacting, openRow != nil { openRow = nil }
+                if phase == .interacting, model.openRow != nil { model.openRow = nil }
             }
-            .modifier(BottomSearch(text: $searchText))
+            .modifier(BottomSearch(text: Bindable(model).searchText) { model.query = $0 })
+            // An edit can make an expense match the search or stop matching.
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+                model.storeSaved()
+            }
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: storedBudget) { _, budget in
@@ -380,9 +204,11 @@ struct ExpenseListView: View {
             .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
             .sheet(isPresented: $showingBudget) {
                 BudgetSheet(stored: $storedBudget, storedMode: $storedMode, currency: primaryCurrency) { budget, mode in
+                    // This month, asked of the store: only its rows and the fixed expenses.
                     TodayBudget.pace(budget: budget,
-                                     rows: expenses.filter { MonthNavigator.isSameMonth($0.date, as: now) },
-                                     originals: fixedOriginals, plans: FixedPlan.decode(storedPlans),
+                                     rows: (try? context.fetch(HomeModel.monthRows(of: now))) ?? [],
+                                     originals: (try? context.fetch(HomeModel.originals)) ?? [],
+                                     plans: FixedPlan.decode(storedPlans),
                                      primary: primaryCurrency, month: now, now: now, mode: mode)
                 }
             }
@@ -402,15 +228,14 @@ struct ExpenseListView: View {
             .onChange(of: viewed) { _, _ in selectedDay = nil; selectedCategory = nil }
             // Another view starts unfiltered: what was picked may not be on it.
             .onChange(of: whereItGoesStyle) { _, _ in selectedCategory = nil }
-            .modifier(Feedback(expenseCount: expenses.count, newest: expenses.first?.date,
-                               isOver: isCurrent && isOver(pace)))
+            .modifier(Feedback(expenseCount: dated.count, newest: dated.first?.date))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
             .sheet(isPresented: $showingSettings) {
                 SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
-                             health: CaptureHealth(lastCapture: latestCaptures.first?.date, now: now),
+                             health: CaptureHealth(lastCapture: lastCapture, now: now),
                              openGuide: { afterSettings { showingSetup = true } },
                              importCSV: { afterSettings { importing = true } })
             }
@@ -425,8 +250,9 @@ struct ExpenseListView: View {
                 // Never chosen: settle it once, from what the payments are in (pesos if none),
                 // so it cannot drift with the phone's settings.
                 if !CurrencyPreference.offered.contains(storedCurrency) {
+                    let latest = (try? context.fetch(HomeModel.newest(100))) ?? []
                     storedCurrency = CurrencySuggestion.dominant(
-                        markers: expenses.prefix(100).map(\.currencyMarker),
+                        markers: latest.map(\.currencyMarker),
                         primary: CurrencyPreference.fallback,
                         offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
                 }
@@ -434,7 +260,7 @@ struct ExpenseListView: View {
                 guard !onboarded else { return }
                 // A reinstall or a new phone: the expenses are still coming from iCloud.
                 let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere
-                if expenses.isEmpty && Onboarding.isAllowed && !setUpElsewhere {
+                if dated.isEmpty && Onboarding.isAllowed && !setUpElsewhere {
                     showingOnboarding = true
                 } else {
                     onboarded = true
@@ -455,6 +281,357 @@ struct ExpenseListView: View {
         // content's width, so a width read there stayed at the landscape one. Its size is
         // already inside the sides kept clear in landscape (the Dynamic Island).
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
+    }
+
+    /// What the scrolling part asks of the frame: sheets to open, filters to set, an expense to
+    /// change. Each one sets this view's state, so they do the same whenever they are called.
+    private var actions: HomeActions {
+        HomeActions(
+            selectDay: { day in
+                // The list changes at once: easing it left the old rows fading over the new
+                // ones, under the calendar, for half a second.
+                Theme.Motion.instantly { selectedDay = day; selectedCategory = nil }
+            },
+            selectCategory: { line in
+                Theme.Motion.instantly { selectedCategory = line; selectedDay = nil }
+            },
+            clearDay: { Theme.Motion.instantly { selectedDay = nil } },
+            clearCategory: { Theme.Motion.instantly { selectedCategory = nil } },
+            add: { adding = true },
+            setBudget: { showingBudget = true },
+            setup: { showingSetup = true },
+            openGuideFromWarning: {
+                // Seen: tapping the warning is the last time it shows.
+                UnreadNotice.clear()
+                showingSetup = true
+            },
+            setPrimary: { setPrimary($0) },
+            edit: { editing = $0 },
+            askDelete: { pendingDelete = $0 },
+            setCategory: { setCategory($0, of: $1) },
+            logAgain: { logAgain($0) }
+        )
+    }
+}
+
+/// The frame's settings the scrolling part reads.
+private struct HomeSettings: Equatable {
+    let budget: String
+    let plans: String
+    let currency: String
+    let mode: String
+    let whereItGoesStyle: String
+    let ignoresWallet: Bool
+}
+
+/// What the scrolling part can ask of the frame (`ExpenseListView.actions`).
+private struct HomeActions {
+    let selectDay: (Int?) -> Void
+    let selectCategory: (CategoryShare?) -> Void
+    let clearDay: () -> Void
+    let clearCategory: () -> Void
+    let add: () -> Void
+    let setBudget: () -> Void
+    let setup: () -> Void
+    let openGuideFromWarning: () -> Void
+    let setPrimary: (String) -> Void
+    let edit: (Expense) -> Void
+    let askDelete: (Expense) -> Void
+    let setCategory: (String, Expense) -> Void
+    let logAgain: (Expense) -> Void
+}
+
+/// What scrolls: the hero, the carousel and the month's days (or a search's results).
+///
+/// It asks the store for the month on screen, and for the last few months only when the note
+/// needs them. It only redraws when what it shows changes (`Equatable`): a sheet opening or the
+/// frame redrawing for another reason leaves it alone.
+private struct HomeContent: View, Equatable {
+    let model: HomeModel
+    let viewed: Date
+    let now: Date
+    let isCurrent: Bool
+    /// No expense at all, in any month.
+    let storeIsEmpty: Bool
+    let stamp: StoreStamp
+    let settings: HomeSettings
+    let catalog: CategoryCatalog
+    let lastCapture: Date?
+    let unread: String?
+    let selectedDay: Int?
+    let selectedCategory: CategoryShare?
+    let entrance: Entrance
+    let listWidth: CGFloat?
+    let actions: HomeActions
+
+    @Query private var monthRows: [Expense]
+    @Query private var recentRows: [Expense]
+    @Query(HomeModel.originals) private var originals: [Expense]
+    @Environment(\.modelContext) private var context
+
+    init(model: HomeModel, viewed: Date, now: Date, isCurrent: Bool, storeIsEmpty: Bool, stamp: StoreStamp,
+         settings: HomeSettings, catalog: CategoryCatalog, lastCapture: Date?, unread: String?,
+         selectedDay: Int?, selectedCategory: CategoryShare?, entrance: Entrance, listWidth: CGFloat?,
+         actions: HomeActions) {
+        self.model = model
+        self.viewed = viewed
+        self.now = now
+        self.isCurrent = isCurrent
+        self.storeIsEmpty = storeIsEmpty
+        self.stamp = stamp
+        self.settings = settings
+        self.catalog = catalog
+        self.lastCapture = lastCapture
+        self.unread = unread
+        self.selectedDay = selectedDay
+        self.selectedCategory = selectedCategory
+        self.entrance = entrance
+        self.listWidth = listWidth
+        self.actions = actions
+        _monthRows = Query(HomeModel.monthRows(of: viewed))
+        _recentRows = Query(HomeModel.recentRows(now: now, isCurrent: isCurrent))
+    }
+
+    /// Everything but `actions`: they only set the frame's state, the same on every redraw.
+    nonisolated static func == (lhs: HomeContent, rhs: HomeContent) -> Bool {
+        lhs.model === rhs.model && lhs.viewed == rhs.viewed && lhs.now == rhs.now
+            && lhs.isCurrent == rhs.isCurrent && lhs.storeIsEmpty == rhs.storeIsEmpty
+            && lhs.stamp == rhs.stamp && lhs.settings == rhs.settings && lhs.catalog == rhs.catalog
+            && lhs.lastCapture == rhs.lastCapture && lhs.unread == rhs.unread
+            && lhs.selectedDay == rhs.selectedDay && lhs.selectedCategory == rhs.selectedCategory
+            && lhs.entrance === rhs.entrance && lhs.listWidth == rhs.listWidth
+    }
+
+    var body: some View {
+        let primary = settings.currency
+        let month = model.month(
+            MonthInputs(viewed: viewed, now: now, isCurrent: isCurrent, budget: settings.budget,
+                        plans: settings.plans, currency: primary, mode: settings.mode,
+                        selectedDay: selectedDay, selectedCategory: selectedCategory),
+            rows: monthRows, originals: originals)
+        let searching = model.isSearching
+        let search = searching ? model.search(now: now, stamp: stamp, in: context) : nil
+        // The note is only on this month's carousel; past the budget, the plan above already says
+        // where the month closes.
+        let showsCarousel = !searching && !storeIsEmpty
+        let note = showsCarousel && isCurrent && (month.pace?.remaining ?? 0) >= 0
+            ? model.note(rows: recentRows, now: now, primary: primary, budget: settings.budget)
+            : nil
+
+        // Not a `List`: a list snaps a row to its new height, and the carousel's height has
+        // to ease with the list below it (it leapt and wobbled, measured frame by frame).
+        ScrollView {
+            // The top (hero, carousel, filters) is not lazy: it is a handful of views, and a lazy
+            // one dropped them when scrolled far, taking the carousel's page and the entrance with
+            // it. Only the days below are lazy.
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
+                HomeHeader(
+                    month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
+                    viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
+                    selectedDay: selectedDay, selectedCategory: selectedCategory,
+                    equalHeights: settings.whereItGoesStyle != WhereItGoesStyle.hidden.rawValue,
+                    showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
+                    health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
+                    entrance: entrance, model: model, actions: actions
+                )
+                HomeLedger(groups: search?.groups ?? month.groups, primaryCurrency: primary, now: now,
+                           catalog: catalog, model: model, actions: actions)
+            }
+            .padding(.top, Theme.Space.s)
+            .padding(.bottom, Theme.Space.xxl)
+            .environment(\.listWidth, listWidth)
+        }
+        // A warning the moment the budget is blown.
+        .sensoryFeedback(.warning, trigger: isCurrent && (month.pace?.remaining ?? 0) < 0) { old, new in
+            !old && new
+        }
+        .onChange(of: searching) { _, isOn in if !isOn { model.searchClosed() } }
+    }
+}
+
+/// The top of the ticket: the hero, the overspend plan, the carousel, the Wallet line and the
+/// filter in use; or, while searching, how many it found.
+private struct HomeHeader: View {
+    let month: HomeMonth
+    /// How many the search found; `nil` when not searching.
+    let searchCount: Int?
+    let storeIsEmpty: Bool
+    let viewed: Date
+    let now: Date
+    let isCurrent: Bool
+    let currency: String
+    let note: String?
+    let selectedDay: Int?
+    let selectedCategory: CategoryShare?
+    let equalHeights: Bool
+    let showsCapture: Bool
+    let health: CaptureHealth
+    let unread: String?
+    let entrance: Entrance
+    let model: HomeModel
+    let actions: HomeActions
+
+    var body: some View {
+        let summary = month.summary
+        let pace = month.pace
+        // Inside a stack with no spacing, as the lines were before: the layout is the same.
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            if let searchCount {
+                SearchHeaderRow(count: searchCount) { model.searchText = $0 }
+                    .ticketRow(bottom: Theme.Space.s)
+            } else if !(storeIsEmpty && pace == nil) {
+                // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
+                // ticket below asks for the first step instead.
+                HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
+                          pace: pace, entrance: entrance)
+                    // With a budget the verdict sits right under the figure, one step away.
+                    .ticketRow(bottom: pace != nil && !storeIsEmpty ? Theme.Space.s : Theme.Space.xl)
+
+                if isCurrent, let pace, let plan = OverspendPlan(pace: pace) {
+                    OverspendPanel(plan: plan, currency: currency,
+                                   month: viewed.formatted(.iso8601.year().month()),
+                                   onAdjust: actions.setBudget)
+                        .ticketRow(bottom: Theme.Space.l)
+                }
+
+                if let code = month.currencySwitch {
+                    CurrencySuggestionRow(code: code) { actions.setPrimary(code) }
+                        .ticketRow(bottom: Theme.Space.xl)
+                }
+            }
+            if storeIsEmpty {
+                // A budget with nothing spent yet still has its days to show.
+                if let pace {
+                    BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
+                               entrance: entrance, onSetBudget: actions.setBudget)
+                        .ticketRow(bottom: Theme.Space.xl)
+                }
+                EmptyTicket(hasBudget: pace != nil, onAdd: actions.add,
+                            onBudget: actions.setBudget, onSetup: actions.setup)
+                    .ticketRow()
+            } else if searchCount == nil {
+                MonthCarousel(
+                    calendarModel: month.calendar,
+                    selectedDay: selectedDay,
+                    onSelectDay: actions.selectDay,
+                    spent: summary.primary,
+                    pace: pace,
+                    isCurrentMonth: isCurrent,
+                    outside: summary.outside,
+                    shares: month.shares,
+                    returned: month.returned,
+                    note: note,
+                    selectedCategory: selectedCategory,
+                    onSelectCategory: actions.selectCategory,
+                    entrance: entrance,
+                    equalHeights: equalHeights,
+                    onSetBudget: actions.setBudget,
+                    currency: currency
+                )
+                // Edge to edge: each page keeps its own margin, so a swipe shows a gap
+                // between them instead of two pages touching.
+                .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
+
+                // The Wallet line stays between the carousel and the list, not under «Hoy»:
+                // it is about the capture, not about today's expenses (owner, 2026-10-21).
+                if showsCapture {
+                    CaptureHealthRow(health: health, unread: unread, openGuide: actions.openGuideFromWarning)
+                        .ticketRow()
+                }
+
+                if let day = selectedDay {
+                    FilterRow(title: "Día \(day)", count: month.shownCount, total: month.shownTotal,
+                              clear: actions.clearDay)
+                        .ticketRow()
+                }
+                if let line = selectedCategory {
+                    FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
+                              count: month.shownCount, total: month.shownTotal, clear: actions.clearCategory)
+                        .ticketRow()
+                }
+                if !month.hasExpenses {
+                    Text("Sin gastos este mes")
+                        .font(.ticket(.footnote))
+                        .tracking(Theme.Tracking.action)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
+                        .overlay(alignment: .top) { Perforation() }
+                        .ticketRow()
+                }
+            }
+        }
+    }
+}
+
+/// The days below: the month's (or the search's) expenses, day by day. Lazy: only the rows on
+/// screen are built.
+private struct HomeLedger: View {
+    let groups: [DayGroup]
+    let primaryCurrency: String
+    let now: Date
+    let catalog: CategoryCatalog
+    let model: HomeModel
+    let actions: HomeActions
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: Theme.Space.none) {
+            ForEach(groups) { group in
+                // A thin brass line where a new day starts: «Hoy · 19 oct», «Ayer», «vie 17 oct».
+                DayDivider(group: group, primaryCurrency: primaryCurrency, now: now)
+                    .ticketRow()
+                ForEach(group.items) { expense in
+                    // The divider already draws the line above a day's first row.
+                    LedgerRow(expense: expense, primaryCurrency: primaryCurrency, catalog: catalog,
+                              perforated: expense.id != group.items.first?.id)
+                        // A tap, not a Button: a button also fires when a swipe lets go
+                        // on it, and a tap gives up as soon as the finger moves. While
+                        // a row is open, a tap on another only closes it, as in a list.
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if model.openRow != nil { model.openRow = nil } else { actions.edit(expense) }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isButton)
+                        .ticketRow()
+                    .swipeToDelete(id: expense.persistentModelID, openRow: Bindable(model).openRow) {
+                        actions.askDelete(expense)
+                    }
+                    .contextMenu {
+                        // One touch, without opening the sheet. The first time it is
+                        // «Me lo reembolsan»; after that, the reason it had before.
+                        if expense.isUncounted {
+                            Button("Sí cuenta", systemImage: "checkmark.circle") { expense.markCounted() }
+                        } else {
+                            Button("No cuenta", systemImage: "nosign") {
+                                expense.markUncounted(expense.reason ?? .reimbursed)
+                            }
+                        }
+                        Menu {
+                            ForEach(catalog.choices(for: expense), id: \.self) { name in
+                                Button {
+                                    actions.setCategory(name, expense)
+                                } label: {
+                                    if expense.category == name {
+                                        Label(name, systemImage: "checkmark")
+                                    } else {
+                                        Text(name)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Categoría", systemImage: "tag")
+                        }
+                        Button("Anotar otra vez", systemImage: "arrow.counterclockwise") {
+                            actions.logAgain(expense)
+                        }
+                        Button("Borrar gasto", systemImage: "trash", role: .destructive) {
+                            actions.askDelete(expense)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -511,11 +688,28 @@ private struct CatalogsSheet: ViewModifier {
 
 /// The search: a button in the bottom bar that opens into a field on iOS 26; on older
 /// systems, the usual field under the title.
+///
+/// The words reach the list (`settle`) once typing pauses (`HomeModel.searchPause`), so a
+/// search over every month runs once per word and not once per letter; clearing it is at once.
+/// Each letter redraws only this modifier, not the screen.
 private struct BottomSearch: ViewModifier {
     @Binding var text: String
+    let settle: (String) -> Void
     private let prompt = "Comercio, mes o monto…"
 
     func body(content: Content) -> some View {
+        searchable(content)
+            .task(id: text) {
+                let typed = text
+                if !typed.trimmingCharacters(in: .whitespaces).isEmpty {
+                    try? await Task.sleep(for: HomeModel.searchPause)
+                    guard !Task.isCancelled else { return }
+                }
+                settle(typed)
+            }
+    }
+
+    @ViewBuilder private func searchable(_ content: Content) -> some View {
         if #available(iOS 26, *) {
             content
                 .searchable(text: $text, prompt: prompt)
@@ -543,20 +737,19 @@ private struct BudgetCurrencyCheck: ViewModifier {
     }
 }
 
-/// A soft tap when an expense lands; a warning the moment the budget is blown.
+/// A soft tap when an expense lands. (The warning the moment the budget is blown is in
+/// `HomeContent`, which works the budget out.)
 private struct Feedback: ViewModifier {
     let expenseCount: Int
     /// The latest expense's date. Only one dated just now is a payment that just landed;
     /// an import, an undo, a fixed expense's copy or one arriving from iCloud is older.
     let newest: Date?
-    let isOver: Bool
 
     func body(content: Content) -> some View {
         content
             .sensoryFeedback(.success, trigger: expenseCount) { old, new in
                 new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
             }
-            .sensoryFeedback(.warning, trigger: isOver) { old, new in !old && new }
     }
 }
 
@@ -592,12 +785,6 @@ private extension ExpenseListView {
         Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })
     }
 
-    /// Every expense the search asks for, from any month, newest first.
-    var searchResults: [Expense] {
-        let query = ExpenseSearch.query(from: searchText, now: now)
-        return expenses.filter { ExpenseSearch.matches($0.searchable, query) }
-    }
-
     /// The unread notice, if it came after the last payment the capture saved and less than
     /// two days ago: it goes once a payment comes in right, once tapped, or on its own.
     func unreadNotice(after lastCapture: Date?) -> String? {
@@ -607,22 +794,10 @@ private extension ExpenseListView {
         return lastCapture.map { date > $0 } ?? true ? unreadText : nil
     }
 
-    func isOver(_ pace: BudgetPace?) -> Bool {
-        guard let pace else { return false }
-        return pace.remaining < 0
-    }
-
     /// Closes «Ajustes», then does what was asked from it: two sheets can't be up at once.
     private func afterSettings(_ action: @escaping () -> Void) {
         showingSettings = false
         Task { try? await Task.sleep(for: .milliseconds(450)); action() }
-    }
-
-    /// The categories a long press offers: the usual ones, yours and the expense's own.
-    private func categoryChoices(for expense: Expense) -> [String] {
-        CategoryStyle.offered(known: [], custom: UserCatalog.decode(storedCategories),
-                              current: expense.category ?? "",
-                              hidden: UserCatalog.decodeNames(storedHiddenCategories))
     }
 
     /// A category picked from the long press: a choice, remembered for the place, as in the sheet.
@@ -666,6 +841,8 @@ private extension ExpenseListView {
     func delete(_ expense: Expense) {
         let snapshot = DeletedExpense(expense)
         context.delete(expense)
+        // A search on screen is asked again, without the deleted expense.
+        model.storeSaved()
         withAnimation(Theme.Motion.quick) { lastDeleted = snapshot }
     }
 
@@ -954,11 +1131,12 @@ private struct EmptyTicket: View {
 private struct LedgerRow: View {
     let expense: Expense
     let primaryCurrency: String
+    /// The categories' icons, read once for the whole list instead of once per row.
+    let catalog: CategoryCatalog
     /// The dashed line on top; a day's first row has the divider there instead.
     var perforated = true
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = Theme.Size.rowTile
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = Theme.Size.rowTileSymbol
 
@@ -969,9 +1147,7 @@ private struct LedgerRow: View {
     /// The category's icon on a small tile, the same icons as «En qué se va».
     private var categoryTile: some View {
         let category = expense.category.flatMap { $0.isEmpty ? nil : $0 }
-        return Image(systemName: category.map {
-            CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories))
-        } ?? "questionmark")
+        return Image(systemName: category.map(catalog.icon(for:)) ?? "questionmark")
             .resizable()
             .scaledToFit()
             .fontWeight(.medium)
@@ -1218,17 +1394,9 @@ struct DayGroup: Identifiable {
     let items: [Expense]
     var id: Date { day }
 
+    /// Neighbors of the same day go together, in the order given (`DayRuns`: one pass).
     static func split(_ expenses: [Expense], calendar: Calendar = .current) -> [DayGroup] {
-        var groups: [DayGroup] = []
-        for expense in expenses {
-            let day = calendar.startOfDay(for: expense.date)
-            if let last = groups.last, last.day == day {
-                groups[groups.count - 1] = DayGroup(day: day, items: last.items + [expense])
-            } else {
-                groups.append(DayGroup(day: day, items: [expense]))
-            }
-        }
-        return groups
+        DayRuns.split(expenses, calendar: calendar, date: \.date).map { DayGroup(day: $0.day, items: $0.items) }
     }
 
     /// What went that day in the month's currency (refunds subtract, what doesn't count adds
@@ -1253,9 +1421,13 @@ struct DayGroup: Identifiable {
 
 /// Where a day starts in the list: a short brass line, the day, a hairline, the day's total.
 private struct DayDivider: View {
-    let day: Date
-    let total: String?
+    let group: DayGroup
+    let primaryCurrency: String
     let now: Date
+
+    private var day: Date { group.day }
+    /// Worked out here, so an edited amount redraws only its day's divider.
+    private var total: String? { group.total(in: primaryCurrency) }
 
     private var label: String {
         let calendar = Calendar.current

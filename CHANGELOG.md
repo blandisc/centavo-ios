@@ -16,6 +16,7 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **La pantalla principal va más rápida con historiales largos.** Se ve igual. Solo lee el mes que estás viendo y hace sus cuentas una vez por cambio, no cada vez que deslizas un renglón o tecleas. La búsqueda responde al dejar de teclear un momento (0.2 s).
 - **La pantalla vacía** ya no muestra un «$0.00» gigante: ofrece «Anotar un gasto», «Fijar presupuesto» y «Conectar Wallet».
 - **«En qué se va» en barra:** tocar una categoría filtra la lista, como ya pasaba en el mosaico.
 - **Al filtrar un día o una categoría** se ve cuánto suman: «Día 12 · 2 gastos · $310».

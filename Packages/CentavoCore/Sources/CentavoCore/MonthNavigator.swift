@@ -28,6 +28,13 @@ public enum MonthNavigator {
         return end.addingTimeInterval(-1)
     }
 
+    /// The month `date` falls in, from its first instant up to (not including) the next
+    /// month's: what a store fetch of one month asks for. A date is inside it exactly when
+    /// `isSameMonth` says so.
+    public static func bounds(of date: Date, calendar: Calendar = .current) -> DateInterval {
+        calendar.dateInterval(of: .month, for: date) ?? DateInterval(start: date, duration: 0)
+    }
+
     /// Whether `date` is in the same month as `reference`.
     public static func isSameMonth(_ date: Date, as reference: Date,
                                    calendar: Calendar = .current) -> Bool {
