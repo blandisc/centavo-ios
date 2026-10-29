@@ -76,6 +76,7 @@ final class GuideCompanion: NSObject {
         self.pages = pages
         index = min(index, max(pages.count - 1, 0))
         updatePoster()
+        dumpFramesIfAsked()
         building?.cancel()
         building = Task { await buildVideo() }
     }
@@ -100,6 +101,9 @@ final class GuideCompanion: NSObject {
             }
             if let controller = self.controller, controller.isPictureInPicturePossible {
                 CompanionDiary.write("Arrancando")
+                // Playing from the first moment: the window opens already moving on by itself,
+                // nobody has to find its ▶︎ (owner, 2026-10-29).
+                self.player.play()
                 controller.startPictureInPicture()
             } else {
                 CompanionDiary.write("Nunca fue posible; se abre Atajos sin ventana")
@@ -190,6 +194,27 @@ final class GuideCompanion: NSObject {
         renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
         renderer.scale = Theme.Size.companionScale
         poster = renderer.uiImage
+    }
+
+    /// Debug only: `-centavo-guia-cuadros` saves every picture as a PNG in
+    /// Library/Caches/guia-cuadros/, to look at the video's pictures without playing it.
+    private func dumpFramesIfAsked() {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("-centavo-guia-cuadros"),
+              let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        else { return }
+        let folder = caches.appending(path: "guia-cuadros")
+        try? FileManager.default.removeItem(at: folder)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for (position, page) in pages.enumerated() {
+            let renderer = ImageRenderer(content: CompanionCard(page: page, position: position, count: pages.count))
+            renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
+            renderer.scale = Theme.Size.companionScale
+            guard let data = renderer.uiImage?.pngData() else { continue }
+            try? data.write(to: folder.appending(path: String(format: "cuadro-%02d.png", position + 1)))
+        }
+        CompanionDiary.write("Cuadros guardados: \(pages.count)")
+        #endif
     }
 
     // MARK: The video
@@ -353,9 +378,9 @@ enum CompanionDiary {
 
 // MARK: - Views
 
-/// Holds the companion's player on screen (Picture in Picture only starts from a layer that
-/// is in a window), over the current picture, so the thumbnail is never black while the video
-/// is still being drawn.
+/// Holds the companion's player on screen: Picture in Picture only starts from a layer that is
+/// in a window. The guide keeps it behind its dock, covered, so no thumbnail shows (owner,
+/// 2026-10-29); the current picture sits under the player so the window never opens black.
 struct CompanionLayerView: View {
     let companion: GuideCompanion
 

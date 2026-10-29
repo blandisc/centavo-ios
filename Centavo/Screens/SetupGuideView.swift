@@ -142,61 +142,47 @@ struct SetupGuideView: View {
         }
     }
 
-    /// The dock above the bottom bar on every step done in Atajos: the floating guide's
-    /// thumbnail (the layer Picture in Picture floats) and one button that floats it and opens
-    /// Atajos under it. Without Picture in Picture, a plain «Abrir Atajos».
+    /// The dock above the bottom bar on every step done in Atajos: one button that floats the
+    /// guide and opens Atajos under it, the guide already playing. Without Picture in Picture,
+    /// a plain «Abrir Atajos».
     private var launcher: some View {
-        HStack(spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if GuideCompanion.isSupported {
-                // Tapping the thumbnail floats it here, to see it before going to Atajos.
-                Button { companion.float(from: step, thenOpen: nil) } label: {
-                    CompanionLayerView(companion: companion)
-                        .frame(width: thumbWidth, height: thumbHeight)
-                        .overlay {
-                            Image(systemName: "play.fill")
-                                .font(Theme.Symbol.regular)
-                                .foregroundStyle(Theme.ink)
-                                .padding(Theme.Space.xs)
-                                .background(Theme.background.opacity(Theme.Opacity.paceAhead), in: Circle())
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Ver la guía flotante")
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Theme.hairline)
-                }
-                .accessibilityIdentifier("guia-ver-flotante")
+                Text(companion.isFloating
+                     ? "La guía flota sobre Atajos. Avanza con ⏩."
+                     : "Esta guía te acompaña en una ventanita sobre Atajos.")
+                    .font(.ticket(.detail))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button {
+                let url = URL(string: "shortcuts://")!
                 if GuideCompanion.isSupported {
-                    Text(companion.isFloating
-                         ? "La guía flota sobre Atajos. Avanza con ⏩."
-                         : "Esta guía te acompaña en una ventanita sobre Atajos.")
-                        .font(.ticket(.detail))
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
+                    companion.float(from: step, thenOpen: url)
+                } else {
+                    openURL(url)
                 }
-                Button {
-                    let url = URL(string: "shortcuts://")!
-                    if GuideCompanion.isSupported {
-                        companion.float(from: step, thenOpen: url)
-                    } else {
-                        openURL(url)
-                    }
-                } label: {
-                    PrimaryButtonLabel("Abrir Atajos", systemImage: GuideCompanion.isSupported
-                                       ? "pip.enter" : "arrow.up.forward.app")
-                }
-                .ticketProminent()
-                .accessibilityIdentifier("guia-abrir-atajos")
+            } label: {
+                PrimaryButtonLabel("Abrir Atajos", systemImage: GuideCompanion.isSupported
+                                   ? "pip.enter" : "arrow.up.forward.app")
             }
+            .ticketProminent()
+            .accessibilityIdentifier("guia-abrir-atajos")
         }
         .padding(.horizontal, Theme.Space.screen)
         // Room above the bar's step buttons: the dock sat right on them (owner, 2026-10-29).
         .padding(.top, Theme.Space.l)
         .padding(.bottom, Theme.Space.xxl)
         .background(Theme.surface)
+        // The layer the window floats from, hidden behind the dock: it has to be on screen,
+        // but no thumbnail beside the button (owner, 2026-10-29).
+        .background {
+            if GuideCompanion.isSupported {
+                CompanionLayerView(companion: companion)
+                    .frame(width: thumbWidth, height: thumbHeight)
+                    .accessibilityHidden(true)
+            }
+        }
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
