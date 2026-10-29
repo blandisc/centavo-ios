@@ -25,6 +25,8 @@ final class GuideCompanion: NSObject {
         /// The guide's step it belongs to (0-based) and that step's title.
         let step: Int
         let stepTitle: String
+        /// The step's brass symbol, drawn big when the picture has no screenshot.
+        var symbol = "checkmark.circle"
         let caption: String
         /// A guide screenshot from the asset catalog, if the picture has one.
         var photo: String?
@@ -190,7 +192,7 @@ final class GuideCompanion: NSObject {
 
     private func updatePoster() {
         guard pages.indices.contains(index) else { return }
-        let renderer = ImageRenderer(content: CompanionCard(page: pages[index], position: index, count: pages.count))
+        let renderer = ImageRenderer(content: CompanionCard(pages: pages, position: index))
         renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
         renderer.scale = Theme.Size.companionScale
         poster = renderer.uiImage
@@ -207,7 +209,7 @@ final class GuideCompanion: NSObject {
         try? FileManager.default.removeItem(at: folder)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         for (position, page) in pages.enumerated() {
-            let renderer = ImageRenderer(content: CompanionCard(page: page, position: position, count: pages.count))
+            let renderer = ImageRenderer(content: CompanionCard(pages: pages, position: position))
             renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
             renderer.scale = Theme.Size.companionScale
             guard let data = renderer.uiImage?.pngData() else { continue }
@@ -225,7 +227,7 @@ final class GuideCompanion: NSObject {
         // A name that stays the same from one launch to the next (`hashValue` changes), so the
         // video is drawn once per guide; older ones are removed.
         let digest = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
-        let name = "guia-flotante-\(digest)-v1.mp4"
+        let name = "guia-flotante-\(digest)-v2.mp4"
         guard let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
         let url = folder.appending(path: name)
         let old = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
@@ -235,7 +237,7 @@ final class GuideCompanion: NSObject {
         if !FileManager.default.fileExists(atPath: url.path) {
             var images: [CGImage] = []
             for (position, page) in pages.enumerated() {
-                let renderer = ImageRenderer(content: CompanionCard(page: page, position: position, count: pages.count))
+                let renderer = ImageRenderer(content: CompanionCard(pages: pages, position: position))
                 renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
                 renderer.scale = Theme.Size.companionScale
                 guard let image = renderer.cgImage else {
@@ -258,7 +260,9 @@ final class GuideCompanion: NSObject {
         go(to: index)
     }
 
-    /// One still frame per picture, each held `seconds`, H.264, no sound.
+    /// One still frame per picture, each held `seconds` and fading into the next over its last
+    /// `Theme.Motion.companionFade` seconds, H.264, no sound. Every picture starts clean on a
+    /// multiple of `seconds`, where `follow` and `go(to:)` expect it.
     nonisolated private static func writeVideo(_ images: [CGImage], seconds: Double, to url: URL) async throws {
         guard let first = images.first else { return }
         try? FileManager.default.removeItem(at: url)
@@ -277,13 +281,26 @@ final class GuideCompanion: NSObject {
         writer.add(input)
         guard writer.startWriting() else { throw writer.error ?? CocoaError(.fileWriteUnknown) }
         writer.startSession(atSourceTime: .zero)
+        func append(_ pixels: CVPixelBuffer, at time: Double) async throws {
+            while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+            adaptor.append(pixels, withPresentationTime: CMTime(seconds: time, preferredTimescale: 600))
+        }
         // A frame at the start of each picture and one just before the next: players hold
-        // a still frame until the next one, and the last needs its end.
+        // a still frame until the next one, and the last needs its end. Between the two, the
+        // fade into the next picture.
+        let fade = Theme.Motion.companionFade
+        let steps = Theme.Motion.companionFadeSteps
         for (position, image) in images.enumerated() {
             guard let pixels = pixelBuffer(from: image) else { continue }
-            for time in [Double(position) * seconds, Double(position + 1) * seconds - Theme.Motion.companionSettle] {
-                while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
-                adaptor.append(pixels, withPresentationTime: CMTime(seconds: time, preferredTimescale: 600))
+            let end = Double(position + 1) * seconds
+            try await append(pixels, at: Double(position) * seconds)
+            try await append(pixels, at: end - Theme.Motion.companionSettle)
+            guard images.indices.contains(position + 1) else { continue }
+            for step in 1...steps {
+                let amount = Double(step) / Double(steps + 1)
+                guard let blend = pixelBuffer(from: image, fadingInto: images[position + 1], by: amount)
+                else { continue }
+                try await append(blend, at: end - fade + fade * Double(step - 1) / Double(steps))
             }
         }
         input.markAsFinished()
@@ -292,7 +309,8 @@ final class GuideCompanion: NSObject {
         if writer.status != .completed { throw writer.error ?? CocoaError(.fileWriteUnknown) }
     }
 
-    nonisolated private static func pixelBuffer(from image: CGImage) -> CVPixelBuffer? {
+    nonisolated private static func pixelBuffer(from image: CGImage, fadingInto next: CGImage? = nil,
+                                                by amount: Double = 0) -> CVPixelBuffer? {
         let attributes = [kCVPixelBufferCGImageCompatibilityKey: true,
                           kCVPixelBufferCGBitmapContextCompatibilityKey: true,
                           kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary
@@ -308,7 +326,14 @@ final class GuideCompanion: NSObject {
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
         else { return nil }
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        context.draw(image, in: rect)
+        if let next {
+            // Eased, so the fade starts and ends softly.
+            let eased = amount * amount * (3 - 2 * amount)
+            context.setAlpha(eased)
+            context.draw(next, in: rect)
+        }
         return buffer
     }
 
@@ -425,45 +450,53 @@ private struct PlayerLayerHost: UIViewRepresentable {
 }
 
 /// One picture of the floating guide, drawn big: it is read in a window a third of the screen
-/// wide. The step and the line saying what to do on top, the Atajos screenshot under it.
+/// wide. On top, a bar with one segment per guide step (it fills as the pictures play, like
+/// a story) and the step it is on; then the instruction, as big as it fits; then a stage that
+/// holds the Atajos screenshot, or the step's symbol when the picture has none. A result
+/// («Así debe verse») gets a brass tag and a brass edge on its stage. Nothing is ever cut:
+/// a long instruction steps down a size and the screenshot shrinks to make room.
 struct CompanionCard: View {
-    let page: GuideCompanion.Page
+    let pages: [GuideCompanion.Page]
     let position: Int
-    let count: Int
+
+    private var page: GuideCompanion.Page { pages[position] }
+    private var stepCount: Int { (pages.map(\.step).max() ?? 0) + 1 }
+    /// Pages of the current step, and how far into them this one is (1-based).
+    private var stepPages: [Int] { pages.indices.filter { pages[$0].step == page.step } }
+    private var stepProgress: Double {
+        let done = (stepPages.firstIndex(of: position) ?? 0) + 1
+        return Double(done) / Double(max(stepPages.count, 1))
+    }
+    private var isLast: Bool { position == pages.count - 1 }
+
+    /// The instruction without «Así debe verse:», which the tag above it already says.
+    private var instruction: String {
+        let prefix = "Así debe verse:"
+        guard page.isResult, page.caption.hasPrefix(prefix) else { return page.caption }
+        let rest = page.caption.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
+        return rest.prefix(1).uppercased() + rest.dropFirst()
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack {
-                Text(page.stepTitle).ticketCaption().lineLimit(1)
-                Spacer(minLength: Theme.Space.s)
-                Text("\(position + 1)/\(count)")
-                    .font(.ticket(.captionStrong))
-                    .foregroundStyle(Theme.brass)
-                    .monospacedDigit()
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                progress
+                header
             }
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                if page.isResult {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.brass)
+            HeightCap(cap: Theme.Size.companionTextBudget) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    if page.isResult {
+                        Label("Así debe verse", systemImage: "checkmark.circle.fill")
+                            .font(Theme.Companion.tag)
+                            .tracking(Theme.Tracking.tag)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.brass)
+                    }
+                    instructionText
                 }
-                Text(page.caption)
-                    .font(.ticket(.subheading))
-                    .foregroundStyle(page.isResult ? Theme.muted : Theme.ink)
-                    .lineLimit(5)
-                    .minimumScaleFactor(Theme.MinimumScale.text)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            if let photo = page.photo {
-                Image(photo)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                Spacer(minLength: Theme.Space.none)
-            }
-            Label(position + 1 < count ? "⏩ siguiente toque" : "Vuelve a Al día", systemImage: "hand.tap")
-                .font(.ticket(.caption))
-                .foregroundStyle(Theme.faint)
+            .layoutPriority(1)
+            stage
         }
         .padding(Theme.Space.l)
         .frame(width: Theme.Size.companionCard.width, height: Theme.Size.companionCard.height,
@@ -471,12 +504,105 @@ struct CompanionCard: View {
         .background(Theme.background)
         .environment(\.dynamicTypeSize, .large)
     }
+
+    /// One segment per step: the ones done in brass, the current one filling with its pictures.
+    private var progress: some View {
+        HStack(spacing: Theme.Space.xxs) {
+            ForEach(0..<stepCount, id: \.self) { step in
+                Capsule()
+                    .fill(Theme.raised)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { proxy in
+                            Capsule()
+                                .fill(Theme.brass)
+                                .frame(width: proxy.size.width * fill(of: step))
+                        }
+                    }
+                    .clipShape(Capsule())
+            }
+        }
+        .frame(height: Theme.Size.companionProgress)
+    }
+
+    private func fill(of step: Int) -> Double {
+        if step < page.step { return 1 }
+        return step == page.step ? stepProgress : 0
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+            Text("Paso \(page.step + 1) de \(stepCount)")
+                .font(Theme.Companion.stepNumber)
+                .tracking(Theme.Tracking.label)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+            Text(page.stepTitle)
+                .font(Theme.Companion.stepTitle)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The biggest size of the instruction that fits its budget.
+    private var instructionText: some View {
+        ViewThatFits(in: .vertical) {
+            ForEach(Theme.Companion.instruction.indices, id: \.self) { size in
+                Text(instruction)
+                    .font(Theme.Companion.instruction[size])
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The screenshot on a raised panel, or the step's symbol when there is none.
+    private var stage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Theme.Radius.card).fill(Theme.surface)
+            if let photo = page.photo {
+                Image(photo)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
+                    .padding(Theme.Space.s)
+            } else {
+                Image(systemName: isLast ? "arrow.uturn.backward" : page.symbol)
+                    .font(Theme.Symbol.companionStage)
+                    .foregroundStyle(Theme.brass)
+            }
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .strokeBorder(page.isResult ? Theme.brass : Theme.hairline,
+                              lineWidth: page.isResult ? Theme.Stroke.strong : Theme.Stroke.hairline)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Offers its content at most `cap` of height and takes the content's own size: unlike
+/// `.frame(maxHeight:)`, which grows to the cap, a short instruction stays short.
+private struct HeightCap: Layout {
+    let cap: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        subviews.first?.sizeThatFits(capped(proposal)) ?? .zero
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: capped(ProposedViewSize(bounds.size)))
+    }
+
+    private func capped(_ proposal: ProposedViewSize) -> ProposedViewSize {
+        ProposedViewSize(width: proposal.width, height: min(proposal.height ?? cap, cap))
+    }
 }
 
 #Preview("Guía flotante") {
-    CompanionCard(page: .init(step: 1, stepTitle: "Que se active con una notificación",
-                              caption: "Toca «Notificación», en la sección Apps.",
-                              photo: "guia27-03-notificacion"),
-                  position: 2, count: 18)
+    CompanionCard(pages: [.init(step: 0, stepTitle: "Crea un atajo nuevo", caption: "Abre Atajos."),
+                          .init(step: 1, stepTitle: "Que se active con una notificación", symbol: "bell.badge.fill",
+                                caption: "Toca «Notificación», en la sección Apps.",
+                                photo: "guia27-03-notificacion")],
+                  position: 1)
         .ticketPreview()
 }

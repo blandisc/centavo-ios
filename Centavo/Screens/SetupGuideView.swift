@@ -195,13 +195,14 @@ struct SetupGuideView: View {
                 return frames.map { frame in
                     var photo: String?
                     if case .photo(let name) = frame.screen { photo = name }
-                    return GuideCompanion.Page(step: index, stepTitle: guide.title,
+                    return GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
                                                caption: frame.caption, photo: photo,
                                                isResult: frame.isResult)
                 }
             }
             let lines = guide.taps.isEmpty ? [guide.lead ?? guide.title] : guide.taps
-            return lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, caption: $0) }
+            return lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
+                                                 caption: $0) }
         }
     }
 
