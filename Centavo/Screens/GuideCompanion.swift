@@ -56,8 +56,6 @@ final class GuideCompanion: NSObject {
         show()
     }
 
-    private static let log = Logger(subsystem: "com.blandisc.centavo", category: "guia-flotante")
-
     /// Floats the window on the first picture of `step`, then opens `url` (Atajos) under it;
     /// with no `url` it only floats (a preview from the thumbnail). Atajos always opens: if the
     /// window can't start, or the system never answers, it opens anyway (on the owner's iPhone
@@ -65,28 +63,40 @@ final class GuideCompanion: NSObject {
     func float(from step: Int, thenOpen url: URL?) {
         if let first = pages.firstIndex(where: { $0.step == step }) { index = first }
         show()
+        activateAudio()
         prepareController()
-        guard let controller, controller.isPictureInPicturePossible else {
-            Self.log.notice("No se puede flotar: posible=\(self.controller?.isPictureInPicturePossible ?? false)")
-            if let url { UIApplication.shared.open(url) }
-            return
+        openWhenFloating = url
+        CompanionDiary.write("Tocar: soportado=\(Self.isSupported) posible=\(controller?.isPictureInPicturePossible ?? false) capa=\(layer.sampleBufferRenderer.status.rawValue) error=\(layer.sampleBufferRenderer.error?.localizedDescription ?? "-") ventana=\(layer.superlayer != nil)")
+        Task { [weak self] in
+            guard let self else { return }
+            // Possible can turn true a moment after the layer gets its first picture.
+            for _ in 0..<10 where !(self.controller?.isPictureInPicturePossible ?? false) {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            if let controller = self.controller, controller.isPictureInPicturePossible {
+                CompanionDiary.write("Arrancando")
+                controller.startPictureInPicture()
+            } else {
+                CompanionDiary.write("Nunca fue posible; se abre Atajos sin ventana")
+            }
+            guard url != nil else { return }
+            try? await Task.sleep(for: .seconds(Theme.Motion.companionFallback))
+            guard let url = self.openWhenFloating else { return }
+            CompanionDiary.write("Sin respuesta a tiempo; se abre Atajos")
+            self.openWhenFloating = nil
+            await UIApplication.shared.open(url)
         }
+    }
+
+    /// Picture in Picture needs a playback session, set before the controller exists: made
+    /// after, the controller can stay «not possible».
+    private func activateAudio() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback,
                                                             options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            Self.log.error("Sesión de audio: \(error.localizedDescription)")
-        }
-        openWhenFloating = url
-        controller.startPictureInPicture()
-        guard url != nil else { return }
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Theme.Motion.companionFallback))
-            guard let self, let url = self.openWhenFloating else { return }
-            Self.log.notice("La ventana no arrancó a tiempo; se abre Atajos sin ella")
-            self.openWhenFloating = nil
-            await UIApplication.shared.open(url)
+            CompanionDiary.write("Sesión de audio: \(error.localizedDescription)")
         }
     }
 
@@ -97,12 +107,15 @@ final class GuideCompanion: NSObject {
     /// Prepares the controller as soon as the layer is on screen, so starting is instant.
     func prepareController() {
         guard controller == nil, Self.isSupported else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback,
+                                                         options: [.mixWithOthers])
         let source = AVPictureInPictureController.ContentSource(sampleBufferDisplayLayer: layer,
                                                                 playbackDelegate: self)
         let controller = AVPictureInPictureController(contentSource: source)
         controller.delegate = self
         controller.requiresLinearPlayback = false
         self.controller = controller
+        CompanionDiary.write("Controlador listo")
     }
 
     // MARK: Moving
@@ -135,10 +148,12 @@ final class GuideCompanion: NSObject {
 
     /// Draws the current picture and puts it on the layer.
     private func show() {
-        guard pages.indices.contains(index),
-              let buffer = Self.sampleBuffer(for: pages[index], position: index, of: pages.count,
-                                             at: time(of: index))
-        else { return }
+        guard pages.indices.contains(index) else { return }
+        guard let buffer = Self.sampleBuffer(for: pages[index], position: index, of: pages.count,
+                                             at: time(of: index)) else {
+            CompanionDiary.write("No se pudo dibujar la imagen \(index)")
+            return
+        }
         syncTimebase()
         layer.sampleBufferRenderer.flush()
         layer.sampleBufferRenderer.enqueue(buffer)
@@ -255,6 +270,7 @@ extension GuideCompanion: AVPictureInPictureControllerDelegate {
     nonisolated func pictureInPictureControllerDidStartPictureInPicture(
         _ controller: AVPictureInPictureController) {
         MainActor.assumeIsolated {
+            CompanionDiary.write("Flotando")
             isFloating = true
             if let url = openWhenFloating { UIApplication.shared.open(url) }
             openWhenFloating = nil
@@ -263,9 +279,9 @@ extension GuideCompanion: AVPictureInPictureControllerDelegate {
 
     nonisolated func pictureInPictureController(_ controller: AVPictureInPictureController,
                                                 failedToStartPictureInPictureWithError error: any Error) {
-        let message = error.localizedDescription
+        let message = (error as NSError).description
         MainActor.assumeIsolated {
-            Self.log.error("No arrancó: \(message)")
+            CompanionDiary.write("No arrancó: \(message)")
             if let url = openWhenFloating { UIApplication.shared.open(url) }
             openWhenFloating = nil
             endSession()
@@ -285,6 +301,23 @@ extension GuideCompanion: AVPictureInPictureControllerDelegate {
         _ controller: AVPictureInPictureController,
         restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
         completionHandler(true)
+    }
+}
+
+/// What happened each time the floating guide was asked for, in a small file of the app's
+/// own (Library/Caches/guia-flotante.log, the last 200 lines) and in the system log: Picture in
+/// Picture fails without a word on some iPhones, and this is how to know why.
+enum CompanionDiary {
+    private static let logger = Logger(subsystem: "com.blandisc.centavo", category: "guia-flotante")
+
+    static func write(_ line: String) {
+        logger.notice("\(line, privacy: .public)")
+        guard let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+            .appending(path: "guia-flotante.log") else { return }
+        let stamp = Date.now.formatted(.iso8601)
+        let old = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        let lines = (old.split(separator: "\n").map(String.init) + ["\(stamp) \(line)"]).suffix(200)
+        try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
     }
 }
 

@@ -448,4 +448,8 @@ Pedidos del dueño.
   - Una categoría oculta se ve tenue con un ojo tachado.
 - **Gastos fijos empieza explicando para qué sirve.** El resumen del mes (una barra de cobrado y por venir) solo sale si hay fijos, y se agregan sugerencias de un toque que abren la hoja con el nombre puesto.
 - **La guía flotante nunca deja a la persona sin Atajos:** si en 1.2 s la ventanita no arrancó (en el iPhone del dueño no abría nada), Atajos se abre sin ella. Queda una bitácora (`guia-flotante`) para saber por qué. Tocar la miniatura la muestra sin salir de la app.
+- **Ajuste del mismo día:**
+  - En «Para cerrar el mes», el título y el primer camino («Sin gastar más») se quedan quietos abierto y cerrado; plegar solo esconde lo de abajo, sin cambiar el texto. El título ya no se atenúa al tocarlo.
+  - Los mosaicos de tarjetas miden todos lo mismo; «De tus pagos» pasa a ser una marca en la esquina, como la estrella.
+  - La guía flotante escribe un diario (`Library/Caches/guia-flotante.log`) que se puede copiar del iPhone con `devicectl` para saber por qué no arranca.
 
