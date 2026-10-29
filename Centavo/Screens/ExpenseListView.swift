@@ -1089,7 +1089,8 @@ private struct HeroTotal: View {
             // month's total; with «Hoy puedes gastar» on top they would only crowd it (each one
             // still shows in its own row of the list).
             if allowance == nil, !summary.others.isEmpty {
-                Text(verbatim: "+ \(othersText) aparte")
+                // «aparte» said nothing on a first look (user research, 2026-10-29).
+                Text(verbatim: "+ \(othersText) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")")
                     .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.muted)
@@ -1169,10 +1170,10 @@ private struct LedgerRow: View {
             .accessibilityHidden(true)
     }
 
-    /// «No cuenta · Me lo reembolsan» goes first, so the line says it and not only the strike.
+    /// «No cuenta en el presupuesto · Me lo reembolsan» goes first, so the line says it and not only the strike.
     /// VoiceOver hears «no cuenta para el presupuesto» with the amount instead.
     private func meta(spoken: Bool = false) -> String? {
-        let parts = [isUncounted && !spoken ? "No cuenta" : nil, isUncounted ? expense.reason?.title : nil,
+        let parts = [isUncounted && !spoken ? "No cuenta en el presupuesto" : nil, isUncounted ? expense.reason?.title : nil,
                      isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
                      expense.category, expense.card]
             .compactMap { $0 }

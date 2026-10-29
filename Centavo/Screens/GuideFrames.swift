@@ -91,8 +91,9 @@ extension GuideFrame {
     static let pickNotification: [GuideFrame] = [
         GuideFrame(caption: "Abajo, toca «Automatización».", screen: .photo("guia27-02-automatizacion"),
                    focus: CGRect(x: 0, y: 0.106, width: 0.689, height: 0.638)),
-        GuideFrame(caption: "Baja hasta la sección «Apps», a media lista, y toca «Notificación», la de la campana roja. "
-                   + "No elijas «Wallet».", screen: .photo("guia27-03-notificacion"),
+        // «No elijas Wallet» read as the opposite of the next step's title (research, 2026-10-29).
+        GuideFrame(caption: "En «Apps», toca «Notificación», la de la campana roja. "
+                   + "Wallet va en el siguiente paso.", screen: .photo("guia27-03-notificacion"),
                    focus: CGRect(x: 0, y: 0.407, width: 1, height: 0.568)),
     ]
     static let pickWalletApp: [GuideFrame] = [
@@ -112,15 +113,17 @@ extension GuideFrame {
     // One action per frame and the words on screen, not Atajos' own («burbuja», «variable»):
     // every person in the 2026-10-29 research got lost here.
     static let connectNotice: [GuideFrame] = [
-        GuideFrame(caption: "Toca la palabra gris «Notificación». Es solo de ejemplo: todavía no está conectada.",
+        GuideFrame(caption: "Junto a «Registrar», toca la palabra «Notificación» en azul tenue. Es solo de ejemplo: "
+                   + "todavía no está conectada.",
                    screen: .photo("guia27-08-campo"),
                    focus: CGRect(x: 0, y: 0.163, width: 1, height: 0.837)),
-        GuideFrame(caption: "Arriba del teclado aparece una fila de opciones. Deslízala hacia la izquierda hasta "
-                   + "ver «Notificación» con una campana.", screen: .photo("guia27-09a-barra"),
+        // The row starts on «Seleccionar variable»: say it is not that one, or people stop there.
+        GuideFrame(caption: "Arriba del teclado sale una fila que empieza con «Seleccionar variable». No es esa: "
+                   + "deslízala hacia la izquierda hasta que aparezca la campana.", screen: .photo("guia27-09a-barra"),
                    focus: CGRect(x: 0.022, y: 0.671, width: 0.844, height: 0.324)),
-        GuideFrame(caption: "Toca «Notificación», la de la campana. Después toca ✓ en el teclado para cerrarlo.",
+        GuideFrame(caption: "Ahí está: toca la campana «Notificación». Después toca ✓ en el teclado para cerrarlo.",
                    screen: .photo("guia27-09-variable"),
-                   focus: CGRect(x: 0.438, y: 0.79, width: 0.551, height: 0.206)),
+                   focus: CGRect(x: 0, y: 0.79, width: 1, height: 0.206)),
         GuideFrame(caption: "Así debe verse: junto a «Registrar» dice «Notificación» en azul, con su campana.",
                    screen: .photo("guia27-15-accion-lista"), isResult: true,
                    focus: CGRect(x: 0, y: 0, width: 1, height: 0.43)),

@@ -16,8 +16,10 @@ import SwiftUI
 /// and follows the iOS version the guide follows.
 ///
 /// The window's ⏪ / ⏩ buttons go to the previous or next picture, whatever interval the
-/// system skips by; ▶︎ moves on by itself every `Theme.Motion.companionPage` seconds. Coming
-/// back to Al día lands the guide on the step the window was showing.
+/// system skips by. A picture with something to tap stops at its end and waits for ▶︎ (or ⏩):
+/// at 8 seconds a picture, people were still tapping when it moved on (user research,
+/// 2026-10-29). A result («Así debe verse») moves on by itself. Coming back to Al día lands
+/// the guide on the step the window was showing.
 @MainActor @Observable
 final class GuideCompanion: NSObject {
     /// One picture of the floating guide.
@@ -54,6 +56,8 @@ final class GuideCompanion: NSObject {
     @ObservationIgnored private var controller: AVPictureInPictureController?
     @ObservationIgnored private var possibleWatch: NSKeyValueObservation?
     @ObservationIgnored private var timeWatch: Any?
+    /// Stops the player at the end of every picture with something to tap.
+    @ObservationIgnored private var holdWatch: Any?
     /// Where the player was a moment ago, to tell a ⏩ / ⏪ jump from playing along.
     @ObservationIgnored private var lastTime: Double = 0
     @ObservationIgnored private var snapping = false
@@ -230,7 +234,7 @@ final class GuideCompanion: NSObject {
         // A name that stays the same from one launch to the next (`hashValue` changes), so the
         // video is drawn once per guide; older ones are removed.
         let digest = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
-        let name = "guia-flotante-\(digest)-v4.mp4"
+        let name = "guia-flotante-\(digest)-v5.mp4"
         guard let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
         let url = folder.appending(path: name)
         let old = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
@@ -260,7 +264,25 @@ final class GuideCompanion: NSObject {
         }
         guard !Task.isCancelled else { return }
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        watchHolds()
         go(to: index)
+    }
+
+    /// Just before each action picture fades into the next, the player stops; ▶︎ goes on from
+    /// there, past the stop. Skips (⏩ / ⏪, `go(to:)`) seek over it without stopping.
+    private func watchHolds() {
+        if let holdWatch { player.removeTimeObserver(holdWatch) }
+        let times = pages.indices.filter { !pages[$0].isResult && $0 < pages.count - 1 }.map { position in
+            NSValue(time: CMTime(seconds: Double(position + 1) * pageSeconds - Theme.Motion.companionFade
+                                 - Theme.Motion.companionHold, preferredTimescale: 600))
+        }
+        guard !times.isEmpty else { holdWatch = nil; return }
+        holdWatch = player.addBoundaryTimeObserver(forTimes: times, queue: .main) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.player.rate > 0 else { return }
+                self.player.pause()
+            }
+        }
     }
 
     /// One still frame per picture, each held `seconds` and fading into the next over its last
@@ -500,6 +522,12 @@ struct CompanionCard: View {
             }
             .layoutPriority(1)
             stage
+            // The window waits on these (`watchHolds`): say how to go on.
+            if !page.isResult && !isLast {
+                Text("Al terminar, toca \(Image(systemName: "play.fill"))")
+                    .font(Theme.Companion.tag)
+                    .foregroundStyle(Theme.brass)
+            }
         }
         .padding(Theme.Space.l)
         .frame(width: Theme.Size.companionCard.width, height: Theme.Size.companionCard.height,

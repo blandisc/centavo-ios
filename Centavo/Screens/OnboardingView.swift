@@ -126,11 +126,14 @@ struct OnboardingView: View {
 
     private var welcome: some View {
         page(title: "Al día", symbol: "calendar.day.timeline.left",
-             lead: "Te dice cuánto puedes gastar hoy. Cada compra con Wallet se anota sola.") {
+             lead: "Te dice cuánto puedes gastar hoy. Cada compra con Apple Pay se anota sola.") {
             WelcomeDemo(currency: currency)
                 .onboardingRise(2)
+            // «Wallet» read as «cartera», and cash went unsaid (user research, 2026-10-29).
             VStack(spacing: Theme.Space.none) {
-                point("wallet.pass", "En línea o acercando el teléfono: sin anotar nada.")
+                point("wallet.pass", "Con Apple Pay, en línea o acercando el teléfono: sin anotar nada.")
+                pointDivider
+                point("banknote", "¿Efectivo o tarjeta de plástico? Lo anotas tú con «+».")
                 pointDivider
                 point("calendar", "Lo que no gastas hoy, lo tienes mañana.")
                 pointDivider
@@ -146,10 +149,11 @@ struct OnboardingView: View {
 
     private var budgetPage: some View {
         page(title: "Tu mes", symbol: "target",
-             lead: "Cuánto quieres gastar al mes. Con eso, Al día te dice cuánto puedes gastar cada día.") {
+             lead: "Cuánto quieres gastar al mes, sin lo que vas a ahorrar. Con eso, Al día te dice cuánto puedes gastar cada día.") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
+                // Names, not codes: «MXN» said nothing on a first look (user research).
                 Picker("Moneda", selection: $currency) {
-                    ForEach(CurrencyPreference.offered, id: \.self) { Text($0).tag($0) }
+                    ForEach(CurrencyPreference.offered, id: \.self) { Text(Self.currencyName($0)).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("bienvenida-moneda")
@@ -169,6 +173,15 @@ struct OnboardingView: View {
                 .onboardingRise(3)
         }
         .sensoryFeedback(.selection, trigger: currency)
+    }
+
+    private static func currencyName(_ code: String) -> String {
+        switch code {
+        case "MXN": "Pesos"
+        case "USD": "Dólares"
+        case "EUR": "Euros"
+        default: code
+        }
     }
 
     /// Common budgets for the currency, one tap each.
@@ -242,8 +255,11 @@ struct OnboardingView: View {
         page(title: "Gastos fijos", symbol: "repeat",
              lead: "La renta, la luz y las suscripciones se anotan solas cada mes, y se apartan de lo que puedes gastar.") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                ScrollView(.horizontal) {
-                    HStack(spacing: Theme.Space.s) {
+                // In rows, all in sight: a sideways scroll cut the last one («Sp…») and hid
+                // the rest (user research, 2026-10-29). Out of the way while typing: in rows they
+                // pushed «Agregar» under the keyboard's «Continuar».
+                if focused != .name && focused != .amount {
+                    WrapLayout {
                         ForEach(fixedSuggestions, id: \.self) { name in
                             Button {
                                 withAnimation(Theme.Motion.quick) { draftName = name }
@@ -261,10 +277,8 @@ struct OnboardingView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
+                    .transition(.opacity)
                 }
-                .scrollIndicators(.hidden)
-                .contentMargins(.horizontal, Theme.Space.screen, for: .scrollContent)
-                .padding(.horizontal, -Theme.Space.screen)
                 VStack(spacing: Theme.Space.s) {
                     TextField("Qué es", text: $draftName,
                               prompt: Text("Renta, Netflix…").foregroundStyle(Theme.faint))
@@ -301,6 +315,7 @@ struct OnboardingView: View {
                           || draftName.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("bienvenida-fijo-agregar")
             }
+            .animation(Theme.Motion.quick, value: focused)
             .onboardingRise(2)
             if !fixed.isEmpty {
                 VStack(spacing: Theme.Space.none) {
@@ -344,7 +359,7 @@ struct OnboardingView: View {
 
     private var walletPage: some View {
         page(title: "Conecta Wallet", symbol: "wallet.pass",
-             lead: "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día de cada compra. Se configura una sola vez, en unos 5 minutos.") {
+             lead: "Para que cada pago con Apple Pay se anote solo, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. Se configura una sola vez, en unos 5 minutos.") {
             WalletChain()
                 .onboardingRise(2)
             VStack(spacing: Theme.Space.none) {
@@ -353,6 +368,9 @@ struct OnboardingView: View {
                     pointDivider
                     point("pip", "Una ventanita flotante te acompaña dentro de Atajos para que no tengas que ir y venir.")
                 }
+                // Before the guide, not at its end: someone without Apple Pay has nothing to set up.
+                pointDivider
+                point("banknote", "¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+».")
             }
             .padding(.horizontal, Theme.Space.ml)
             .padding(.vertical, Theme.Space.m)

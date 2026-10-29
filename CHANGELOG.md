@@ -16,6 +16,11 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **Bienvenida y guía, tras una segunda prueba con personas:**
+  - la ventanita de la guía espera en cada cuadro donde hay que tocar algo; sigues con ▶︎;
+  - los pasos 2 y 5 de la guía ya no se contradicen ni dicen «gris» de algo azul, y el paso 5 dice qué fila buscar;
+  - la bienvenida habla de Apple Pay, dice que el efectivo se anota con «+», muestra las monedas por nombre y todos los gastos fijos sugeridos a la vista;
+  - «Después» se lee como botón, y en el inicio «aparte» pasó a «en otra moneda» y «No cuenta» a «No cuenta en el presupuesto».
 - **Te pasaste, más claro:**
   - la cifra, su barra y «Llevas $2,366 de $2,000 · Ver cuenta» van juntas;
   - debajo, «Para cerrar el mes ›» abre una hoja con las fechas que quedan y con cuánto cerrarías según lo que gastes;

@@ -104,6 +104,8 @@ extension Theme.Motion {
     static let companionFade: Double = 0.4
     /// In-between frames of that fade.
     static let companionFadeSteps = 8
+    /// How long before its fade a picture with something to tap stops and waits for ▶︎.
+    static let companionHold: Double = 0.15
     /// Seconds to wait for the window before opening Atajos without it.
     static let companionFallback: Double = 1.2
 }

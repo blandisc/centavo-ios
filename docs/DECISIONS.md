@@ -485,3 +485,12 @@ Elegido por el dueño sobre el lienzo de análisis del mismo día.
   - cada cuadro del video: barra de avance por paso, instrucción en blanco y nunca cortada, y la captura recortada a mano (`GuideFrame.focus`) en vez de detectar el anillo por píxeles, que era frágil;
   - las tres personas se perdían en «Conéctalos» y «Conecta el comercio»: ahora va una acción por cuadro, sin palabras de Atajos («burbuja», «barra»), y cada paso cierra con «Así debe verse»;
   - «unos 2 minutos» pasó a «unos 5 minutos» (nadie lo creía con 8 pasos) y la bienvenida dice qué es Atajos.
+- **Segunda ronda con tres personas nuevas, desde la App Store (2026-10-29):** las tres entendían la app y abandonaban en el paso 5, cuadro 10. Pedido del dueño: atender todos los hallazgos.
+  - la ventanita ya no avanza sola en los cuadros donde hay que tocar algo: se detiene al final y dice «Al terminar, toca ▶︎»; los «Así debe verse» sí avanzan solos. Corrige en parte la decisión de esta mañana de que todo avanzara solo: a 8 segundos nadie alcanzaba;
+  - el cuadro 10 nombra lo que se ve («la fila empieza con «Seleccionar variable». No es esa») y el 11 muestra la fila completa con la campana;
+  - «No elijas Wallet» pasó a «Wallet va en el siguiente paso», y «la palabra gris» a «en azul tenue», que es como se ve;
+  - la bienvenida dice «Apple Pay» en vez de «Wallet» donde habla de pagar (se leía «cartera»), aclara que el efectivo y el plástico se anotan con «+», y lo repite en «Conecta Wallet» antes de la guía, no hasta el paso 8;
+  - en la bienvenida: «Ejemplo» sobre la tarjeta animada, monedas por nombre («Pesos») en vez de código, gastos fijos sugeridos en renglones en vez de una fila que se cortaba, y «sin lo que vas a ahorrar» en el presupuesto;
+  - el botón secundario («Después») va en blanco y seminegrita en toda la app: en gris no se leía como botón;
+  - en el inicio, «+ USD 24.99 aparte» pasó a «en otra moneda» y la etiqueta de un gasto excluido dice «No cuenta en el presupuesto».
+  - Queda por investigar: instalar el atajo ya armado con un toque, lo único que quitaría los pasos 5 y 6, revisando que no choque con «sin servidor».

@@ -732,7 +732,7 @@ final class FlowTests: XCTestCase {
         let next = require(app.buttons["bienvenida-siguiente"], "No apareció la bienvenida", timeout: 20)
         snap("bienvenida-1")
         next.tap()
-        require(app.buttons["MXN"], "No ofrece pesos").tap()
+        require(app.buttons["Pesos"], "No ofrece pesos").tap()
         let budget = require(app.textFields["bienvenida-presupuesto"], "No pide presupuesto")
         budget.tap(); budget.typeAmount("9000")
         require(app.staticTexts["bienvenida-por-dia"], "No dice cuánto puedes gastar al día")
