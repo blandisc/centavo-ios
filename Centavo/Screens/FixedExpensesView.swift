@@ -14,6 +14,8 @@ struct FixedExpensesView: View {
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     @State private var adding = false
     @State private var editing: Expense?
+    /// A fixed expense about to stop or be deleted, waiting for the answer.
+    @State private var confirming: FixedItem?
 
     private var primary: String { CurrencyPreference.resolve(storedCurrency) }
     private var items: [FixedItem] { FixedOutlook.items(originals: originals, plans: FixedPlan.decode(storedPlans)) }
@@ -58,13 +60,14 @@ struct FixedExpensesView: View {
                     ForEach(items) { item in
                         Button { editing = item.original } label: { row(item) }
                             .buttonStyle(.plain)
+                            // No role: a destructive swipe would take the row out before the question.
                             .swipeActions(edge: .trailing) {
-                                if let original = item.original {
-                                    Button("Dejar de repetir", systemImage: "stop.circle", role: .destructive) {
-                                        stop(original)
-                                    }
-                                } else if let plan = item.plan {
-                                    Button("Borrar", systemImage: "trash", role: .destructive) { remove(plan) }
+                                if item.original != nil {
+                                    Button("Dejar de repetir", systemImage: "stop.circle") { confirming = item }
+                                        .tint(Theme.danger)
+                                } else if item.plan != nil {
+                                    Button("Borrar", systemImage: "trash") { confirming = item }
+                                        .tint(Theme.danger)
                                 }
                             }
                     }
@@ -93,6 +96,21 @@ struct FixedExpensesView: View {
                         .font(.ticket(.footnoteStrong))
                         .accessibilityIdentifier("hoja-listo")
                 }
+            }
+            .confirmationDialog(confirming.map { item in
+                                    item.original != nil ? "¿Dejar de repetir «\(item.name)»?" : "¿Borrar «\(item.name)»?"
+                                } ?? "",
+                                isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
+                                titleVisibility: .visible, presenting: confirming) { item in
+                if let original = item.original {
+                    Button("Dejar de repetir", role: .destructive) { stop(original) }
+                } else if let plan = item.plan {
+                    Button("Borrar", role: .destructive) { remove(plan) }
+                }
+                Button("Conservar", role: .cancel) {}
+            } message: { item in
+                Text(item.original != nil ? "Lo ya anotado se queda; los siguientes ya no llegan."
+                     : "Todavía no se anota nada; ya no empezará.")
             }
             .sheet(isPresented: $adding) { FixedPlanSheet() }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
@@ -158,16 +176,40 @@ struct FixedExpensesView: View {
 
 /// «Agregar gasto fijo»: how much, what it is, how often and when it first comes. A first
 /// charge that already came is logged now (with its date), and the ones after it that also
-/// came; one still to come waits for its day.
+/// came; one still to come waits for its day. Category and card are optional: the category
+/// starts as the one suggested for the name, like a new expense.
 struct FixedPlanSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @Query(sort: \Expense.date, order: .reverse) private var history: [Expense]
+    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
+    @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @State private var amountText = ""
     @State private var merchant = ""
     @State private var rule = RepeatRule.monthly
     @State private var firstDay = Date.now
+    @State private var category = ""
+    /// Once a category is picked by hand, the name no longer changes it.
+    @State private var pickedCategory = false
+    @State private var card = ""
+    /// Read once when the sheet opens, not a live query of every expense.
+    @State private var pastExpenses: [CategorizedExpense] = []
+    @State private var knownCategories: [String] = []
+    @State private var knownCards: [String] = []
     @FocusState private var amountFocused: Bool
+
+    private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
+    private var sources: [LabeledIcon] { UserCatalog.decode(storedSources) }
+
+    /// The same categories the expense sheet offers.
+    private var categories: [String] {
+        CategoryStyle.offered(known: Array(knownCategories.prefix(8)), custom: customCategories,
+                              current: category, hidden: UserCatalog.decodeNames(storedHidden))
+    }
+
+    private var categoryChoice: Binding<String> {
+        Binding(get: { category }, set: { category = $0; pickedCategory = true })
+    }
 
     private var amount: Decimal? {
         guard let value = AmountParser.parse(amountText)?.value, value > 0 else { return nil }
@@ -207,6 +249,37 @@ struct FixedPlanSheet: View {
                 .listRowBackground(Theme.surface)
 
                 Section {
+                    Picker(selection: categoryChoice) {
+                        Text("Sin categoría").tag("")
+                        ForEach(categories, id: \.self) { name in
+                            Label(name, systemImage: CategoryStyle.icon(for: name, custom: customCategories)).tag(name)
+                        }
+                    } label: {
+                        SectionLabel("Categoría")
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.brass)
+                    .accessibilityIdentifier("fijo-categoria")
+                    Picker(selection: $card) {
+                        Text("Sin tarjeta").tag("")
+                        ForEach(PaymentChoices.names(sources: sources, known: knownCards, current: card),
+                                id: \.self) { name in
+                            Label(name, systemImage: PaymentChoices.icon(for: name, sources: sources)).tag(name)
+                        }
+                    } label: {
+                        SectionLabel("Con qué pagas")
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.brass)
+                    .accessibilityIdentifier("fijo-tarjeta")
+                } header: {
+                    Text("Opcional").ticketCaption()
+                } footer: {
+                    HintText("Cada cobro llega con esta categoría y esta tarjeta.")
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
                     RepeatRulePicker(rule: $rule)
                     DatePicker(selection: $firstDay, in: ...latest, displayedComponents: .date) {
                         SectionLabel("Primer cobro")
@@ -236,22 +309,39 @@ struct FixedPlanSheet: View {
             .saveBar(amount == nil ? "Falta el monto" : name.isEmpty ? "Falta qué es"
                         : "\(name) · " + FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first!,
                      enabled: amount != nil && !name.isEmpty, action: save)
-            .onAppear { amountFocused = true }
+            .onAppear(perform: load)
+            .onChange(of: merchant) { _, new in
+                guard !pickedCategory else { return }
+                category = CategoryMemory.suggestion(for: new.trimmingCharacters(in: .whitespaces),
+                                                     rules: UserCatalog.categoryRules, history: pastExpenses,
+                                                     hidden: UserCatalog.notAutoAssigned) ?? ""
+            }
         }
+    }
+
+    private func load() {
+        let history = (try? context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        pastExpenses = history.map(\.categorized)
+        knownCategories = CategoryMemory.known(in: pastExpenses)
+        knownCards = PaymentChoices.mostUsedCards(history.prefix(300).map(\.card))
+        amountFocused = true
     }
 
     private func save() {
         guard let amount else { return }
+        let categoryName = category.trimmingCharacters(in: .whitespaces)
+        let cardName = card.trimmingCharacters(in: .whitespaces)
         let plan = FixedPlan(
             merchant: String(name.prefix(ExpenseRecorder.maxMerchantLength)),
             amount: "\(amount)",
             currency: CurrencyPreference.current,
-            category: CategoryMemory.suggestion(for: name, rules: UserCatalog.categoryRules,
-                                                history: history.map(\.categorized),
-                                                hidden: UserCatalog.notAutoAssigned),
+            category: categoryName.isEmpty ? nil : categoryName,
+            card: cardName.isEmpty ? nil : cardName,
             rule: rule.stored,
             firstDate: firstDate
         )
+        // Picked by hand: the next expense from here starts with it too.
+        if pickedCategory, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
         if plan.firstDate <= .now {
             context.insert(RecurringExpenses.original(from: plan))
             try? RecurringExpenses.logDue(in: context)

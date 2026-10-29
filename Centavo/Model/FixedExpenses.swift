@@ -15,6 +15,8 @@ struct FixedPlan: Codable, Hashable, Identifiable {
     /// The ISO code it was set up in.
     var currency: String
     var category: String?
+    /// The card it is paid with, if one was chosen. Optional: plans saved before it decode.
+    var card: String? = nil
     var rule: String?
     var firstDate: Date
 
