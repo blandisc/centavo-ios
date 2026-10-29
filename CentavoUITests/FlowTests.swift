@@ -779,7 +779,9 @@ final class FlowTests: XCTestCase {
         snap("extremos-principal")
 
         let screen = app.windows.firstMatch.frame
-        for element in [app.staticTexts["total-mes"], row(app, containing: "Farmacia")] {
+        // Past the budget the hero says by how much («te-pasaste») instead of the total.
+        let hero = app.staticTexts["te-pasaste"].exists ? app.staticTexts["te-pasaste"] : app.staticTexts["total-mes"]
+        for element in [hero, row(app, containing: "Farmacia")] {
             XCTAssertTrue(element.exists)
             XCTAssertGreaterThanOrEqual(element.frame.minX, screen.minX - 1, "Se sale: \(element.frame)")
             XCTAssertLessThanOrEqual(element.frame.maxX, screen.maxX + 1, "Se sale: \(element.frame)")

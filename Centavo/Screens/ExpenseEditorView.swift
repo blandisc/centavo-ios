@@ -229,18 +229,6 @@ struct ExpenseEditorView: View {
                         .font(.ticket(.footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
-                // The decimal pad has no return key: «Siguiente» goes on to the merchant.
-                // Always there: a bar whose content depends on the focus is not rebuilt when the
-                // focus moves (the button never showed). From the merchant it closes the keyboard.
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Siguiente") {
-                        if amountFocused { merchantFocused = true } else { merchantFocused = false; amountFocused = false }
-                    }
-                    .font(.ticket(.footnoteStrong))
-                    .foregroundStyle(Theme.brass)
-                    .accessibilityIdentifier("siguiente-teclado")
-                }
             }
             .saveBar(saveSummary, enabled: canSave, action: save)
             .alert("Dilo en una frase", isPresented: $askingSentence) {
@@ -307,7 +295,20 @@ struct ExpenseEditorView: View {
                     .focused($amountFocused)
                 HStack(spacing: Theme.Space.s) {
                     currencyMenu
-                    if expense == nil { sentenceButton }
+                    // The decimal pad has no return key, and a keyboard bar does not show in
+                    // this sheet: while the amount is typed, «Siguiente» lives in its row.
+                    if amountFocused {
+                        Button("Siguiente", systemImage: "arrow.right") { merchantFocused = true }
+                            .labelStyle(.iconOnly)
+                            .font(.ticket(.footnoteStrong))
+                            .foregroundStyle(Theme.brass)
+                            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
+                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("siguiente-teclado")
+                    } else if expense == nil {
+                        sentenceButton
+                    }
                 }
             }
         } header: {
