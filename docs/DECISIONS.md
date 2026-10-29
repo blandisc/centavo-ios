@@ -372,3 +372,25 @@ A pedido del dueño («un onboarding con las mejores prácticas, animaciones e i
 - **Guía flotante (picture in picture) en vez de video grabado.** Las imágenes se dibujan al momento con las capturas reales que ya usa la guía. Así no hay que grabar nada, no se queda vieja con cada iOS (se rehace con `GuideScreenshotsTests`) y no pesa. Esas tres eran las razones por las que el 2026-10-15 se descartó un video. ⏪ y ⏩ cambian de toque, y ▶︎ avanza solo cada 8 s.
 - **Requiere el modo en segundo plano «audio»,** que es el que Apple pide para picture in picture. La app no reproduce sonido y no interrumpe la música (`mixWithOthers`). El simulador no tiene picture in picture: se verifica en el iPhone.
 
+
+## 2026-10-29 · Widgets: «+» en el pequeño, una sola frase para VoiceOver, «Abre Al día una vez» y «Actualizado hace X»
+Pendientes de la revisión del 2026-10-29 (`docs/research/analisis-ux-ui-tecnico-2026-10-29.md`), aprobados por el dueño.
+- **El pequeño tiene «+»** junto a la cifra, más chico que el del mediano (`Theme.Size.widgetAddButtonSmall`). El pequeño no admite `Link`, así que es un botón con `OpenAddExpenseIntent`, que abre la app en «Anotar gasto». Tocar el resto del widget sigue igual: abre la app, o la hoja del presupuesto si no hay. La cifra se encoge un poco si no cabe junto al «+».
+- **VoiceOver lee cada widget de inicio como una frase,** la misma de la pantalla bloqueada (`DayState.spoken`): «Hoy puedes gastar $290». Luego el «+» y «Fijar presupuesto» como botones aparte. «En qué se va» agrega sus categorías a la frase.
+- **Sin datos, «Abre Al día una vez»** en lugar de «Sin presupuesto»: un widget sin `WidgetSnapshot` (la app nunca se abrió, o falta el App Group y el llavero) no sabe si hay presupuesto. Tocarlo abre la app. En la pantalla bloqueada: «—» en el círculo y «Al día · ábrela una vez» en la línea.
+- **«Actualizado hace X» solo si lo que dejó la app tiene 24 h o más** (`WidgetSnapshot.daysOld`), en el renglón bajo la cifra. Un pago, Siri o abrir la app lo reescribe, así que casi nunca sale. La línea de tiempo trae el momento exacto en que cumple un día.
+- **Los widgets se actualizan antes de que termine cada intent** (Wallet, Siri, Atajos): `WidgetBridge.refreshAfterIntent()`. Atajos puede suspender la app justo después del pago, antes de los 300 ms del refresco por `ModelContext.didSave`, y el widget quedaba un pago atrás. El refresco por `didSave` sigue para la app.
+
+## 2026-10-29 · Control «Anotar gasto»
+- **Un control de iOS 18 (`ControlWidgetButton`) en la extensión de widgets,** para el Centro de control, la pantalla bloqueada (en lugar de la linterna o la cámara) y el botón de acción. Un toque abre Al día en «Anotar gasto».
+- **Cómo abre la hoja:** `OpenAddExpenseIntent` (`openAppWhenRun`) se compila en la app y en la extensión. El sistema lo corre en la app, que abre su propio `centavo://anotar`, el mismo enlace del «+» del mediano. `OpenURLIntent` no sirve: solo acepta enlaces universales, y la app no tiene servidor ni dominio.
+
+## 2026-10-29 · Siri: «Borra el último gasto» y «¿Cuánto puedo gastar hoy?»
+- **«Borra el último gasto en Al día»:** Siri dice cuál es («¿Borro $89.00 en Oxxo, de ayer?») y pide confirmación antes de borrarlo. Es el más reciente hasta ahora, nunca un gasto fijo: borrar uno por voz pararía o saltaría su repetición sin que se note.
+- **«¿Cuánto puedo gastar hoy en Al día?»:** solo la cifra del día, la misma de la pantalla. «Cuánto llevo» sigue diciendo el mes completo.
+- **«Anotar gasto» acepta una categoría opcional.** Siri no la pide; se elige en Atajos y gana sobre la memoria del comercio.
+- Quedan 6 atajos de los 10 que permite Apple.
+
+## 2026-10-29 · Captura más liviana
+- **Recordar la categoría de un comercio mira solo el último año** (máximo 2,000 gastos, los más nuevos primero). Antes cada pago de Wallet leía todo el historial, en segundo plano y con poco tiempo. Un comercio que no se usa desde hace más de un año empieza de cero; una categoría elegida como regla («Recordar mi categoría») sigue ganando.
+- **La reparación de nombres de bancos lee solo lo que llegó desde la última vez** (fecha guardada en `UserDefaults`). Si cambia la lista de tarjetas, lo vuelve a leer todo, porque una tarjeta nueva puede volver legible un renglón viejo.

@@ -17,17 +17,26 @@ struct AddExpenseIntent: AppIntent {
     @Parameter(title: "Comercio", requestValueDialog: "¿Dónde?")
     var merchant: String
 
+    /// Optional: Siri never asks for it. Set in Atajos (or said there), it beats the memory.
+    @Parameter(title: "Categoría")
+    var category: CategoryEntity?
+
     static var parameterSummary: some ParameterSummary {
-        Summary("Anotar \(\.$amount) en \(\.$merchant)")
+        Summary("Anotar \(\.$amount) en \(\.$merchant)") {
+            \.$category
+        }
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // On the widgets before returning: Siri may suspend the app right after.
+        defer { WidgetBridge.refreshAfterIntent() }
         // So "what is left" counts this month's rent even if the app was not opened.
         try? RecurringExpenses.logDue(in: container.mainContext)
         let context = container.mainContext
-        switch try ExpenseRecorder.recordByHand(amountText: amount, merchant: merchant, in: context) {
+        switch try ExpenseRecorder.recordByHand(amountText: amount, merchant: merchant, category: category?.id,
+                                                in: context) {
         case .unreadable:
             throw $amount.needsValueError("No entendí «\(amount)». Dime solo la cantidad, por ejemplo 89.50.")
         case .empty:

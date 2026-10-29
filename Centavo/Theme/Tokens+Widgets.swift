@@ -76,11 +76,15 @@ extension Font {
 extension Theme.Symbol {
     /// The widget's «+».
     static let widgetAdd: Font = .system(size: 17, weight: .bold)
+    /// The small widget's «+», beside its figure.
+    static let widgetAddSmall: Font = .system(size: 13, weight: .bold)
 }
 
 extension Theme.Size {
     /// The widget's «+» button.
     static let widgetAddButton: CGFloat = 36
+    /// The small widget's «+», beside its figure: smaller, so the figure keeps its room.
+    static let widgetAddButtonSmall: CGFloat = 26
     /// The month strip of the small widgets.
     static let widgetStrip: CGFloat = 8
     /// The month strip of the medium widget, with a tile per day.
