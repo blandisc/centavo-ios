@@ -28,8 +28,10 @@ final class GuideCompanion: NSObject {
         /// The step's brass symbol, drawn big when the picture has no screenshot.
         var symbol = "checkmark.circle"
         let caption: String
-        /// A guide screenshot from the asset catalog, if the picture has one.
+        /// A guide screenshot from the asset catalog, if the picture has one, and the part of
+        /// it worth showing (`GuideFrame.focus`).
         var photo: String?
+        var focus: CGRect?
         /// «Así debe verse»: a result, not something to tap.
         var isResult = false
     }
@@ -223,11 +225,12 @@ final class GuideCompanion: NSObject {
 
     /// Draws every picture and writes them as one video in the caches, once per guide.
     private func buildVideo() async {
-        let key = pages.map { "\($0.step)|\($0.caption)|\($0.photo ?? "")" }.joined(separator: "#")
+        let key = pages.map { "\($0.step)|\($0.caption)|\($0.photo ?? "")|\($0.focus.map { "\($0)" } ?? "")" }
+            .joined(separator: "#")
         // A name that stays the same from one launch to the next (`hashValue` changes), so the
         // video is drawn once per guide; older ones are removed.
         let digest = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
-        let name = "guia-flotante-\(digest)-v3.mp4"
+        let name = "guia-flotante-\(digest)-v4.mp4"
         guard let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
         let url = folder.appending(path: name)
         let old = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
@@ -555,149 +558,46 @@ struct CompanionCard: View {
         }
     }
 
-    /// The screenshot, zoomed onto its brass ring and filling the stage; or, when the picture
-    /// has none, the step's emblem drawn big.
-    @ViewBuilder private var stage: some View {
-        if let photo = page.photo {
-            RingFramedPhoto(name: photo)
-                .background(Theme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.card)
-                        .strokeBorder(page.isResult ? Theme.brass : Theme.hairline,
-                                      lineWidth: page.isResult ? Theme.Stroke.strong : Theme.Stroke.hairline)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            Image(systemName: isLast ? "arrow.uturn.backward" : page.symbol)
-                .font(Theme.Symbol.companionStage)
-                .foregroundStyle(Theme.brass)
-                .frame(width: Theme.Size.companionEmblem, height: Theme.Size.companionEmblem)
-                .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.card).strokeBorder(Theme.hairline)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
-
-/// An Atajos screenshot framed for the small window: as wide as the stage, showing the band
-/// around its brass ring (with `Theme.Size.companionRingContext` above and below) whole. A
-/// long instruction leaves a short stage; instead of shrinking the whole screenshot to fit
-/// it, the stage shows the rows around the ring, bigger. A screenshot with no ring (a result)
-/// is shown whole.
-private struct RingFramedPhoto: View {
-    let name: String
-
-    var body: some View {
-        GeometryReader { proxy in
-            if let image = UIImage(named: name)?.cgImage {
-                let frame = Self.frame(photo: CGSize(width: image.width, height: image.height),
-                                       ring: PhotoRing.box(of: name, in: image), stage: proxy.size)
+    /// The part of the screenshot worth showing, as big as the stage allows, with its frame
+    /// hugging it (no empty band of stage around it); or, when the picture has none, the
+    /// step's emblem ringed in brass, as the screenshots ring what to tap. Either way it sits
+    /// centred in the room the text leaves.
+    private var stage: some View {
+        Group {
+            if let photo = page.photo, let image = Self.crop(photo, to: page.focus) {
                 Image(decorative: image, scale: 1)
                     .resizable()
-                    .frame(width: frame.width, height: frame.height)
-                    .offset(x: frame.minX, y: frame.minY)
-            }
-        }
-        .clipped()
-    }
-
-    /// Where the screenshot goes in the stage, in points; the photo and ring are in pixels.
-    static func frame(photo: CGSize, ring: CGRect?, stage: CGSize) -> CGRect {
-        guard photo.width > 0, photo.height > 0, stage.width > 0, stage.height > 0 else { return .zero }
-        let fit = min(stage.width / photo.width, stage.height / photo.height)
-        var scale = fit
-        var focus = CGPoint(x: photo.width / 2, y: photo.height / 2)
-        if let ring {
-            let context = photo.width * Theme.Size.companionRingContext
-            let keep = ring.insetBy(dx: -context, dy: -context)
-                .intersection(CGRect(origin: .zero, size: photo))
-            // Never wider than the stage: a row of an iPhone screen keeps its label on the left
-            // and its control on the right together (zooming sideways cut «Mostrar al
-            // ejecutar» off its switch). Never below fitting, and the ring always whole.
-            scale = max(fit, min(stage.width / photo.width, stage.width / keep.width,
-                                 stage.height / keep.height))
-            focus = CGPoint(x: keep.midX, y: keep.midY)
-        }
-        let size = CGSize(width: photo.width * scale, height: photo.height * scale)
-        func origin(_ length: CGFloat, _ room: CGFloat, _ center: CGFloat) -> CGFloat {
-            guard length > room else { return (room - length) / 2 }
-            return min(0, max(room - length, room / 2 - center))
-        }
-        return CGRect(x: origin(size.width, stage.width, focus.x * scale),
-                      y: origin(size.height, stage.height, focus.y * scale),
-                      width: size.width, height: size.height)
-    }
-}
-
-/// Finds the brass ring (and arrow) drawn on a guide screenshot, so the floating guide can
-/// zoom onto it. Looks at a quarter-size copy for brass pixels, groups them into connected
-/// blobs and keeps the ones big enough to be a ring or an arrow (a Wallet icon's yellow
-/// stripe is not). Remembered per screenshot.
-@MainActor
-enum PhotoRing {
-    private static var found: [String: CGRect?] = [:]
-
-    static func box(of name: String, in image: CGImage) -> CGRect? {
-        if let known = found[name] { return known }
-        let box = search(image)
-        found[name] = box
-        return box
-    }
-
-    private static func search(_ image: CGImage) -> CGRect? {
-        let step = 4
-        let width = image.width / step, height = image.height / step
-        guard width > 0, height > 0 else { return nil }
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
-            guard let context = CGContext(
-                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
-                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
-            context.interpolationQuality = .low
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return true
-        }
-        guard drawn else { return nil }
-        // Brass: a warm, clearly red-over-blue colour with green in between (the ring is
-        // #D0A44E, softened by the screenshot's compression).
-        var brass = [Bool](repeating: false, count: width * height)
-        for index in brass.indices {
-            let red = Int(pixels[index * 4]), green = Int(pixels[index * 4 + 1]), blue = Int(pixels[index * 4 + 2])
-            guard red > 150, blue < 150, red - blue > 70, red - green > 20 else { continue }
-            let ratio = Double(green) / Double(red)
-            brass[index] = ratio > 0.6 && ratio < 0.9
-        }
-        var seen = [Bool](repeating: false, count: width * height)
-        var box: CGRect?
-        let smallest = Double(width) * 0.08
-        for start in brass.indices where brass[start] && !seen[start] {
-            seen[start] = true
-            var stack = [start]
-            var minX = width, minY = height, maxX = 0, maxY = 0
-            while let index = stack.popLast() {
-                let x = index % width, y = index / width
-                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
-                for dy in -1...1 {
-                    for dx in -1...1 {
-                        let nx = x + dx, ny = y + dy
-                        guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
-                        let next = ny * width + nx
-                        if brass[next] && !seen[next] { seen[next] = true; stack.append(next) }
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.card)
+                            .strokeBorder(page.isResult ? Theme.brass : Theme.hairline,
+                                          lineWidth: page.isResult ? Theme.Stroke.strong : Theme.Stroke.hairline)
                     }
-                }
+            } else {
+                Image(systemName: isLast ? "arrow.uturn.backward" : page.symbol)
+                    .font(Theme.Symbol.companionStage)
+                    .foregroundStyle(Theme.brass)
+                    .frame(width: Theme.Size.companionEmblem, height: Theme.Size.companionEmblem)
+                    .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.card)
+                            .strokeBorder(Theme.brass, lineWidth: Theme.Stroke.strong)
+                    }
             }
-            guard Double(max(maxX - minX, maxY - minY)) >= smallest else { continue }
-            // The last pixel of the blob counts whole: its right and bottom edges are one past it.
-            let left = minX * step, top = minY * step
-            let right = (maxX + 1) * step, bottom = (maxY + 1) * step
-            let blob = CGRect(x: left, y: top, width: right - left, height: bottom - top)
-            box = box.map { $0.union(blob) } ?? blob
         }
-        return box
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// `focus` of the named screenshot, in its own pixels; the whole one when there is none.
+    private static func crop(_ name: String, to focus: CGRect?) -> CGImage? {
+        guard let image = UIImage(named: name)?.cgImage else { return nil }
+        guard let focus else { return image }
+        let size = CGSize(width: image.width, height: image.height)
+        let rect = CGRect(x: focus.minX * size.width, y: focus.minY * size.height,
+                          width: focus.width * size.width, height: focus.height * size.height)
+            .integral.intersection(CGRect(origin: .zero, size: size))
+        return image.cropping(to: rect) ?? image
     }
 }
 

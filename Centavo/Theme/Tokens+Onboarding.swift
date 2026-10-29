@@ -37,9 +37,6 @@ extension Theme.Size {
     /// Side of the brass emblem tile that fills the floating guide's stage when a picture has
     /// no screenshot: the guide's own step emblem, drawn big.
     static let companionEmblem: CGFloat = 132
-    /// How much of the Atajos screenshot the floating guide keeps around its brass ring when it
-    /// zooms in, as a fraction of the screenshot's width: enough to recognize the place.
-    static let companionRingContext: CGFloat = 0.12
 }
 
 extension Theme.Symbol {

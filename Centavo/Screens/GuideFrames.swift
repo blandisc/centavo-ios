@@ -10,6 +10,11 @@ struct GuideFrame: Identifiable {
     let screen: Screen
     /// «Así debe verse»: what it looks like once done, not something to tap.
     var isResult = false
+    /// The part of the screenshot the floating guide shows, in fractions of its width and
+    /// height (so it holds at any export size): the ring and what tells the place apart,
+    /// without the empty stretches of black around them. The whole screenshot when nil.
+    /// Set by eye; retaking a screenshot means looking at its crop again.
+    var focus: CGRect?
 
     enum Screen {
         /// A real screenshot of Atajos (iOS 27, es-MX), taken by `GuideScreenshotsTests`,
@@ -76,19 +81,25 @@ extension GuideFrame {
     // iOS 27, from real screenshots (see GuideScreenshotsTests).
     static let newShortcut: [GuideFrame] = [
         GuideFrame(caption: "Abre la app Atajos y toca el botón «+» de abajo. Si antes aparece "
-                   + "«Novedades de Atajos», toca «Continuar».", screen: .photo("guia27-01-mas")),
+                   + "«Novedades de Atajos», toca «Continuar».", screen: .photo("guia27-01-mas"),
+                   focus: CGRect(x: 0.167, y: 0.673, width: 0.667, height: 0.327)),
         GuideFrame(caption: "Si se abre «Describir un atajo», no escribas nada: toca «Editar», arriba a la derecha.",
-                   screen: .photo("guia27-01b-editar")),
+                   screen: .photo("guia27-01b-editar"),
+                   focus: CGRect(x: 0, y: 0, width: 1, height: 0.746)),
     ]
     static let pickNotification: [GuideFrame] = [
-        GuideFrame(caption: "Abajo, toca «Automatización».", screen: .photo("guia27-02-automatizacion")),
+        GuideFrame(caption: "Abajo, toca «Automatización».", screen: .photo("guia27-02-automatizacion"),
+                   focus: CGRect(x: 0, y: 0.106, width: 0.689, height: 0.638)),
         GuideFrame(caption: "Baja hasta la sección «Apps», a media lista, y toca «Notificación», la de la campana roja. "
-                   + "No elijas «Wallet».", screen: .photo("guia27-03-notificacion")),
+                   + "No elijas «Wallet».", screen: .photo("guia27-03-notificacion"),
+                   focus: CGRect(x: 0, y: 0.407, width: 1, height: 0.568)),
     ]
     static let pickWalletApp: [GuideFrame] = [
         GuideFrame(caption: "Toca la palabra «App», en azul tenue, justo debajo de «Al recibir una notificación de».",
-                   screen: .photo("guia27-04-app")),
-        GuideFrame(caption: "Baja casi hasta el final de la lista y toca «Wallet».", screen: .photo("guia27-05-wallet")),
+                   screen: .photo("guia27-04-app"),
+                   focus: CGRect(x: 0, y: 0.172, width: 1, height: 0.815)),
+        GuideFrame(caption: "Baja casi hasta el final de la lista y toca «Wallet».", screen: .photo("guia27-05-wallet"),
+                   focus: CGRect(x: 0, y: 0.262, width: 1, height: 0.738)),
         GuideFrame(caption: "Así debe verse: «Al recibir una notificación de Wallet».",
                    screen: .photo("guia27-06-con-wallet"), isResult: true),
     ]
@@ -99,22 +110,28 @@ extension GuideFrame {
     ]
     static let connectNotice: [GuideFrame] = [
         GuideFrame(caption: "La palabra «Notificación» en gris es solo un ejemplo: todavía no está conectada. Tócala.",
-                   screen: .photo("guia27-08-campo")),
+                   screen: .photo("guia27-08-campo"),
+                   focus: CGRect(x: 0, y: 0.163, width: 1, height: 0.837)),
         GuideFrame(caption: "Arriba del teclado sale una barra. Deslízala hacia la izquierda varias veces, hasta "
-                   + "que veas «Notificación» con una campana.", screen: .photo("guia27-09a-barra")),
+                   + "que veas «Notificación» con una campana.", screen: .photo("guia27-09a-barra"),
+                   focus: CGRect(x: 0.022, y: 0.671, width: 0.844, height: 0.324)),
         GuideFrame(caption: "Toca «Notificación», la de la campana. En la acción queda «Notificación» con su "
-                   + "campana. Luego toca ✓, la tecla azul del teclado (no la X).", screen: .photo("guia27-09-variable")),
+                   + "campana. Luego toca ✓, la tecla azul del teclado (no la X).", screen: .photo("guia27-09-variable"),
+                   focus: CGRect(x: 0.438, y: 0.79, width: 0.551, height: 0.206)),
     ]
     /// Atajos leaves the notification's subtitle out, and Wallet puts the merchant there
     /// (owner's iPhone, 2026-10-21): «Comercio» takes it apart.
     static let connectSubtitle: [GuideFrame] = [
         GuideFrame(caption: "Toca la flechita junto a «Notificación»: abajo aparece «Comercio».",
-                   screen: .photo("guia27-12-flechita")),
+                   screen: .photo("guia27-12-flechita"),
+                   focus: CGRect(x: 0.344, y: 0, width: 0.656, height: 1)),
         GuideFrame(caption: "Toca «Comercio», desliza la barra de arriba del teclado y toca «Notificación», la de "
-                   + "la campana. Luego toca esa burbuja azul en la acción.", screen: .photo("guia27-09a-barra")),
+                   + "la campana. Luego toca esa burbuja azul en la acción.", screen: .photo("guia27-09a-barra"),
+                   focus: CGRect(x: 0.022, y: 0.671, width: 0.844, height: 0.324)),
         GuideFrame(caption: "Elige «Subtítulo»: ahí pone Wallet el comercio. Ojo: solo en «Comercio». Junto a "
                    + "«Registrar» tiene que seguir «Notificación»; si ahí dice «Subtítulo», no llega el monto y "
-                   + "no se anota nada.", screen: .photo("guia27-13-subtitulo")),
+                   + "no se anota nada.", screen: .photo("guia27-13-subtitulo"),
+                   focus: CGRect(x: 0, y: 0.112, width: 1, height: 0.847)),
         GuideFrame(caption: "Apaga «Mostrar al ejecutar»: así no sale un aviso con cada pago. Se anota igual.",
                    screen: .photo("guia27-14-mostrar")),
         GuideFrame(caption: "Así debe verse: «Registrar» con «Notificación», «Comercio» con «Subtítulo» y "
@@ -125,6 +142,7 @@ extension GuideFrame {
                    screen: .photo("guia27-10-guardar")),
         GuideFrame(caption: "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet» (el color "
                    + "de la tarjeta puede ser otro). No tienes que activar nada más.",
-                   screen: .photo("guia27-11-listo"), isResult: true),
+                   screen: .photo("guia27-11-listo"), isResult: true,
+                   focus: CGRect(x: 0, y: 0.028, width: 1, height: 0.972)),
     ]
 }

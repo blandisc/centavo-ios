@@ -196,7 +196,7 @@ struct SetupGuideView: View {
                     var photo: String?
                     if case .photo(let name) = frame.screen { photo = name }
                     return GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
-                                               caption: frame.caption, photo: photo,
+                                               caption: frame.caption, photo: photo, focus: frame.focus,
                                                isResult: frame.isResult)
                 }
             }
