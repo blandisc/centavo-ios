@@ -16,6 +16,8 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **Categorías al anotar:** «Ver N más» abre sin reacomodar las que ya ves; las demás aparecen debajo, suaves.
+- **Guía flotante:** ahora es un video que arma el teléfono, para que la ventanita sí flote sobre Atajos; la miniatura ya no se ve negra y el bloque de abajo tiene más aire.
 - **«Para cerrar el mes» se pliega en su lugar:** el mismo título abierto y cerrado, una línea de resumen al cerrarlo y una flecha que gira. Cada camino dice a la derecha con cuánto de más cierras.
 - **Tarjetas y categorías en mosaicos:** las tarjetas que llegan en tus pagos aparecen solas («De tus pagos»), y cada tarjeta o categoría es un mosaico con un menú corto: usar por defecto, elegir ícono, ocultar al anotar, editar o borrar.
 - **Gastos fijos se explica:** arriba dice para qué sirve, el mes se ve en una barra (cobrado y por venir) y hay sugerencias de un toque (Renta, Luz, Internet…).

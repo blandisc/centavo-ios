@@ -453,3 +453,7 @@ Pedidos del dueño.
   - Los mosaicos de tarjetas miden todos lo mismo; «De tus pagos» pasa a ser una marca en la esquina, como la estrella.
   - La guía flotante escribe un diario (`Library/Caches/guia-flotante.log`) que se puede copiar del iPhone con `devicectl` para saber por qué no arranca.
 
+## 2026-10-29 · La guía flotante pasa a video; «Ver más» en categorías
+- **La guía flotante es ahora un video MP4 armado en el teléfono:** las mismas capturas de la guía, una cada 8 s, guardado en la caché (unos 850 KB, una sola vez por guía) y reproducido con el reproductor del sistema. El diario del iPhone del dueño mostró que con la capa de imágenes sueltas el sistema nunca dejaba flotar la ventana («no posible» en cada intento). Sigue sin pesar en la app y sin quedarse viejo. ⏩ y ⏪ de la ventanita llevan a la imagen siguiente o anterior, salte lo que salte el sistema. La miniatura muestra la imagen del paso desde el principio (antes podía verse negra).
+- **Hoja del gasto, categorías:** al abrir «Ver N más» las que ya se ven se quedan en su lugar y las demás aparecen debajo, una tras otra. «Ver más» y «Nueva» van en un renglón propio bajo la cuadrícula; la flecha gira.
+

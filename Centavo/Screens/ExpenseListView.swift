@@ -795,7 +795,7 @@ private extension ExpenseListView {
         return lastCapture.map { date > $0 } ?? true ? unreadText : nil
     }
 
-    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes`.
+    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes|anotar`.
     private func openRequestedSheet() {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -804,6 +804,7 @@ private extension ExpenseListView {
         case "catalogos": showingCatalogs = true
         case "fijos": showingFixed = true
         case "ajustes": showingSettings = true
+        case "anotar": adding = true
         default: break
         }
         #endif

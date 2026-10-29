@@ -198,7 +198,9 @@ struct SetupGuideView: View {
             }
         }
         .padding(.horizontal, Theme.Space.screen)
-        .padding(.vertical, Theme.Space.m)
+        // Room above the bar's step buttons: the dock sat right on them (owner, 2026-10-29).
+        .padding(.top, Theme.Space.l)
+        .padding(.bottom, Theme.Space.xxl)
         .background(Theme.surface)
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
         .transition(.move(edge: .bottom).combined(with: .opacity))

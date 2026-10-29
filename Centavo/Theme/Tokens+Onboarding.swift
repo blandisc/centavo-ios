@@ -58,6 +58,10 @@ extension Theme.Motion {
 
     /// The floating guide: seconds each picture stays when it plays by itself.
     static let companionPage: Double = 8
+    /// Half a second into a picture: where a skip lands, clear of the frame before it.
+    static let companionSettle: Double = 0.5
+    /// A jump of the player longer than this is the window's ⏩ / ⏪, not playing along.
+    static let companionJump: Double = 3
     /// Seconds to wait for the window before opening Atajos without it.
     static let companionFallback: Double = 1.2
 }

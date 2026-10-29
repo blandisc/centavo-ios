@@ -1,5 +1,6 @@
 import AVFoundation
 import AVKit
+import CryptoKit
 import os
 import SwiftUI
 
@@ -7,14 +8,16 @@ import SwiftUI
 /// over Atajos while the person builds the automation, so nobody has to switch apps to read
 /// the next tap.
 ///
-/// It is not a recorded video. Each picture of the guide (the real Atajos screenshot with its
-/// brass ring and the line saying what to tap) is drawn into a frame and shown on a sample
-/// buffer layer, the kind of layer Picture in Picture can float. So it always matches the
-/// guide in the app, weighs nothing extra and follows the iOS version the guide follows.
+/// The pictures (the real Atajos screenshot with its brass ring and the line saying what to
+/// tap) are drawn into a short video on the phone the first time, kept in the caches, and
+/// played by the system's player: the same path any video app's floating window takes. A
+/// sample buffer layer was tried first and the owner's iPhone never let it float (it stayed
+/// «not possible», 2026-10-29). Drawn from the guide itself, it weighs nothing in the app
+/// and follows the iOS version the guide follows.
 ///
-/// The window's ⏪ / ⏩ buttons go to the previous or next picture; ▶︎ moves on by itself every
-/// `Theme.Motion.companionPage` seconds. Coming back to Al día from the window opens the guide
-/// on the step the window was showing.
+/// The window's ⏪ / ⏩ buttons go to the previous or next picture, whatever interval the
+/// system skips by; ▶︎ moves on by itself every `Theme.Motion.companionPage` seconds. Coming
+/// back to Al día lands the guide on the step the window was showing.
 @MainActor @Observable
 final class GuideCompanion: NSObject {
     /// One picture of the floating guide.
@@ -29,48 +32,70 @@ final class GuideCompanion: NSObject {
         var isResult = false
     }
 
-    /// Picture in Picture runs on this device (every iPhone with iOS 18 does; the check
-    /// keeps the button away where it would not).
+    /// Picture in Picture runs on this device.
     static var isSupported: Bool { AVPictureInPictureController.isPictureInPictureSupported() }
 
     private(set) var pages: [Page] = []
     private(set) var index = 0
     /// The window is floating right now.
     private(set) var isFloating = false
-    private(set) var isPlaying = false
+    /// The current picture, shown under the player so the thumbnail is never black.
+    private(set) var poster: UIImage?
     /// The step the window shows, for the guide to follow it.
     var step: Int { pages.indices.contains(index) ? pages[index].step : 0 }
 
-    /// What the layer shows; `CompanionLayerView` puts it on screen so the window can start.
-    let layer = AVSampleBufferDisplayLayer()
+    let player = AVPlayer()
+    /// What `CompanionLayerView` puts on screen: the window floats from it.
+    let layer = AVPlayerLayer()
     @ObservationIgnored private var controller: AVPictureInPictureController?
-    @ObservationIgnored private var timebase: CMTimebase?
-    @ObservationIgnored private var autoAdvance: Task<Void, Never>?
+    @ObservationIgnored private var possibleWatch: NSKeyValueObservation?
+    @ObservationIgnored private var timeWatch: Any?
+    /// Where the player was a moment ago, to tell a ⏩ / ⏪ jump from playing along.
+    @ObservationIgnored private var lastTime: Double = 0
+    @ObservationIgnored private var snapping = false
     /// What to open once the window floats (Atajos).
     @ObservationIgnored private var openWhenFloating: URL?
+    @ObservationIgnored private var building: Task<Void, Never>?
+
+    private var pageSeconds: Double { Theme.Motion.companionPage }
+
+    override init() {
+        super.init()
+        layer.player = player
+        layer.videoGravity = .resizeAspect
+        player.isMuted = true
+        player.actionAtItemEnd = .pause
+        timeWatch = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600),
+                                                   queue: .main) { [weak self] time in
+            MainActor.assumeIsolated { self?.follow(time.seconds) }
+        }
+    }
 
     func load(_ pages: [Page]) {
         guard pages != self.pages else { return }
         self.pages = pages
         index = min(index, max(pages.count - 1, 0))
-        show()
+        updatePoster()
+        building?.cancel()
+        building = Task { await buildVideo() }
     }
+
+    // MARK: Floating
 
     /// Floats the window on the first picture of `step`, then opens `url` (Atajos) under it;
     /// with no `url` it only floats (a preview from the thumbnail). Atajos always opens: if the
-    /// window can't start, or the system never answers, it opens anyway (on the owner's iPhone
-    /// a start went unanswered and nothing opened, 2026-10-29).
+    /// window can't start, or the system never answers, it opens anyway.
     func float(from step: Int, thenOpen url: URL?) {
-        if let first = pages.firstIndex(where: { $0.step == step }) { index = first }
-        show()
+        if let first = pages.firstIndex(where: { $0.step == step }) { go(to: first) }
         activateAudio()
         prepareController()
         openWhenFloating = url
-        CompanionDiary.write("Tocar: soportado=\(Self.isSupported) posible=\(controller?.isPictureInPicturePossible ?? false) capa=\(layer.sampleBufferRenderer.status.rawValue) error=\(layer.sampleBufferRenderer.error?.localizedDescription ?? "-") ventana=\(layer.superlayer != nil)")
+        CompanionDiary.write("Tocar: soportado=\(Self.isSupported) posible=\(controller?.isPictureInPicturePossible ?? false) video=\(player.currentItem?.status.rawValue ?? -1) ventana=\(layer.superlayer != nil)")
         Task { [weak self] in
             guard let self else { return }
-            // Possible can turn true a moment after the layer gets its first picture.
-            for _ in 0..<10 where !(self.controller?.isPictureInPicturePossible ?? false) {
+            // The video may still be drawing the first time, and possible turns true a
+            // moment after the player is ready.
+            for _ in 0..<30 where !(self.controller?.isPictureInPicturePossible ?? false) {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             if let controller = self.controller, controller.isPictureInPicturePossible {
@@ -88,8 +113,12 @@ final class GuideCompanion: NSObject {
         }
     }
 
-    /// Picture in Picture needs a playback session, set before the controller exists: made
-    /// after, the controller can stay «not possible».
+    func stop() {
+        controller?.stopPictureInPicture()
+        player.pause()
+    }
+
+    /// Picture in Picture needs a playback session: set before the controller exists.
     private func activateAudio() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback,
@@ -100,113 +129,145 @@ final class GuideCompanion: NSObject {
         }
     }
 
-    func stop() {
-        controller?.stopPictureInPicture()
-    }
-
-    /// Prepares the controller as soon as the layer is on screen, so starting is instant.
+    /// Prepares the controller once the layer is on screen, so starting is instant.
     func prepareController() {
-        guard controller == nil, Self.isSupported else { return }
+        guard controller == nil, Self.isSupported, layer.superlayer != nil else { return }
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback,
                                                          options: [.mixWithOthers])
-        let source = AVPictureInPictureController.ContentSource(sampleBufferDisplayLayer: layer,
-                                                                playbackDelegate: self)
-        let controller = AVPictureInPictureController(contentSource: source)
+        guard let controller = AVPictureInPictureController(playerLayer: layer) else {
+            CompanionDiary.write("No se pudo crear el controlador")
+            return
+        }
         controller.delegate = self
         controller.requiresLinearPlayback = false
+        // Leaving for Atajos while the guide plays also floats it.
+        controller.canStartPictureInPictureAutomaticallyFromInline = true
         self.controller = controller
+        possibleWatch = controller.observe(\.isPictureInPicturePossible, options: [.new]) { _, change in
+            let possible = change.newValue ?? false
+            Task { @MainActor in CompanionDiary.write("Posible: \(possible)") }
+        }
         CompanionDiary.write("Controlador listo")
     }
 
     // MARK: Moving
 
-    func move(by offset: Int) {
-        let target = min(max(index + offset, 0), pages.count - 1)
-        guard target != index else { return }
-        index = target
-        show()
-    }
-
-    private func setPlaying(_ playing: Bool) {
-        isPlaying = playing
-        autoAdvance?.cancel()
-        if playing {
-            autoAdvance = Task { [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(Theme.Motion.companionPage))
-                    guard let self, !Task.isCancelled else { return }
-                    if self.index >= self.pages.count - 1 { self.setPlaying(false); return }
-                    self.move(by: 1)
-                }
+    private func go(to page: Int) {
+        guard pages.indices.contains(page) else { return }
+        index = page
+        updatePoster()
+        snapping = true
+        let time = CMTime(seconds: Double(page) * pageSeconds + Theme.Motion.companionSettle,
+                          preferredTimescale: 600)
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor in
+                self?.lastTime = time.seconds
+                self?.snapping = false
             }
         }
-        syncTimebase()
-        controller?.invalidatePlaybackState()
     }
 
-    // MARK: Drawing
-
-    /// Draws the current picture and puts it on the layer.
-    private func show() {
-        guard pages.indices.contains(index) else { return }
-        guard let buffer = Self.sampleBuffer(for: pages[index], position: index, of: pages.count,
-                                             at: time(of: index)) else {
-            CompanionDiary.write("No se pudo dibujar la imagen \(index)")
+    /// Follows the player: playing along moves page by page, and a jump of the window's ⏩ / ⏪
+    /// (10 or 15 seconds, the system decides) lands on the next or previous picture instead.
+    private func follow(_ seconds: Double) {
+        guard !snapping, seconds.isFinite, !pages.isEmpty else { return }
+        let jump = seconds - lastTime
+        lastTime = seconds
+        if abs(jump) > Theme.Motion.companionJump {
+            go(to: min(max(index + (jump > 0 ? 1 : -1), 0), pages.count - 1))
             return
         }
-        syncTimebase()
-        layer.sampleBufferRenderer.flush()
-        layer.sampleBufferRenderer.enqueue(buffer)
-        controller?.invalidatePlaybackState()
-    }
-
-    private func time(of page: Int) -> CMTime {
-        CMTime(seconds: Double(page) * Theme.Motion.companionPage, preferredTimescale: 600)
-    }
-
-    /// The window's progress bar follows the picture: each one is a slice of the «video».
-    private func syncTimebase() {
-        if timebase == nil {
-            var created: CMTimebase?
-            CMTimebaseCreateWithSourceClock(allocator: kCFAllocatorDefault,
-                                            sourceClock: CMClockGetHostTimeClock(),
-                                            timebaseOut: &created)
-            timebase = created
-            layer.controlTimebase = created
+        let page = min(max(Int(seconds / pageSeconds), 0), pages.count - 1)
+        if page != index {
+            index = page
+            updatePoster()
         }
-        guard let timebase else { return }
-        CMTimebaseSetTime(timebase, time: time(of: index))
-        CMTimebaseSetRate(timebase, rate: isPlaying ? 1 : 0)
     }
 
-    private static func sampleBuffer(for page: Page, position: Int, of count: Int,
-                                     at time: CMTime) -> CMSampleBuffer? {
-        let renderer = ImageRenderer(content: CompanionCard(page: page, position: position, count: count))
+    private func updatePoster() {
+        guard pages.indices.contains(index) else { return }
+        let renderer = ImageRenderer(content: CompanionCard(page: pages[index], position: index, count: pages.count))
         renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
         renderer.scale = Theme.Size.companionScale
-        guard let image = renderer.cgImage, let pixels = pixelBuffer(from: image) else { return nil }
-        var format: CMVideoFormatDescription?
-        CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: pixels,
-                                                     formatDescriptionOut: &format)
-        guard let format else { return nil }
-        var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: time,
-                                        decodeTimeStamp: .invalid)
-        var buffer: CMSampleBuffer?
-        CMSampleBufferCreateReadyWithImageBuffer(allocator: nil, imageBuffer: pixels,
-                                                 formatDescription: format, sampleTiming: &timing,
-                                                 sampleBufferOut: &buffer)
-        guard let buffer else { return nil }
-        if let attachments = CMSampleBufferGetSampleAttachmentsArray(buffer, createIfNecessary: true),
-           CFArrayGetCount(attachments) > 0 {
-            let dictionary = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
-            CFDictionarySetValue(dictionary,
-                                 Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
-                                 Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
-        }
-        return buffer
+        poster = renderer.uiImage
     }
 
-    private static func pixelBuffer(from image: CGImage) -> CVPixelBuffer? {
+    // MARK: The video
+
+    /// Draws every picture and writes them as one video in the caches, once per guide.
+    private func buildVideo() async {
+        let key = pages.map { "\($0.step)|\($0.caption)|\($0.photo ?? "")" }.joined(separator: "#")
+        // A name that stays the same from one launch to the next (`hashValue` changes), so the
+        // video is drawn once per guide; older ones are removed.
+        let digest = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        let name = "guia-flotante-\(digest)-v1.mp4"
+        guard let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
+        let url = folder.appending(path: name)
+        let old = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        for file in old where file.hasPrefix("guia-flotante-") && file.hasSuffix(".mp4") && file != name {
+            try? FileManager.default.removeItem(at: folder.appending(path: file))
+        }
+        if !FileManager.default.fileExists(atPath: url.path) {
+            var images: [CGImage] = []
+            for (position, page) in pages.enumerated() {
+                let renderer = ImageRenderer(content: CompanionCard(page: page, position: position, count: pages.count))
+                renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
+                renderer.scale = Theme.Size.companionScale
+                guard let image = renderer.cgImage else {
+                    CompanionDiary.write("No se pudo dibujar la imagen \(position)")
+                    return
+                }
+                images.append(image)
+                await Task.yield()
+            }
+            do {
+                try await Self.writeVideo(images, seconds: pageSeconds, to: url)
+                CompanionDiary.write("Video listo: \(images.count) imágenes")
+            } catch {
+                CompanionDiary.write("No se pudo escribir el video: \(error.localizedDescription)")
+                return
+            }
+        }
+        guard !Task.isCancelled else { return }
+        player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        go(to: index)
+    }
+
+    /// One still frame per picture, each held `seconds`, H.264, no sound.
+    nonisolated private static func writeVideo(_ images: [CGImage], seconds: Double, to url: URL) async throws {
+        guard let first = images.first else { return }
+        try? FileManager.default.removeItem(at: url)
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: first.width,
+            AVVideoHeightKey: first.height,
+        ])
+        input.expectsMediaDataInRealTime = false
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: first.width,
+            kCVPixelBufferHeightKey as String: first.height,
+        ])
+        writer.add(input)
+        guard writer.startWriting() else { throw writer.error ?? CocoaError(.fileWriteUnknown) }
+        writer.startSession(atSourceTime: .zero)
+        // A frame at the start of each picture and one just before the next: players hold
+        // a still frame until the next one, and the last needs its end.
+        for (position, image) in images.enumerated() {
+            guard let pixels = pixelBuffer(from: image) else { continue }
+            for time in [Double(position) * seconds, Double(position + 1) * seconds - Theme.Motion.companionSettle] {
+                while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+                adaptor.append(pixels, withPresentationTime: CMTime(seconds: time, preferredTimescale: 600))
+            }
+        }
+        input.markAsFinished()
+        writer.endSession(atSourceTime: CMTime(seconds: Double(images.count) * seconds, preferredTimescale: 600))
+        await writer.finishWriting()
+        if writer.status != .completed { throw writer.error ?? CocoaError(.fileWriteUnknown) }
+    }
+
+    nonisolated private static func pixelBuffer(from image: CGImage) -> CVPixelBuffer? {
         let attributes = [kCVPixelBufferCGImageCompatibilityKey: true,
                           kCVPixelBufferCGBitmapContextCompatibilityKey: true,
                           kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary
@@ -227,7 +288,7 @@ final class GuideCompanion: NSObject {
     }
 
     private func endSession() {
-        setPlaying(false)
+        player.pause()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
@@ -235,37 +296,6 @@ final class GuideCompanion: NSObject {
 // MARK: - Picture in Picture
 
 // The window calls these on the main thread.
-extension GuideCompanion: AVPictureInPictureSampleBufferPlaybackDelegate {
-    nonisolated func pictureInPictureController(_ controller: AVPictureInPictureController,
-                                                setPlaying playing: Bool) {
-        MainActor.assumeIsolated { setPlaying(playing) }
-    }
-
-    nonisolated func pictureInPictureControllerTimeRangeForPlayback(
-        _ controller: AVPictureInPictureController) -> CMTimeRange {
-        MainActor.assumeIsolated {
-            CMTimeRange(start: .zero, duration: time(of: max(pages.count, 1))) // ds-allow: at least one picture long, not a layout value
-        }
-    }
-
-    nonisolated func pictureInPictureControllerIsPlaybackPaused(
-        _ controller: AVPictureInPictureController) -> Bool {
-        MainActor.assumeIsolated { !isPlaying }
-    }
-
-    nonisolated func pictureInPictureController(_ controller: AVPictureInPictureController,
-                                                didTransitionToRenderSize newRenderSize: CMVideoDimensions) {}
-
-    /// ⏪ and ⏩: one picture back or forward, whatever interval the window says.
-    nonisolated func pictureInPictureController(_ controller: AVPictureInPictureController,
-                                                skipByInterval skipInterval: CMTime,
-                                                completion completionHandler: @escaping () -> Void) {
-        let back = skipInterval.seconds < 0
-        MainActor.assumeIsolated { move(by: back ? -1 : 1) }
-        completionHandler()
-    }
-}
-
 extension GuideCompanion: AVPictureInPictureControllerDelegate {
     nonisolated func pictureInPictureControllerDidStartPictureInPicture(
         _ controller: AVPictureInPictureController) {
@@ -323,16 +353,31 @@ enum CompanionDiary {
 
 // MARK: - Views
 
-/// Holds the companion's layer on screen: Picture in Picture only starts from a layer that is
-/// in a window. Shown as the thumbnail of the floating guide on each guide step.
-struct CompanionLayerView: UIViewRepresentable {
+/// Holds the companion's player on screen (Picture in Picture only starts from a layer that
+/// is in a window), over the current picture, so the thumbnail is never black while the video
+/// is still being drawn.
+struct CompanionLayerView: View {
+    let companion: GuideCompanion
+
+    var body: some View {
+        ZStack {
+            Theme.background
+            if let poster = companion.poster {
+                Image(uiImage: poster).resizable().scaledToFit()
+            }
+            PlayerLayerHost(companion: companion)
+        }
+    }
+}
+
+private struct PlayerLayerHost: UIViewRepresentable {
     let companion: GuideCompanion
 
     func makeUIView(context: Context) -> LayerHost {
         let view = LayerHost()
-        companion.layer.videoGravity = .resizeAspect
+        view.hostCompanion = companion
+        view.isUserInteractionEnabled = false
         view.layer.addSublayer(companion.layer)
-        companion.prepareController()
         return view
     }
 
@@ -343,6 +388,14 @@ struct CompanionLayerView: UIViewRepresentable {
             super.layoutSubviews()
             layer.sublayers?.forEach { $0.frame = bounds }
         }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil { hostCompanion?.prepareController() }
+        }
+
+        /// Set by the representable; read once the view is in a window.
+        weak var hostCompanion: GuideCompanion?
     }
 }
 

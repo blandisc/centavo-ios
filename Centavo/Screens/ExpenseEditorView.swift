@@ -579,28 +579,61 @@ struct ExpenseEditorView: View {
                                             hidden: UserCatalog.decodeNames(storedHidden))
         let split = CategoryShortlist.split(offered: offered, mostUsed: knownCategories,
                                             pinned: [suggestedCategory ?? ""] + pinnedCategories + [category])
-        let names = showsAllCategories ? offered : split.shown
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)],
-                         spacing: Theme.Space.s) {
-            ForEach(names, id: \.self) { name in
-                categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
-                             selected: category == name) {
-                    category = category == name ? "" : name
-                    if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
-                }
-            }
-            if !split.rest.isEmpty {
-                categoryChip(showsAllCategories ? "Ver menos" : "Ver todas",
-                             icon: showsAllCategories ? "chevron.up" : "ellipsis", selected: false,
-                             identifier: "ver-todas-categorias") {
-                    withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
-                        showsAllCategories.toggle()
+        // Opening keeps the ones in view where they are and adds the rest under them: the
+        // whole grid used to reshuffle, and the button jumped to the end.
+        let names = showsAllCategories ? split.shown + split.rest : split.shown
+        return VStack(spacing: Theme.Space.s) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)],
+                      spacing: Theme.Space.s) {
+                ForEach(Array(names.enumerated()), id: \.element) { index, name in
+                    categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
+                                 selected: category == name) {
+                        category = category == name ? "" : name
+                        if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
                     }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: Theme.Size.tileAppear))
+                            .animation(Theme.Motion.animation(Theme.Motion.tileIn(index - split.shown.count),
+                                                              reduceMotion: reduceMotion)),
+                        removal: .opacity))
                 }
-                .accessibilityHint(showsAllCategories ? "Muestra solo las más usadas"
-                                   : "\(split.rest.count) categorías más")
             }
-            categoryChip("Nueva categoría", icon: "plus", selected: false) { creating = .category }
+            HStack(spacing: Theme.Space.s) {
+                Button { creating = .category } label: {
+                    Label("Nueva", systemImage: "plus")
+                        .font(.ticket(.footnoteStrong))
+                        .foregroundStyle(Theme.brass)
+                        .frame(minHeight: Theme.Size.tapTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Nueva categoría")
+                .accessibilityIdentifier("categoria-Nueva categoría")
+                Spacer(minLength: Theme.Space.s)
+                if !split.rest.isEmpty {
+                    Button {
+                        withAnimation(Theme.Motion.animation(Theme.Motion.fold, reduceMotion: reduceMotion)) {
+                            showsAllCategories.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: Theme.Space.xs) {
+                            Text(showsAllCategories ? "Ver menos" : "Ver \(split.rest.count) más")
+                                .contentTransition(.opacity)
+                            Image(systemName: "chevron.down")
+                                .rotationEffect(.degrees(showsAllCategories ? 180 : 0))
+                                .accessibilityHidden(true)
+                        }
+                        .font(.ticket(.footnoteStrong))
+                        .foregroundStyle(Theme.muted)
+                        .frame(minHeight: Theme.Size.tapTarget)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(showsAllCategories ? "Muestra solo las más usadas"
+                                       : "\(split.rest.count) categorías más")
+                    .accessibilityIdentifier("ver-todas-categorias")
+                }
+            }
         }
         .padding(.vertical, Theme.Space.xs)
     }
