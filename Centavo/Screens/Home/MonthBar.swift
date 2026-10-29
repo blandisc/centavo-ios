@@ -36,6 +36,12 @@ struct MonthBar: View {
     private var isOver: Bool { pace.remaining < 0 }
     private var days: Int { isCurrentMonth && !isOver ? min(max(pace.daysLeft, 1), 31) : 0 }
 
+    /// Past the budget, how much of what went the budget was (where the red starts).
+    private var overFraction: CGFloat {
+        guard pace.spent > 0 else { return 0 }
+        return CGFloat(min(max(NSDecimalNumber(decimal: pace.budget / pace.spent).doubleValue, 0), 1))
+    }
+
     private func fraction(_ part: Decimal) -> CGFloat {
         guard pace.budget > 0 else { return 0 }
         return CGFloat(min(max(NSDecimalNumber(decimal: part / pace.budget).doubleValue, 0), 1))
@@ -95,16 +101,19 @@ struct MonthBar: View {
     // MARK: The bar
 
     private var bar: some View {
+        // Past the budget the whole bar is what went: brass up to the budget, red beyond it.
+        let budgetW = isOver ? width * overFraction : 0
         let spentW = width * (isOver ? 1 : fraction(pace.spent))
         let reservedW = isCurrentMonth && !isOver ? width * fraction(pace.reserved) : 0
         let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))
         let slotW = days > 0 ? (freeW - gap * CGFloat(days - 1)) / CGFloat(days) : 0
         let tilesX = width - freeW
         // «Podrías llevar»: the fixed expenses already charged plus every day's amount so far.
-        let markX = snapped(width * fraction(pace.expectedToDate), tilesX: tilesX, slotW: slotW)
+        let markX = isOver ? budgetW
+            : snapped(width * fraction(pace.expectedToDate), tilesX: tilesX, slotW: slotW)
 
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if isCurrentMonth {
+            if isCurrentMonth, !isOver {
                 annotation(at: markX)
             }
             Color.clear
@@ -117,9 +126,15 @@ struct MonthBar: View {
                 .overlay(alignment: .leading) {
                     HStack(spacing: gap) {
                         // What went: grows in from nothing, with a little bounce.
+                        if isOver {
+                            RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                                .fill(Theme.brass)
+                                .frame(width: shown ? max(budgetW - gap, Theme.Space.none) : Theme.Space.none)
+                                .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
+                        }
                         RoundedRectangle(cornerRadius: Theme.Radius.tile)
                             .fill(isOver ? Theme.danger : Theme.brass)
-                            .frame(width: shown ? spentW : Theme.Space.none)
+                            .frame(width: shown ? (isOver ? max(width - budgetW, Theme.Space.none) : spentW) : Theme.Space.none)
                             .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
                             .animation(reduceMotion ? nil : Theme.Motion.Entrance.refill, value: spentW)
                         if reservedW > 0 {
@@ -162,8 +177,8 @@ struct MonthBar: View {
                     }
                 }
                 .overlay(alignment: .leading) {
-                    if isCurrentMonth {
-                        // Where an even month would be by today.
+                    if isCurrentMonth || isOver {
+                        // Where an even month would be by today; past the budget, where it ended.
                         Capsule()
                             .fill(Theme.ink)
                             .frame(width: Theme.Size.todayMarkWidth, height: trackHeight + Theme.Size.todayMarkExtra)
@@ -220,10 +235,22 @@ struct MonthBar: View {
         .fixedSize()
     }
 
+    /// «Presupuesto $8,000», at the end of the bar it measures; past it, «· de más $366». The
+    /// chevron says the bar opens the sum behind the figures.
+    private var budgetKeyText: Text {
+        var text = Text("Presupuesto ").foregroundStyle(Theme.muted)
+        text = text + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
+        if isOver {
+            text = text + Text(" · de más ").foregroundStyle(Theme.muted)
+            text = text + Text(wholeMoney(pace.sum.remaining.magnitude)).foregroundStyle(Theme.danger)
+        }
+        let chevron = Image(systemName: showsSum ? "chevron.up" : "chevron.down")
+        return text + Text(" ") + Text(chevron).foregroundStyle(Theme.faint)
+    }
+
     /// «Presupuesto $8,000», at the end of the bar it measures.
     private var budgetKey: some View {
-        (Text("Presupuesto ").foregroundStyle(Theme.muted)
-            + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink))
+        budgetKeyText
             .lineLimit(1)
             .minimumScaleFactor(Theme.MinimumScale.figure)
     }
@@ -253,7 +280,8 @@ struct MonthBar: View {
     /// $400 abajo del ritmo»: how far from the rule, the same gap the bar shows. With
     /// «Acumular», «Hoy puedes gastar» already is that gap, so no sentence (alternative C).
     private var verdictLine: Line? {
-        if isOver { return ("Te pasaste ", wholeMoney(pace.sum.remaining.magnitude), " del presupuesto", false) }
+        // This month the hero already says it in big red figures; the bar shows where.
+        if isOver { return isCurrentMonth ? nil : ("Te pasaste ", wholeMoney(pace.sum.remaining.magnitude), " del presupuesto", false) }
         if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.sum.remaining), " de sobra", true) }
         guard pace.rhythm != nil else { return nil }
         let rhythm = pace.gapShown

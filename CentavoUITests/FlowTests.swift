@@ -218,8 +218,12 @@ final class FlowTests: XCTestCase {
     func testSiLosPagosSonEnPesosOfreceSumarEnPesos() {
         let app = launch(budget: true)
         app.buttons["Más"].tap()
-        require(app.buttons["Moneda principal"], "No está la moneda en «Más»").tap()
+        require(app.buttons["Ajustes"], "No está «Ajustes» en «Más»").tap()
+        let currency = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Moneda principal'")).firstMatch
+        require(currency, "No está la moneda en «Ajustes»").tap()
         require(app.buttons["Dólares (USD)"], "No ofrece dólares").tap()
+        // Asking about the budget closes «Ajustes» if it is still up.
+        if app.buttons["ajustes-listo"].waitForExistence(timeout: 2) { app.buttons["ajustes-listo"].tap() }
         require(app.buttons["Así está bien"], "No preguntó por el presupuesto al cambiar de moneda").tap()
 
         for (amount, merchant) in [("100", "Oxxo"), ("200", "Soriana")] {
@@ -862,6 +866,10 @@ final class FlowTests: XCTestCase {
         let app = launch(budget: true, extra: ["-centavo-demo-large"])
         let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("sin conectar"), "Dice: \(health.label)")
+        // Past the budget the plan sits above it: bring the line out from under the bottom bar.
+        for _ in 0..<3 where !health.isHittable || health.frame.maxY > app.windows.firstMatch.frame.maxY - 120 {
+            app.swipeUp()
+        }
         health.tap()
         require(app.buttons["guia-siguiente"], "No abrió la guía")
     }
@@ -870,8 +878,12 @@ final class FlowTests: XCTestCase {
 
     /// Opens the guide from the menu, or from the empty screen on a first launch.
     private func walkGuideToTheEnd(_ app: XCUIApplication, fromMenu: Bool = true) -> XCUIElement {
-        if fromMenu { app.buttons["Más"].tap() }
-        app.buttons["Configurar atajo"].firstMatch.tap()
+        if fromMenu {
+            app.buttons["Más"].tap()
+            app.buttons["Configurar atajo"].firstMatch.tap()
+        } else {
+            require(app.buttons["vacio-wallet"], "La pantalla vacía no ofrece conectar Wallet").tap()
+        }
         let next = require(app.buttons["guia-siguiente"], "No abrió la guía paso a paso")
         // 8 steps on iOS 26, 7 on iOS 27: walk until the last one.
         for _ in 0..<10 where next.isEnabled { next.tap() }

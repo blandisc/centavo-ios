@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 ### Added
+- **Te pasaste del mes: un plan para cerrarlo.**
+  - La cifra grande dice cuánto te pasaste, en rojo.
+  - Un panel «Para cerrar el mes» muestra tres caminos para los días que faltan: sin gastar más, lo que tocaba por día o tu ritmo de este mes. Cada uno dice con cuánto de más cerrarías, y abajo está «Ajustar presupuesto».
+  - La barra muestra el presupuesto en latón y lo que te pasaste en rojo.
+- **Ajustes:** una hoja nueva en «Más» con la moneda, «En qué se va», el atajo de Wallet, «Guardar dónde pagas» y exportar o importar CSV.
+  - «Más» queda con dos grupos: lo de tu mes, y el atajo con Ajustes.
+  - Si no usas Wallet, apaga «Avisar si no llegan pagos» y la pantalla deja de pedirte que lo conectes.
+- **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
+
+### Changed
+- **La pantalla vacía** ya no muestra un «$0.00» gigante: ofrece «Anotar un gasto», «Fijar presupuesto» y «Conectar Wallet».
+- **«En qué se va» en barra:** tocar una categoría filtra la lista, como ya pasaba en el mosaico.
+- **Al filtrar un día o una categoría** se ve cuánto suman: «Día 12 · 2 gastos · $310».
+- **La búsqueda** da ejemplos («café», «uber de octubre», «más de 500») cuando no encuentra nada.
+- **El aviso de Wallet** que pide atención es una frase legible con qué hacer, en vez de mayúsculas chicas.
+- **La barra del presupuesto** tiene una flechita que avisa que se toca para ver la cuenta.
+- **VoiceOver:**
+  - lee «Hoy puedes gastar $X» como una sola frase;
+  - anuncia «Deshacer», que dura 15 segundos cuando VoiceOver está encendido.
+- **El mes de abajo** se escribe en español aunque el iPhone esté en otro idioma.
 - **Control «Anotar gasto»** para el Centro de control, la pantalla bloqueada y el botón de acción: un toque abre Al día en la hoja para anotar.
 - **«+» en el widget pequeño,** junto a la cifra: abre «Anotar gasto». Tocar el resto del widget hace lo mismo que antes.
 - **Siri: «Borra el último gasto en Al día».** Te dice cuál es y te pregunta antes de borrarlo. Nunca borra un gasto fijo.

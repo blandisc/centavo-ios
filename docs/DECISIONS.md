@@ -372,6 +372,29 @@ A pedido del dueño («un onboarding con las mejores prácticas, animaciones e i
 - **Guía flotante (picture in picture) en vez de video grabado.** Las imágenes se dibujan al momento con las capturas reales que ya usa la guía. Así no hay que grabar nada, no se queda vieja con cada iOS (se rehace con `GuideScreenshotsTests`) y no pesa. Esas tres eran las razones por las que el 2026-10-15 se descartó un video. ⏪ y ⏩ cambian de toque, y ▶︎ avanza solo cada 8 s.
 - **Requiere el modo en segundo plano «audio»,** que es el que Apple pide para picture in picture. La app no reproduce sonido y no interrumpe la música (`mixWithOthers`). El simulador no tiene picture in picture: se verifica en el iPhone.
 
+## 2026-10-29 · Te pasaste del mes: un plan para cerrarlo
+A pedido del dueño, que está en ese caso: la pantalla de «te pasaste» no ayudaba a decidir nada.
+- **La cifra grande es cuánto te pasaste**, en rojo, en el mes actual. Antes volvía al total del mes en blanco y el «te pasaste» quedaba en letra chica.
+- **«Para cerrar el mes» muestra tres caminos** para los días después de hoy: sin gastar más, lo que tocaba por día (presupuesto menos fijos, entre los días del mes) o tu ritmo de este mes (lo gastado fuera de fijos, entre los días transcurridos). Cada uno dice con cuánto de más cierra el mes.
+  - Los fijos que faltan cuentan aunque no gastes nada.
+  - Un camino de $0 al día no se repite.
+  - El último día solo dice cómo cierras.
+  - La cuenta vive en `OverspendPlan` (CentavoCore).
+- **La nota del mes no sale cuando te pasaste:** su «a este ritmo cierras…» es uno de los tres caminos.
+- **La barra muestra cuánto te pasaste:** el presupuesto en latón, lo de más en rojo y la rayita donde termina el presupuesto. En lugar de «Deberías llevar» dice «Presupuesto $X · de más $Y».
+- **El panel se puede cerrar** con su ✕ (pedido del dueño): queda una sola línea, «Ver cómo cerrar el mes ⌄», para volver a abrirlo. Cerrado dura el resto de ese mes; si el mes siguiente también te pasas, vuelve a salir.
+- **No se hace por ahora:** pasar lo de más al presupuesto del mes siguiente. Cambiaría la regla de un solo presupuesto para todos los meses (2026-10-13).
+
+## 2026-10-29 · «Más» con Ajustes, y mejoras rápidas
+Aprobado por el dueño, sobre el análisis del mismo día.
+- **«Más» queda con lo que forma tu mes** (presupuesto, gastos fijos, tarjetas y categorías), **el atajo y Ajustes.** La moneda, «En qué se va», la ubicación, el aviso de Wallet y el CSV pasan a una hoja de Ajustes (`Form`).
+  - Revisa en parte «La guía del atajo y la exportación viven en un menú "Más"» (2026-10-11) y los ajustes de «En qué se va» en el menú (2026-10-21).
+  - Cambiar la moneda pregunta por el presupuesto al cerrar Ajustes.
+- **«Avisar si no llegan pagos»** (encendido por omisión, guardado en el teléfono): apagado, la pantalla principal deja de pedir que conectes Wallet y de avisar días sin pagos. Un aviso de Wallet sin monto se sigue mostrando.
+- **La pantalla vacía y sin presupuesto no muestra «$0.00»:** ofrece anotar un gasto como acción principal, y fijar el presupuesto y conectar Wallet como secundarias.
+- **Las categorías de la barra de «En qué se va» filtran la lista,** igual que el mosaico (amplía 2026-10-21).
+- **Mantener presionado un gasto:** «Categoría» (cuenta como elección tuya y se recuerda para ese comercio) y «Anotar otra vez» (copia el monto, comercio, tarjeta y categoría con la fecha de hoy).
+
 
 ## 2026-10-29 · Widgets: «+» en el pequeño, una sola frase para VoiceOver, «Abre Al día una vez» y «Actualizado hace X»
 Pendientes de la revisión del 2026-10-29 (`docs/research/analisis-ux-ui-tecnico-2026-10-29.md`), aprobados por el dueño.
