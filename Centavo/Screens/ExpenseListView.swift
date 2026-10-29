@@ -805,6 +805,7 @@ private extension ExpenseListView {
         case "fijos": showingFixed = true
         case "ajustes": showingSettings = true
         case "anotar": adding = true
+        case "presupuesto": showingBudget = true
         default: break
         }
         #endif
