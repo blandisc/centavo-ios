@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Added
+- **Control «Anotar gasto»** para el Centro de control, la pantalla bloqueada y el botón de acción: un toque abre Al día en la hoja para anotar.
+- **«+» en el widget pequeño,** junto a la cifra: abre «Anotar gasto». Tocar el resto del widget hace lo mismo que antes.
+- **Siri: «Borra el último gasto en Al día».** Te dice cuál es y te pregunta antes de borrarlo. Nunca borra un gasto fijo.
+- **Siri: «¿Cuánto puedo gastar hoy en Al día?»** responde solo con la cifra del día.
+- **«Anotar gasto» acepta una categoría** (opcional) cuando lo usas desde Atajos.
 - **Bienvenida nueva, que muestra antes de pedir:** cuatro páginas en vez de cinco. La primera es una demostración viva: llega un aviso de Wallet, se anota solo y «Hoy puedes gastar» baja. La moneda y el presupuesto van en una sola página, con montos de un toque y «Al día: $290» respondiendo a cada tecla. Los gastos fijos tienen sugerencias de un toque (Renta, Luz, Netflix…) y dicen cuánto te queda al día. «Conectar Wallet» muestra cómo llega un pago. Un solo botón ancho «Continuar», que queda arriba del teclado.
 - **Guía flotante al configurar el atajo:** «Abrir Atajos» deja una ventanita (picture in picture) sobre Atajos con la captura y la instrucción de cada toque. Avanzas con ⏩, y al volver a Al día estás en el paso donde ibas. Al llegar el primer pago, la guía lo celebra.
 - **Recordar el nombre que le pones a un comercio:** si en la hoja del gasto le cambias el nombre a un comercio («OXXO SUC 1234» → «Oxxo de la esquina»), los pagos que lleguen después de Wallet con el nombre anterior se guardan con el tuyo y con la categoría que le diste. Otra sucursal («OXXO SUC 5678») sigue siendo otro comercio. Los gastos ya guardados no cambian.
@@ -20,6 +25,9 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- **Widgets al día después de cada pago:** se actualizan antes de que Atajos o Siri terminen, no un momento después. Antes, a veces quedaban un pago atrás.
+- **Widgets más claros:** si la app nunca se ha abierto dicen «Abre Al día una vez» (antes «Sin presupuesto»), y si llevan más de un día sin actualizarse dicen «Actualizado hace X». Con VoiceOver, cada widget de inicio se lee como una sola frase («Hoy puedes gastar $290»).
+- **Captura más ligera:** para recordar la categoría de un comercio, cada pago lee solo el último año, no todo el historial. La reparación de nombres de bancos ya no repasa todos los gastos cada vez que vuelves a la app. Las letras de la app se buscan una sola vez.
 - **La app pesa menos, sin cambiar nada de lo que ves:** la tipografía solo lleva las letras latinas, los signos y los símbolos de moneda que usa (unos 370 KB menos entre la app y los widgets), las capturas de la guía pasan a HEIC (unos 220 KB menos) y se quitó código que ya nada usaba.
 - **«Deberías llevar»:** cuando ya llevas más de lo que irías gastando parejo, la nota sobre la barra dice «Deberías llevar $X» en vez de «Podrías llevar $X». También en el widget mediano y en VoiceOver.
 - **«Vas $X arriba/abajo del ritmo» solo sale donde dice algo nuevo.** Con «Acumular» se quita: «Hoy puedes gastar» ya es exactamente la distancia a la rayita, y la frase repetía o contradecía la barra. La barra sube a su lugar, sin hueco. Con «Repartir» la frase mide contra la rayita (la misma diferencia que ves en la barra, lo de hoy incluido) y se despliega bajo la cifra al elegir ese modo. En los widgets pequeños, con «Acumular», ese renglón dice «Podrías llevar $X» (o «Deberías»), la etiqueta que su barra no tenía. «Podrías llevar» es igual en los dos modos.

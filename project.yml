@@ -59,6 +59,9 @@ targets:
       - path: Centavo/Theme
       - path: Centavo/Resources/Fonts
         buildPhase: resources
+      # The «+» of the small widget and the «Anotar gasto» control run it; the system runs it
+      # in the app, so it lives in both targets.
+      - path: Centavo/Intents/OpenAddExpenseIntent.swift
     dependencies:
       - package: CentavoCore
     info:

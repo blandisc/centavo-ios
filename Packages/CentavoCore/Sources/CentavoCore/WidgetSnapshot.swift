@@ -77,6 +77,18 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
                           reserved: month.reserved, mode: mode ?? .carry, on: date, calendar: calendar)
     }
 
+    /// How long a snapshot reads as fresh: after this the widgets say «Actualizado hace X».
+    public static let freshFor: TimeInterval = 86_400
+
+    /// Whole days since the app wrote this, once it is a day old or more; `nil` while fresh.
+    /// A payment, Siri or opening the app writes it again, so a stale one means the widgets
+    /// may be missing something.
+    public func daysOld(at date: Date) -> Int? {
+        let elapsed = date.timeIntervalSince(takenAt)
+        guard elapsed >= Self.freshFor else { return nil }
+        return Int(elapsed / Self.freshFor)
+    }
+
     /// The shared App Group's key.
     public static let key = "widgetSnapshot"
 

@@ -51,7 +51,7 @@ enum ExpenseRecorder {
         case .save: break
         }
 
-        let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden)
+        let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden, now: now)
         let expense = Expense(
             amount: parsed.value,
             currencyMarker: parsed.currencyMarker,
@@ -73,12 +73,30 @@ enum ExpenseRecorder {
         return .saved(merchant: merchantName)
     }
 
+    /// Where `repairBankMerchants` left off: the moment of its last run and the cards it knew.
+    static let repairedUntilKey = "repairedBankMerchantsUntil"
+    static let repairedCardsKey = "repairedBankMerchantsCards"
+
     /// Wallet captures saved with the bank as the merchant, read again from the notice they
     /// kept. Only the bank's own lines are touched: a name someone typed is not a bank.
+    ///
+    /// It runs on every return to the app, so it only reads what came since its last run
+    /// (kept in `defaults`); a change in the list of cards reads everything again, since a new
+    /// card may make an old line readable. `defaults: nil` reads everything and keeps no mark.
     @discardableResult
     static func repairBankMerchants(in context: ModelContext,
-                                    knownCards: [String] = UserCatalog.sourceNames) throws -> Int {
-        let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.rawNotice != nil })
+                                    knownCards: [String] = UserCatalog.sourceNames,
+                                    defaults: UserDefaults? = .standard,
+                                    now: Date = .now) throws -> Int {
+        let cards = knownCards.joined(separator: "\n")
+        let since: Date? = defaults?.string(forKey: repairedCardsKey) == cards
+            ? defaults?.object(forKey: repairedUntilKey) as? Date : nil
+        let descriptor: FetchDescriptor<Expense>
+        if let since {
+            descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.rawNotice != nil && $0.date >= since })
+        } else {
+            descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.rawNotice != nil })
+        }
         var fixed = 0
         for expense in try context.fetch(descriptor) {
             guard let raw = expense.rawNotice,
@@ -93,6 +111,9 @@ enum ExpenseRecorder {
             fixed += 1
         }
         if fixed > 0 { try context.save() }
+        // Only once it all went through: a failed save reads the same lines next time.
+        defaults?.set(now, forKey: repairedUntilKey)
+        defaults?.set(cards, forKey: repairedCardsKey)
         return fixed
     }
 
@@ -105,6 +126,7 @@ enum ExpenseRecorder {
         amountText: String,
         merchant: String,
         card: String? = nil,
+        category: String? = nil,
         in context: ModelContext,
         primary: String = CurrencyPreference.current,
         rules: CategoryRules = UserCatalog.categoryRules,
@@ -115,7 +137,11 @@ enum ExpenseRecorder {
         guard parsed.value != 0 else { return .empty }
         let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
-        let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden)
+        // A category said out loud is a choice: it beats the memory, and no history is read.
+        let said = category?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let before = (said?.isEmpty ?? true)
+            ? remembered(for: merchantName, in: context, rules: rules, hidden: hidden, now: now)
+            : Remembered(category: said)
         let expense = Expense(
             amount: parsed.value,
             currencyMarker: spokenCurrency(parsed.currencyMarker, primary: primary),
@@ -129,6 +155,18 @@ enum ExpenseRecorder {
         try context.save()
         return .saved(merchant: merchantName)
     }
+
+    /// «Borrar el último gasto»: the newest expense up to now. A fixed expense (rent, a
+    /// subscription) is left out: deleting it by voice would quietly stop or skip it.
+    static func lastLogged(in context: ModelContext, now: Date = .now) throws -> Expense? {
+        var descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date <= now },
+                                                  sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = lastLoggedLookahead
+        return try context.fetch(descriptor).first { !$0.isFixed }
+    }
+
+    /// How many of the newest expenses `lastLogged` looks through to skip the fixed ones.
+    private static let lastLoggedLookahead = 50
 
     /// What Siri heard as a currency, as an ISO code: "20 dólares" is USD, "89 pesos" or no
     /// word at all is the month's currency. A code or symbol it recognizes is kept.
@@ -171,9 +209,19 @@ enum ExpenseRecorder {
         }
     }
 
+    /// How far back a captured payment looks to remember a merchant: a year, and at most this
+    /// many expenses, newest first. Captures run in the background with little time and the
+    /// history grows every month; a merchant last seen over a year ago starts over (an explicit
+    /// rule still wins, it does not come from the history).
+    static let memoryMonths = 12
+    static let memoryLimit = 2_000
+
     private static func remembered(for merchant: String, in context: ModelContext,
-                                   rules: CategoryRules, hidden: [String]) -> Remembered {
-        let descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+                                   rules: CategoryRules, hidden: [String], now: Date) -> Remembered {
+        let since = Calendar.current.date(byAdding: .month, value: -memoryMonths, to: now) ?? now
+        var descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since },
+                                                  sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = memoryLimit
         guard let history = try? context.fetch(descriptor) else { return Remembered() }
         let key = UserCatalog.fold(merchant)
         let sameMerchant = history.filter { UserCatalog.fold($0.merchant) == key }

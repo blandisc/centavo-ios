@@ -23,9 +23,16 @@ enum TicketFont {
         }
     }
 
+    /// The faces that loaded, looked up once: `.ticket()` runs for every text on every redraw.
+    /// Read after `register()` (the first text is drawn after launch), so it sees the fonts.
+    private static let available: Set<String> = Set(
+        ["IBMPlexMono-Regular", "IBMPlexMono-Medium", "IBMPlexMono-SemiBold"]
+            .filter { UIFont(name: $0, size: UIFont.systemFontSize) != nil }
+    )
+
     static func font(size: CGFloat, weight: Font.Weight, relativeTo style: Font.TextStyle) -> Font {
         let name = postScriptName(for: weight)
-        guard UIFont(name: name, size: size) != nil else {
+        guard available.contains(name) else {
             return .system(style, design: .monospaced, weight: weight)
         }
         return .custom(name, size: size, relativeTo: style)

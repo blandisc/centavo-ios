@@ -57,6 +57,19 @@ final class MonthStatusTests: XCTestCase {
         XCTAssertTrue(line.hasSuffix("Hoy puedes gastar $740."), line)
     }
 
+    /// «¿Cuánto puedo gastar hoy?»: only the day's figure, the same as the budget line's end.
+    func testTodayIsJustTheDaysFigure() throws {
+        add(100, daysAgo: 1)
+        add(30)
+        let today = try MonthStatus.todaySentence(in: context, budget: 1800, now: now, primary: "USD")
+        XCTAssertEqual(today, "Hoy puedes gastar $740.")
+        XCTAssertTrue(try MonthStatus.todaySentence(in: context, budget: nil, now: now, primary: "USD")
+            .hasPrefix("Aún no tienes presupuesto"))
+        add(2_000)
+        XCTAssertTrue(try MonthStatus.todaySentence(in: context, budget: 1800, now: now, primary: "USD")
+            .hasPrefix("Te pasaste del presupuesto por"))
+    }
+
     /// Past today's share, Siri says by how much instead of a negative figure.
     func testSaysWhenTodayWentPastItsShare() throws {
         // 310 a month is 10 a day: 150 by the 15th, and today spent 200.

@@ -31,6 +31,9 @@ struct LogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // On the widgets before returning: Atajos may suspend the app right after the payment,
+        // before the 300 ms of `WidgetBridge.start()` go by.
+        defer { WidgetBridge.refreshAfterIntent() }
         // So "what is left" counts this month's rent even if the app was not opened.
         try? RecurringExpenses.logDue(in: container.mainContext)
         let place = await PaymentPlace.current()
@@ -67,7 +70,8 @@ enum CaptureError: Error, CustomLocalizedStringResourceConvertible {
     }
 }
 
-/// What Siri, Spotlight and the Action button offer with no setup.
+/// What Siri, Spotlight and the Action button offer with no setup. Apple allows 10 at most;
+/// there are 6.
 ///
 /// «Registrar gasto» is not here on purpose: it only makes sense inside the Wallet
 /// automation, wired to the payment. Offered as a ready-made shortcut it showed up in the
@@ -114,6 +118,26 @@ struct CentavoShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Cuánto llevo en…",
             systemImageName: "chart.pie"
+        )
+        AppShortcut(
+            intent: TodayIntent(),
+            phrases: [
+                "Cuánto puedo gastar hoy en \(.applicationName)",
+                "Cuánto puedo gastar hoy con \(.applicationName)",
+                "Qué puedo gastar hoy en \(.applicationName)",
+            ],
+            shortTitle: "Cuánto puedo gastar hoy",
+            systemImageName: "calendar.badge.clock"
+        )
+        AppShortcut(
+            intent: DeleteLastExpenseIntent(),
+            phrases: [
+                "Borra el último gasto en \(.applicationName)",
+                "Borrar el último gasto en \(.applicationName)",
+                "Quita el último gasto de \(.applicationName)",
+            ],
+            shortTitle: "Borrar el último gasto",
+            systemImageName: "trash"
         )
     }
 }

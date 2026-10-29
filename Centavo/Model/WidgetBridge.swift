@@ -23,17 +23,31 @@ enum WidgetBridge {
     /// Called once at launch: every save, from a screen or from Siri and Atajos (which run in
     /// the app's process), refreshes the widgets.
     @MainActor static func start() {
+        // The small widget's «+» and the «Anotar gasto» control land here (`OpenAddExpenseIntent`).
+        AddExpenseLink.install()
         NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: .main) { _ in
-            // Later, never inside the save: a save can come while the store is still opening
-            // (the demo seeds it there), and reading it then would open it twice. Several
-            // saves in a row make one refresh.
-            pending?.cancel()
-            pending = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(300))
-                guard !Task.isCancelled else { return }
-                refresh()
+            // `queue: .main` runs this on the main thread; Swift just can't see it.
+            MainActor.assumeIsolated {
+                // Later, never inside the save: a save can come while the store is still opening
+                // (the demo seeds it there), and reading it then would open it twice. Several
+                // saves in a row make one refresh.
+                pending?.cancel()
+                pending = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    refresh()
+                }
             }
         }
+    }
+
+    /// The end of an App Intent that saved (Wallet, Siri, Atajos): the widgets are brought up
+    /// to date before the intent returns. Atajos may suspend the process right after, before
+    /// the 300 ms of `start()` go by, and the widget stayed one payment behind.
+    @MainActor static func refreshAfterIntent() {
+        pending?.cancel()
+        pending = nil
+        refresh()
     }
 
     /// Writes this month as it stands now and reloads the widgets.
