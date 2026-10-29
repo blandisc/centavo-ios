@@ -24,6 +24,9 @@ struct SetupGuideView: View {
         return descriptor
     }
     @State private var step = GuideDebug.firstStep
+    /// iOS 27 starts on adding the ready-made automation (`ShortcutInstallView`); the
+    /// step-by-step guide is the way back if that fails.
+    @State private var stepByStep = !ShortcutsVersion.isIOS27 || GuideDebug.opensOnStep
     /// The floating guide that goes into Atajos with the person (Picture in Picture).
     @State private var companion = GuideCompanion()
     @ScaledMetric(relativeTo: .body) private var stepNumberWidth = Theme.Size.stepNumber
@@ -34,6 +37,29 @@ struct SetupGuideView: View {
     private var isLast: Bool { step == steps.count - 1 }
 
     var body: some View {
+        if stepByStep {
+            guide
+        } else {
+            NavigationStack {
+                ShortcutInstallView(latest: captured.first) {
+                    withAnimation(Theme.Motion.settle) { stepByStep = true }
+                }
+                .background(Theme.background.ignoresSafeArea())
+                .presentationBackground(Theme.background)
+                .navigationBarTitleDisplayMode(.inline)
+                .ticketBarTitle("Configurar atajo")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Listo") { dismiss() }
+                            .font(.ticket(.footnoteStrong))
+                            .accessibilityIdentifier("hoja-listo")
+                    }
+                }
+            }
+        }
+    }
+
+    private var guide: some View {
         NavigationStack {
             TabView(selection: $step) {
                 ForEach(steps.indices, id: \.self) { index in
@@ -283,7 +309,16 @@ enum GuideDebug {
         return 0
     }
 
+    /// `-centavo-guia-paso N` or `-centavo-atajo` (the ready-made automation, iOS 27).
     static var opensAtLaunch: Bool {
+        #if DEBUG
+        opensOnStep || ProcessInfo.processInfo.arguments.contains("-centavo-atajo")
+        #else
+        false
+        #endif
+    }
+
+    static var opensOnStep: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-centavo-guia-paso")
         #else
@@ -482,7 +517,7 @@ private struct GuideStep {
 // MARK: - Is it working?
 
 /// The last step's answer: the first payment the automation saved, or that it is still waiting.
-private struct CaptureCheck: View {
+struct CaptureCheck: View {
     let latest: Expense?
 
     /// Proof only if it is recent: a capture from days ago says nothing about the automation

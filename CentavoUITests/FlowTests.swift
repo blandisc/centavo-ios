@@ -986,7 +986,30 @@ final class FlowTests: XCTestCase {
             app.swipeUp()
         }
         health.tap()
+        stepByStep(app)
         require(app.buttons["guia-siguiente"], "No abrió la guía")
+    }
+
+    /// iOS 27 opens on adding the ready-made automation; the step-by-step guide is behind
+    /// «Prefiero hacerlo paso a paso».
+    private func stepByStep(_ app: XCUIApplication) {
+        let way = app.buttons["atajo-paso-a-paso"]
+        if way.waitForExistence(timeout: 5) { way.tap() }
+    }
+
+    func testElAtajoArmadoSeAgregaConUnBoton() throws {
+        let app = launch(demo: true)
+        app.buttons["Más"].tap()
+        app.buttons["Configurar atajo"].firstMatch.tap()
+        let add = app.buttons["atajo-agregar"]
+        try XCTSkipUnless(add.waitForExistence(timeout: 5), "Solo en iOS 27: antes no hay atajo armado")
+        require(app.descendants(matching: .any)["guia-comprobacion"], "No dice si ya llegó un pago")
+        snap("flujo-atajo-armado")
+        add.tap()
+        // The share sheet offers Atajos, which imports the file.
+        let shortcuts = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["Atajos", "Shortcuts"])).firstMatch
+        require(shortcuts, "La hoja no ofrece Atajos")
     }
 
     // MARK: Guía del atajo
@@ -999,6 +1022,7 @@ final class FlowTests: XCTestCase {
         } else {
             require(app.buttons["vacio-wallet"], "La pantalla vacía no ofrece conectar Wallet").tap()
         }
+        stepByStep(app)
         let next = require(app.buttons["guia-siguiente"], "No abrió la guía paso a paso")
         // 8 steps on iOS 26, 7 on iOS 27: walk until the last one.
         for _ in 0..<10 where next.isEnabled { next.tap() }

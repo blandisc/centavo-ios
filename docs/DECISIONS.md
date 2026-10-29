@@ -494,3 +494,11 @@ Elegido por el dueño sobre el lienzo de análisis del mismo día.
   - el botón secundario («Después») va en blanco y seminegrita en toda la app: en gris no se leía como botón;
   - en el inicio, «+ USD 24.99 aparte» pasó a «en otra moneda» y la etiqueta de un gasto excluido dice «No cuenta en el presupuesto».
   - Queda por investigar: instalar el atajo ya armado con un toque, lo único que quitaría los pasos 5 y 6, revisando que no choque con «sin servidor».
+
+## 2026-10-29 · El atajo ya viene armado (opción B)
+Elegido por el dueño tras dos rondas con personas: todas se perdían armando el atajo a mano.
+- **En iOS 27 Al día trae la automatización completa** (`Centavo/Resources/Registrar aviso de Wallet.shortcut`): el disparador «Notificación» de Wallet y la acción con «Notificación» y «Subtítulo» conectados. «Configurar atajo» abre primero «Conecta Wallet» con un botón «Agregar a Atajos»; la guía de 8 pasos queda detrás de «Prefiero hacerlo paso a paso».
+- **Se entrega por la hoja de compartir**, donde Atajos sale primero: el esquema `shortcuts://import-shortcut` solo acepta enlaces, no archivos. No hay enlace ni servidor; el archivo viaja dentro de la app.
+- **El archivo se exportó del iPhone del dueño**, firmado por Apple para cualquiera. No se puede armar en la Mac: macOS 26 borra el disparador al firmar. Cómo cambiarlo: Tools/atajo/README.md.
+- **Llega con la automatización apagada** (así lo hace iOS 27 con lo compartido): la pantalla dice cómo encenderla. Visto en el simulador que el atajo llega completo; encenderlo y el primer pago, por probar en el iPhone.
+- Antes de iOS 27 no cambia nada: la guía de siempre.

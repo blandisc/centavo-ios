@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- **Conectar Wallet sin armar nada (iOS 27):** el atajo ya viene armado dentro de Al día. «Agregar a Atajos» lo abre en Atajos; solo hay que agregarlo y encender la automatización. La guía paso a paso sigue ahí si la prefieres.
 - **Anotar sin comercio:** con el monto y la categoría ya se puede guardar; el gasto se llama como la categoría («Despensa»).
 - **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.
 - **«Llegó de Wallet · 28 oct 14:32»** al pie de un gasto que anotó la automatización, con el texto del aviso tal como llegó.

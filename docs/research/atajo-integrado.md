@@ -26,3 +26,10 @@
 2. Se abre en la Mac, se revisa qué trae (que no lleve datos personales), se vuelve a firmar para cualquiera y se agrega a la app.
 3. Botón en «Conectar Wallet» que abre la hoja de compartir con el archivo; se prueba en el iPhone que importa con el disparador.
 4. La guía de 8 pasos queda de respaldo.
+
+## Resultado (mismo día)
+
+- El dueño exportó el atajo de su iPhone. Trae `WFWorkflowTriggers` con el disparador «Notificación» de Wallet (`com.apple.Passbook`) y la acción con «Notificación» y «Subtítulo» conectados. Sin datos personales; solo el `TeamIdentifier` del equipo de la app.
+- **No se puede volver a firmar en la Mac:** `shortcuts sign` en macOS 26 borra `WFWorkflowTriggers`. Se usa tal cual el archivo firmado en el iPhone.
+- **Probado en el simulador (iOS 27.0):** «Agregar a Atajos» abre la hoja de compartir, Atajos sale primero e importa el archivo. Queda «When I receive a notification from Wallet» con «Registrar Notification con comercio Subtitle», y arriba «Automation is turned off».
+- **Falta en el iPhone:** encender la automatización (en el simulador los toques rebotaban en esa pantalla) y que el primer pago real se anote.

@@ -359,12 +359,17 @@ struct OnboardingView: View {
 
     private var walletPage: some View {
         page(title: "Conecta Wallet", symbol: "wallet.pass",
-             lead: "Para que cada pago con Apple Pay se anote solo, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. Se configura una sola vez, en unos 5 minutos.") {
+             lead: ShortcutsVersion.isIOS27
+                ? "Para que cada pago con Apple Pay se anote solo, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: solo lo agregas, una vez."
+                : "Para que cada pago con Apple Pay se anote solo, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. Se configura una sola vez, en unos 5 minutos.") {
             WalletChain()
                 .onboardingRise(2)
             VStack(spacing: Theme.Space.none) {
-                point("hand.tap", "Te guiamos toque por toque, con capturas reales de Atajos.")
-                if GuideCompanion.isSupported {
+                point("hand.tap", ShortcutsVersion.isIOS27
+                      ? "Solo hay que agregarlo y encenderlo; te decimos dónde tocar."
+                      : "Te guiamos toque por toque, con capturas reales de Atajos.")
+                // The floating guide is for the step-by-step way; iOS 27 adds the shortcut ready.
+                if GuideCompanion.isSupported && !ShortcutsVersion.isIOS27 {
                     pointDivider
                     point("pip", "Una ventanita flotante te acompaña dentro de Atajos para que no tengas que ir y venir.")
                 }
