@@ -69,6 +69,12 @@ struct CatalogSettingsView: View {
             + others.map { ($0, CategoryStyle.icon(for: $0, custom: categories), false) }
     }
 
+    /// A card that came with payments gets a banknote if it is cash, a card otherwise.
+    static func guessIcon(_ name: String) -> String {
+        let folded = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        return folded.contains("efectivo") || folded.contains("cash") ? "banknote" : "creditcard"
+    }
+
     private let columns = [GridItem(.adaptive(minimum: Theme.Size.catalogTile), spacing: Theme.Space.s)]
 
     var body: some View {
@@ -96,14 +102,14 @@ struct CatalogSettingsView: View {
                         ForEach(detectedCards, id: \.self) { card in
                             Menu {
                                 Button("Usar por defecto", systemImage: "star") {
-                                    save(LabeledIcon(name: card, icon: "creditcard"), replacing: nil)
+                                    save(LabeledIcon(name: card, icon: Self.guessIcon(card)), replacing: nil)
                                     defaultSource = card
                                 }
                                 Button("Elegir ícono", systemImage: "square.grid.2x2") {
-                                    editing = .source(LabeledIcon(name: card, icon: "creditcard"))
+                                    editing = .source(LabeledIcon(name: card, icon: Self.guessIcon(card)))
                                 }
                             } label: {
-                                CatalogTile(name: card, icon: "creditcard", note: "De tus pagos")
+                                CatalogTile(name: card, icon: Self.guessIcon(card), badge: "wave.3.right")
                             }
                             .accessibilityLabel("\(card), llegó en tus pagos")
                             .accessibilityIdentifier("fuente-\(card)")
@@ -119,7 +125,9 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Cómo pagas").ticketCaption()
                 } footer: {
-                    NoteText("La de la estrella ya viene elegida cuando anotas a mano. Las de tus pagos llegaron con Wallet; toca una para usarla por defecto o darle ícono.")
+                    Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano. \(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono.")
+                        .font(.ticket(.detail))
+                        .foregroundStyle(Theme.muted)
                 }
                 .listRowBackground(Theme.surface)
 
@@ -268,35 +276,31 @@ struct CatalogSettingsView: View {
 private struct CatalogTile: View {
     let name: String
     let icon: String
-    var note: String?
     var badge: String?
     var dimmed = false
     var isAction = false
 
     @ScaledMetric(relativeTo: .body) private var symbolBox = Theme.Size.categorySymbol
+    @ScaledMetric(relativeTo: .body) private var height = Theme.Size.catalogTileHeight
 
     var body: some View {
-        VStack(spacing: Theme.Space.xxs) {
+        VStack(spacing: Theme.Space.xs) {
             Image(systemName: icon)
                 .font(Theme.Symbol.regular)
-                .foregroundStyle(isAction ? Theme.brass : Theme.brass)
+                .foregroundStyle(Theme.brass)
                 .frame(height: symbolBox)
+            // Two words may take two lines («American / Express»); one word stays on one and
+            // shrinks a little rather than break («Suscripcione/s»).
             Text(name)
                 .font(.ticket(.detail))
                 .foregroundStyle(isAction ? Theme.brass : Theme.ink)
-                // One word per tile: it shrinks a little rather than break («Suscripcione/s»).
-                .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .lineLimit(name.contains(" ") ? 2 : 1)
                 .minimumScaleFactor(Theme.MinimumScale.figure)
-            if let note {
-                Text(note)
-                    .font(.ticket(.micro))
-                    .foregroundStyle(Theme.faint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(Theme.MinimumScale.text)
-            }
         }
-        .padding(Theme.Space.s)
-        .frame(maxWidth: .infinity, minHeight: Theme.Size.categoryTile)
+        .padding(.horizontal, Theme.Space.xs)
+        // Every tile the same height, whatever its name: a grid of equal tickets.
+        .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
         .background(isAction ? Color.clear : Theme.raised,
                     in: RoundedRectangle(cornerRadius: Theme.Radius.control))
         .overlay {

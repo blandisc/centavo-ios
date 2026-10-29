@@ -75,5 +75,7 @@ extension Theme.Motion {
     /// Seconds «Deshacer» stays after a delete; longer with VoiceOver, to reach it.
     static let undoSeconds: Double = 6
     static let undoLongSeconds: Double = 15
+    /// A panel folding or unfolding in place: slow enough to follow, no bounce.
+    static let fold: Animation = .smooth(duration: 0.42)
 }
 

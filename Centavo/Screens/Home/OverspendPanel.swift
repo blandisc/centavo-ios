@@ -23,7 +23,7 @@ struct OverspendPanel: View {
     private var isClosed: Bool { closedMonth == month }
 
     private func setClosed(_ closed: Bool) {
-        withAnimation(Theme.Motion.animation(Theme.Motion.restyle, reduceMotion: reduceMotion)) {
+        withAnimation(Theme.Motion.animation(Theme.Motion.fold, reduceMotion: reduceMotion)) {
             closedMonth = closed ? month : ""
         }
     }
@@ -40,8 +40,9 @@ struct OverspendPanel: View {
         plan.daysAfterToday > 0 ? "Para cerrar el mes · \(daysText) más" : "Hoy cierra el mes"
     }
 
-    /// One panel that folds and unfolds in place: the same title open or closed, with the
-    /// first way (stop spending) as its summary when closed, and a chevron that turns.
+    /// One panel that folds and unfolds in place. The title and the first way (stop spending)
+    /// never move: folding only hides what is under them, so nothing swaps or blinks, and the
+    /// panel's height eases with the rest of the screen.
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Button { setClosed(!isClosed) } label: {
@@ -57,24 +58,23 @@ struct OverspendPanel: View {
                 .frame(minHeight: Theme.Size.compactRow)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            // No dimming on touch: the title is the panel's own, not a button that flashes.
+            .buttonStyle(SteadyButtonStyle())
             .accessibilityValue(isClosed ? "Cerrado" : "Abierto")
-            .accessibilityHint(isClosed ? "Muestra cómo cerrar el mes" : "Lo deja en una línea")
-            .accessibilityIdentifier(isClosed ? "abrir-plan" : "cerrar-plan")
+            .accessibilityHint(isClosed ? "Muestra las otras formas de cerrar el mes" : "Deja solo la primera")
+            .accessibilityIdentifier("plegar-plan")
 
-            if isClosed {
-                closedSummary
-                    .transition(.opacity)
-            } else {
+            leadPath
+
+            if !isClosed {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    paths
+                    otherPaths
                     adjustButton
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(.opacity)
             }
         }
-        .padding(.horizontal, Theme.Space.l)
-        .padding(.vertical, isClosed ? Theme.Space.m : Theme.Space.l)
+        .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ticketPanel()
         .clipped()
@@ -82,20 +82,16 @@ struct OverspendPanel: View {
         .accessibilityIdentifier("para-cerrar-el-mes")
     }
 
-    /// Closed: one line, the way to aim for.
-    private var closedSummary: some View {
-        (Text(plan.daysAfterToday > 0 ? "Sin gastar más, " : "").foregroundStyle(Theme.brass)
-            + Text("cierras ").foregroundStyle(Theme.muted)
-            + Text(whole(plan.stop.closesOver)).foregroundStyle(Theme.ink)
-            + Text(" arriba").foregroundStyle(Theme.muted))
-            .font(.ticket(.footnote))
+    /// The way to aim for: stop spending (or, the last day, how it closes).
+    private var leadPath: some View {
+        path(plan.daysAfterToday > 0 ? "Sin gastar más" : "Cierras",
+             detail: plan.daysAfterToday > 0 && plan.fixedToCome > 0 ? "solo los fijos que faltan" : nil,
+             closes: plan.stop.closesOver, leads: true)
     }
 
-    @ViewBuilder private var paths: some View {
+    @ViewBuilder private var otherPaths: some View {
         if plan.daysAfterToday > 0 {
             VStack(spacing: Theme.Space.sm) {
-                path("Sin gastar más", detail: plan.fixedToCome > 0 ? "solo los fijos que faltan" : nil,
-                     closes: plan.stop.closesOver, leads: true)
                 Divider().overlay(Theme.hairline)
                 // With fixed expenses eating the whole budget there was nothing a day:
                 // the same as stopping, so it is not said twice.
@@ -108,8 +104,6 @@ struct OverspendPanel: View {
                          closes: plan.currentRate.closesOver)
                 }
             }
-        } else {
-            path("Cierras", detail: nil, closes: plan.stop.closesOver, leads: true)
         }
     }
 
@@ -166,3 +160,9 @@ struct OverspendPanel: View {
         .padding(Theme.Space.screen)
         .ticketPreview()
 }
+
+/// A button that does not dim when touched: for a title that opens its own panel.
+private struct SteadyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { configuration.label }
+}
+
