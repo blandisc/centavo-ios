@@ -82,15 +82,15 @@ enum TicketStyle: CaseIterable {
     case detail
     /// 12 semibold. Section labels and compact buttons (`SectionLabel`). Tracking `.label`.
     case label
-    /// 11 regular. Captions (`ticketCaption()`). Tracking `.caption`.
+    /// 12 regular (11 before 2026-10-29: nothing that carries information goes under 12). Captions (`ticketCaption()`). Tracking `.caption`.
     case caption
-    /// 11 semibold. A caption that heads the hero figure.
+    /// 12 semibold. A caption that heads the hero figure.
     case captionStrong
-    /// 11 regular, smallest text style. Hints (`HintText`) and row details. Tracking `.detail`.
+    /// 12 regular. Hints (`HintText`) and row details. Tracking `.detail`.
     case hint
-    /// 10 regular. Chart axes, weekday letters, a day's total.
+    /// 12 regular (10 before 2026-10-29). Chart axes, weekday letters, a day's total.
     case micro
-    /// 10 semibold. A day's name in the list.
+    /// 12 semibold (10 before 2026-10-29). A day's name in the list.
     case microStrong
 
     var size: CGFloat {
@@ -107,8 +107,8 @@ enum TicketStyle: CaseIterable {
         case .callout, .button: 14
         case .footnote, .footnoteStrong: 13
         case .detail, .label: 12
-        case .caption, .captionStrong, .hint: 11
-        case .micro, .microStrong: 10
+        case .caption, .captionStrong, .hint: 12
+        case .micro, .microStrong: 12
         }
     }
 
