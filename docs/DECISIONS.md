@@ -372,3 +372,16 @@ A pedido del dueño («un onboarding con las mejores prácticas, animaciones e i
 - **Guía flotante (picture in picture) en vez de video grabado.** Las imágenes se dibujan al momento con las capturas reales que ya usa la guía. Así no hay que grabar nada, no se queda vieja con cada iOS (se rehace con `GuideScreenshotsTests`) y no pesa. Esas tres eran las razones por las que el 2026-10-15 se descartó un video. ⏪ y ⏩ cambian de toque, y ▶︎ avanza solo cada 8 s.
 - **Requiere el modo en segundo plano «audio»,** que es el que Apple pide para picture in picture. La app no reproduce sonido y no interrumpe la música (`mixWithOthers`). El simulador no tiene picture in picture: se verifica en el iPhone.
 
+
+## 2026-10-29 · Hoja del gasto: lo común primero
+Aprobado por Fernando (propuesta 8 del análisis `docs/research/analisis-ux-ui-tecnico-2026-10-29.md`, con las marcadas ⚠︎). Reemplaza los interruptores «Es una devolución» (2026-10-12) y «Cuenta para el presupuesto» (2026-10-23) y el selector segmentado MXN | USD | EUR (2026-10-16). Lo que hacen no cambia.
+- **Orden:** Monto → Comercio → Categoría → ¿Con qué pagaste?. Lo demás va en «Más detalles», cerrado por omisión, con su resumen en el renglón («Hoy · Gasto»). Se abre solo al editar un gasto que ya tiene algo ahí (devolución, «No cuenta», se repite, es copia de un fijo o tiene ubicación).
+- **La moneda es una cápsula «MXN ▾» junto al monto** (un `Menu` con MXN, USD y EUR, más la del gasto si llegó en otra). Se sigue guardando con su código ISO.
+- **«Tipo: Gasto / Devolución / No cuenta»** en un solo `Picker`, dentro de «Más detalles». Devolución = monto negativo; «No cuenta» = `countedAmount` 0 con su «Motivo» justo debajo. Un gasto ya guardado como devolución que no cuenta conserva su signo al editarlo.
+- **Comercio opcional con categoría:** con monto y categoría se puede guardar sin comercio, y el gasto se llama como la categoría («Despensa»). Sin categoría el comercio sigue siendo obligatorio («Falta el comercio»). Ese nombre no se aprende como comercio (ni renombre ni categoría recordada).
+- **Categorías:** primero la sugerida o la que ya tiene, luego las 5 más usadas (con poco historial, las de siempre), y «Ver todas» para el resto (`CategoryShortlist`, en `CentavoCore`).
+- **«Dilo en una frase» vive junto al monto** (ícono de globo). Si la frase no trae monto lo dice: «No encontré un monto en «…». Escríbelo arriba.»
+- **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.
+- **Origen de Wallet:** al pie de un gasto que llegó de Wallet, «Llegó de Wallet · 28 oct 14:32» y el texto del aviso tal como llegó.
+- **Rendimiento (R10):** la hoja ya no consulta todo el historial en vivo; lo lee una vez al abrir, y las sugerencias de comercio y la categoría recordada se recalculan solo al cambiar el comercio.
+- **También:** en «Tarjetas y categorías», «Usar por defecto» es un interruptor dentro de la hoja de la tarjeta (ya no un deslizar escondido) y borrar una tarjeta o categoría pregunta antes. En «Gastos fijos», «Dejar de repetir» y «Borrar» preguntan antes, y «Nuevo gasto fijo» tiene Categoría y Tarjeta opcionales (`FixedPlan.card`, opcional: los planes guardados antes se leen igual). VoiceOver lee los íconos con su nombre en español.

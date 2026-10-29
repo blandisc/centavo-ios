@@ -71,6 +71,8 @@ final class ScreenshotTests: XCTestCase {
         let app = launch()
         app.buttons["Anotar gasto"].tap()
         sleep(1)
+        // The currency is a menu next to the amount (2026-10-29).
+        app.buttons["moneda"].tap()
         app.buttons["USD"].tap()
         snap("05b-nuevo-gasto-dolares")
     }
@@ -156,7 +158,9 @@ final class ScreenshotTests: XCTestCase {
     func testNoCuentaHoja() {
         let app = launch()
         uncountedRow(app).tap()
-        XCTAssertTrue(app.switches["cuenta-presupuesto"].waitForExistence(timeout: 5), "No está el interruptor")
+        // «Tipo: No cuenta» opens «Más detalles» by itself.
+        XCTAssertTrue(app.buttons["tipo"].waitForExistence(timeout: 5), "No está «Tipo»")
+        for _ in 0..<4 where !app.buttons["motivo"].isHittable { app.swipeUp() }
         snap("nc-01-hoja-no-cuenta")
         let reason = app.buttons["motivo"].exists ? app.buttons["motivo"]
             : app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Motivo'")).firstMatch

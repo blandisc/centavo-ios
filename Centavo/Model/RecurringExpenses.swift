@@ -77,7 +77,7 @@ enum RecurringExpenses {
     /// The first charge of a fixed expense, which every later copy repeats.
     static func original(from plan: FixedPlan, calendar: Calendar = .current) -> Expense {
         let expense = Expense(amount: plan.value, currencyMarker: plan.currency, merchant: plan.merchant,
-                              date: plan.firstDate, category: plan.category)
+                              card: plan.card, date: plan.firstDate, category: plan.category)
         expense.repeatsMonthly = true
         expense.repeatsThrough = plan.firstDate
         expense.repeatRule = plan.rule

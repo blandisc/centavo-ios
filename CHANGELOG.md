@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- **Anotar sin comercio:** con el monto y la categoría ya se puede guardar; el gasto se llama como la categoría («Despensa»).
+- **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.
+- **«Llegó de Wallet · 28 oct 14:32»** al pie de un gasto que anotó la automatización, con el texto del aviso tal como llegó.
+- **«Nuevo gasto fijo» con categoría y tarjeta** (opcionales). La categoría empieza con la sugerida para el nombre.
 - **Bienvenida nueva, que muestra antes de pedir:** cuatro páginas en vez de cinco. La primera es una demostración viva: llega un aviso de Wallet, se anota solo y «Hoy puedes gastar» baja. La moneda y el presupuesto van en una sola página, con montos de un toque y «Al día: $290» respondiendo a cada tecla. Los gastos fijos tienen sugerencias de un toque (Renta, Luz, Netflix…) y dicen cuánto te queda al día. «Conectar Wallet» muestra cómo llega un pago. Un solo botón ancho «Continuar», que queda arriba del teclado.
 - **Guía flotante al configurar el atajo:** «Abrir Atajos» deja una ventanita (picture in picture) sobre Atajos con la captura y la instrucción de cada toque. Avanzas con ⏩, y al volver a Al día estás en el paso donde ibas. Al llegar el primer pago, la guía lo celebra.
 - **Recordar el nombre que le pones a un comercio:** si en la hoja del gasto le cambias el nombre a un comercio («OXXO SUC 1234» → «Oxxo de la esquina»), los pagos que lleguen después de Wallet con el nombre anterior se guardan con el tuyo y con la categoría que le diste. Otra sucursal («OXXO SUC 5678») sigue siendo otro comercio. Los gastos ya guardados no cambian.
@@ -20,6 +24,10 @@
 - **Con Apple Intelligence (iOS 26+):** el modelo del iPhone, sin internet, mejora los nombres («Taquería El Güero»), sugiere una de tus categorías para los comercios nuevos, entiende frases más libres, busca por lo que quieres decir («cafecitos») y lee avisos de Wallet de bancos que la app no conoce. Lo sugerido se marca y lo que tú eliges siempre gana.
 
 ### Changed
+- **Hoja del gasto: lo común primero.** Monto, comercio, categoría y con qué pagaste, en ese orden. La moneda es una cápsula «MXN ▾» junto al monto, y «Dilo en una frase» un ícono a su lado; si la frase no trae monto, ahora lo dice. «Es una devolución» y «Cuenta para el presupuesto» se vuelven un solo «Tipo: Gasto / Devolución / No cuenta», dentro de «Más detalles» con la fecha y «Se repite» (se abre solo si el gasto ya tiene algo ahí). Las categorías muestran primero la sugerida y tus 5 más usadas; «Ver todas» abre el resto. La hoja ya no recorre todo tu historial con cada letra que escribes.
+- **Tarjetas y categorías:** «Usar por defecto» ahora es un interruptor dentro de la hoja de cada tarjeta, y borrar una tarjeta o una categoría pregunta antes. El texto de abajo ya no dice «Toca una para borrarla» (tocarla la edita).
+- **Gastos fijos:** «Dejar de repetir» y «Borrar» preguntan antes. En la hoja de un fijo, el botón dice «Dejar de repetir» (ya hay fijos semanales).
+- **VoiceOver** lee los íconos de categorías y tarjetas en español («Carrito») y no con su nombre técnico («cart»).
 - **«Deberías llevar»:** cuando ya llevas más de lo que irías gastando parejo, la nota sobre la barra dice «Deberías llevar $X» en vez de «Podrías llevar $X». También en el widget mediano y en VoiceOver.
 - **«Vas $X arriba/abajo del ritmo» solo sale donde dice algo nuevo.** Con «Acumular» se quita: «Hoy puedes gastar» ya es exactamente la distancia a la rayita, y la frase repetía o contradecía la barra. La barra sube a su lugar, sin hueco. Con «Repartir» la frase mide contra la rayita (la misma diferencia que ves en la barra, lo de hoy incluido) y se despliega bajo la cifra al elegir ese modo. En los widgets pequeños, con «Acumular», ese renglón dice «Podrías llevar $X» (o «Deberías»), la etiqueta que su barra no tenía. «Podrías llevar» es igual en los dos modos.
 - **Calendario:** la última fila ya no se corta. El aro de hoy y el del día elegido se ven completos aunque caigan en la última semana.
