@@ -29,7 +29,56 @@ struct CaptureHealthRow: View {
 
     private var needsAttention: Bool { unread != nil || !health.isRecent }
 
+    /// When it needs attention it is a short sentence and what to do, not a shouted caption.
+    private var warning: (title: String, detail: String) {
+        if let unread {
+            return ("Llegó un aviso de Wallet sin monto", "«\(unread)». Toca para revisar el atajo.")
+        }
+        switch health {
+        case .quiet(let days):
+            return ("Sin pagos de Wallet desde hace \(days) días", "Si sí pagaste, toca para revisar el atajo.")
+        default:
+            return ("Wallet sin conectar", "Conéctalo una vez y cada compra se anota sola.")
+        }
+    }
+
     var body: some View {
+        if needsAttention && !compact { attention } else { quiet }
+    }
+
+    private var attention: some View {
+        Button(action: openGuide) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Image(systemName: "exclamationmark.circle")
+                    .foregroundStyle(Theme.brass)
+                    .frame(width: glyphWidth, alignment: .leading)
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    Text(warning.title)
+                        .font(.ticket(.footnoteStrong))
+                        .foregroundStyle(Theme.ink)
+                    Text(warning.detail)
+                        .font(.ticket(.detail))
+                        .foregroundStyle(Theme.muted)
+                }
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: Theme.Space.s)
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Theme.faint)
+                    .accessibilityHidden(true)
+            }
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+            .ticketPanel()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, Theme.Space.s)
+        .accessibilityIdentifier("salud-captura")
+        .accessibilityHint("Abre la guía del atajo")
+    }
+
+    private var quiet: some View {
         Button(action: openGuide) {
             HStack(spacing: Theme.Space.s) {
                 Image(systemName: needsAttention ? "exclamationmark.circle" : "wave.3.right")

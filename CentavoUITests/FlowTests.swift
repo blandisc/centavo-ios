@@ -243,8 +243,12 @@ final class FlowTests: XCTestCase {
     func testSiLosPagosSonEnPesosOfreceSumarEnPesos() {
         let app = launch(budget: true)
         app.buttons["Más"].tap()
-        require(app.buttons["Moneda principal"], "No está la moneda en «Más»").tap()
+        require(app.buttons["Ajustes"], "No está «Ajustes» en «Más»").tap()
+        let currency = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Moneda principal'")).firstMatch
+        require(currency, "No está la moneda en «Ajustes»").tap()
         require(app.buttons["Dólares (USD)"], "No ofrece dólares").tap()
+        // Asking about the budget closes «Ajustes» if it is still up.
+        if app.buttons["ajustes-listo"].waitForExistence(timeout: 2) { app.buttons["ajustes-listo"].tap() }
         require(app.buttons["Así está bien"], "No preguntó por el presupuesto al cambiar de moneda").tap()
 
         for (amount, merchant) in [("100", "Oxxo"), ("200", "Soriana")] {
@@ -556,7 +560,7 @@ final class FlowTests: XCTestCase {
     /// demasiado chico para su nombre y su monto) y ofrece ver sus gastos.
     func testMantenerPresionadoUnBloqueOfreceVerSusGastos() {
         let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
-        require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").press(forDuration: 1.2)
+        require(app.buttons["parte-Ropa"], "No hay bloque de Ropa").press(forDuration: 1.2)
         snap("flujo-mosaico-detalle")
         require(app.buttons["Ver sus gastos"], "No ofrece ver los gastos de la categoría").tap()
         require(app.buttons["ver-todo-el-mes"], "No filtró por la categoría")
@@ -565,7 +569,7 @@ final class FlowTests: XCTestCase {
 
     func testTocarUnaCategoriaMuestraSoloSusGastos() {
         let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "mosaic"])
-        require(app.buttons["categoria-Ropa"], "No hay bloque de Ropa").tap()
+        require(app.buttons["parte-Ropa"], "No hay bloque de Ropa").tap()
         require(app.buttons["ver-todo-el-mes"], "No dice que está filtrado")
         require(row(app, containing: "Liverpool"), "No muestra el gasto de Ropa")
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Cinépolis'")).firstMatch.exists,
@@ -845,13 +849,13 @@ final class FlowTests: XCTestCase {
         for _ in 0..<6 where !section.isHittable { app.swipeUp() }
         require(section, "No aparece «En qué se va»")
         let lines = section.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'categoria-'"))
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'parte-'"))
         XCTAssertGreaterThanOrEqual(lines.count, 2, "«En qué se va» no tiene renglones de categoría")
         let window = app.windows.firstMatch.frame
         let whole = try! NSRegularExpression(pattern: #"^(.+): \$[\d,]+\.\d{2}, \d+\s?% de lo gastado$"#)
         for index in 0..<lines.count {
             let line = lines.element(boundBy: index)
-            let name = String(line.identifier.dropFirst("categoria-".count))
+            let name = String(line.identifier.dropFirst("parte-".count))
             let label = line.label
             let match = whole.firstMatch(in: label, range: NSRange(label.startIndex..., in: label))
             XCTAssertNotNil(match, "Renglón sin monto completo: «\(label)»")
@@ -877,12 +881,12 @@ final class FlowTests: XCTestCase {
         for _ in 0..<6 where !section.isHittable { app.swipeUp() }
         require(section, "No aparece «En qué se va»")
         let tiles = section.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'categoria-'"))
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'parte-'"))
         XCTAssertGreaterThanOrEqual(tiles.count, 2, "El mosaico no tiene bloques de categoría")
         let window = app.windows.firstMatch.frame
         for index in 0..<tiles.count {
             let tile = tiles.element(boundBy: index)
-            let name = String(tile.identifier.dropFirst("categoria-".count))
+            let name = String(tile.identifier.dropFirst("parte-".count))
             XCTAssertTrue(tile.label.hasPrefix(name), "Bloque sin el nombre «\(name)»: «\(tile.label)»")
             XCTAssertTrue(tile.label.contains("$"), "Bloque sin monto: «\(tile.label)»")
             XCTAssertLessThanOrEqual(tile.frame.maxX, window.maxX + 0.5, "«\(name)» se sale de la pantalla")
@@ -929,6 +933,10 @@ final class FlowTests: XCTestCase {
         let app = launch(budget: true, extra: ["-centavo-demo-large"])
         let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("sin conectar"), "Dice: \(health.label)")
+        // Past the budget the plan sits above it: bring the line out from under the bottom bar.
+        for _ in 0..<3 where !health.isHittable || health.frame.maxY > app.windows.firstMatch.frame.maxY - 120 {
+            app.swipeUp()
+        }
         health.tap()
         require(app.buttons["guia-siguiente"], "No abrió la guía")
     }
@@ -937,8 +945,12 @@ final class FlowTests: XCTestCase {
 
     /// Opens the guide from the menu, or from the empty screen on a first launch.
     private func walkGuideToTheEnd(_ app: XCUIApplication, fromMenu: Bool = true) -> XCUIElement {
-        if fromMenu { app.buttons["Más"].tap() }
-        app.buttons["Configurar atajo"].firstMatch.tap()
+        if fromMenu {
+            app.buttons["Más"].tap()
+            app.buttons["Configurar atajo"].firstMatch.tap()
+        } else {
+            require(app.buttons["vacio-wallet"], "La pantalla vacía no ofrece conectar Wallet").tap()
+        }
         let next = require(app.buttons["guia-siguiente"], "No abrió la guía paso a paso")
         // 8 steps on iOS 26, 7 on iOS 27: walk until the last one.
         for _ in 0..<10 where next.isEnabled { next.tap() }

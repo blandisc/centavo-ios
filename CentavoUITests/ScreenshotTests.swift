@@ -113,14 +113,14 @@ final class ScreenshotTests: XCTestCase {
     func testPrincipalMosaico() {
         let app = launch(["-whereItGoesStyle", "mosaic"])
         snap("03-principal-mosaico")
-        app.buttons["categoria-Ropa"].tap()
+        app.buttons["parte-Ropa"].tap()
         sleep(1)
         snap("04-principal-mosaico-ropa")
     }
 
     func testPrincipalMosaicoDetalle() {
         let app = launch(["-whereItGoesStyle", "mosaic"])
-        app.buttons["categoria-Despensa"].press(forDuration: 1.2)
+        app.buttons["parte-Despensa"].press(forDuration: 1.2)
         sleep(1)
         snap("03b-principal-mosaico-detalle")
     }

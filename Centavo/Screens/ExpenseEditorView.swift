@@ -230,14 +230,16 @@ struct ExpenseEditorView: View {
                         .accessibilityIdentifier("hoja-cancelar")
                 }
                 // The decimal pad has no return key: «Siguiente» goes on to the merchant.
+                // Always there: a bar whose content depends on the focus is not rebuilt when the
+                // focus moves (the button never showed). From the merchant it closes the keyboard.
                 ToolbarItemGroup(placement: .keyboard) {
-                    if amountFocused {
-                        Spacer()
-                        Button("Siguiente") { merchantFocused = true }
-                            .font(.ticket(.footnoteStrong))
-                            .foregroundStyle(Theme.brass)
-                            .accessibilityIdentifier("siguiente-teclado")
+                    Spacer()
+                    Button("Siguiente") {
+                        if amountFocused { merchantFocused = true } else { merchantFocused = false; amountFocused = false }
                     }
+                    .font(.ticket(.footnoteStrong))
+                    .foregroundStyle(Theme.brass)
+                    .accessibilityIdentifier("siguiente-teclado")
                 }
             }
             .saveBar(saveSummary, enabled: canSave, action: save)
@@ -450,13 +452,26 @@ struct ExpenseEditorView: View {
             .accessibilityIdentifier("mas-detalles")
 
             if showsDetails {
-                Picker(selection: kind) {
-                    ForEach(Kind.allCases, id: \.self) { Text($0.title).tag($0) }
+                // A menu on the whole row, like the currency: the picker's own menu opened only
+                // from its value at the far end.
+                Menu {
+                    Picker("Tipo", selection: kind) {
+                        ForEach(Kind.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
                 } label: {
-                    SectionLabel("Tipo")
+                    HStack {
+                        SectionLabel("Tipo")
+                        Spacer(minLength: Theme.Space.s)
+                        Text(kind.wrappedValue.title)
+                            .font(.ticket(.body))
+                            .foregroundStyle(Theme.brass)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .foregroundStyle(Theme.faint)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: Theme.Size.tapTarget)
+                    .contentShape(Rectangle())
                 }
-                .pickerStyle(.menu)
-                .tint(Theme.brass)
                 .accessibilityIdentifier("tipo")
                 if !counts {
                     Picker(selection: $reason) {
