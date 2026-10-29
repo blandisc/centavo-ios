@@ -414,6 +414,7 @@ struct ExpenseListView: View {
                         primary: CurrencyPreference.fallback,
                         offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
                 }
+                if GuideDebug.opensAtLaunch { showingSetup = true }
                 guard !onboarded else { return }
                 // A reinstall or a new phone: the expenses are still coming from iCloud.
                 let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere

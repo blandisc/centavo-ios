@@ -12,6 +12,7 @@ import SwiftUI
 /// person is.
 struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     /// Payments the automation saved (only it keeps the raw Wallet text): proof that it works.
     @Query(Self.latestCapture) private var captured: [Expense]
 
@@ -22,8 +23,12 @@ struct SetupGuideView: View {
         descriptor.fetchLimit = 1
         return descriptor
     }
-    @State private var step = 0
+    @State private var step = GuideDebug.firstStep
+    /// The floating guide that goes into Atajos with the person (Picture in Picture).
+    @State private var companion = GuideCompanion()
     @ScaledMetric(relativeTo: .body) private var stepNumberWidth = Theme.Size.stepNumber
+    @ScaledMetric(relativeTo: .body) private var thumbWidth = Theme.Size.companionThumbWidth
+    @ScaledMetric(relativeTo: .body) private var thumbHeight = Theme.Size.companionThumbHeight
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
@@ -41,6 +46,20 @@ struct SetupGuideView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .safeAreaInset(edge: .bottom) {
+                if steps[step].opensShortcuts { launcher }
+            }
+            .animation(Theme.Motion.settle, value: steps[step].opensShortcuts)
+            .task { companion.load(companionPages) }
+            // While the window floats over Atajos, the guide follows it: coming back to Al día
+            // lands on the step the person was on.
+            .onChange(of: companion.step) { _, value in
+                if companion.isFloating { step = value }
+            }
+            .onChange(of: captured.first?.persistentModelID) { _, _ in
+                if companion.isFloating { companion.stop() }
+            }
+            .onDisappear { companion.stop() }
             .background(Theme.background.ignoresSafeArea())
             .presentationBackground(Theme.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -90,6 +109,7 @@ struct SetupGuideView: View {
                 if case .frames(let frames) = guide.scene {
                     // One real screenshot per action, its instruction right above it.
                     GuideFrameSequence(frames: frames)
+                        .id(number)
                 } else {
                     // A picture of another app: it grows a little with the text, then stops. The
                     // numbered steps under it carry the words and scale all the way.
@@ -117,13 +137,6 @@ struct SetupGuideView: View {
                     noteRow(note)
                 }
 
-                if guide.opensShortcuts {
-                    Link(destination: URL(string: "shortcuts://")!) {
-                        PrimaryButtonLabel("Abrir Atajos", systemImage: "arrow.up.forward.app")
-                    }
-                    .ticketProminent()
-                }
-
                 if number == steps.count {
                     CaptureCheck(latest: captured.first)
                     goodToKnow
@@ -131,6 +144,69 @@ struct SetupGuideView: View {
             }
             .padding(.horizontal, Theme.Space.screen)
             .padding(.vertical, Theme.Space.xxl)
+        }
+    }
+
+    /// The dock above the bottom bar on every step done in Atajos: the floating guide's
+    /// thumbnail (the layer Picture in Picture floats) and one button that floats it and opens
+    /// Atajos under it. Without Picture in Picture, a plain «Abrir Atajos».
+    private var launcher: some View {
+        HStack(spacing: Theme.Space.m) {
+            if GuideCompanion.isSupported {
+                CompanionLayerView(companion: companion)
+                    .frame(width: thumbWidth, height: thumbHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Theme.hairline)
+                    }
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                if GuideCompanion.isSupported {
+                    Text(companion.isFloating
+                         ? "La guía flota sobre Atajos. Avanza con ⏩."
+                         : "Esta guía te acompaña en una ventanita sobre Atajos.")
+                        .font(.ticket(.detail))
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button {
+                    let url = URL(string: "shortcuts://")!
+                    if GuideCompanion.isSupported {
+                        companion.float(from: step, thenOpen: url)
+                    } else {
+                        openURL(url)
+                    }
+                } label: {
+                    PrimaryButtonLabel("Abrir Atajos", systemImage: GuideCompanion.isSupported
+                                       ? "pip.enter" : "arrow.up.forward.app")
+                }
+                .ticketProminent()
+                .accessibilityIdentifier("guia-abrir-atajos")
+            }
+        }
+        .padding(.horizontal, Theme.Space.screen)
+        .padding(.vertical, Theme.Space.m)
+        .background(Theme.surface)
+        .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    /// Every picture of the guide, in order, for the floating window.
+    private var companionPages: [GuideCompanion.Page] {
+        steps.indices.flatMap { index -> [GuideCompanion.Page] in
+            let guide = steps[index]
+            if case .frames(let frames) = guide.scene, !frames.isEmpty {
+                return frames.map { frame in
+                    var photo: String?
+                    if case .photo(let name) = frame.screen { photo = name }
+                    return GuideCompanion.Page(step: index, stepTitle: guide.title,
+                                               caption: frame.caption, photo: photo,
+                                               isResult: frame.isResult)
+                }
+            }
+            let lines = guide.taps.isEmpty ? [guide.lead ?? guide.title] : guide.taps
+            return lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, caption: $0) }
         }
     }
 
@@ -195,6 +271,28 @@ struct SetupGuideView: View {
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ticketPanel()
+    }
+}
+
+/// Debug only: `-centavo-guia-paso N` opens the guide on step N when the app starts, for
+/// screenshots of each step.
+enum GuideDebug {
+    static var firstStep: Int {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let at = args.firstIndex(of: "-centavo-guia-paso"), at + 1 < args.count {
+            return Int(args[at + 1]) ?? 0
+        }
+        #endif
+        return 0
+    }
+
+    static var opensAtLaunch: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-centavo-guia-paso")
+        #else
+        false
+        #endif
     }
 }
 
@@ -403,6 +501,9 @@ private struct CaptureCheck: View {
             if let latest = recent {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.brass)
+                    .font(Theme.Symbol.large)
+                    .symbolEffect(.bounce, value: latest.persistentModelID)
+                    .transition(.scale.combined(with: .opacity))
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Ya funciona")
                         .font(.ticket(.button))
@@ -433,6 +534,8 @@ private struct CaptureCheck: View {
         .ticketPanel()
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("guia-comprobacion")
+        .animation(Theme.Motion.toggle, value: recent?.persistentModelID)
+        .sensoryFeedback(.success, trigger: recent?.persistentModelID) { old, new in old == nil && new != nil }
     }
 }
 

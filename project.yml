@@ -33,7 +33,9 @@ targets:
         # CODE_SIGN_ENTITLEMENTS=Centavo/CentavoGratis.entitlements (for both targets: only the
         # shared Keychain group) and the app keeps everything on the phone only.
         CODE_SIGN_ENTITLEMENTS: Centavo/Centavo.entitlements
-        INFOPLIST_KEY_UIBackgroundModes: remote-notification
+        # «audio» is what lets the floating guide (Picture in Picture) stay over Atajos; the app
+        # plays no sound.
+        INFOPLIST_KEY_UIBackgroundModes: "audio remote-notification"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Al día"
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Para guardar dónde pagaste cada gasto, como lo muestra Wallet. Solo si enciendes «Guardar dónde pagas»."
