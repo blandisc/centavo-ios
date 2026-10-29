@@ -460,3 +460,22 @@ Pedidos del dueño.
 - **La cápsula de pasos de la guía ya no corre los puntos a un lado** (el último quedaba cortado por el borde); tiene margen a los dos lados.
 - **Toda sección que se pliega se mueve igual** (pedido del dueño): `Theme.Motion.fold` para el espacio y `.transition(.unfold)` para el contenido, que aparece cuando ya hay lugar y se va antes de cerrarlo. La cuenta de la barra ya no se desliza con rebote ni se dibuja encima de «En qué se va»; su flecha gira. En «Sin gastar más» el detalle dice cuánto suman los fijos que faltan, para que se entienda por qué esa cifra es mayor que «de más» de hoy.
 
+## 2026-10-29 · Te pasaste: opción A, y hoja del presupuesto 2.0
+Elegido por el dueño sobre el lienzo de análisis del mismo día.
+- **Cuando te pasas, la pantalla va en este orden:** la cifra («Te pasaste $366»), su barra, «Llevas $2,366 de $2,000 · Ver cuenta» y el renglón «Para cerrar el mes ›». Reemplaza el panel plegable entre la cifra y la barra.
+  - Todo el renglón de la leyenda abre la cuenta, con 44 pt de alto; la flechita sola era un blanco muy chico.
+  - «+ USD 24.99 aparte» va en minúsculas.
+- **«Para cerrar el mes» es una hoja del alto de lo que dice:**
+  - las fechas que quedan («30 y 31 de oct»);
+  - los tres caminos, cada uno con una barra de con cuánto cierras de más;
+  - y «el 1 de noviembre empiezas de cero».
+- **No se ofrece ajustar el presupuesto al pasarte** (decisión del dueño): la app avisa cómo vas contra un presupuesto que ya fijaste; subirlo cuando te pasas va contra eso. El presupuesto solo se cambia en «Más › Presupuesto del mes».
+- **Hoja «Tu presupuesto» 2.0, igual entres por donde entres:**
+  - el monto, con «Al día: $X» en vivo (el mismo con las dos reglas) y lo que llevas este mes;
+  - luego «Lo que no gastas un día: Se acumula | Se reparte» (antes «Hoy puedes gastar», que es el nombre de una cifra);
+  - una semana de ejemplo animada de $100 por día con los mismos gastos en las dos reglas: lo que sobra o falta sale como moneda y va completo a mañana o se reparte entre los días que quedan. La cuenta está en `AllowanceDemo` (CentavoCore), con pruebas;
+  - una frase de a quién le conviene cada regla;
+  - «Guardar» arriba, donde el teclado no lo tapa (reemplaza la barra de guardar de abajo en esta hoja);
+  - sin el párrafo largo;
+  - con «Reducir movimiento», la semana se queda quieta y completa.
+

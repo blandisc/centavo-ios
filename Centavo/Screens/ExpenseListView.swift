@@ -488,13 +488,6 @@ private struct HomeHeader: View {
                     // With a budget the verdict sits right under the figure, one step away.
                     .ticketRow(bottom: pace != nil && !storeIsEmpty ? Theme.Space.s : Theme.Space.xl)
 
-                if isCurrent, let pace, let plan = OverspendPlan(pace: pace) {
-                    OverspendPanel(plan: plan, currency: currency,
-                                   month: viewed.formatted(.iso8601.year().month()),
-                                   onAdjust: actions.setBudget)
-                        .ticketRow(bottom: Theme.Space.l)
-                }
-
                 if let code = month.currencySwitch {
                     CurrencySuggestionRow(code: code) { actions.setPrimary(code) }
                         .ticketRow(bottom: Theme.Space.xl)
@@ -527,7 +520,9 @@ private struct HomeHeader: View {
                     entrance: entrance,
                     equalHeights: equalHeights,
                     onSetBudget: actions.setBudget,
-                    currency: currency
+                    currency: currency,
+                    overspend: isCurrent ? pace.flatMap { OverspendPlan(pace: $0) } : nil,
+                    now: now
                 )
                 // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                 // between them instead of two pages touching.
@@ -1097,7 +1092,6 @@ private struct HeroTotal: View {
                 Text(verbatim: "+ \(othersText) aparte")
                     .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(.footnote))
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
         }

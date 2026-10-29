@@ -51,6 +51,22 @@ extension AllowanceMode {
         }
     }
 
+    /// The choice on the budget sheet, under «Lo que no gastas un día».
+    var shortTitle: String {
+        switch self {
+        case .carry: "Se acumula"
+        case .spread: "Se reparte"
+        }
+    }
+
+    /// Which one suits whom, under the drawing.
+    var suits: String {
+        switch self {
+        case .carry: "Te conviene si un día gastas fuerte y otro poco: lo que no gastas hoy lo tienes mañana."
+        case .spread: "Te conviene si quieres un monto parejo cada día: lo que sobra o falta se reparte entre los que quedan."
+        }
+    }
+
     var explanation: String {
         switch self {
         case .carry: "Lo que te sobra o te pasas hoy se suma o se resta completo mañana."

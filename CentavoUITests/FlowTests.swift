@@ -710,10 +710,13 @@ final class FlowTests: XCTestCase {
     /// Accessibility frames are clipped to what is visible, so "inside the screen" proves
     /// nothing. The ticket has to keep the same margins as the total above it.
     private func expectFitsOnScreen(_ app: XCUIApplication, _ element: XCUIElement) {
-        let total = app.staticTexts["total-mes"].frame
+        // Past the budget the hero is «te-pasaste» instead of the total; same margins.
+        let hero = app.staticTexts["total-mes"].exists ? app.staticTexts["total-mes"] : app.staticTexts["te-pasaste"]
+        let total = hero.frame
         let screen = app.windows.firstMatch.frame
-        let margin = total.minX - screen.minX
-        XCTAssertEqual(element.frame.minX, total.minX, accuracy: 1,
+        // «te-pasaste» is pulled 3 pt left on purpose (its «$» lines up with the caption).
+        let margin = total.minX - screen.minX + (app.staticTexts["total-mes"].exists ? 0 : 3)
+        XCTAssertEqual(element.frame.minX, screen.minX + margin, accuracy: 1,
                        "No respeta el margen izquierdo: \(element.frame), total en \(total)")
         XCTAssertEqual(element.frame.maxX, screen.maxX - margin, accuracy: 1,
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
@@ -928,6 +931,31 @@ final class FlowTests: XCTestCase {
         let app = launch(demo: true)
         let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("último pago"), "Dice: \(health.label)")
+    }
+
+    /// Over budget: «Para cerrar el mes ›» opens the three ways; the budget sheet explains both
+    /// rules with a drawing and switches it with the choice (2026-10-29).
+    func testElPlanDelMesYLaHojaDelPresupuesto() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-demo", "-monthlyBudget", "2000"]
+        app.launch()
+        require(app.buttons["para-cerrar-el-mes"], "No ofrece el plan para cerrar el mes", timeout: 20).tap()
+        require(app.staticTexts["Sin gastar más"], "La hoja no dice los caminos")
+        sleep(2)
+        snap("plan-del-mes")
+        app.buttons["hoja-listo"].tap()
+        sleep(1)
+        app.buttons["Más"].tap()
+        app.buttons["Presupuesto del mes"].tap()
+        require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
+        sleep(7)
+        snap("presupuesto-acumula")
+        require(app.buttons["Se reparte"], "No ofrece repartir").tap()
+        let suits = app.staticTexts["modo-te-conviene"]
+        XCTAssertTrue(suits.label.contains("parejo"), "No explica repartir: \(suits.label)")
+        sleep(8)
+        snap("presupuesto-reparte")
     }
 
     /// Tapping the bar unfolds the sum in place and tapping again folds it (2026-10-29).

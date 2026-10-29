@@ -16,6 +16,14 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **Te pasaste, más claro:**
+  - la cifra, su barra y «Llevas $2,366 de $2,000 · Ver cuenta» van juntas;
+  - debajo, «Para cerrar el mes ›» abre una hoja con las fechas que quedan y con cuánto cerrarías según lo que gastes;
+  - ya no se ofrece subir el presupuesto desde ahí.
+- **Tu presupuesto 2.0:**
+  - el monto y lo que te toca al día mientras escribes;
+  - «Se acumula» y «Se reparte» explicados con una semana de ejemplo animada;
+  - «Guardar» arriba.
 - **Categorías al anotar:** «Ver N más» abre sin reacomodar las que ya ves; las demás aparecen debajo, suaves.
 - **Guía flotante:** ahora es un video que arma el teléfono, para que la ventanita sí flote sobre Atajos; la miniatura ya no se ve negra y el bloque de abajo tiene más aire.
 - **«Para cerrar el mes» se pliega en su lugar:** el mismo título abierto y cerrado, una línea de resumen al cerrarlo y una flecha que gira. Cada camino dice a la derecha con cuánto de más cierras.
