@@ -311,7 +311,7 @@ private struct GuideStep {
         GuideStep(
             title: "Abre Atajos",
             symbol: "square.2.layers.3d",
-            lead: "Apple no deja que Al día la cree por ti. Son 2 minutos, una sola vez.",
+            lead: "Apple no deja que Al día la cree por ti. Son unos 5 minutos, una sola vez.",
             taps: ["Abre la app Atajos (viene con el iPhone).",
                    "Abajo, al centro, toca «Automatización»."],
             opensShortcuts: true,
@@ -400,7 +400,7 @@ private struct GuideStep {
         GuideStep(
             title: "Crea un atajo nuevo",
             symbol: "plus.square",
-            lead: "Apple no deja que Al día lo cree por ti. Son 2 minutos, una sola vez.",
+            lead: "Apple no deja que Al día lo cree por ti. Son unos 5 minutos, una sola vez.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.newShortcut)
@@ -432,9 +432,9 @@ private struct GuideStep {
             scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
-            title: "Conéctalos",
+            title: "Conecta el aviso",
             symbol: "link",
-            lead: "Así Al día recibe el aviso completo: la tarjeta, el comercio y el monto.",
+            lead: "Así Al día recibe cada aviso de Wallet con el monto y la tarjeta. Son tres toques.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectNotice)
@@ -444,7 +444,7 @@ private struct GuideStep {
         GuideStep(
             title: "Conecta el comercio",
             symbol: "bag",
-            lead: "El comercio va en el subtítulo del aviso y hay que conectarlo aparte.",
+            lead: "Wallet manda el nombre de la tienda aparte. Se conecta casi igual que el paso anterior.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectSubtitle)

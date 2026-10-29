@@ -479,3 +479,9 @@ Elegido por el dueño sobre el lienzo de análisis del mismo día.
   - sin el párrafo largo;
   - con «Reducir movimiento», la semana se queda quieta y completa.
 
+  - la semana de ejemplo usa gastos con los que cada reparto es exacto (nada se redondea, así lo que se mueve suma justo lo que sobró), va más despacio y se pausa al tocarla (dueño, 2026-10-29).
+- **Guía flotante y pasos 5–6, tras una prueba con tres personas simuladas (2026-10-29):**
+  - la ventanita arranca reproduciéndose al tocar «Abrir Atajos» y no hay miniatura junto al botón; la capa que iOS necesita para flotar queda escondida detrás;
+  - cada cuadro del video: barra de avance por paso, instrucción en blanco y nunca cortada, y la captura recortada a mano (`GuideFrame.focus`) en vez de detectar el anillo por píxeles, que era frágil;
+  - las tres personas se perdían en «Conéctalos» y «Conecta el comercio»: ahora va una acción por cuadro, sin palabras de Atajos («burbuja», «barra»), y cada paso cierra con «Así debe verse»;
+  - «unos 2 minutos» pasó a «unos 5 minutos» (nadie lo creía con 8 pasos) y la bienvenida dice qué es Atajos.

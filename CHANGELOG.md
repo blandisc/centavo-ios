@@ -31,6 +31,7 @@
 - **Gastos fijos se explica:** arriba dice para qué sirve, el mes se ve en una barra (cobrado y por venir) y hay sugerencias de un toque (Renta, Luz, Internet…).
 - **Guía flotante:** si la ventanita no arranca, Atajos se abre de todos modos.
 - **Guía flotante más pulida:** arranca reproduciéndose al tocar «Abrir Atajos» y ya no hay miniatura junto al botón. Cada cuadro dice el paso con una barra de avance, la instrucción en grande y nunca cortada, y la captura acercada a donde hay que tocar; entre cuadros, un fundido corto.
+- **«Configurar atajo», pasos 5 y 6 más fáciles:** una acción por cuadro, sin palabras técnicas, y un «Así debe verse» al cerrar cada paso para revisar antes de seguir. La guía y la bienvenida dicen «unos 5 minutos» y explican qué es Atajos.
 - **La pantalla principal va más rápida con historiales largos.** Se ve igual. Solo lee el mes que estás viendo y hace sus cuentas una vez por cambio, no cada vez que deslizas un renglón o tecleas. La búsqueda responde al dejar de teclear un momento (0.2 s).
 - **Letra mínima de 12 puntos en la app:** encabezados, pistas, el día de cada grupo, las letras del calendario y las notas de la barra se leen mejor. Antes iban de 10 y 11.
 - **La pantalla vacía** ya no muestra un «$0.00» gigante: ofrece «Anotar un gasto», «Fijar presupuesto» y «Conectar Wallet».

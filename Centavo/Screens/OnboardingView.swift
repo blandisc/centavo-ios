@@ -344,7 +344,7 @@ struct OnboardingView: View {
 
     private var walletPage: some View {
         page(title: "Conecta Wallet", symbol: "wallet.pass",
-             lead: "Una automatización de Atajos le avisa a Al día de cada compra. Se hace una vez y toma unos 2 minutos.") {
+             lead: "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día de cada compra. Se configura una sola vez, en unos 5 minutos.") {
             WalletChain()
                 .onboardingRise(2)
             VStack(spacing: Theme.Space.none) {
