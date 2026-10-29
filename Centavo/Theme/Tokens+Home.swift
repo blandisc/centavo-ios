@@ -70,3 +70,10 @@ extension Theme.Space {
     /// section is to the next (about 26 pt).
     static let heroTrim: CGFloat = -4
 }
+
+extension Theme.Motion {
+    /// Seconds «Deshacer» stays after a delete; longer with VoiceOver, to reach it.
+    static let undoSeconds: Double = 6
+    static let undoLongSeconds: Double = 15
+}
+

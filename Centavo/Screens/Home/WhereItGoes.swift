@@ -83,7 +83,7 @@ struct WhereItGoes: View {
             .accessibilityElement(children: .combine)
             switch style {
             case .bar:
-                ShareBarChart(lines: lines, money: money)
+                ShareBarChart(lines: lines, money: money, selected: selected, onSelect: onSelect)
             case .mosaic:
                 ShareMosaicChart(lines: lines, money: money, selected: selected, onSelect: onSelect)
             case .hidden:
@@ -149,6 +149,13 @@ private struct CategoryLine: Identifiable {
 private struct ShareBarChart: View {
     let lines: [CategoryLine]
     let money: (Decimal) -> String
+    /// Tapping a line shows only its expenses in the list, as a block of the mosaic does.
+    let selected: CategoryShare?
+    let onSelect: (CategoryShare?) -> Void
+
+    private func isSelected(_ line: CategoryLine) -> Bool {
+        selected.map { line.share.isSameLine(as: $0) } ?? false
+    }
 
     @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = Theme.Size.shareBar
     @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.shareChartHeight
@@ -173,7 +180,14 @@ private struct ShareBarChart: View {
             VStack(alignment: .leading, spacing: Theme.Space.none) {
                 ForEach(lines) { line in
                     ShareBarLine(line: line, amount: money(line.share.amount))
+                        .opacity(selected == nil || isSelected(line) ? Theme.Opacity.visible : Theme.Opacity.unselected)
+                        .onTapGesture {
+                            let wasSelected = isSelected(line)
+                            Theme.Motion.instantly { onSelect(wasSelected ? nil : line.share) }
+                        }
                         .accessibilityLabel(line.spoken(money))
+                        .accessibilityAddTraits(isSelected(line) ? [.isButton, .isSelected] : .isButton)
+                        .accessibilityHint("Muestra solo sus gastos")
                 }
             }
         }

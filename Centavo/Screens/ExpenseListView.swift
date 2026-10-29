@@ -65,6 +65,10 @@ struct ExpenseListView: View {
     /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
     @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
+    @State private var showingSettings = false
+    @AppStorage(WalletWatch.key) private var ignoresWallet = false
+    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHiddenCategories = ""
     /// What of the screen's entrance has already played (`Entrance`).
     @State private var entrance = Entrance()
     /// The list's width, measured. Each line takes it from here and not from
@@ -73,6 +77,8 @@ struct ExpenseListView: View {
     @State private var listWidth: CGFloat?
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
+    /// Months are written the way the days of the list are, whatever the phone's language.
+    static let mexico = Locale(identifier: "es_MX")
 
     /// The fixed expenses' first charges, to know what is still to come this month.
     private var fixedOriginals: [Expense] { expenses.filter { $0.repeatsMonthly == true } }
@@ -121,13 +127,22 @@ struct ExpenseListView: View {
             // it. Only the days below are lazy.
             VStack(alignment: .leading, spacing: Theme.Space.none) {
                 if searching {
-                    SearchHeaderRow(count: listed.count)
+                    SearchHeaderRow(count: listed.count) { searchText = $0 }
                         .ticketRow(bottom: Theme.Space.s)
-                } else {
+                } else if !(expenses.isEmpty && pace == nil) {
+                    // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
+                    // ticket below asks for the first step instead.
                     HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                               pace: pace, entrance: entrance)
                         // With a budget the verdict sits right under the figure, one step away.
                         .ticketRow(bottom: pace != nil && !expenses.isEmpty ? Theme.Space.s : Theme.Space.xl)
+
+                    if isCurrent, let pace, let plan = OverspendPlan(pace: pace) {
+                        OverspendPanel(plan: plan, currency: primaryCurrency,
+                                       month: viewed.formatted(.iso8601.year().month()),
+                                       onAdjust: { showingBudget = true })
+                            .ticketRow(bottom: Theme.Space.l)
+                    }
 
                     if isCurrent, let code = CurrencySuggestion.switchTo(
                         markers: monthExpenses.map(\.currencyMarker), primary: primaryCurrency,
@@ -143,7 +158,8 @@ struct ExpenseListView: View {
                                    entrance: entrance, onSetBudget: { showingBudget = true })
                             .ticketRow(bottom: Theme.Space.xl)
                     }
-                    EmptyTicket { showingSetup = true }
+                    EmptyTicket(hasBudget: pace != nil, onAdd: { adding = true },
+                                onBudget: { showingBudget = true }, onSetup: { showingSetup = true })
                         .ticketRow()
                 } else {
                     if !searching {
@@ -162,7 +178,8 @@ struct ExpenseListView: View {
                             outside: summary.outside,
                             shares: CategoryShare.top(summary.categories),
                             returned: CategoryShare.returned(summary.categories),
-                            note: fact?.line,
+                            // Past the budget the plan above already says where the month closes.
+                            note: (pace?.remaining ?? 0) < 0 ? nil : fact?.line,
                             selectedCategory: selectedCategory,
                             onSelectCategory: { line in
                                 Theme.Motion.instantly { selectedCategory = line; selectedDay = nil }
@@ -178,7 +195,7 @@ struct ExpenseListView: View {
 
                         // The Wallet line stays between the carousel and the list, not under «Hoy»:
                         // it is about the capture, not about today's expenses (owner, 2026-10-21).
-                        if isCurrent {
+                        if isCurrent, !ignoresWallet || unreadNotice(after: latestCaptures.first?.date) != nil {
                             CaptureHealthRow(health: health, unread: unreadNotice(after: latestCaptures.first?.date),
                                              openGuide: {
                                                  // Seen: tapping the warning is the last time it shows.
@@ -189,14 +206,16 @@ struct ExpenseListView: View {
                         }
 
                         if let day = selectedDay {
-                            FilterRow(title: "Día \(day)", count: shownExpenses.count) {
+                            FilterRow(title: "Día \(day)", count: shownExpenses.count,
+                                      total: DayGroup(day: viewed, items: shownExpenses).total(in: primaryCurrency)) {
                                 Theme.Motion.instantly { selectedDay = nil }
                             }
                             .ticketRow()
                         }
                         if let line = selectedCategory {
                             FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
-                                      count: shownExpenses.count) {
+                                      count: shownExpenses.count,
+                                      total: DayGroup(day: viewed, items: shownExpenses).total(in: primaryCurrency)) {
                                 Theme.Motion.instantly { selectedCategory = nil }
                             }
                             .ticketRow()
@@ -245,6 +264,24 @@ struct ExpenseListView: View {
                                             expense.markUncounted(expense.reason ?? .reimbursed)
                                         }
                                     }
+                                    Menu {
+                                        ForEach(categoryChoices(for: expense), id: \.self) { name in
+                                            Button {
+                                                setCategory(name, of: expense)
+                                            } label: {
+                                                if expense.category == name {
+                                                    Label(name, systemImage: "checkmark")
+                                                } else {
+                                                    Text(name)
+                                                }
+                                            }
+                                        }
+                                    } label: {
+                                        Label("Categoría", systemImage: "tag")
+                                    }
+                                    Button("Anotar otra vez", systemImage: "arrow.counterclockwise") {
+                                        logAgain(expense)
+                                    }
                                     Button("Borrar gasto", systemImage: "trash", role: .destructive) {
                                         pendingDelete = expense
                                     }
@@ -283,41 +320,14 @@ struct ExpenseListView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
-                        Button("Gastos fijos", systemImage: "repeat") { showingFixed = true }
-                        Button("Tarjetas y categorías", systemImage: "creditcard") { showingCatalogs = true }
-                        Toggle(isOn: Binding(get: { savesPlace }, set: { on in
-                            savesPlace = on
-                            if on { PaymentPlace.requestPermission() }
-                        })) {
-                            Label("Guardar dónde pagas", systemImage: "mappin.and.ellipse")
+                        Section {
+                            Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
+                            Button("Gastos fijos", systemImage: "repeat") { showingFixed = true }
+                            Button("Tarjetas y categorías", systemImage: "creditcard") { showingCatalogs = true }
                         }
-                        Picker(selection: Binding(get: { primaryCurrency }, set: { setPrimary($0) })) {
-                            ForEach(CurrencyPreference.offered, id: \.self) { code in
-                                Text(CurrencyPreference.name(code)).tag(code)
-                            }
-                        } label: {
-                            Label("Moneda principal", systemImage: "dollarsign.circle")
-                        }
-                        .pickerStyle(.menu)
-                        Picker(selection: $whereItGoesStyle) {
-                            ForEach(WhereItGoesStyle.allCases) { style in
-                                Label(style.title, systemImage: style.icon).tag(style.rawValue)
-                            }
-                        } label: {
-                            Label("En qué se va", systemImage: "square.grid.2x2")
-                        }
-                        .pickerStyle(.menu)
-                        ShareLink(
-                            item: ExpensesCSVFile(expenses: expenses, primaryCurrency: primaryCurrency),
-                            preview: SharePreview("Gastos de Al día")
-                        ) {
-                            Label("Exportar CSV", systemImage: "square.and.arrow.up")
-                        }
-                        .disabled(expenses.isEmpty)
-                        Button("Importar CSV", systemImage: "square.and.arrow.down") { importing = true }
-                        Button("Configurar atajo", systemImage: "questionmark.circle") {
-                            showingSetup = true
+                        Section {
+                            Button("Configurar atajo", systemImage: "wallet.pass") { showingSetup = true }
+                            Button("Ajustes", systemImage: "gearshape") { showingSettings = true }
                         }
                     } label: {
                         Label("Más", systemImage: "ellipsis")
@@ -330,7 +340,7 @@ struct ExpenseListView: View {
                 ToolbarItemGroup(placement: .bottomBar) {
                     Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
                         .disabled(offset <= earliest)
-                    Text(viewed, format: .dateTime.month(.abbreviated).year())
+                    Text(viewed, format: .dateTime.month(.abbreviated).year().locale(Self.mexico))
                         .font(.ticket(.bodyMedium))
                         .tracking(Theme.Tracking.title)
                         .textCase(.uppercase)
@@ -390,7 +400,7 @@ struct ExpenseListView: View {
             }
             // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
             .onChange(of: viewed) { _, _ in selectedDay = nil; selectedCategory = nil }
-            // Only the mosaic picks a category: with another view there is no block to undo it.
+            // Another view starts unfiltered: what was picked may not be on it.
             .onChange(of: whereItGoesStyle) { _, _ in selectedCategory = nil }
             .modifier(Feedback(expenseCount: expenses.count, newest: expenses.first?.date,
                                isOver: isCurrent && isOver(pace)))
@@ -398,6 +408,12 @@ struct ExpenseListView: View {
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
+                             health: CaptureHealth(lastCapture: latestCaptures.first?.date, now: now),
+                             openGuide: { afterSettings { showingSetup = true } },
+                             importCSV: { afterSettings { importing = true } })
+            }
             .onChange(of: storedPlans) { _, value in
                 if Store.syncsBudget { BudgetSync.push(value, for: FixedPlan.key) }
             }
@@ -497,7 +513,7 @@ private struct CatalogsSheet: ViewModifier {
 /// systems, the usual field under the title.
 private struct BottomSearch: ViewModifier {
     @Binding var text: String
-    private let prompt = "Busca tus gastos"
+    private let prompt = "Comercio, mes o monto…"
 
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
@@ -596,6 +612,38 @@ private extension ExpenseListView {
         return pace.remaining < 0
     }
 
+    /// Closes «Ajustes», then does what was asked from it: two sheets can't be up at once.
+    private func afterSettings(_ action: @escaping () -> Void) {
+        showingSettings = false
+        Task { try? await Task.sleep(for: .milliseconds(450)); action() }
+    }
+
+    /// The categories a long press offers: the usual ones, yours and the expense's own.
+    private func categoryChoices(for expense: Expense) -> [String] {
+        CategoryStyle.offered(known: [], custom: UserCatalog.decode(storedCategories),
+                              current: expense.category ?? "",
+                              hidden: UserCatalog.decodeNames(storedHiddenCategories))
+    }
+
+    /// A category picked from the long press: a choice, remembered for the place, as in the sheet.
+    private func setCategory(_ name: String, of expense: Expense) {
+        let picked = expense.category == name ? nil : name
+        expense.categorySource = picked == nil ? Expense.clearedCategory : nil
+        expense.category = picked
+        UserCatalog.learnCategory(picked, for: expense.merchant)
+        try? context.save()
+    }
+
+    /// The same expense again, now: the coffee of every morning without opening the sheet.
+    private func logAgain(_ expense: Expense) {
+        let copy = Expense(amount: expense.amount, currencyMarker: expense.currencyMarker,
+                           merchant: expense.merchant, card: expense.card, date: .now,
+                           category: expense.category)
+        copy.displayName = expense.displayName
+        context.insert(copy)
+        try? context.save()
+    }
+
     @ViewBuilder var undoOverlay: some View {
         if let deleted = lastDeleted {
             UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
@@ -604,7 +652,12 @@ private extension ExpenseListView {
                 .padding(.bottom, Theme.Space.m)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: deleted.id) {
-                    try? await Task.sleep(for: .seconds(6))
+                    // Said out loud, and with VoiceOver it stays long enough to reach it.
+                    AccessibilityNotification.Announcement(
+                        "Borraste \(deleted.displayName ?? deleted.merchant). Puedes deshacerlo.").post()
+                    try? await Task.sleep(for: .seconds(UIAccessibility.isVoiceOverRunning
+                                                        ? Theme.Motion.undoLongSeconds
+                                                        : Theme.Motion.undoSeconds))
                     withAnimation { if lastDeleted?.id == deleted.id { lastDeleted = nil } }
                 }
         }
@@ -711,6 +764,19 @@ private struct HeroTotal: View {
 
     @State private var counted: Double = 0
 
+    /// This month, past the budget: how far past it (the hero's figure then).
+    private var overage: Decimal? {
+        guard isCurrentMonth, let pace, pace.remaining < 0 else { return nil }
+        return -pace.remaining
+    }
+
+    private func wholeText(_ amount: Decimal) -> String {
+        if let iso = summary.primary.isoCode {
+            return amount.formatted(currencyStyle(iso).precision(.fractionLength(0)))
+        }
+        return summary.primary.label + amount.formatted(.number.precision(.fractionLength(0)))
+    }
+
     /// Today already went past its share: the figure says by how much, in red.
     private var isOverToday: Bool { (allowance ?? 0) < 0 }
 
@@ -738,7 +804,7 @@ private struct HeroTotal: View {
         isCurrentMonth
             ? "Total \(summary.primary.label) al \(shortDate(now))"
             : "Total \(summary.primary.label) · "
-                + viewed.formatted(.dateTime.month(.abbreviated).year())
+                + viewed.formatted(.dateTime.month(.abbreviated).year().locale(ExpenseListView.mexico))
     }
 
     private var totalText: AttributedString {
@@ -766,6 +832,8 @@ private struct HeroTotal: View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             if allowance != nil {
                 Text(isOverToday ? "Hoy te pasaste" : "Hoy puedes gastar")
+                    // Read with the figure, as one sentence.
+                    .accessibilityHidden(true)
                     .font(.ticket(.captionStrong))
                     .tracking(Theme.Tracking.caption)
                     .textCase(.uppercase)
@@ -775,7 +843,7 @@ private struct HeroTotal: View {
                 // every payment.
                 Text(countedText)
                     .accessibilityIdentifier("hoy-puedes-gastar")
-                    .accessibilityLabel(allowanceText)
+                    .accessibilityLabel((isOverToday ? "Hoy te pasaste " : "Hoy puedes gastar ") + allowanceText)
                     .font(.ticket(.hero))
                     .tracking(Theme.Tracking.hero)
                     .foregroundStyle(isOverToday ? Theme.danger : Theme.brass)
@@ -797,6 +865,24 @@ private struct HeroTotal: View {
                         withAnimation(reduceMotion ? nil : Theme.Motion.quick) { counted = value }
                     }
 
+            } else if let overage {
+                // The month went past its budget: the figure that matters now is by how much.
+                Text("Te pasaste del presupuesto")
+                    .font(.ticket(.captionStrong))
+                    .tracking(Theme.Tracking.caption)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.muted)
+                Text(wholeText(overage))
+                    .accessibilityIdentifier("te-pasaste")
+                    .font(.ticket(.hero))
+                    .tracking(Theme.Tracking.hero)
+                    .foregroundStyle(Theme.danger)
+                    .padding(.leading, Theme.Space.outset)
+                    .padding(.vertical, Theme.Space.heroTrim)
+                    .lineLimit(1)
+                    .minimumScaleFactor(Theme.MinimumScale.figure)
+                    .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : Theme.Motion.quick, value: overage)
             } else {
                 Text(verbatim: caption).ticketCaption()
                 Text(totalText)
@@ -824,7 +910,12 @@ private struct HeroTotal: View {
     }
 }
 
+/// The first screen with nothing in it: one clear first step (write an expense down), and
+/// the two that make the app work by itself (a budget, the Wallet automation).
 private struct EmptyTicket: View {
+    let hasBudget: Bool
+    let onAdd: () -> Void
+    let onBudget: () -> Void
     let onSetup: () -> Void
 
     var body: some View {
@@ -833,14 +924,26 @@ private struct EmptyTicket: View {
                 .font(.ticket(.bodyStrong))
                 .tracking(Theme.Tracking.caption)
                 .textCase(.uppercase)
-            Text("Configura el atajo y cada pago con Apple Wallet se anotará solo. Lo demás, anótalo tú.")
+            Text("Conecta Wallet y cada compra se anotará sola. Lo demás, anótalo tú.")
                 .font(.ticket(.callout))
                 .lineSpacing(Theme.Space.xxs)
                 .foregroundStyle(Theme.muted)
-            Button("Configurar atajo", action: onSetup)
-                .buttonStyle(.bordered)
-                .font(.ticket(.footnoteStrong))
-                .padding(.top, Theme.Space.xs)
+            Button(action: onAdd) {
+                PrimaryButtonLabel("Anotar un gasto", systemImage: "plus")
+            }
+            .ticketProminent()
+            .accessibilityIdentifier("vacio-anotar")
+            .padding(.top, Theme.Space.xs)
+            HStack(spacing: Theme.Space.s) {
+                if !hasBudget {
+                    Button("Fijar presupuesto", action: onBudget)
+                        .accessibilityIdentifier("vacio-presupuesto")
+                }
+                Button("Conectar Wallet", action: onSetup)
+                    .accessibilityIdentifier("vacio-wallet")
+            }
+            .buttonStyle(.bordered)
+            .font(.ticket(.footnoteStrong))
         }
         .padding(Theme.Space.xlx)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1039,15 +1142,34 @@ private struct UndoBarSurface: ViewModifier {
 /// «3 gastos», over the results while searching; says so when the words were read as a category.
 private struct SearchHeaderRow: View {
     let count: Int
+    /// Puts an example in the search field.
+    let tryExample: (String) -> Void
+
+    /// What the search understands, one tap each: it reads phrases, not just names.
+    private let examples = ["café", "uber de octubre", "más de 500"]
 
     var body: some View {
-        Text(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
-            .font(.ticket(.label))
-            .tracking(Theme.Tracking.label)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.brass)
-            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
-            .accessibilityIdentifier("resultados-busqueda")
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
+                .font(.ticket(.label))
+                .tracking(Theme.Tracking.label)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.brass)
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+                .accessibilityIdentifier("resultados-busqueda")
+            if count == 0 {
+                Text("Prueba con un comercio, un mes o un monto:")
+                    .font(.ticket(.detail))
+                    .foregroundStyle(Theme.muted)
+                HStack(spacing: Theme.Space.s) {
+                    ForEach(examples, id: \.self) { example in
+                        Button(example) { tryExample(example) }
+                            .buttonStyle(.bordered)
+                            .font(.ticket(.detail))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1056,11 +1178,13 @@ private struct SearchHeaderRow: View {
 private struct FilterRow: View {
     let title: String
     let count: Int
+    /// What they add up to, «$310»; `nil` with nothing to add.
+    var total: String?
     let clear: () -> Void
 
     var body: some View {
         HStack {
-            Text("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")")
+            Text("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")" + (total.map { " · \($0)" } ?? ""))
                 .font(.ticket(.label))
                 .tracking(Theme.Tracking.label)
                 .textCase(.uppercase)
