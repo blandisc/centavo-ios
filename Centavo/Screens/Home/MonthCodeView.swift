@@ -194,6 +194,10 @@ struct MonthCodeView: View {
             if let limit = code.limitPerDay {
                 Separator()
                 digit(wholeMoney(max(limit, 0)), "tope/día", valueFirst: false)
+            } else if code.hasNoMargin {
+                // The fixed charges take the whole budget: no «tope $0», which read as broken.
+                Separator()
+                Text("sin margen").foregroundStyle(Theme.danger)
             }
         }
         .font(.ticket(.micro))

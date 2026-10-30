@@ -38,12 +38,14 @@ struct SettingsView: View {
                             Text(style.title).tag(style.rawValue)
                         }
                     } label: {
-                        IconRow("En qué se va", systemImage: "square.grid.2x2") { EmptyView() }
+                        IconRow("Vista", systemImage: "square.grid.2x2") { EmptyView() }
                     }
                 } header: {
                     Text("Vista").ticketCaption()
                 } footer: {
-                    HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte.")
+                    HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. "
+                             + "Lista y Mosaico muestran en qué se va y, al deslizar, el calendario; "
+                             + "Mínima deja solo la cifra, la barra y tus gastos.")
                 }
                 .listRowBackground(Theme.surface)
 

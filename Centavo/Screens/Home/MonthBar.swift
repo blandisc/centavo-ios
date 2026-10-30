@@ -27,7 +27,6 @@ struct MonthBar: View {
     @State private var drawn = false
     @State private var showsSum = false
 
-    private let gap: CGFloat = Theme.Size.monthBarGap
     /// Whether the bar has been measured yet.
     private var hasWidth: Bool { width > 0 }
     private var width: CGFloat { measuredWidth > Theme.Space.none ? measuredWidth : entrance.barWidth }
@@ -117,19 +116,10 @@ struct MonthBar: View {
     private var bar: some View {
         // Past the budget the whole bar is what went: brass up to the budget, red beyond it.
         let budgetW = isOver ? width * overFraction : 0
-        // Past the budget: the brass ends half a gap before the budget's mark, the red starts
-        // half a gap after it.
-        let halfGap = gap / 2
-        let brassOverW = max(budgetW - halfGap, Theme.Space.none)
-        let redOverW = max(width - budgetW - halfGap, Theme.Space.none)
         let spentW = width * (isOver ? 1 : fraction(pace.spent))
         let reservedW = isCurrentMonth && !isOver ? width * fraction(pace.reserved) : 0
-        let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))
-        let slotW = days > 0 ? (freeW - gap * CGFloat(days - 1)) / CGFloat(days) : 0
-        let tilesX = width - freeW
         // «Podrías llevar»: the fixed expenses already charged plus every day's amount so far.
-        let markX = isOver ? budgetW
-            : snapped(width * fraction(pace.expectedToDate), tilesX: tilesX, slotW: slotW)
+        let markX = isOver ? budgetW : width * fraction(pace.expectedToDate)
 
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             if isCurrentMonth, !isOver {
@@ -143,42 +133,32 @@ struct MonthBar: View {
                     entrance.barWidth = $0
                 }
                 .overlay(alignment: .leading) {
-                    HStack(spacing: gap) {
-                        // What went: grows in from nothing, with a little bounce.
-                        // Past the budget the gap is centered on the budget's mark: half before
-                        // it, half after, so the white rule sits in the middle of it.
-                        if isOver {
-                            RoundedRectangle(cornerRadius: Theme.Radius.tile)
-                                .fill(Theme.brass)
-                                .frame(width: shown ? brassOverW : Theme.Space.none)
-                                .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
-                        }
-                        RoundedRectangle(cornerRadius: Theme.Radius.tile)
-                            .fill(isOver ? Theme.danger : Theme.brass)
-                            .frame(width: shown ? (isOver ? redOverW : spentW) : Theme.Space.none)
-                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
-                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.refill, value: spentW)
-                        if reservedW > 0 {
-                            RoundedRectangle(cornerRadius: Theme.Radius.tile)
-                                .strokeBorder(Theme.brassLow, style: StrokeStyle(lineWidth: Theme.Stroke.emphasis, dash: Theme.Dash.dotted))
-                                .frame(width: reservedW)
-                                .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
-                                .animation(reduceMotion ? nil : Theme.Motion.Entrance.markers, value: shown)
-                        }
-                        if slotW >= Theme.Size.minimumDayTile {
-                            ForEach(0..<days, id: \.self) { index in
-                                DayTile(isToday: index == 0, animate: !reduceMotion)
-                                    .frame(width: slotW)
-                                    .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
-                                    .scaleEffect(y: shown ? Theme.Size.barFullScale : Theme.Motion.Entrance.barStart, anchor: .bottom)
-                                    .animation(reduceMotion ? nil : Theme.Motion.Entrance.bar(index), value: shown)
+                    ZStack(alignment: .leading) {
+                        // The days still empty.
+                        Rectangle().fill(Theme.raised)
+                        HStack(spacing: Theme.Space.none) {
+                            // What went: grows in from nothing, with a little bounce.
+                            if isOver {
+                                Rectangle()
+                                    .fill(Theme.brass)
+                                    .frame(width: shown ? budgetW : Theme.Space.none)
+                                    .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
                             }
-                        } else if !isOver {
-                            RoundedRectangle(cornerRadius: Theme.Radius.tile).fill(Theme.raised)
+                            Rectangle()
+                                .fill(isOver ? Theme.danger : Theme.brass)
+                                .frame(width: shown ? (isOver ? width - budgetW : spentW) : Theme.Space.none)
+                                .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
+                                .animation(reduceMotion ? nil : Theme.Motion.Entrance.refill, value: spentW)
+                            // The fixed expenses still to come, set apart.
+                            if reservedW > 0 {
+                                Rectangle()
+                                    .fill(Theme.brassLow)
+                                    .frame(width: reservedW)
+                                    .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                                    .animation(reduceMotion ? nil : Theme.Motion.Entrance.markers, value: shown)
+                            }
                         }
                     }
-                    // Only the bar as a whole is rounded; every piece inside is cut the same.
-                    .clipShape(Capsule())
                 }
                 .overlay(alignment: .leading) {
                     if isCurrentMonth, !isOver, width > 0 {
@@ -197,6 +177,23 @@ struct MonthBar: View {
                             .accessibilityHidden(true)
                     }
                 }
+                // The month by days (owner's choice, 2026-10-29): the bar is cut into one cell per
+                // day of the month, like a perforated ticket, and what went fills them.
+                .mask(alignment: .leading) { DayCells(count: pace.daysInMonth, height: trackHeight) }
+                .overlay(alignment: .leading) {
+                    if isCurrentMonth, !isOver, width > 0 {
+                        // Today's cell, outlined.
+                        let cell = DayCells.cellWidth(in: width, count: pace.daysInMonth)
+                        let daysBefore = CGFloat(max(pace.day - 1, Int.zero))
+                        RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                            .strokeBorder(Theme.ink, lineWidth: Theme.Stroke.hairline)
+                            .frame(width: cell, height: trackHeight)
+                            .offset(x: daysBefore * (cell + Theme.Size.monthBarCellGap))
+                            .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                            .animation(reduceMotion ? nil : Theme.Motion.Entrance.today, value: shown)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .overlay(alignment: .leading) {
                     if isCurrentMonth || isOver {
                         // Where an even month would be by today, reaching up to «Podrías llevar»;
@@ -212,14 +209,6 @@ struct MonthBar: View {
                 }
         }
         .contentShape(Rectangle())
-    }
-
-    /// The expected mark, set in the gap between two day tiles rather than on a tile's edge.
-    private func snapped(_ x: CGFloat, tilesX: CGFloat, slotW: CGFloat) -> CGFloat {
-        guard slotW >= Theme.Size.minimumDayTile, x > tilesX else { return x }
-        let step = slotW + gap
-        let k = ((x - tilesX + gap / 2) / step).rounded()
-        return min(tilesX + k * step - gap / 2, width)
     }
 
     /// «PODRÍAS LLEVAR $3,871», printed over its rule like a note on a ticket, kept inside the bar.
@@ -398,22 +387,21 @@ struct MonthBar: View {
     }
 }
 
-/// One day still to come; today's is lit and breathes softly.
-private struct DayTile: View {
-    let isToday: Bool
-    let animate: Bool
+/// One cell per day of the month, the shape the month bar is cut to.
+private struct DayCells: View {
+    let count: Int
+    let height: CGFloat
+
+    static func cellWidth(in width: CGFloat, count: Int) -> CGFloat {
+        guard count > 0 else { return width }
+        return max((width - Theme.Size.monthBarCellGap * CGFloat(count - 1)) / CGFloat(count), Theme.Space.none)
+    }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.tile)
-        if isToday {
-            shape
-                .fill(Theme.brass.opacity(Theme.Opacity.glow))
-                .overlay(shape.strokeBorder(Theme.brass, lineWidth: Theme.Stroke.emphasis))
-                .phaseAnimator(animate ? [Theme.Opacity.tileBreath, Theme.Opacity.visible] : [Theme.Opacity.visible]) { tile, phase in
-                    tile.opacity(phase)
-                } animation: { _ in Theme.Motion.pulse }
-        } else {
-            shape.fill(Theme.raised)
+        HStack(spacing: Theme.Size.monthBarCellGap) {
+            ForEach(0..<max(count, 1), id: \.self) { _ in
+                RoundedRectangle(cornerRadius: Theme.Radius.bar).frame(height: height)
+            }
         }
     }
 }

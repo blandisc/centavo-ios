@@ -7,6 +7,8 @@ extension Theme.Size {
     static let monthBarTrack: CGFloat = 20
     /// Gap between the pieces of the month bar.
     static let monthBarGap: CGFloat = 3
+    /// Gap between two days' cells of the month bar (it is cut by days, 2026-10-29).
+    static let monthBarCellGap: CGFloat = 2
     /// The narrowest a day tile of the month bar may be drawn.
     static let minimumDayTile: CGFloat = 2
     /// Bars start this tall and grow to full: the full scale.

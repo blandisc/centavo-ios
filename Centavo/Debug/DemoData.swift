@@ -32,8 +32,7 @@ enum DemoData {
         for key in [UserCatalog.categoriesKey, UserCatalog.sourcesKey, UserCatalog.defaultSourceKey,
                     UserCatalog.hiddenCategoriesKey, UserCatalog.categoryRulesKey,
                     UserCatalog.deletedCategoriesKey, UserCatalog.merchantRenamesKey,
-                    UserCatalog.categoryColorsKey, UserCatalog.sourceColorsKey,
-                    OverspendRow.dismissedKey] {
+                    UserCatalog.categoryColorsKey, UserCatalog.sourceColorsKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         let container = try ModelContainer(

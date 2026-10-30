@@ -36,7 +36,7 @@ public struct MonthCode: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
         /// A day like any other.
         case plain
-        /// A day with a fixed charge (the rent): brass.
+        /// A day with a fixed charge (the rent): brass, even if more went that day.
         case fixed
         /// What went that day, fixed charges aside, passed the limit a day: red.
         case over
@@ -60,13 +60,17 @@ public struct MonthCode: Equatable, Sendable {
     /// What went a day so far, on average; `nil` before the first day is over.
     public let averagePerDay: Decimal?
     /// What a day may spend besides the fixed charges (`BudgetPace.dailyBase`); `nil` without
-    /// a budget.
+    /// a budget, or with no margin.
     public let limitPerDay: Decimal?
+    /// The fixed charges take the whole budget: there is no limit a day to measure against,
+    /// so no day is «over» (all red would say nothing) and the code says «sin margen».
+    public let hasNoMargin: Bool
 
     /// `days[0]` is the 1st. `today` is the day of the month for this month, `nil` for one that
     /// is over (every day happened).
-    public init(days input: [DayInput], today: Int?, limitPerDay limit: Decimal?) {
+    public init(days input: [DayInput], today: Int?, limitPerDay given: Decimal?) {
         let count = input.count
+        let limit = given.flatMap { $0 > 0 ? $0 : nil }
         let lastDay = today.map { min(max($0, 1), count) } ?? count
         let biggest = input.prefix(lastDay).map(\.total).max() ?? 0
         let biggestValue = NSDecimalNumber(decimal: biggest).doubleValue
@@ -77,10 +81,10 @@ public struct MonthCode: Equatable, Sendable {
                 kind = .future
             } else if number == today {
                 kind = .today
-            } else if let limit, day.variable > limit {
-                kind = .over
             } else if day.fixedPayments > 0 {
                 kind = .fixed
+            } else if let limit, day.variable > limit {
+                kind = .over
             } else {
                 kind = .plain
             }
@@ -92,5 +96,6 @@ public struct MonthCode: Equatable, Sendable {
         let spent = input.prefix(lastDay).reduce(Decimal(0)) { $0 + $1.total }
         averagePerDay = lastDay > 0 ? spent / Decimal(lastDay) : nil
         limitPerDay = limit
+        hasNoMargin = given.map { $0 <= 0 } ?? false
     }
 }

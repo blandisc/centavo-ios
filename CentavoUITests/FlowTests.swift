@@ -842,6 +842,9 @@ final class FlowTests: XCTestCase {
     /// the same as tapping it in the calendar (owner, 2026-10-29).
     func testElCodigoDelMesMuestraUnDia() {
         let app = launch(demo: true, budget: true)
+        // The code lives under the calendar, the carousel's second page (2026-10-29).
+        app.buttons["Calendario"].tap()
+        sleep(1)
         let code = require(app.descendants(matching: .any)["codigo-del-mes"], "No está el código del mes")
         XCTAssertTrue(app.staticTexts["folio"].exists || app.descendants(matching: .any)["folio"].exists,
                       "No está el folio")
@@ -956,19 +959,15 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("último pago"), "Dice: \(health.label)")
     }
 
-    /// Over budget: «Para cerrar el mes ›» opens the three ways; the budget sheet explains both
-    /// rules with a drawing and switches it with the choice (2026-10-29).
+    /// The budget sheet explains both rules with a drawing and switches it with the choice
+    /// (2026-10-29). «Para cerrar el mes» is gone: the owner found it too much.
     func testElPlanDelMesYLaHojaDelPresupuesto() {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
                                "-centavo-demo", "-monthlyBudget", "2000"]
         app.launch()
-        require(app.buttons["para-cerrar-el-mes"], "No ofrece el plan para cerrar el mes", timeout: 20).tap()
-        require(app.staticTexts["Sin gastar más"], "La hoja no dice los caminos")
-        sleep(2)
-        snap("plan-del-mes")
-        app.buttons["hoja-listo"].tap()
-        sleep(1)
+        require(app.buttons["Más"], "La pantalla principal no abrió", timeout: 20)
+        XCTAssertFalse(app.buttons["para-cerrar-el-mes"].exists, "Sigue «Para cerrar el mes»")
         app.buttons["Más"].tap()
         app.buttons["Presupuesto del mes"].tap()
         require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")

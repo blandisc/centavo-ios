@@ -547,3 +547,12 @@ Elegido por el dueño tras varios prototipos: «decorativo, pero que signifique 
 - **Lo que cambia al deslizar es la parte de abajo:** la barra, el código y «Para cerrar el mes» se quedan quietos; el carrusel cambia entre «En qué se va» y el calendario. Sin «En qué se va» ni nota, el calendario queda solo, sin puntitos.
 - **«Para cerrar el mes» se quita con su ✕** por lo que queda del mes; si el mes siguiente también se pasa, vuelve.
 - **Los puntos que separan las partes de un gasto** («Despensa · Amex») van en latón, como los del encabezado.
+
+## 2026-10-29 · El hero, versión 4
+Elegido por el dueño tras el prototipo v4. Sustituye en lo que choca a «El código de barras del mes y el folio».
+- **Arriba fijo:** «JUE 29 DE OCT» y, en la misma línea y con el mismo formato, el folio «N.º 042» con el número en latón (`ReceiptHead`); la cifra como estaba; la barra del mes y «Llevas…».
+- **La barra del mes, por días:** cortada en una celda por día del mes (`DayCells`, máscara), como boleto perforado; lo gastado las llena, el exceso en rojo, lo de fijos por venir en latón bajo y la celda de hoy delineada. Ya no hay casillas sueltas para los días que faltan.
+- **«Para cerrar el mes» se quita** por completo, fila y hoja: era mucha información.
+- **El carrusel:** «En qué se va» (Lista o Mosaico, como siempre) y, a la derecha, el calendario con el **código de barras debajo**; los dos filtran la misma lista.
+- **Vista «Mínima»** en Ajustes (antes «No mostrar», mismo valor guardado): sin carrusel, sin calendario y sin código. «Barra» se llama ahora «Lista», y el ajuste se llama «Vista».
+- **Sin margen:** si los fijos se comen el presupuesto, el código dice «sin margen» en vez de «tope $0» y no pinta días de rojo. Un día con un fijo va en latón aunque ese día se haya gastado más.
