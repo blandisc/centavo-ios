@@ -17,6 +17,7 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **La lista se lee de un vistazo:** el nombre del gasto arriba y en una línea, y debajo, más callados, la categoría y la forma de pago con su nombre corto en su color («Amex»). Cada gasto ocupa dos líneas.
 - **Bienvenida y guía, tras una segunda prueba con personas:**
   - la ventanita de la guía espera en cada cuadro donde hay que tocar algo; sigues con ▶︎;
   - los pasos 2 y 5 de la guía ya no se contradicen ni dicen «gris» de algo azul, y el paso 5 dice qué fila buscar;

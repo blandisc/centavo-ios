@@ -531,3 +531,9 @@ Pedido del dueño tras la revisión de pantallas (seis ajustes y detalles chicos
   - La línea punteada empieza y termina en guion, centrada (antes, 24 pt de un lado y 27 del otro).
   - Las cifras alineadas a la derecha terminan justo en el borde, sin el espacio de letra que sobraba.
   - La flecha «Siguiente» queda pegada al borde de la tarjeta del monto.
+
+## 2026-10-29 · La lista con jerarquía (opción A)
+Elegida por el dueño entre tres: «se siente muy cargada».
+- **Dos niveles por gasto:** el nombre tal como llega del banco, en mayúsculas y en una sola línea (el completo está en la hoja), y debajo una línea más callada en minúsculas. El dueño descartó acortar el nombre (opción B): es el nombre con el que llegan los cargos.
+- **La forma de pago, sin ícono y con su nombre corto en su color** («Amex» en vez del ícono de tarjeta y «American Express México»), el único toque de color de la línea (`PaymentName.short`). El gasto conserva el nombre completo.
+- **«No cuenta», corto:** el porqué («Entre mis cuentas», «Me lo reembolsan») queda en la hoja y en VoiceOver. Así cada gasto mide dos líneas. Sustituye en la lista el «No cuenta en el presupuesto» que salió de la prueba con personas; el monto tachado sigue diciéndolo.
