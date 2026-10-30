@@ -259,7 +259,7 @@ struct WhereItGoesView: View {
     }
 
     private func color(_ index: Int, _ slice: WidgetSnapshot.Slice) -> Color {
-        ink.category(index, isRest: slice.isRest)
+        ink.category(index, isRest: slice.isRest, color: slice.color)
     }
 
     private var whereItGoes: some View {

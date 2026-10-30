@@ -1,21 +1,29 @@
 import Foundation
 
-/// The categories offered with one tap, each with its icon. Other names typed by hand are
+/// The categories offered with one tap, each with its icon and its usual color (a place in
+/// `Theme.categories`; the eight most used never share one). Other names typed by hand are
 /// kept as they are and get a tag.
 enum CategoryStyle {
-    static let common: [(name: String, icon: String)] = [
-        ("Despensa", "cart"),
-        ("Comida", "fork.knife"),
-        ("Café", "cup.and.saucer"),
-        ("Transporte", "car"),
-        ("Servicios", "bolt"),
-        ("Suscripciones", "play.rectangle"),
-        ("Salidas", "wineglass"),
-        ("Ropa", "tshirt"),
-        ("Salud", "cross.case"),
-        ("Hogar", "house"),
-        ("Compras", "bag"),
+    static let common: [(name: String, icon: String, color: Int)] = [
+        ("Despensa", "cart", 0),
+        ("Comida", "fork.knife", 1),
+        ("Café", "cup.and.saucer", 6),
+        ("Transporte", "car", 2),
+        ("Servicios", "bolt", 5),
+        ("Suscripciones", "play.rectangle", 4),
+        ("Salidas", "wineglass", 3),
+        ("Ropa", "tshirt", 7),
+        ("Salud", "cross.case", 5),
+        ("Hogar", "house", 7),
+        ("Compras", "bag", 3),
     ]
+
+    /// The usual color of one of the app's own categories; `nil` for one someone made.
+    static func colorIndex(for category: String) -> Int? {
+        let wanted = fold(category)
+        if wanted == fold("Casa") || wanted == fold("Renta") { return colorIndex(for: "Hogar") }
+        return common.first { fold($0.name) == wanted }?.color
+    }
 
     static func icon(for category: String, custom: [LabeledIcon] = []) -> String {
         if let own = custom.first(where: { UserCatalog.same($0.name, category) }) { return own.icon }

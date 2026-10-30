@@ -453,3 +453,11 @@ Pedidos del dueño.
   - Los mosaicos de tarjetas miden todos lo mismo; «De tus pagos» pasa a ser una marca en la esquina, como la estrella.
   - La guía flotante escribe un diario (`Library/Caches/guia-flotante.log`) que se puede copiar del iPhone con `devicectl` para saber por qué no arranca.
 
+
+## 2026-10-29 · Firma «al día.» y un color fijo para cada categoría y forma de pago
+Elegido por el dueño (propuestas C y 2 del lienzo de pulido).
+- **El nombre de la pantalla principal es una firma:** «al día» en minúsculas, a 20 pt seminegrita, con un punto en latón. Deja de verse igual que el título de una hoja («NUEVO GASTO»). Las hojas siguen con su título chico y espaciado.
+- **Cada categoría y cada forma de pago (efectivo incluido) tiene un color fijo** de una paleta de ocho (`Theme.categories`: ocre, verde, azul, rosa, violeta, turquesa, coral, oliva). Sustituye el «el color sigue el lugar en el mes» del 2026-10-21: Comida es verde en la lista, en «En qué se va», en «Tarjetas y categorías», en la hoja de gasto y en el widget, sea primera o cuarta.
+  - Las categorías de la app traen su color; las ocho más usadas no comparten. Una nueva toma el color que menos se repite. El efectivo empieza en verde.
+  - Se cambia en «Tarjetas y categorías»: «Color» en el menú de cada mosaico, o la fila de colores al crear o editar. Se guarda solo la posición en la paleta (`ColorTags`, sincronizado por iCloud como el resto).
+  - Con más de ocho, algunos se repiten, y para quien no distingue rojo y verde algunos pares se parecen: por eso el nombre siempre va escrito al lado. «Otras» y lo que no tiene categoría siguen en gris.

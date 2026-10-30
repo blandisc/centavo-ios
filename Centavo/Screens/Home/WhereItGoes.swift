@@ -43,6 +43,7 @@ struct WhereItGoes: View {
     var onSelect: (CategoryShare?) -> Void = { _ in }
 
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedColors = ""
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var total: Decimal { shares.reduce(0) { $0 + $1.amount } - returned }
@@ -111,13 +112,17 @@ struct WhereItGoes: View {
 
     private var lines: [CategoryLine] {
         let custom = UserCatalog.decode(storedCategories)
-        return shares.enumerated().map { index, share in
+        let colors = CatalogColors(categories: storedColors, sources: "")
+        return shares.map { share in
             CategoryLine(
                 share: share,
                 name: share.isRest ? "Otras" : share.category ?? "Sin categoría",
                 icon: share.isRest ? "ellipsis"
                     : share.category.map { CategoryStyle.icon(for: $0, custom: custom) } ?? "questionmark",
-                color: share.isRest || index >= Theme.categories.count ? Theme.categoryRest : Theme.categories[index]
+                // Each category keeps its own color all month and every month; «Otras» and
+                // what has no category are grey.
+                color: share.isRest ? Theme.categoryRest
+                    : share.category.map(colors.category) ?? Theme.categoryRest
             )
         }
     }

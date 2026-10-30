@@ -16,6 +16,8 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **«al día.» arriba:** el nombre de la pantalla principal ahora es una firma en minúsculas con un punto en latón.
+- **Cada categoría y cada forma de pago tiene su color**, el mismo en la lista, en «En qué se va», en la hoja de gasto y en el widget. Se cambia en «Tarjetas y categorías» (menú «Color» o al editar).
 - **«Para cerrar el mes» se pliega en su lugar:** el mismo título abierto y cerrado, una línea de resumen al cerrarlo y una flecha que gira. Cada camino dice a la derecha con cuánto de más cierras.
 - **Tarjetas y categorías en mosaicos:** las tarjetas que llegan en tus pagos aparecen solas («De tus pagos»), y cada tarjeta o categoría es un mosaico con un menú corto: usar por defecto, elegir ícono, ocultar al anotar, editar o borrar.
 - **Gastos fijos se explica:** arriba dice para qué sirve, el mes se ve en una barra (cobrado y por venir) y hay sugerencias de un toque (Renta, Luz, Internet…).

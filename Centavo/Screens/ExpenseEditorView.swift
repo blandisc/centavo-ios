@@ -45,6 +45,8 @@ struct ExpenseEditorView: View {
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @AppStorage(UserCatalog.categoryRulesKey) private var storedRules = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
+    @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @State private var creating: Creating?
@@ -105,6 +107,9 @@ struct ExpenseEditorView: View {
 
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
     private var paymentSources: [LabeledIcon] { UserCatalog.decode(storedSources) }
+    private var colors: CatalogColors {
+        CatalogColors(categories: storedCategoryColors, sources: storedSourceColors)
+    }
     /// Hidden and deleted categories: never filled in on their own.
     private var notAutoAssigned: [String] { UserCatalog.decodeNames(storedHidden) + UserCatalog.deletedNames }
     @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = Theme.Size.categorySymbol
@@ -258,7 +263,9 @@ struct ExpenseEditorView: View {
             case .category:
                 LabeledIconSheet(title: "Nueva categoría", prompt: "Mascotas, Gimnasio…",
                                  icons: UserCatalog.categoryIcons,
-                                 taken: customCategories.map(\.name) + CategoryStyle.common.map(\.name)) { saved in
+                                 taken: customCategories.map(\.name) + CategoryStyle.common.map(\.name),
+                                 colorKind: .category,
+                                 siblings: customCategories.map(\.name) + CategoryStyle.common.map(\.name)) { saved in
                     storedCategories = UserCatalog.encode(customCategories + [saved])
                     UserCatalog.markDeleted(saved.name, false)
                     category = saved.name
@@ -266,7 +273,10 @@ struct ExpenseEditorView: View {
                 }
             case .source:
                 LabeledIconSheet(title: "Nueva tarjeta", prompt: "BBVA, Nu, Efectivo…",
-                                 icons: UserCatalog.sourceIcons, taken: paymentSources.map(\.name)) { saved in
+                                 icons: UserCatalog.sourceIcons, taken: paymentSources.map(\.name),
+                                 colorKind: .source,
+                                 siblings: PaymentChoices.names(sources: paymentSources, known: knownCards,
+                                                                current: "")) { saved in
                     storedSources = UserCatalog.encode(paymentSources + [saved])
                     if defaultSource.isEmpty { defaultSource = saved.name }
                     card = saved.name
@@ -584,7 +594,7 @@ struct ExpenseEditorView: View {
                          spacing: Theme.Space.s) {
             ForEach(names, id: \.self) { name in
                 categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
-                             selected: category == name) {
+                             selected: category == name, tint: colors.category(name)) {
                     category = category == name ? "" : name
                     if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
                 }
@@ -614,7 +624,7 @@ struct ExpenseEditorView: View {
                          spacing: Theme.Space.s) {
             ForEach(names, id: \.self) { name in
                 categoryChip(name, icon: PaymentChoices.icon(for: name, sources: sources),
-                             selected: UserCatalog.same(card, name), kind: "tarjeta") {
+                             selected: UserCatalog.same(card, name), kind: "tarjeta", tint: colors.source(name)) {
                     card = UserCatalog.same(card, name) ? "" : name
                 }
             }
@@ -624,15 +634,17 @@ struct ExpenseEditorView: View {
         .accessibilityIdentifier("tarjetas")
     }
 
+    /// `tint`: the icon's color, the category's or card's own; brass for the actions.
     private func categoryChip(_ name: String, icon: String, selected: Bool, kind: String = "categoria",
-                              identifier: String? = nil, action: @escaping () -> Void) -> some View {
+                              tint: Color = Theme.brass, identifier: String? = nil,
+                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: Theme.Space.xxs) {
                 Image(systemName: icon)
                     .font(Theme.Symbol.regular)
                     // Every icon in the same box, so the names line up.
                     .frame(height: iconHeight)
-                    .foregroundStyle(selected ? Theme.onBrass : Theme.brass)
+                    .foregroundStyle(selected ? Theme.onBrass : tint)
                     .accessibilityHidden(true)
                 Text(name)
                     .font(.ticket(.caption))

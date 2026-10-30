@@ -26,6 +26,9 @@ enum UserCatalog {
     static let deletedCategoriesKey = "deletedCategories"
     /// The names the owner gave merchants by hand (`MerchantRenames`), synced too.
     static let merchantRenamesKey = "merchantRenames"
+    /// The color each category and each card or cash keeps (`ColorTags`), synced too.
+    static let categoryColorsKey = "categoryColors"
+    static let sourceColorsKey = "sourceColors"
 
     static func decodeNames(_ stored: String) -> [String] {
         (try? JSONDecoder().decode([String].self, from: Data(stored.utf8))) ?? []
@@ -100,6 +103,28 @@ enum UserCatalog {
         var rules = categoryRules
         rules.renameCategory(old, to: new)
         saveRules(rules)
+    }
+
+    /// `name` takes the color at `index` (`nil`: back to its usual one), in the categories'
+    /// or the cards' colors. Pushed to iCloud like the other settings.
+    static func setColor(_ index: Int?, for name: String, key: String) {
+        var tags = ColorTags(stored: UserDefaults.standard.string(forKey: key) ?? "")
+        tags.set(index, for: name)
+        saveColors(tags, key: key)
+    }
+
+    /// A category or card was renamed: it keeps its color.
+    static func renameColor(_ old: String, to new: String, key: String) {
+        guard !same(old, new) else { return }
+        var tags = ColorTags(stored: UserDefaults.standard.string(forKey: key) ?? "")
+        tags.rename(old, to: new)
+        saveColors(tags, key: key)
+    }
+
+    private static func saveColors(_ tags: ColorTags, key: String) {
+        let stored = tags.stored
+        UserDefaults.standard.set(stored, forKey: key)
+        if Store.syncsBudget { BudgetSync.push(stored, for: key) }
     }
 
     private static func saveRules(_ rules: CategoryRules) {
