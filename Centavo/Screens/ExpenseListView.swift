@@ -498,6 +498,18 @@ private struct HomeHeader: View {
     let model: HomeModel
     let actions: HomeActions
 
+    /// A clearly sideways swipe over the figure or the line: the calendar (to the left) or back.
+    /// Simultaneous, so the screen still scrolls up and down from there.
+    private var pageSwipe: some Gesture {
+        DragGesture(minimumDistance: Theme.Size.pageSwipeStart)
+            .onEnded { value in
+                let dx = value.translation.width, dy = value.translation.height
+                guard abs(dx) >= Theme.Size.pageSwipeDistance, abs(dx) > abs(dy) * 2 else { return }
+                model.carouselRequest = CarouselRequest(page: dx < 0 ? 1 : 0,
+                                                        serial: model.carouselRequest.serial + 1)
+            }
+    }
+
     /// "$846": whole money in the month's currency, for the barcode's figures.
     private func wholeMoney(_ amount: Decimal) -> String {
         let total = month.summary.primary
@@ -524,6 +536,10 @@ private struct HomeHeader: View {
                     .ticketRow(bottom: Theme.Space.xxl)
                 HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                           pace: pace, entrance: entrance)
+                    // A sideways swipe on the figure turns the carousel's page too (owner, 2026-10-30).
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(pageSwipe)
                     // The figure gets room of its own before the bar (owner, 2026-10-30: «déjalo respirar»).
                     .ticketRow(bottom: Theme.Space.xl)
 
@@ -550,6 +566,8 @@ private struct HomeHeader: View {
                            outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
                            currency: currency, now: now, part: .top, showsTrack: false,
                            averagePerDay: month.code.averagePerDay)
+                    // The line above the carousel swipes it too: a bigger place to aim at.
+                    .simultaneousGesture(pageSwipe)
                     .ticketRow(bottom: Theme.Space.xl)
                 MonthCarousel(
                     calendarModel: month.calendar,
@@ -569,9 +587,12 @@ private struct HomeHeader: View {
                     onSetBudget: actions.setBudget,
                     currency: currency,
                     budgetHeader: AnyView(MonthCodeView(code: month.code, selectedDay: selectedDay,
-                                                        onSelectDay: actions.selectDay, wholeMoney: wholeMoney,
+                                                        onSelectDay: actions.selectDay,
+                                                        onScrubbing: { model.scrubbing = $0 }, wholeMoney: wholeMoney,
                                                         month: viewed, entrance: entrance)),
-                    now: now
+                    now: now,
+                    request: model.carouselRequest,
+                    scrollLocked: model.scrubbing
                 )
                 // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                 // between them instead of two pages touching.

@@ -101,6 +101,13 @@ extension AnyTransition {
 extension Theme.Size {
     /// Scaled. Height of the boleto's cells: what a day may spend.
     static let monthCode: CGFloat = 34
+    /// How far a finger may drift while it holds the boleto before the hold fails and the swipe
+    /// is the carousel's.
+    static let scrubSlop: CGFloat = 8
+    /// A swipe over the figure starts counting after this…
+    static let pageSwipeStart: CGFloat = 12
+    /// …and turns the carousel's page once it went this far sideways.
+    static let pageSwipeDistance: CGFloat = 50
     /// The red tick over a day past its limit.
     static let monthCodeTick: CGFloat = 3
     /// Room the carousel leaves over its top for the boleto's day card, which rises over the

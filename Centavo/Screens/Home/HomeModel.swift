@@ -20,6 +20,10 @@ final class HomeModel {
     /// The expense row left open by a swipe, showing «Borrar». Kept here and not in the
     /// screen's state, so opening a row redraws the rows and not the hero or the carousel.
     var openRow: AnyHashable?
+    /// A finger holding the boleto and reading its days: the carousel doesn't scroll meanwhile.
+    var scrubbing = false
+    /// A page asked of the carousel from outside it: a swipe on the figure or the line above.
+    var carouselRequest = CarouselRequest()
     /// Goes up each time the store saves, so a search on screen is asked again (an edit can
     /// make an expense match or stop matching).
     private(set) var revision = 0
@@ -291,4 +295,10 @@ struct CategoryCatalog: Equatable {
     func choices(for expense: Expense) -> [String] {
         CategoryStyle.offered(known: [], custom: custom, current: expense.category ?? "", hidden: hidden)
     }
+}
+
+/// «Go to this page», asked of the carousel; `serial` makes asking twice for the same page count.
+struct CarouselRequest: Equatable {
+    var page = 0
+    var serial = 0
 }
