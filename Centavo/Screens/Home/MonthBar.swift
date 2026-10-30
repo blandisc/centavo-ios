@@ -117,6 +117,11 @@ struct MonthBar: View {
     private var bar: some View {
         // Past the budget the whole bar is what went: brass up to the budget, red beyond it.
         let budgetW = isOver ? width * overFraction : 0
+        // Past the budget: the brass ends half a gap before the budget's mark, the red starts
+        // half a gap after it.
+        let halfGap = gap / 2
+        let brassOverW = max(budgetW - halfGap, Theme.Space.none)
+        let redOverW = max(width - budgetW - halfGap, Theme.Space.none)
         let spentW = width * (isOver ? 1 : fraction(pace.spent))
         let reservedW = isCurrentMonth && !isOver ? width * fraction(pace.reserved) : 0
         let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))
@@ -140,15 +145,17 @@ struct MonthBar: View {
                 .overlay(alignment: .leading) {
                     HStack(spacing: gap) {
                         // What went: grows in from nothing, with a little bounce.
+                        // Past the budget the gap is centered on the budget's mark: half before
+                        // it, half after, so the white rule sits in the middle of it.
                         if isOver {
                             RoundedRectangle(cornerRadius: Theme.Radius.tile)
                                 .fill(Theme.brass)
-                                .frame(width: shown ? max(budgetW - gap, Theme.Space.none) : Theme.Space.none)
+                                .frame(width: shown ? brassOverW : Theme.Space.none)
                                 .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
                         }
                         RoundedRectangle(cornerRadius: Theme.Radius.tile)
                             .fill(isOver ? Theme.danger : Theme.brass)
-                            .frame(width: shown ? (isOver ? max(width - budgetW, Theme.Space.none) : spentW) : Theme.Space.none)
+                            .frame(width: shown ? (isOver ? redOverW : spentW) : Theme.Space.none)
                             .animation(reduceMotion ? nil : Theme.Motion.Entrance.fill, value: shown)
                             .animation(reduceMotion ? nil : Theme.Motion.Entrance.refill, value: spentW)
                         if reservedW > 0 {
@@ -192,11 +199,13 @@ struct MonthBar: View {
                 }
                 .overlay(alignment: .leading) {
                     if isCurrentMonth || isOver {
-                        // Where an even month would be by today; past the budget, where it ended.
+                        // Where an even month would be by today, reaching up to «Podrías llevar»;
+                        // past the budget, where it ended, centered on the bar (nothing above).
                         Capsule()
                             .fill(Theme.ink)
                             .frame(width: Theme.Size.todayMarkWidth, height: trackHeight + Theme.Size.todayMarkExtra)
-                            .offset(x: markX - Theme.Size.todayMarkHalf, y: -Theme.Size.todayMarkInset)
+                            .offset(x: markX - Theme.Size.todayMarkHalf,
+                                    y: isOver ? Theme.Space.none : -Theme.Size.todayMarkInset)
                             .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
                             .animation(reduceMotion ? nil : Theme.Motion.Entrance.today, value: shown)
                     }
