@@ -107,35 +107,3 @@ extension View {
         modifier(SwipeToDelete(id: id, openRow: openRow, onDelete: onDelete))
     }
 }
-
-/// A pan that begins only when the finger moves more sideways than up or down; anything else
-/// is left to the scroll view.
-private struct SidewaysPan: UIGestureRecognizerRepresentable {
-    let changed: (CGFloat) -> Void
-    let ended: (_ translation: CGFloat, _ velocity: CGFloat) -> Void
-
-    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
-        let pan = UIPanGestureRecognizer()
-        pan.delegate = context.coordinator
-        return pan
-    }
-
-    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
-
-    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
-        let dx = recognizer.translation(in: recognizer.view).x
-        switch recognizer.state {
-        case .began, .changed: changed(dx)
-        case .ended, .cancelled, .failed: ended(dx, recognizer.velocity(in: recognizer.view).x)
-        default: break
-        }
-    }
-
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
-            guard let pan = recognizer as? UIPanGestureRecognizer else { return false }
-            let velocity = pan.velocity(in: pan.view)
-            return abs(velocity.x) > abs(velocity.y) * 1.3
-        }
-    }
-}

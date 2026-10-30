@@ -498,16 +498,22 @@ private struct HomeHeader: View {
     let model: HomeModel
     let actions: HomeActions
 
-    /// A clearly sideways swipe over the figure or the line: the calendar (to the left) or back.
-    /// Simultaneous, so the screen still scrolls up and down from there.
-    private var pageSwipe: some Gesture {
-        DragGesture(minimumDistance: Theme.Size.pageSwipeStart)
-            .onEnded { value in
-                let dx = value.translation.width, dy = value.translation.height
-                guard abs(dx) >= Theme.Size.pageSwipeDistance, abs(dx) > abs(dy) * 2 else { return }
-                model.carouselRequest = CarouselRequest(page: dx < 0 ? 1 : 0,
-                                                        serial: model.carouselRequest.serial + 1)
-            }
+    /// A sideways swipe anywhere at the top of the screen (the figure, the boleto, its line, the
+    /// calendar, the Wallet line): the calendar (to the left) or back (owner, 2026-10-30, a third
+    /// time: hard to hit). UIKit's sideways pan, alongside the carousel's own scroll and the
+    /// buttons under it; up and down is still the screen's scroll.
+    private var pageSwipe: SidewaysPan {
+        SidewaysPan(ratio: Theme.Size.pageSwipeRatio, alongside: true, changed: { _ in
+            // Holding the boleto and sliding reads its days: not a page turn.
+            if model.scrubbing { model.swipeBlocked = true }
+        }) { dx, velocity in
+            defer { model.swipeBlocked = false }
+            guard !model.swipeBlocked, !model.scrubbing else { return }
+            let toCalendar = dx <= -Theme.Size.pageSwipeDistance || velocity <= -Theme.Size.pageSwipeVelocity
+            let back = dx >= Theme.Size.pageSwipeDistance || velocity >= Theme.Size.pageSwipeVelocity
+            guard toCalendar != back else { return }
+            model.carouselRequest = CarouselRequest(page: toCalendar ? 1 : 0, serial: model.carouselRequest.serial + 1)
+        }
     }
 
     /// "$846": whole money in the month's currency, for the barcode's figures.
@@ -536,10 +542,7 @@ private struct HomeHeader: View {
                     .ticketRow(bottom: Theme.Space.xxl)
                 HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                           pace: pace, entrance: entrance)
-                    // A sideways swipe on the figure turns the carousel's page too (owner, 2026-10-30).
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(pageSwipe)
                     // The boleto follows close (owner, 2026-10-30: «mira el espacio»); the carousel adds
                     // its own room to swipe on.
                     .ticketRow(bottom: Theme.Space.s)
@@ -626,6 +629,9 @@ private struct HomeHeader: View {
                 }
             }
         }
+        // The whole top of the screen turns the carousel's page with a sideways swipe.
+        .contentShape(Rectangle())
+        .gesture(pageSwipe)
     }
 }
 

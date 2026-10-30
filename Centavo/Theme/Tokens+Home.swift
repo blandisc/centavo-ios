@@ -104,10 +104,16 @@ extension Theme.Size {
     /// How far a finger may drift while it holds the boleto before the hold fails and the swipe
     /// is the carousel's.
     static let scrubSlop: CGFloat = 8
+    /// How much more sideways than vertical a finger must go for a sideways pan to begin: 1.3
+    /// for a row's «Borrar»; just more sideways than vertical to turn the carousel's page.
+    static let sidewaysRatio: CGFloat = 1.3
+    static let pageSwipeRatio: CGFloat = 1
+    /// A quick sideways flick turns the page even if short.
+    static let pageSwipeVelocity: CGFloat = 300
     /// A swipe over the figure starts counting after this…
     static let pageSwipeStart: CGFloat = 12
     /// …and turns the carousel's page once it went this far sideways.
-    static let pageSwipeDistance: CGFloat = 50
+    static let pageSwipeDistance: CGFloat = 36
     /// The red tick over a day past its limit.
     static let monthCodeTick: CGFloat = 3
     /// Room the carousel leaves over its top for the boleto's day card, which rises over the

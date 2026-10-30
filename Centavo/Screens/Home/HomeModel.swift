@@ -22,6 +22,8 @@ final class HomeModel {
     var openRow: AnyHashable?
     /// A finger holding the boleto and reading its days: the carousel doesn't scroll meanwhile.
     var scrubbing = false
+    /// This sideways swipe began while the boleto was being read: it doesn't turn the page.
+    @ObservationIgnored var swipeBlocked = false
     /// A page asked of the carousel from outside it: a swipe on the figure or the line above.
     var carouselRequest = CarouselRequest()
     /// Goes up each time the store saves, so a search on screen is asked again (an edit can
