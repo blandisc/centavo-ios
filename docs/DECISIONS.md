@@ -537,3 +537,13 @@ Elegida por el dueño entre tres: «se siente muy cargada».
 - **Dos niveles por gasto:** el nombre tal como llega del banco, en mayúsculas y en una sola línea (el completo está en la hoja), y debajo una línea más callada en minúsculas. El dueño descartó acortar el nombre (opción B): es el nombre con el que llegan los cargos.
 - **La forma de pago, sin ícono y con su nombre corto en su color** («Amex» en vez del ícono de tarjeta y «American Express México»), el único toque de color de la línea (`PaymentName.short`). El gasto conserva el nombre completo.
 - **«No cuenta», corto:** el porqué («Entre mis cuentas», «Me lo reembolsan») queda en la hoja y en VoiceOver. Así cada gasto mide dos líneas. Sustituye en la lista el «No cuenta en el presupuesto» que salió de la prueba con personas; el monto tachado sigue diciéndolo.
+
+## 2026-10-29 · El código de barras del mes y el folio
+Elegido por el dueño tras varios prototipos: «decorativo, pero que signifique algo».
+- **Bajo la barra del mes, el mes como código de barras** (`MonthCodeView`, `MonthCode`): una barra por día, tan alta como lo gastado ese día (raíz cuadrada, para que la renta no aplaste a los demás). En latón los días con un fijo, en rojo los que pasaron el tope del día (`dailyBase`, sin contar fijos), hoy respira y los días por venir quedan en blanco. Cada 9 s lo cruza la luz de un escáner: lo único que se mueve solo en la pantalla. Con «Reducir movimiento», quieto.
+- **Con el dedo:** deslizarlo muestra la ficha del día (cuánto, cuántos pagos, el más grande y contra el tope), con un toque háptico por día; soltarlo en un día filtra la lista, igual que el calendario, y los dos marcan el mismo día.
+- **Debajo, donde un código imprime sus cifras, las del mes:** pagos, promedio por día y tope por día, separados por puntos en latón.
+- **El folio «N.º 058»** junto al título de la cifra: cuántos pagos tiene el mes. Arriba de todo, la fecha como encabezado de ticket («JUE 29 OCT»). El dueño descartó la hora, «día 29 de 31 · quedan 2» y la doble raya bajo la cifra: la cifra se queda como estaba.
+- **Lo que cambia al deslizar es la parte de abajo:** la barra, el código y «Para cerrar el mes» se quedan quietos; el carrusel cambia entre «En qué se va» y el calendario. Sin «En qué se va» ni nota, el calendario queda solo, sin puntitos.
+- **«Para cerrar el mes» se quita con su ✕** por lo que queda del mes; si el mes siguiente también se pasa, vuelve.
+- **Los puntos que separan las partes de un gasto** («Despensa · Amex») van en latón, como los del encabezado.

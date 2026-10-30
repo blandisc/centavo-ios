@@ -163,7 +163,8 @@ final class FlowTests: XCTestCase {
     /// and the calendar cut short (owner, 2026-10-27).
     func testAlGirarLaPantallaSeAcomoda() {
         let app = launch(demo: true, budget: true)
-        let budget = app.otherElements["presupuesto-ticket"]
+        // The carousel's first page is «En qué se va»; the bar stays over it (2026-10-29).
+        let budget = app.descendants(matching: .any)["en-que-se-va"]
         require(budget, "No está el carrusel")
 
         func turn(_ orientation: UIDeviceOrientation) {
@@ -691,7 +692,7 @@ final class FlowTests: XCTestCase {
 
         fillExpense(app, amount: "250", merchant: "Antojo")
         app.buttons["hoja-guardar"].tap()
-        app.buttons["Presupuesto"].tap()
+        // The bar is always in view now, over the carousel: no page to go back to.
         let ticket = require(app.otherElements["presupuesto-ticket"], "No apareció el ticket")
         XCTAssertTrue(ticket.label.contains("Te pasaste"), "El ticket dice: \(ticket.label)")
         snap("flujo-pasado-de-presupuesto")
@@ -702,7 +703,6 @@ final class FlowTests: XCTestCase {
     /// "Gastado" and the budget line were cut off and the brass spilled onto the calendar.
     func testAbrirYaPasadoDelPresupuestoCabeEnPantalla() {
         let app = launch(demo: true, extra: ["-monthlyBudget", "1000"])
-        app.buttons["Presupuesto"].tap()
         let ticket = require(app.otherElements["presupuesto-ticket"], "No apareció el ticket")
         XCTAssertTrue(ticket.label.contains("Te pasaste"), "El ticket dice: \(ticket.label)")
         // $2,366 spent of a $1,000 budget, the demo month.
@@ -834,6 +834,25 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "cada ")).firstMatch.exists,
                       "No dice cada cuándo se repite")
         snap("flujo-gastos-fijos")
+    }
+
+    // MARK: El código del mes
+
+    /// A finger on the month's barcode reads a day, and letting go on it shows only that day,
+    /// the same as tapping it in the calendar (owner, 2026-10-29).
+    func testElCodigoDelMesMuestraUnDia() {
+        let app = launch(demo: true, budget: true)
+        let code = require(app.descendants(matching: .any)["codigo-del-mes"], "No está el código del mes")
+        XCTAssertTrue(app.staticTexts["folio"].exists || app.descendants(matching: .any)["folio"].exists,
+                      "No está el folio")
+        // Day 12, the demo's Cinépolis: the middle of the 12th bar of the month's 31.
+        let start = code.coordinate(withNormalizedOffset: CGVector(dx: (2 - 0.5) / 31, dy: 0.3))
+        let point = code.coordinate(withNormalizedOffset: CGVector(dx: (12 - 0.5) / 31, dy: 0.3))
+        // Along the code with the finger down, reading days on the way, and let go on the 12th.
+        start.press(forDuration: 0.6, thenDragTo: point, withVelocity: 60, thenHoldForDuration: 1.2)
+        snap("flujo-codigo-del-mes")
+        require(app.buttons["ver-todo-el-mes"], "Soltar en un día no lo filtró")
+        require(row(app, containing: "Cinépolis"), "No muestra el gasto de ese día")
     }
 
     // MARK: En qué se va

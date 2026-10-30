@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- **El código de barras de tu mes:** bajo la barra del presupuesto, una barra por día. Pon el dedo y deslízalo para ver cuánto gastaste cada día; suéltalo en uno y la lista muestra solo ese día. Debajo, tus pagos, tu promedio y tu tope por día.
+- **El folio «N.º»** junto a la cifra (los pagos del mes) y la fecha arriba, como un ticket.
+- **«Para cerrar el mes» se puede quitar** con su ✕ por lo que queda del mes.
 - **Conectar Wallet sin armar nada (iOS 27):** el atajo ya viene armado dentro de Al día. «Agregar a Atajos» lo abre en Atajos; solo hay que agregarlo y encender la automatización. La guía paso a paso sigue ahí si la prefieres.
 - **Anotar sin comercio:** con el monto y la categoría ya se puede guardar; el gasto se llama como la categoría («Despensa»).
 - **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.

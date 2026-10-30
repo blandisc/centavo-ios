@@ -27,6 +27,9 @@ struct MonthCarousel: View {
     /// This month past its budget: the plan's line goes under the bar.
     var overspend: OverspendPlan?
     var now = Date.now
+    /// Whether the first page has anything (`BudgetPage.hasBottom`): without «En qué se va» or
+    /// a note, the calendar shows alone, with no dots.
+    var hasBudgetPage = true
 
     @State private var position = ScrollPosition(idType: Int.self)
     /// The page shown or on its way, by finger or by dot, to put the carousel back on it when
@@ -59,13 +62,22 @@ struct MonthCarousel: View {
     private let pageNames = ["Presupuesto", "Calendario"]
 
     var body: some View {
+        if hasBudgetPage {
+            pages
+        } else {
+            CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay, currency: currency)
+                .padding(.horizontal, Theme.Space.screen)
+        }
+    }
+
+    private var pages: some View {
         VStack(spacing: Theme.Space.none) {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: Theme.Space.none) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
                                shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
                                onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget,
-                               overspend: overspend, currency: currency, now: now)
+                               overspend: overspend, currency: currency, now: now, part: .bottom)
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }

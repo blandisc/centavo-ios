@@ -437,10 +437,12 @@ private struct HomeContent: View, Equatable {
                     month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
-                    // Both pages the same height only when «En qué se va» has something to show:
-                    // empty, it left a hole the size of the calendar.
-                    equalHeights: settings.whereItGoesStyle != WhereItGoesStyle.hidden.rawValue
-                        && !month.shares.isEmpty,
+                    // Each page keeps its own height: with the bar out of the carousel, «En qué
+                    // se va» is much shorter than the calendar and matching them left a hole
+                    // under it (2026-10-29).
+                    equalHeights: false,
+                    hasBudgetPage: BudgetPage.hasBottom(shares: month.shares, note: note,
+                                                        style: settings.whereItGoesStyle),
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
                     entrance: entrance, model: model, actions: actions
@@ -475,12 +477,23 @@ private struct HomeHeader: View {
     let selectedDay: Int?
     let selectedCategory: CategoryShare?
     let equalHeights: Bool
+    /// Whether the carousel's first page has «En qué se va» or a note (`BudgetPage.hasBottom`).
+    let hasBudgetPage: Bool
     let showsCapture: Bool
     let health: CaptureHealth
     let unread: String?
     let entrance: Entrance
     let model: HomeModel
     let actions: HomeActions
+
+    /// "$846": whole money in the month's currency, for the barcode's figures.
+    private func wholeMoney(_ amount: Decimal) -> String {
+        let total = month.summary.primary
+        if let iso = total.isoCode {
+            return amount.formatted(currencyStyle(iso).precision(.fractionLength(0)))
+        }
+        return total.label + amount.formatted(.number.precision(.fractionLength(0)))
+    }
 
     var body: some View {
         let summary = month.summary
@@ -493,8 +506,18 @@ private struct HomeHeader: View {
             } else if !(storeIsEmpty && pace == nil) {
                 // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
                 // ticket below asks for the first step instead.
+                if isCurrent {
+                    ReceiptDate(now: now)
+                        .ticketRow(bottom: Theme.Space.m)
+                }
                 HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                           pace: pace, entrance: entrance)
+                    // The ticket's folio: how many payments the month has (owner, 2026-10-29), at
+                    // the right edge, on the caption's line.
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(alignment: .topTrailing) {
+                        if month.code.payments > 0 { Folio(count: month.code.payments) }
+                    }
                     // With a budget the verdict sits right under the figure, one step away.
                     .ticketRow(bottom: pace != nil && !storeIsEmpty ? Theme.Space.s : Theme.Space.xl)
 
@@ -514,6 +537,16 @@ private struct HomeHeader: View {
                             onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
+                // The bar and the month's barcode stay put; only the part under them swipes
+                // between «En qué se va» and the calendar (owner, 2026-10-29).
+                BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
+                           outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
+                           overspend: isCurrent ? pace.flatMap { OverspendPlan(pace: $0) } : nil,
+                           currency: currency, now: now, part: .top) {
+                    MonthCodeView(code: month.code, selectedDay: selectedDay, onSelectDay: actions.selectDay,
+                                  wholeMoney: wholeMoney, month: viewed, entrance: entrance)
+                }
+                .ticketRow(bottom: Theme.Space.l)
                 MonthCarousel(
                     calendarModel: month.calendar,
                     selectedDay: selectedDay,
@@ -532,7 +565,8 @@ private struct HomeHeader: View {
                     onSetBudget: actions.setBudget,
                     currency: currency,
                     overspend: isCurrent ? pace.flatMap { OverspendPlan(pace: $0) } : nil,
-                    now: now
+                    now: now,
+                    hasBudgetPage: hasBudgetPage
                 )
                 // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                 // between them instead of two pages touching.
@@ -931,6 +965,38 @@ private struct TicketRow: ViewModifier {
 
 // MARK: - Pieces
 
+/// The top of the ticket, this month: «JUE 29 OCT» over a perforation.
+private struct ReceiptDate: View {
+    let now: Date
+
+    var body: some View {
+        Text(now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+            .locale(Locale(identifier: "es_MX"))).replacingOccurrences(of: ".", with: ""))
+            .font(.ticket(.microStrong))
+            .tracking(Theme.Tracking.label)
+            .textCase(.uppercase)
+            .foregroundStyle(Theme.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, Theme.Space.s)
+            .overlay(alignment: .bottom) { Perforation() }
+    }
+}
+
+/// «N.º 058»: the month's payments, like the number printed on a ticket.
+private struct Folio: View {
+    let count: Int
+
+    var body: some View {
+        Text("N.º \(Text(String(format: "%03d", count)).foregroundStyle(Theme.brass))")
+            .font(.ticket(.micro))
+            .tracking(Theme.Tracking.label)
+            .foregroundStyle(Theme.faint)
+            .monospacedDigit()
+            .accessibilityLabel("\(count) pagos este mes")
+            .accessibilityIdentifier("folio")
+    }
+}
+
 private struct HeroTotal: View {
     let summary: MonthSummary
     let viewed: Date
@@ -1180,13 +1246,17 @@ private struct LedgerRow: View {
     private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
 
     /// The line under the name, the way of paying last, by its short name («Amex») in its own
-    /// color: the one touch of color in the line.
+    /// color, and brass dots between the parts, like the rest of the ticket (owner, 2026-10-29).
     private var metaLine: Text? {
-        guard let card else { return meta().map { Text($0) } }
-        let payment = Text(PaymentName.short(card))
-            .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card))
-        guard let rest = meta(withCard: false) else { return payment }
-        return Text("\(rest)\u{00A0}· \(payment)")
+        var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { Text($0) }
+        if let card {
+            parts.append(Text(PaymentName.short(card))
+                .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card)))
+        }
+        guard let first = parts.first else { return nil }
+        // A no-break space before the dot: a wrapped line never starts with «·».
+        let dot = Text("\u{00A0}·").foregroundStyle(Theme.brass)
+        return parts.dropFirst().reduce(first) { line, part in Text("\(line)\(dot) \(part)") }
     }
 
     @ViewBuilder private var metaText: some View {
