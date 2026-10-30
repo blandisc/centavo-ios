@@ -151,6 +151,15 @@ struct ExpenseListView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        // The view, at the menu's first level as it was (owner, 2026-10-30).
+                        Section("Vista") {
+                            Picker("Vista", selection: $whereItGoesStyle) {
+                                ForEach(WhereItGoesStyle.allCases) { style in
+                                    Label(style.title, systemImage: style.icon).tag(style.rawValue)
+                                }
+                            }
+                            .pickerStyle(.inline)
+                        }
                         Section {
                             Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
                             Button("Gastos fijos", systemImage: "repeat") { showingFixed = true }
@@ -441,9 +450,6 @@ private struct HomeContent: View, Equatable {
                     // se va» is much shorter than the calendar and matching them left a hole
                     // under it (2026-10-29).
                     equalHeights: false,
-                    hasBudgetPage: BudgetPage.hasBottom(shares: month.shares, note: note,
-                                                        style: settings.whereItGoesStyle),
-                    isMinimal: settings.whereItGoesStyle == WhereItGoesStyle.hidden.rawValue,
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
                     entrance: entrance, model: model, actions: actions
@@ -478,10 +484,6 @@ private struct HomeHeader: View {
     let selectedDay: Int?
     let selectedCategory: CategoryShare?
     let equalHeights: Bool
-    /// Whether the carousel's first page has «En qué se va» or a note (`BudgetPage.hasBottom`).
-    let hasBudgetPage: Bool
-    /// The minimal view («Mínima» in Ajustes): no carousel, calendar or barcode.
-    let isMinimal: Bool
     let showsCapture: Bool
     let health: CaptureHealth
     let unread: String?
@@ -510,12 +512,13 @@ private struct HomeHeader: View {
                 // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
                 // ticket below asks for the first step instead.
                 // The ticket's head: the date, and the folio on the same line (owner, 2026-10-29).
+                // A section's distance from what follows: the head is the ticket's, not the figure's.
                 ReceiptHead(date: isCurrent ? now : viewed, isCurrent: isCurrent, payments: month.code.payments)
-                    .ticketRow(bottom: Theme.Space.m)
+                    .ticketRow(bottom: Theme.Space.xxl)
                 HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                           pace: pace, entrance: entrance)
-                    // With a budget the verdict sits right under the figure, one step away.
-                    .ticketRow(bottom: pace != nil && !storeIsEmpty ? Theme.Space.s : Theme.Space.xl)
+                    // The figure gets room of its own before the bar (owner, 2026-10-30: «déjalo respirar»).
+                    .ticketRow(bottom: Theme.Space.xl)
 
                 if let code = month.currencySwitch {
                     CurrencySuggestionRow(code: code) { actions.setPrimary(code) }
@@ -533,41 +536,38 @@ private struct HomeHeader: View {
                             onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
-                // The bar stays put; only the part under it swipes, between «En qué se va» and
-                // the calendar with the month's barcode (owner, 2026-10-29). The minimal view
-                // has none of it.
+                // The bar stays put; under it the carousel, in every view (owner, 2026-10-30):
+                // on the left the month's barcode, with «En qué se va» under it in Lista or
+                // Mosaico; on the right the calendar.
                 BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
                            outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
                            currency: currency, now: now, part: .top)
-                    .ticketRow(bottom: isMinimal ? Theme.Space.xl : Theme.Space.l)
-                if !isMinimal {
-                    MonthCarousel(
-                        calendarModel: month.calendar,
-                        selectedDay: selectedDay,
-                        onSelectDay: actions.selectDay,
-                        spent: summary.primary,
-                        pace: pace,
-                        isCurrentMonth: isCurrent,
-                        outside: summary.outside,
-                        shares: month.shares,
-                        returned: month.returned,
-                        note: note,
-                        selectedCategory: selectedCategory,
-                        onSelectCategory: actions.selectCategory,
-                        entrance: entrance,
-                        equalHeights: equalHeights,
-                        onSetBudget: actions.setBudget,
-                        currency: currency,
-                        calendarFooter: AnyView(MonthCodeView(code: month.code, selectedDay: selectedDay,
-                                                              onSelectDay: actions.selectDay, wholeMoney: wholeMoney,
-                                                              month: viewed, entrance: entrance)),
-                        now: now,
-                        hasBudgetPage: hasBudgetPage
-                    )
-                    // Edge to edge: each page keeps its own margin, so a swipe shows a gap
-                    // between them instead of two pages touching.
-                    .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
-                }
+                    .ticketRow(bottom: Theme.Space.xl)
+                MonthCarousel(
+                    calendarModel: month.calendar,
+                    selectedDay: selectedDay,
+                    onSelectDay: actions.selectDay,
+                    spent: summary.primary,
+                    pace: pace,
+                    isCurrentMonth: isCurrent,
+                    outside: summary.outside,
+                    shares: month.shares,
+                    returned: month.returned,
+                    note: note,
+                    selectedCategory: selectedCategory,
+                    onSelectCategory: actions.selectCategory,
+                    entrance: entrance,
+                    equalHeights: equalHeights,
+                    onSetBudget: actions.setBudget,
+                    currency: currency,
+                    budgetHeader: AnyView(MonthCodeView(code: month.code, selectedDay: selectedDay,
+                                                        onSelectDay: actions.selectDay, wholeMoney: wholeMoney,
+                                                        month: viewed, entrance: entrance)),
+                    now: now
+                )
+                // Edge to edge: each page keeps its own margin, so a swipe shows a gap
+                // between them instead of two pages touching.
+                .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
 
                 // The Wallet line stays between the carousel and the list, not under «Hoy»:
                 // it is about the capture, not about today's expenses (owner, 2026-10-21).
@@ -1090,9 +1090,9 @@ private struct HeroTotal: View {
     }
 
     var body: some View {
-        // The caption, the figure and the verdict under it are one group: closer to each other
-        // than the sections are (they were as far apart as two sections, so nothing read as a unit).
-        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+        // The caption and the figure are one group, closer to each other than the sections are,
+        // with a breath between them (owner, 2026-10-30).
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if allowance != nil {
                 Text(isOverToday ? "Hoy te pasaste" : "Hoy puedes gastar")
                     // Read with the figure, as one sentence.

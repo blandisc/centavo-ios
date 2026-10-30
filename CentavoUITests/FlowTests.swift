@@ -842,9 +842,7 @@ final class FlowTests: XCTestCase {
     /// the same as tapping it in the calendar (owner, 2026-10-29).
     func testElCodigoDelMesMuestraUnDia() {
         let app = launch(demo: true, budget: true)
-        // The code lives under the calendar, the carousel's second page (2026-10-29).
-        app.buttons["Calendario"].tap()
-        sleep(1)
+        // The code heads the carousel's first page, in every view (2026-10-30).
         let code = require(app.descendants(matching: .any)["codigo-del-mes"], "No está el código del mes")
         XCTAssertTrue(app.staticTexts["folio"].exists || app.descendants(matching: .any)["folio"].exists,
                       "No está el folio")
