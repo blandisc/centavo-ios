@@ -20,6 +20,12 @@ struct MonthBar: View {
     var outside: Decimal = 0
     /// Remembers that the bar has drawn itself, so a rebuilt one is already drawn (`Entrance`).
     var entrance = Entrance()
+    /// Without its track (owner, 2026-10-30): the days are drawn by the boleto in the carousel, and
+    /// this is the one line that stays while it swaps with the calendar: «Llevas $X de $Y · $Z/día»
+    /// and «Ver cuenta».
+    var showsTrack = true
+    /// What went a day on average, said after the budget when there is no track.
+    var averagePerDay: Decimal?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = Theme.Size.monthBarTrack
@@ -60,15 +66,17 @@ struct MonthBar: View {
                                             removal: .opacity))
             }
 
-            Button {
-                withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
-            } label: {
-                bar
+            if showsTrack {
+                Button {
+                    withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
+                } label: {
+                    bar
+                }
+                .buttonStyle(.plain)
+                .sensoryFeedback(.selection, trigger: showsSum)
+                .accessibilityHint(showsSum ? "Oculta la cuenta" : "Muestra la cuenta")
+                .accessibilityIdentifier("barra-del-mes")
             }
-            .buttonStyle(.plain)
-            .sensoryFeedback(.selection, trigger: showsSum)
-            .accessibilityHint(showsSum ? "Oculta la cuenta" : "Muestra la cuenta")
-            .accessibilityIdentifier("barra-del-mes")
 
             // Each figure where what it measures is: «Llevas» under the brass, «Presupuesto» at
             // the bar's end, «Podrías llevar» over the rule (owner's choice, 2026-10-22).
@@ -240,13 +248,18 @@ struct MonthBar: View {
 
     private var spentKey: some View {
         HStack(spacing: Theme.Space.xs) {
-            swatch(isOver ? Theme.danger : Theme.brass)
+            if showsTrack { swatch(isOver ? Theme.danger : Theme.brass) }
             Text("Llevas").foregroundStyle(Theme.muted)
             totalText
-            // Past it, the budget goes right after what went: «Llevas $2,366 de $2,000».
-            if isOver {
+            // Past it, the budget goes right after what went: «Llevas $2,366 de $2,000». Without
+            // the track there is no bar's end to carry it, so it always does.
+            if isOver || !showsTrack {
                 Text("de").foregroundStyle(Theme.muted)
                 Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
+            }
+            if !showsTrack, let averagePerDay {
+                Separator()
+                Text("\(Text(wholeMoney(averagePerDay)).foregroundStyle(Theme.ink))/día").foregroundStyle(Theme.muted)
             }
         }
         .fixedSize()
@@ -256,7 +269,7 @@ struct MonthBar: View {
     private var budgetKeyText: Text {
         // Past it the hero already says how far («Te pasaste $366»), and «Llevas» carries the
         // budget: this end only opens the sum.
-        if isOver { return Text(showsSum ? "Ocultar cuenta" : "Ver cuenta").foregroundStyle(Theme.brass) }
+        if isOver || !showsTrack { return Text(showsSum ? "Ocultar cuenta" : "Ver cuenta").foregroundStyle(Theme.brass) }
         return Text("Presupuesto ").foregroundStyle(Theme.muted)
             + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
     }
@@ -286,7 +299,8 @@ struct MonthBar: View {
 
     private var totalText: some View {
         Text(wholeMoney(pace.spentShown))
-            .foregroundStyle(Theme.ink)
+            // Red past the budget when it stands alone, with no red bar beside it.
+            .foregroundStyle(!showsTrack && isOver ? Theme.danger : Theme.ink)
             .contentTransition(.numericText())
             .accessibilityLabel(money(pace.spent))
             .accessibilityIdentifier(carriesTotal ? "total-mes" : "llevas")
@@ -407,7 +421,7 @@ private struct DayCells: View {
 }
 
 /// Thin diagonal lines, like the shading on a printed form.
-private struct Hatch: Shape {
+struct Hatch: Shape {
     var spacing: CGFloat = Theme.Size.hatchSpacing
 
     func path(in rect: CGRect) -> Path {

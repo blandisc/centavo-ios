@@ -568,3 +568,10 @@ Visto en el iPhone del dueño.
 - **El tope por día es el presupuesto (menos fijos) entre los días del mes**, en cualquier regla. Con «Se reparte» tomaba lo que queda por repartir, que llega a $0 al pasarse, y el código decía «tope $0»/«sin margen» y dejaba todo gris.
 - **Sin color para los fijos** en el código (el dueño no tiene) y **sin la luz del escáner**.
 - **La ficha del día se queda** sobre el día elegido; **un toque en cualquier otro lugar** quita el día o la categoría elegidos y su ficha.
+
+## 2026-10-30 · El boleto
+Elegido por el dueño entre tres formas de juntar la barra del mes y el código de barras.
+- **El boleto** (`MonthCodeView`): una celda por día, tan alta como el tope de un día (presupuesto menos fijos entre los días del mes). El latón sube con lo gastado; lo que sobró lleva el **verde rayado de la barra de antes** (`Hatch`, `Theme.good`, `paceBehind`); un día pasado del tope va rojo con una marca encima; hoy delineado; los días por venir punteados. Sin presupuesto, cada día se mide contra el más grande del mes.
+- **Boleto ⇄ calendario:** el carrusel tiene a la izquierda el boleto y, debajo, «En qué se va» (Lista o Mosaico; nada en Mínima), y a la derecha el calendario.
+- **Los datos, en una línea fija** sobre el carrusel, que no cambia al deslizar: «Llevas $X de $Y · $Z/día» y «Ver cuenta». La barra del mes deja su pista (`MonthBar.showsTrack`) y queda solo esa línea y la cuenta.
+- La ficha del día sale sobre el boleto y se queda en el día elegido; el carrusel deja lugar arriba para ella.

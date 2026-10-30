@@ -548,7 +548,8 @@ private struct HomeHeader: View {
                 // Mosaico; on the right the calendar.
                 BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
                            outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
-                           currency: currency, now: now, part: .top)
+                           currency: currency, now: now, part: .top, showsTrack: false,
+                           averagePerDay: month.code.averagePerDay)
                     .ticketRow(bottom: Theme.Space.xl)
                 MonthCarousel(
                     calendarModel: month.calendar,

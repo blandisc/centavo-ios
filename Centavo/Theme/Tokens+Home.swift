@@ -99,12 +99,13 @@ extension AnyTransition {
 
 // The month's barcode under the budget bar (`MonthCodeView`).
 extension Theme.Size {
-    /// Scaled. Height of the barcode's bars at their tallest.
-    static let monthCode: CGFloat = 40
-    /// The shortest a day's bar is drawn, so a quiet day still reads as a bar.
-    static let monthCodeFloor: CGFloat = 0.1
-    /// Gap between two days' bars.
-    static let monthCodeGap: CGFloat = 2
+    /// Scaled. Height of the boleto's cells: what a day may spend.
+    static let monthCode: CGFloat = 34
+    /// The red tick over a day past its limit.
+    static let monthCodeTick: CGFloat = 3
+    /// Room the carousel leaves over its top for the boleto's day card, which rises over the
+    /// line above it.
+    static let monthCodeCardRoom: CGFloat = 140
     /// How far the day card's shadow spreads.
     static let monthCodeGlow: CGFloat = 6
     /// Width of the card a day opens while the finger is on it.
@@ -112,8 +113,6 @@ extension Theme.Size {
 }
 
 extension Theme.Opacity {
-    /// 0.5: a plain day's bar, so the brass and red days stand out.
-    static let codeBar: Double = 0.5
     /// 0.22: the other days while one is picked.
     static let codeBarAside: Double = 0.22
 }

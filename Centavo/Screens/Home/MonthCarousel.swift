@@ -120,8 +120,15 @@ struct MonthCarousel: View {
             // While the height moves, nothing of the taller page draws over the list. With both pages
             // the same height nothing moves, and a pressed mosaic block, which iOS lifts a little
             // larger before its detail opens, must not be cut at the carousel's edge (owner's iPhone).
-            .scrollClipDisabled(equalHeights)
-            .mask { Rectangle().padding(.vertical, equalHeights ? -Theme.Space.xxl : Theme.Space.none) }
+            // Not clipped by the scroll view: the boleto's day card rises over the line above the
+            // carousel. The mask below still keeps the next page and the list out.
+            .scrollClipDisabled()
+            .mask {
+                Rectangle()
+                    // Room over the top for the boleto's day card (2026-10-30).
+                    .padding(.top, -Theme.Size.monthCodeCardRoom)
+                    .padding(.bottom, equalHeights ? -Theme.Space.xxl : Theme.Space.none)
+            }
             // A page that changes height in place (choosing «No mostrar» in «Más») eases too. Keyed
             // on the pages' heights, not the current one's: that one also changes on a page change,
             // and this slow ease then won over the page's own and the calendar's last row stayed cut.
@@ -175,13 +182,17 @@ private struct CarouselFold: ViewModifier {
                     // Nothing moves; room above and below for a pressed mosaic block to lift (see
                     // below). Not to the sides: in landscape the next page showed there, in the
                     // strip kept clear for the Dynamic Island.
-                    Rectangle().padding(.vertical, -Theme.Space.xxl)
+                    Rectangle()
+                        .padding(.top, -Theme.Size.monthCodeCardRoom)
+                        .padding(.bottom, -Theme.Space.xxl)
                 } else {
                     VStack(spacing: Theme.Space.none) {
                         Rectangle()
                         LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
                             .frame(height: fold)
                     }
+                    // Room over the top for the boleto's day card (2026-10-30).
+                    .padding(.top, -Theme.Size.monthCodeCardRoom)
                 }
             }
     }

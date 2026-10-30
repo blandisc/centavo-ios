@@ -178,7 +178,7 @@ final class ScreenshotTests: XCTestCase {
 
     func testNoCuentaDesglose() {
         let app = launch()
-        let bar = app.buttons["barra-del-mes"]
+        let bar = app.buttons["ver-cuenta"]
         XCTAssertTrue(bar.waitForExistence(timeout: 5), "No está la barra del presupuesto")
         bar.tap()
         sleep(1)
