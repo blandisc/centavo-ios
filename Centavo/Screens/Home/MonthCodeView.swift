@@ -38,7 +38,10 @@ struct MonthCodeView: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
                 .overlay(alignment: .bottomLeading) { card }
                 .contentShape(Rectangle())
-                .gesture(scrub)
+                // A quick swipe is the carousel's, to the calendar; a tap picks a day; holding a
+                // moment and sliding reads the days (owner, 2026-10-30: in «Mínima» the boleto
+                // left almost nowhere to swipe). How Apple's charts inside a paged view work.
+                .gesture(scrub.exclusively(before: tap))
                 .sensoryFeedback(.selection, trigger: touched) { _, new in new != nil }
         }
         .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
@@ -135,15 +138,28 @@ struct MonthCodeView: View {
 
     // MARK: The finger
 
+    /// Hold a moment, then slide: the day under the finger, and on letting go, that day picked.
     private var scrub: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in touched = day(at: value.location.x) }
-            .onEnded { value in
-                let day = day(at: value.location.x)
-                touched = nil
-                guard let day, code.days[day - 1].kind != .future else { return }
-                onSelectDay(selectedDay == day ? nil : day)
+        LongPressGesture(minimumDuration: Theme.Motion.scrubHold)
+            .sequenced(before: DragGesture(minimumDistance: Theme.Space.none))
+            .onChanged { value in
+                if case .second(true, let drag?) = value { touched = day(at: drag.location.x) }
             }
+            .onEnded { value in
+                defer { touched = nil }
+                guard case .second(true, let drag?) = value else { return }
+                pick(day(at: drag.location.x))
+            }
+    }
+
+    /// One tap picks the day under it (or lets it go, tapped again).
+    private var tap: some Gesture {
+        SpatialTapGesture().onEnded { value in pick(day(at: value.location.x)) }
+    }
+
+    private func pick(_ day: Int?) {
+        guard let day, code.days[day - 1].kind != .future else { return }
+        onSelectDay(selectedDay == day ? nil : day)
     }
 
     private func day(at x: CGFloat) -> Int? {
