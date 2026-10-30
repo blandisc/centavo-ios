@@ -650,9 +650,13 @@ final class FlowTests: XCTestCase {
         // «Quitar presupuesto» goes under the «Hoy puedes gastar» choice: scroll the sheet to it.
         let remove = app.buttons["quitar-presupuesto"]
         require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
-        for _ in 0..<4 where !remove.isHittable {
+        // With the keyboard up it sits under «Guardar» and still reads as hittable: scroll once,
+        // like a person would, which puts the keyboard away (`scrollDismissesKeyboard`).
+        app.swipeUp()
+        for _ in 0..<3 where !remove.isHittable {
             app.swipeUp()
         }
+        XCTAssertEqual(app.keyboards.count, 0, "Al deslizar no se escondió el teclado")
         require(remove, "No ofrece quitar el presupuesto").tap()
         require(app.buttons["fijar-presupuesto"], "No quitó el presupuesto")
     }

@@ -55,10 +55,9 @@ struct FixedExpensesView: View {
         NavigationStack {
             List {
                 Section {
+                    // The system's own row insets: on the line of the section headers and the
+                    // rows' text on every iPhone (16 or 20 pt, depending on its width).
                     explainer
-                        // On the line of the section headers and the rows' text.
-                        .listRowInsets(EdgeInsets(top: Theme.Space.none, leading: Theme.Space.l,
-                                                  bottom: Theme.Space.none, trailing: Theme.Space.l))
                         .listRowBackground(Color.clear)
                 }
 
@@ -102,7 +101,6 @@ struct FixedExpensesView: View {
                 if !suggestions.isEmpty {
                     Section {
                         suggestionChips
-                            .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                     } header: {
                         Text(items.isEmpty ? "Empieza con uno" : "¿Te falta alguno?").ticketCaption()
@@ -147,7 +145,7 @@ struct FixedExpensesView: View {
         let colors = CatalogColors(categories: storedCategoryColors, sources: "")
         let tile = CategoryIconTile(
             icon: category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) } ?? "repeat",
-            color: category.map(colors.category))
+            color: category.map(colors.category), background: Theme.raised)
         return ExpenseRowLayout(name: item.name, tile: tile) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                 ExpenseMetaText(([category, item.ruleText].compactMap { $0 }).joined(separator: " · "))
@@ -235,8 +233,8 @@ struct FixedExpensesView: View {
             }
         }
         .scrollIndicators(.hidden)
-        // The first chip on the headers' line; they still scroll to the edge.
-        .contentMargins(.horizontal, Theme.Space.l, for: .scrollContent)
+        // The first chip on the headers' line (the row's own inset); they scroll to the edge.
+        .scrollClipDisabled()
     }
 
     private func summaryFigure(_ label: String, _ amount: String, brass: Bool = false) -> some View {

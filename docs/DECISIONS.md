@@ -471,7 +471,7 @@ Pedido del dueño tras la revisión de pantallas (seis ajustes y detalles chicos
 - **«Forma de pago», no «tarjeta»:** el efectivo no es tarjeta. La pantalla se llama «Pagos y categorías» (el título largo no cabe en la barra). Las secciones se llaman «Formas de pago» y «Forma de pago · opcional», y sin elegir dice «Sin especificar».
 - **Títulos iguales:** cada bloque de la pantalla principal usa el mismo encabezado (`ticketCaption`); el de la cifra grande, siempre en seminegrita. Las llaves chicas sobre una cifra usan `ticketKey`.
 - **Una sola fila de gasto** (`ExpenseRowLayout`): los gastos fijos se ven como la lista, con su categoría y su color. La bienvenida y «¿Borrar este gasto?» escriben el nombre en mayúsculas, y los montos llevan siempre centavos.
-- **Detalles:** todo pie de sección es `HintText`; dentro de un ticket las divisiones son punteadas; las fechas siempre salen en español; la bienvenida ya no pone «−» a los pagos; la hoja del presupuesto se llama como en el menú («Presupuesto del mes»), y el título de «¿Borrar este gasto?» va en tinta, como el de las demás hojas.
+- **Detalles:** todo pie de sección es `HintText`; dentro de un ticket las divisiones son punteadas; las fechas siempre salen en español; la bienvenida ya no pone «−» a los pagos; el título de «¿Borrar este gasto?» va en tinta, como el de las demás hojas.
 - **Espacios medidos al píxel** (capturas de la CI a 3x):
   - Pasado del presupuesto y sin categorías, el carrusel ya no deja un hueco de 263 pt: las dos páginas solo miden lo mismo si «En qué se va» tiene algo.
   - En la pantalla principal, los nombres de «En qué se va» empiezan en la misma línea que el renglón de Wallet y los días (46 pt); antes había tres columnas, en 46, 52 y 68.

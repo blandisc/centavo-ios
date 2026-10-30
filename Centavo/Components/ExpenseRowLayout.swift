@@ -73,6 +73,8 @@ struct ExpenseMetaText: View {
 struct CategoryIconTile: View {
     let icon: String
     var color: Color?
+    /// Behind a grey one: `surface` on the paper, `raised` inside a card.
+    var background: Color = Theme.surface
 
     @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = Theme.Size.rowTile
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = Theme.Size.rowTileSymbol
@@ -85,7 +87,7 @@ struct CategoryIconTile: View {
             .foregroundStyle(color ?? Theme.muted)
             .frame(width: iconSize, height: iconSize)
             .frame(width: tileSize, height: tileSize)
-            .background(color.map { $0.opacity(Theme.Opacity.tagFill) } ?? Theme.surface,
+            .background(color.map { $0.opacity(Theme.Opacity.tagFill) } ?? background,
                         in: RoundedRectangle(cornerRadius: Theme.Radius.control))
             .accessibilityHidden(true)
     }

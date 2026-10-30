@@ -76,8 +76,11 @@ struct BudgetSheet: View {
                 }
             }
             .ticketForm()
+            // Like the other sheets: moving the form puts the keyboard away, so «Quitar
+            // presupuesto» is never left under the save bar.
+            .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle("Presupuesto del mes")
+            .ticketBarTitle("Presupuesto")
             .saveBar(amount.map { formatMoney($0, isoCode: currency, label: currency) + " al mes" } ?? "Falta el monto",
                      enabled: amount != nil, action: save)
             .toolbar {
