@@ -1,14 +1,13 @@
 import CentavoCore
 import SwiftUI
 
-/// The month as a ticket's barcode (owner's choice, 2026-10-29): one bar per day, as tall as what
-/// went that day. Red, a day past what a day may spend; today breathes; the days to come are blank.
+/// The month as a boleto, one cell per day (see `bars`): the carousel's first page, swapping places
+/// with the calendar (owner, 2026-10-30).
 ///
 /// A finger on it reads the day under it in a card above (what went, how many payments, the
 /// biggest, against the day's limit), with a tick at each new day. Let go on a day and the list
 /// shows only that day, the same as tapping it in the calendar, and the day's card stays until
-/// the day is let go (tapped again, or a tap anywhere else on the screen, 2026-10-30). Under it,
-/// where a barcode prints its digits, the month's: payments, the average a day and the limit a day.
+/// the day is let go (tapped again, or a tap anywhere else on the screen, 2026-10-30).
 struct MonthCodeView: View {
     let code: MonthCode
     let selectedDay: Int?
@@ -41,7 +40,6 @@ struct MonthCodeView: View {
                 .contentShape(Rectangle())
                 .gesture(scrub)
                 .sensoryFeedback(.selection, trigger: touched) { _, new in new != nil }
-            digits
         }
         .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
         .onAppear {
@@ -65,42 +63,74 @@ struct MonthCodeView: View {
 
     // MARK: The bars
 
+    /// The boleto (owner's choice, 2026-10-30): one cell per day, as tall as what a day may spend.
+    /// Brass rises with what went that day; what was left over keeps the old bar's green hatch;
+    /// a day past it is red, with a tick over it. Today is outlined; the days to come are dashed.
+    /// Without a budget there is no limit: each day is measured against the month's biggest.
     private var bars: some View {
-        HStack(alignment: .bottom, spacing: Theme.Size.monthCodeGap) {
+        HStack(alignment: .bottom, spacing: Theme.Size.monthBarCellGap) {
             ForEach(code.days, id: \.number) { day in
-                RoundedRectangle(cornerRadius: Theme.Radius.bar)
-                    .fill(color(day))
+                cell(day)
                     .opacity(opacity(day))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: height * barHeight(day))
             }
         }
-        .frame(maxHeight: .infinity, alignment: .bottom)
         .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion), value: shownDay)
     }
 
-    private func barHeight(_ day: MonthCode.Day) -> CGFloat {
-        // A day still to come keeps a short blank stub, like the end of a code.
-        day.kind == .future ? Theme.Size.monthCodeFloor * 2
-            : Theme.Size.monthCodeFloor + (1 - Theme.Size.monthCodeFloor) * day.height
+    private func cell(_ day: MonthCode.Day) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.bar)
+        return ZStack(alignment: .bottom) {
+            if day.kind == .future {
+                shape.strokeBorder(Theme.dimmed, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                    dash: Theme.Dash.dotted))
+            } else if day.kind == .over {
+                shape.fill(Theme.danger)
+            } else {
+                shape.fill(Theme.raised)
+                if code.limitPerDay != nil {
+                    Hatch()
+                        .stroke(Theme.good, lineWidth: Theme.Stroke.mark)
+                        .opacity(Theme.Opacity.paceBehind)
+                        .clipShape(shape)
+                }
+                shape.fill(Theme.brass)
+                    .frame(height: height * fill(day))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .overlay(alignment: .top) {
+            if day.kind == .over {
+                // Past the day's limit: a tick over the cell, like a mark on the ticket.
+                RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                    .fill(Theme.danger)
+                    .frame(height: Theme.Size.monthCodeTick)
+                    .offset(y: -(Theme.Size.monthCodeTick + Theme.Size.monthBarCellGap))
+            }
+        }
+        .overlay {
+            if day.kind == .today {
+                RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                    .strokeBorder(Theme.ink, lineWidth: Theme.Stroke.emphasis)
+            }
+        }
     }
 
-    private func color(_ day: MonthCode.Day) -> Color {
-        switch day.kind {
-        case .over: Theme.danger
-        case .future: Theme.raised
-        case .today, .plain: Theme.ink
+    /// How much of the cell what went that day fills: against the day's limit, or against the
+    /// month's biggest day without a budget. Never all of it unless it is past the limit.
+    private func fill(_ day: MonthCode.Day) -> CGFloat {
+        guard day.input.payments > 0 else { return Theme.Space.none }
+        if let limit = code.limitPerDay, limit > 0 {
+            let share = NSDecimalNumber(decimal: day.input.variable / limit).doubleValue
+            return CGFloat(min(max(share, 0), 1))
         }
+        return CGFloat(day.height)
     }
 
     private func opacity(_ day: MonthCode.Day) -> Double {
         if day.kind == .future { return Theme.Opacity.visible }
         if let shownDay { return day.number == shownDay ? Theme.Opacity.visible : Theme.Opacity.codeBarAside }
-        switch day.kind {
-        case .today: return breathing ? Theme.Opacity.paceBehind : Theme.Opacity.visible
-        case .plain: return Theme.Opacity.codeBar
-        default: return Theme.Opacity.visible
-        }
+        return day.kind == .today && breathing ? Theme.Opacity.tileBreath : Theme.Opacity.visible
     }
 
     // MARK: The finger
@@ -144,38 +174,6 @@ struct MonthCodeView: View {
             .locale(Locale(identifier: "es_MX")))
         let isToday = code.days[number - 1].kind == .today
         return (isToday ? "Hoy · " : "") + text.replacingOccurrences(of: ".", with: "")
-    }
-
-    // MARK: The digits
-
-    private var digits: some View {
-        HStack(spacing: Theme.Space.xs) {
-            digit("\(code.payments)", code.payments == 1 ? "pago" : "pagos")
-            if let average = code.averagePerDay {
-                Separator()
-                digit(wholeMoney(average), "promedio/día", valueFirst: false)
-            }
-            if let limit = code.limitPerDay {
-                Separator()
-                digit(wholeMoney(max(limit, 0)), "tope/día", valueFirst: false)
-            } else if code.hasNoMargin {
-                // The fixed charges take the whole budget: no «tope $0», which read as broken.
-                Separator()
-                Text("sin margen").foregroundStyle(Theme.danger)
-            }
-        }
-        .font(.ticket(.micro))
-        .tracking(Theme.Tracking.tag)
-        .textCase(.uppercase)
-        .foregroundStyle(Theme.faint)
-        .lineLimit(1)
-        .minimumScaleFactor(Theme.MinimumScale.figure)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func digit(_ value: String, _ label: String, valueFirst: Bool = true) -> some View {
-        let figure = Text(value).foregroundStyle(Theme.ink)
-        return valueFirst ? Text("\(figure) \(label)") : Text("\(label.replacingOccurrences(of: "/día", with: "")) \(figure)/día")
     }
 
     private func spoken(_ number: Int) -> String {

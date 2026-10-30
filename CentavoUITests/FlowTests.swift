@@ -989,7 +989,8 @@ final class FlowTests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
                                "-centavo-demo", "-monthlyBudget", "2000", "-planCerradoMes", "2026-10"]
         app.launch()
-        let bar = require(app.buttons["barra-del-mes"], "No hay barra del presupuesto", timeout: 20)
+        // The line «Llevas … · Ver cuenta» opens the sum: the bar is now the boleto (2026-10-30).
+        let bar = require(app.buttons["ver-cuenta"], "No ofrece ver la cuenta", timeout: 20)
         sleep(2)
         bar.tap()
         require(app.descendants(matching: .any)["la-cuenta"], "La barra no abrió la cuenta")
