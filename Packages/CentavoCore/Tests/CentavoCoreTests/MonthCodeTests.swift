@@ -12,18 +12,12 @@ import Testing
         // 100 a day. Today is the 4th.
         let code = MonthCode(days: [day(90), day(400, fixed: 350), day(180), day(20), MonthCode.DayInput()],
                              today: 4, limitPerDay: 100)
-        #expect(code.days.map(\.kind) == [.plain, .fixed, .over, .today, .future])
+        // A fixed charge has no color of its own and doesn't count against the day's limit.
+        #expect(code.days.map(\.kind) == [.plain, .plain, .over, .today, .future])
         #expect(code.limitPerDay == 100)
         // The biggest day is the tallest bar; one still to come has none.
         #expect(code.days[1].height == 1)
         #expect(code.days[4].height == 0)
-    }
-
-    @Test func aDayWithAFixedChargeIsBrassEvenIfMoreWent() {
-        let code = MonthCode(days: [day(9_800, fixed: 9_800), day(10_000, fixed: 9_800), day(50)],
-                             today: 3, limitPerDay: 100)
-        #expect(code.days[0].kind == .fixed)
-        #expect(code.days[1].kind == .fixed)
     }
 
     @Test func withNoMarginNoDayIsOverAndTheCodeSaysSo() {

@@ -105,9 +105,7 @@ extension Theme.Size {
     static let monthCodeFloor: CGFloat = 0.1
     /// Gap between two days' bars.
     static let monthCodeGap: CGFloat = 2
-    /// The scanner's light that crosses the code now and then.
-    static let monthCodeScan: CGFloat = 2
-    /// How far the scanner's light glows.
+    /// How far the day card's shadow spreads.
     static let monthCodeGlow: CGFloat = 6
     /// Width of the card a day opens while the finger is on it.
     static let monthCodeCard: CGFloat = 210
@@ -121,14 +119,6 @@ extension Theme.Opacity {
 }
 
 extension Theme.Motion {
-    /// The scanner's light crosses the code once every this many seconds…
-    static let scanEvery: Duration = .seconds(9)
-    /// …taking this long.
-    static let scan: Animation = .easeInOut(duration: 1.4)
-    /// …and is gone this long after it set off (the crossing plus a beat).
-    static let scanShown: Duration = .seconds(1.3)
-    /// …then fades out (`settle`) before going back to the left, unseen.
-    static let scanFade: Duration = .seconds(0.4)
     /// Today's bar breathes, like a cursor waiting.
     static let todayBreath: Animation = .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
 }

@@ -98,7 +98,11 @@ final class HomeModel {
                                       biggest: biggest.map { ($0.shownName, $0.amount) })
         }
         let today = inputs.isCurrent ? calendar.component(.day, from: inputs.now) : nil
-        return MonthCode(days: input, today: today, limitPerDay: pace?.dailyBase)
+        // The budget shared over the month's days, fixed expenses aside: the same in either rule.
+        // `dailyBase` is not it with «Se reparte», where it is what is left over the days left and
+        // reached $0 once the month went over (owner's iPhone, 2026-10-30).
+        let limit = pace.map { max(($0.budget - $0.fixedMonth) / Decimal(days), 0) }
+        return MonthCode(days: input, today: today, limitPerDay: limit)
     }
 
     // MARK: The note

@@ -1,15 +1,14 @@
 import CentavoCore
 import SwiftUI
 
-/// The month as a ticket's barcode, under the budget bar (owner's choice, 2026-10-29): one bar
-/// per day, as tall as what went that day. Brass, a day with a fixed charge; red, a day past what
-/// a day may spend; today breathes; the days to come are blank. Now and then a scanner's light
-/// crosses it, the one thing on the screen that moves by itself.
+/// The month as a ticket's barcode (owner's choice, 2026-10-29): one bar per day, as tall as what
+/// went that day. Red, a day past what a day may spend; today breathes; the days to come are blank.
 ///
 /// A finger on it reads the day under it in a card above (what went, how many payments, the
-/// biggest, against the day's limit), with a tick at each new day; let go on a day and the list
-/// shows only that day, the same as tapping it in the calendar. Under it, where a barcode prints
-/// its digits, the month's: payments, the average a day and the limit a day.
+/// biggest, against the day's limit), with a tick at each new day. Let go on a day and the list
+/// shows only that day, the same as tapping it in the calendar, and the day's card stays until
+/// the day is let go (tapped again, or a tap anywhere else on the screen, 2026-10-30). Under it,
+/// where a barcode prints its digits, the month's: payments, the average a day and the limit a day.
 struct MonthCodeView: View {
     let code: MonthCode
     let selectedDay: Int?
@@ -26,9 +25,6 @@ struct MonthCodeView: View {
     private var shown: Bool { drawn || entrance.barShown }
 
     @State private var touched: Int?
-    /// Where the scanner's light is (0 at the left edge, 1 at the right) and whether it shows.
-    @State private var scanned = false
-    @State private var scanLit = false
     @State private var breathing = false
     @State private var width = Theme.Space.none
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -41,7 +37,6 @@ struct MonthCodeView: View {
             bars
                 .frame(height: height)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-                .overlay(alignment: .leading) { scanner }
                 .overlay(alignment: .bottomLeading) { card }
                 .contentShape(Rectangle())
                 .gesture(scrub)
@@ -62,8 +57,10 @@ struct MonthCodeView: View {
             onSelectDay(next)
         }
         .accessibilityIdentifier("codigo-del-mes")
-        .task(id: reduceMotion) { await scanNowAndThen() }
-        .onAppear { breathing = !reduceMotion }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(Theme.Motion.todayBreath) { breathing = true }
+        }
     }
 
     // MARK: The bars
@@ -90,7 +87,6 @@ struct MonthCodeView: View {
 
     private func color(_ day: MonthCode.Day) -> Color {
         switch day.kind {
-        case .fixed: Theme.brass
         case .over: Theme.danger
         case .future: Theme.raised
         case .today, .plain: Theme.ink
@@ -104,38 +100,6 @@ struct MonthCodeView: View {
         case .today: return breathing ? Theme.Opacity.paceBehind : Theme.Opacity.visible
         case .plain: return Theme.Opacity.codeBar
         default: return Theme.Opacity.visible
-        }
-    }
-
-    // MARK: The scanner
-
-    @ViewBuilder private var scanner: some View {
-        if !reduceMotion, shownDay == nil {
-            Rectangle()
-                .fill(Theme.danger)
-                .frame(width: Theme.Size.monthCodeScan)
-                .shadow(color: Theme.danger, radius: Theme.Size.monthCodeGlow)
-                .offset(x: scanned ? max(width - Theme.Size.monthCodeScan, Theme.Space.none) : Theme.Space.none)
-                .opacity(scanLit ? Theme.Opacity.visible : Theme.Opacity.hidden)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
-    }
-
-    /// Every few seconds the light crosses once, left to right, then is gone until the next time.
-    private func scanNowAndThen() async {
-        guard !reduceMotion else { breathing = false; return }
-        withAnimation(Theme.Motion.todayBreath) { breathing = true }
-        while !Task.isCancelled {
-            try? await Task.sleep(for: Theme.Motion.scanEvery)
-            guard !Task.isCancelled else { return }
-            // It lights up as it sets off, crosses, and fades out at the far edge before going back.
-            withAnimation(Theme.Motion.select) { scanLit = true }
-            withAnimation(Theme.Motion.scan) { scanned = true }
-            try? await Task.sleep(for: Theme.Motion.scanShown)
-            withAnimation(Theme.Motion.settle) { scanLit = false }
-            try? await Task.sleep(for: Theme.Motion.scanFade)
-            Theme.Motion.instantly { scanned = false }
         }
     }
 
@@ -158,13 +122,13 @@ struct MonthCodeView: View {
         return min(index, code.days.count - 1) + 1
     }
 
-    /// The card over the day under the finger, kept inside the code's width.
+    /// The card over the day under the finger, or over the day picked: kept inside the code's width.
     @ViewBuilder private var card: some View {
-        if let touched, let day = code.days.first(where: { $0.number == touched }) {
-            let center = width * (CGFloat(touched) - 0.5) / CGFloat(max(code.days.count, 1))
+        if let shownDay, let day = code.days.first(where: { $0.number == shownDay }) {
+            let center = width * (CGFloat(shownDay) - 0.5) / CGFloat(max(code.days.count, 1))
             let half = Theme.Size.monthCodeCard / 2
             let left = min(max(center - half, Theme.Space.none), max(width - Theme.Size.monthCodeCard, Theme.Space.none))
-            DayCard(day: day, title: title(touched), limit: code.limitPerDay, wholeMoney: wholeMoney)
+            DayCard(day: day, title: title(shownDay), limit: code.limitPerDay, wholeMoney: wholeMoney)
                 .frame(width: Theme.Size.monthCodeCard, alignment: .leading)
                 .offset(x: left, y: -(height + Theme.Space.s))
                 .allowsHitTesting(false)
