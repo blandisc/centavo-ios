@@ -20,6 +20,7 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **Deslizar al calendario funciona en toda la parte de arriba** (cifra, boleto, línea y Wallet), aunque el pulgar vaya un poco en diagonal.
 - **«Llevas $X de $Y · $Z/día» va pegado debajo del boleto** y el calendario queda solo a la derecha.
 - **Ajustes dice qué compilación tienes** («Al día 0.1.0 · compilación 312 · 59f8d9e»), para saber si es la última.
 - **Los widgets traen el boleto:** el mismo «cada día contra tu tope» de la pantalla principal, y en el mediano la línea «Llevas $X de $Y · $Z/día».
