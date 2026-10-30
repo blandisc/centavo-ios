@@ -865,6 +865,14 @@ final class FlowTests: XCTestCase {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
                                              object: app.buttons["ver-todo-el-mes"])
         XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 3), .completed, "Tocar fuera no quitó el filtro")
+        // One tap on a day picks it.
+        point.tap()
+        require(app.buttons["ver-todo-el-mes"], "Un toque en un día no lo eligió")
+        app.staticTexts["hoy-puedes-gastar"].tap()
+        // A sideways swipe on the figure also goes to the calendar (owner, 2026-10-30).
+        app.staticTexts["hoy-puedes-gastar"].swipeLeft()
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Día ")).firstMatch,
+                "Deslizar sobre la cifra no llevó al calendario")
     }
 
     // MARK: En qué se va

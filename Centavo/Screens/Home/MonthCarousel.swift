@@ -30,6 +30,11 @@ struct MonthCarousel: View {
     var budgetHeader: AnyView?
     var now = Date.now
 
+    /// A page asked from outside (a swipe on the figure); and whether a finger reading the boleto
+    /// holds the carousel still.
+    var request = CarouselRequest()
+    var scrollLocked = false
+
     @AppStorage(WhereItGoesStyle.key) private var storedStyle = WhereItGoesStyle.bar.rawValue
     @State private var position = ScrollPosition(idType: Int.self)
     /// The page shown or on its way, by finger or by dot, to put the carousel back on it when
@@ -81,6 +86,10 @@ struct MonthCarousel: View {
                         }
                     }
                     .padding(.horizontal, Theme.Space.screen)
+                    // More room to swipe on, above and below the boleto (owner, 2026-10-30: in
+                    // «Mínima» it was a thin strip, hard to hit).
+                    .padding(.vertical, Theme.Space.m)
+                    .contentShape(Rectangle())
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .frame(width: listWidth)
@@ -88,6 +97,8 @@ struct MonthCarousel: View {
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     calendarPage
                         .padding(.horizontal, Theme.Space.screen)
+                        .padding(.vertical, Theme.Space.m)
+                        .contentShape(Rectangle())
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .frame(width: listWidth)
@@ -97,6 +108,11 @@ struct MonthCarousel: View {
             }
             .scrollTargetBehavior(.paging)
             .scrollPosition($position, anchor: .leading)
+            .scrollDisabled(scrollLocked)
+            .onChange(of: request) { _, asked in
+                page = asked.page
+                withAnimation(reduceMotion ? nil : Theme.Motion.page) { position.scrollTo(id: asked.page, anchor: .leading) }
+            }
             // Turning the phone changes the pages' width but not where the scroll stands, so it
             // was left between two pages: the other one peeking in and, with the height following
             // the scroll, the calendar cut short. Back square on the page it rested on.

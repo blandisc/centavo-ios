@@ -585,3 +585,4 @@ Pedido del dueño: los widgets siguen los cambios del hero.
 - **El mediano lleva la línea de la pantalla principal:** «Llevas $X de $Y · $Z/día».
 - La app guarda para los widgets lo gastado cada día fuera de los fijos (`WidgetSnapshot.days`, opcional: una foto de antes sigue mostrando la barra vieja hasta que la app vuelva a escribir). En un mes nuevo el boleto arranca vacío.
 - Los de la pantalla bloqueada no cambian: el sistema los pinta en un solo tono.
+- **Segunda vuelta (mismo día):** seguía costando atinarle. Ahora el toque y el «sostener» del boleto nunca le quitan el deslizamiento al carrusel (fallan en cuanto el dedo viaja); mientras se recorren los días el carrusel se queda quieto. **Un deslizamiento de lado sobre la cifra o la línea «Llevas…» también cambia de página**, y el carrusel tiene más alto para deslizar arriba y abajo del boleto.
