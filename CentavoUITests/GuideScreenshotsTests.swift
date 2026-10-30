@@ -14,6 +14,8 @@ final class GuideScreenshotsTests: XCTestCase {
                           "Solo se corre a mano para rehacer las imágenes de la guía")
         continueAfterFailure = false
         shortcuts = XCUIApplication(bundleIdentifier: "com.apple.shortcuts")
+        // In Spanish whatever the simulator's language: the labels below are Atajos' own.
+        shortcuts.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX"]
     }
 
     private func snap(_ name: String) {

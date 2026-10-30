@@ -11,6 +11,15 @@
 	<!-- The shared Keychain group for the widgets' snapshot (WidgetSnapshotStore). -->
 	<key>CentavoKeychainGroup</key>
 	<string>$(AppIdentifierPrefix)com.blandisc.centavo.shared</string>
+	<!-- «audio»: the floating setup guide (Picture in Picture) needs it to float over Atajos; the
+	     app plays no sound. «remote-notification»: iCloud's silent pushes that sync in the
+	     background. Here and not as INFOPLIST_KEY_UIBackgroundModes in project.yml: that key was
+	     silently left out of the built app (found 2026-10-29). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>remote-notification</string>
+	</array>
 	<!-- centavo://anotar and centavo://presupuesto, from the widgets. -->
 	<key>CFBundleURLTypes</key>
 	<array>

@@ -498,13 +498,6 @@ private struct HomeHeader: View {
                     // With a budget the verdict sits right under the figure, one step away.
                     .ticketRow(bottom: pace != nil && !storeIsEmpty ? Theme.Space.s : Theme.Space.xl)
 
-                if isCurrent, let pace, let plan = OverspendPlan(pace: pace) {
-                    OverspendPanel(plan: plan, currency: currency,
-                                   month: viewed.formatted(.iso8601.year().month()),
-                                   onAdjust: actions.setBudget)
-                        .ticketRow(bottom: Theme.Space.l)
-                }
-
                 if let code = month.currencySwitch {
                     CurrencySuggestionRow(code: code) { actions.setPrimary(code) }
                         .ticketRow(bottom: Theme.Space.xl)
@@ -537,7 +530,9 @@ private struct HomeHeader: View {
                     entrance: entrance,
                     equalHeights: equalHeights,
                     onSetBudget: actions.setBudget,
-                    currency: currency
+                    currency: currency,
+                    overspend: isCurrent ? pace.flatMap { OverspendPlan(pace: $0) } : nil,
+                    now: now
                 )
                 // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                 // between them instead of two pages touching.
@@ -803,7 +798,7 @@ private extension ExpenseListView {
         return lastCapture.map { date > $0 } ?? true ? unreadText : nil
     }
 
-    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes`.
+    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes|anotar`.
     private func openRequestedSheet() {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -812,6 +807,8 @@ private extension ExpenseListView {
         case "catalogos": showingCatalogs = true
         case "fijos": showingFixed = true
         case "ajustes": showingSettings = true
+        case "anotar": adding = true
+        case "presupuesto": showingBudget = true
         default: break
         }
         #endif
@@ -1065,10 +1062,7 @@ private struct HeroTotal: View {
             } else if let overage {
                 // The month went past its budget: the figure that matters now is by how much.
                 Text("Te pasaste del presupuesto")
-                    .font(.ticket(.captionStrong))
-                    .tracking(Theme.Tracking.caption)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.muted)
+                    .ticketCaption(strong: true)
                 Text(wholeText(overage))
                     .accessibilityIdentifier("te-pasaste")
                     .font(.ticket(.hero))
@@ -1097,10 +1091,10 @@ private struct HeroTotal: View {
             // month's total; with «Hoy puedes gastar» on top they would only crowd it (each one
             // still shows in its own row of the list).
             if allowance == nil, !summary.others.isEmpty {
-                Text(verbatim: "+ \(othersText) aparte")
+                // «aparte» said nothing on a first look (user research, 2026-10-29).
+                Text(verbatim: "+ \(othersText) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")")
                     .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(.footnote))
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
         }
@@ -1170,10 +1164,10 @@ private struct LedgerRow: View {
                                 color: category.flatMap { isUncounted ? nil : catalog.colors.category($0) })
     }
 
-    /// «No cuenta · Me lo reembolsan» goes first, so the line says it and not only the strike.
+    /// «No cuenta en el presupuesto · Me lo reembolsan» goes first, so the line says it and not only the strike.
     /// VoiceOver hears «no cuenta para el presupuesto» with the amount instead.
     private func meta(spoken: Bool = false, withCard: Bool = true) -> String? {
-        let parts = [isUncounted && !spoken ? "No cuenta" : nil, isUncounted ? expense.reason?.title : nil,
+        let parts = [isUncounted && !spoken ? "No cuenta en el presupuesto" : nil, isUncounted ? expense.reason?.title : nil,
                      isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
                      expense.category, withCard ? expense.card : nil]
             .compactMap { $0 }

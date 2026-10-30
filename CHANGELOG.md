@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- **Conectar Wallet sin armar nada (iOS 27):** el atajo ya viene armado dentro de Al día. «Agregar a Atajos» lo abre en Atajos; solo hay que agregarlo y encender la automatización. La guía paso a paso sigue ahí si la prefieres.
 - **Anotar sin comercio:** con el monto y la categoría ya se puede guardar; el gasto se llama como la categoría («Despensa»).
 - **«Siguiente» sobre el teclado numérico** pasa del monto al comercio.
 - **«Llegó de Wallet · 28 oct 14:32»** al pie de un gasto que anotó la automatización, con el texto del aviso tal como llegó.
@@ -16,6 +17,21 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **Bienvenida y guía, tras una segunda prueba con personas:**
+  - la ventanita de la guía espera en cada cuadro donde hay que tocar algo; sigues con ▶︎;
+  - los pasos 2 y 5 de la guía ya no se contradicen ni dicen «gris» de algo azul, y el paso 5 dice qué fila buscar;
+  - la bienvenida habla de Apple Pay, dice que el efectivo se anota con «+», muestra las monedas por nombre y todos los gastos fijos sugeridos a la vista;
+  - «Después» se lee como botón, y en el inicio «aparte» pasó a «en otra moneda» y «No cuenta» a «No cuenta en el presupuesto».
+- **Te pasaste, más claro:**
+  - la cifra, su barra y «Llevas $2,366 de $2,000 · Ver cuenta» van juntas;
+  - debajo, «Para cerrar el mes ›» abre una hoja con las fechas que quedan y con cuánto cerrarías según lo que gastes;
+  - ya no se ofrece subir el presupuesto desde ahí.
+- **Tu presupuesto 2.0:**
+  - el monto y lo que te toca al día mientras escribes;
+  - «Se acumula» y «Se reparte» explicados con una semana de ejemplo animada, con cuentas exactas y a un ritmo que se deja leer; tócala para pausarla y otra vez para seguir;
+  - «Guardar» arriba.
+- **Categorías al anotar:** «Ver N más» abre sin reacomodar las que ya ves; las demás aparecen debajo, suaves.
+- **Guía flotante:** ahora es un video que arma el teléfono, para que la ventanita sí flote sobre Atajos; la miniatura ya no se ve negra y el bloque de abajo tiene más aire.
 - **Todo se ve igual en toda la app:** un solo botón de borrar, una sola pastilla de sugerencia (adiós a los botones grises), el mismo mosaico de categoría y forma de pago en todos lados, y los gastos fijos con la misma fila que la lista, con su categoría y su color.
 - **«Forma de pago» en vez de «tarjeta»**, porque el efectivo también cuenta. «Tarjetas y categorías» ahora es «Pagos y categorías».
 - **«al día.» arriba:** el nombre de la pantalla principal ahora es una firma en minúsculas con un punto en latón.
@@ -23,7 +39,9 @@
 - **«Para cerrar el mes» se pliega en su lugar:** el mismo título abierto y cerrado, una línea de resumen al cerrarlo y una flecha que gira. Cada camino dice a la derecha con cuánto de más cierras.
 - **Tarjetas y categorías en mosaicos:** las tarjetas que llegan en tus pagos aparecen solas («De tus pagos»), y cada tarjeta o categoría es un mosaico con un menú corto: usar por defecto, elegir ícono, ocultar al anotar, editar o borrar.
 - **Gastos fijos se explica:** arriba dice para qué sirve, el mes se ve en una barra (cobrado y por venir) y hay sugerencias de un toque (Renta, Luz, Internet…).
-- **Guía flotante:** si la ventanita no arranca, Atajos se abre de todos modos; tocar la miniatura la muestra sin salir de la app.
+- **Guía flotante:** si la ventanita no arranca, Atajos se abre de todos modos.
+- **Guía flotante más pulida:** arranca reproduciéndose al tocar «Abrir Atajos» y ya no hay miniatura junto al botón. Cada cuadro dice el paso con una barra de avance, la instrucción en grande y nunca cortada, y la captura acercada a donde hay que tocar; entre cuadros, un fundido corto.
+- **«Configurar atajo», pasos 5 y 6 más fáciles:** una acción por cuadro, sin palabras técnicas, y un «Así debe verse» al cerrar cada paso para revisar antes de seguir. La guía y la bienvenida dicen «unos 5 minutos» y explican qué es Atajos.
 - **La pantalla principal va más rápida con historiales largos.** Se ve igual. Solo lee el mes que estás viendo y hace sus cuentas una vez por cambio, no cada vez que deslizas un renglón o tecleas. La búsqueda responde al dejar de teclear un momento (0.2 s).
 - **Letra mínima de 12 puntos en la app:** encabezados, pistas, el día de cada grupo, las letras del calendario y las notas de la barra se leen mejor. Antes iban de 10 y 11.
 - **La pantalla vacía** ya no muestra un «$0.00» gigante: ofrece «Anotar un gasto», «Fijar presupuesto» y «Conectar Wallet».

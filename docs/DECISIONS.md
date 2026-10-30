@@ -453,6 +453,55 @@ Pedidos del dueño.
   - Los mosaicos de tarjetas miden todos lo mismo; «De tus pagos» pasa a ser una marca en la esquina, como la estrella.
   - La guía flotante escribe un diario (`Library/Caches/guia-flotante.log`) que se puede copiar del iPhone con `devicectl` para saber por qué no arranca.
 
+## 2026-10-29 · La guía flotante pasa a video; «Ver más» en categorías
+- **La guía flotante es ahora un video MP4 armado en el teléfono:** las mismas capturas de la guía, una cada 8 s, guardado en la caché (unos 850 KB, una sola vez por guía) y reproducido con el reproductor del sistema. El diario del iPhone del dueño mostró que con la capa de imágenes sueltas el sistema nunca dejaba flotar la ventana («no posible» en cada intento). Sigue sin pesar en la app y sin quedarse viejo. ⏩ y ⏪ de la ventanita llevan a la imagen siguiente o anterior, salte lo que salte el sistema. La miniatura muestra la imagen del paso desde el principio (antes podía verse negra).
+- **Hoja del gasto, categorías:** al abrir «Ver N más» las que ya se ven se quedan en su lugar y las demás aparecen debajo, una tras otra. «Ver más» y «Nueva» van en un renglón propio bajo la cuadrícula; la flecha gira.
+- **La causa real era que la app no traía sus modos en segundo plano:** `INFOPLIST_KEY_UIBackgroundModes` en `project.yml` no llegaba a la app compilada (no aparecía en su `Info.plist`). Sin «audio», iOS no deja flotar ninguna ventana, ni con la capa ni con video. Tampoco estaba «remote-notification», el que iCloud usa para sincronizar en segundo plano. Los dos pasan al `Info.plist` de la app y se comprueban en la app compilada.
+- **La cápsula de pasos de la guía ya no corre los puntos a un lado** (el último quedaba cortado por el borde); tiene margen a los dos lados.
+- **Toda sección que se pliega se mueve igual** (pedido del dueño): `Theme.Motion.fold` para el espacio y `.transition(.unfold)` para el contenido, que aparece cuando ya hay lugar y se va antes de cerrarlo. La cuenta de la barra ya no se desliza con rebote ni se dibuja encima de «En qué se va»; su flecha gira. En «Sin gastar más» el detalle dice cuánto suman los fijos que faltan, para que se entienda por qué esa cifra es mayor que «de más» de hoy.
+
+## 2026-10-29 · Te pasaste: opción A, y hoja del presupuesto 2.0
+Elegido por el dueño sobre el lienzo de análisis del mismo día.
+- **Cuando te pasas, la pantalla va en este orden:** la cifra («Te pasaste $366»), su barra, «Llevas $2,366 de $2,000 · Ver cuenta» y el renglón «Para cerrar el mes ›». Reemplaza el panel plegable entre la cifra y la barra.
+  - Todo el renglón de la leyenda abre la cuenta, con 44 pt de alto; la flechita sola era un blanco muy chico.
+  - «+ USD 24.99 aparte» va en minúsculas.
+- **«Para cerrar el mes» es una hoja del alto de lo que dice:**
+  - las fechas que quedan («30 y 31 de oct»);
+  - los tres caminos, cada uno con una barra de con cuánto cierras de más;
+  - y «el 1 de noviembre empiezas de cero».
+- **No se ofrece ajustar el presupuesto al pasarte** (decisión del dueño): la app avisa cómo vas contra un presupuesto que ya fijaste; subirlo cuando te pasas va contra eso. El presupuesto solo se cambia en «Más › Presupuesto del mes».
+- **Hoja «Tu presupuesto» 2.0, igual entres por donde entres:**
+  - el monto, con «Al día: $X» en vivo (el mismo con las dos reglas) y lo que llevas este mes;
+  - luego «Lo que no gastas un día: Se acumula | Se reparte» (antes «Hoy puedes gastar», que es el nombre de una cifra);
+  - una semana de ejemplo animada de $100 por día con los mismos gastos en las dos reglas: lo que sobra o falta sale como moneda y va completo a mañana o se reparte entre los días que quedan. La cuenta está en `AllowanceDemo` (CentavoCore), con pruebas;
+  - una frase de a quién le conviene cada regla;
+  - «Guardar» arriba, donde el teclado no lo tapa (reemplaza la barra de guardar de abajo en esta hoja);
+  - sin el párrafo largo;
+  - con «Reducir movimiento», la semana se queda quieta y completa.
+
+  - la semana de ejemplo usa gastos con los que cada reparto es exacto (nada se redondea, así lo que se mueve suma justo lo que sobró), va más despacio y se pausa al tocarla (dueño, 2026-10-29).
+- **Guía flotante y pasos 5–6, tras una prueba con tres personas simuladas (2026-10-29):**
+  - la ventanita arranca reproduciéndose al tocar «Abrir Atajos» y no hay miniatura junto al botón; la capa que iOS necesita para flotar queda escondida detrás;
+  - cada cuadro del video: barra de avance por paso, instrucción en blanco y nunca cortada, y la captura recortada a mano (`GuideFrame.focus`) en vez de detectar el anillo por píxeles, que era frágil;
+  - las tres personas se perdían en «Conéctalos» y «Conecta el comercio»: ahora va una acción por cuadro, sin palabras de Atajos («burbuja», «barra»), y cada paso cierra con «Así debe verse»;
+  - «unos 2 minutos» pasó a «unos 5 minutos» (nadie lo creía con 8 pasos) y la bienvenida dice qué es Atajos.
+- **Segunda ronda con tres personas nuevas, desde la App Store (2026-10-29):** las tres entendían la app y abandonaban en el paso 5, cuadro 10. Pedido del dueño: atender todos los hallazgos.
+  - la ventanita ya no avanza sola en los cuadros donde hay que tocar algo: se detiene al final y dice «Al terminar, toca ▶︎»; los «Así debe verse» sí avanzan solos. Corrige en parte la decisión de esta mañana de que todo avanzara solo: a 8 segundos nadie alcanzaba;
+  - el cuadro 10 nombra lo que se ve («la fila empieza con «Seleccionar variable». No es esa») y el 11 muestra la fila completa con la campana;
+  - «No elijas Wallet» pasó a «Wallet va en el siguiente paso», y «la palabra gris» a «en azul tenue», que es como se ve;
+  - la bienvenida dice «Apple Pay» en vez de «Wallet» donde habla de pagar (se leía «cartera»), aclara que el efectivo y el plástico se anotan con «+», y lo repite en «Conecta Wallet» antes de la guía, no hasta el paso 8;
+  - en la bienvenida: «Ejemplo» sobre la tarjeta animada, monedas por nombre («Pesos») en vez de código, gastos fijos sugeridos en renglones en vez de una fila que se cortaba, y «sin lo que vas a ahorrar» en el presupuesto;
+  - el botón secundario («Después») va en blanco y seminegrita en toda la app: en gris no se leía como botón;
+  - en el inicio, «+ USD 24.99 aparte» pasó a «en otra moneda» y la etiqueta de un gasto excluido dice «No cuenta en el presupuesto».
+  - Queda por investigar: instalar el atajo ya armado con un toque, lo único que quitaría los pasos 5 y 6, revisando que no choque con «sin servidor».
+
+## 2026-10-29 · El atajo ya viene armado (opción B)
+Elegido por el dueño tras dos rondas con personas: todas se perdían armando el atajo a mano.
+- **En iOS 27 Al día trae la automatización completa** (`Centavo/Resources/Registrar aviso de Wallet.shortcut`): el disparador «Notificación» de Wallet y la acción con «Notificación» y «Subtítulo» conectados. «Configurar atajo» abre primero «Conecta Wallet» con un botón «Agregar a Atajos»; la guía de 8 pasos queda detrás de «Prefiero hacerlo paso a paso».
+- **Se entrega por la hoja de compartir**, donde Atajos sale primero: el esquema `shortcuts://import-shortcut` solo acepta enlaces, no archivos. No hay enlace ni servidor; el archivo viaja dentro de la app.
+- **El archivo se exportó del iPhone del dueño**, firmado por Apple para cualquiera. No se puede armar en la Mac: macOS 26 borra el disparador al firmar. Cómo cambiarlo: Tools/atajo/README.md.
+- **Llega con la automatización apagada** (así lo hace iOS 27 con lo compartido): la pantalla dice cómo encenderla. Visto en el simulador que el atajo llega completo; encenderlo y el primer pago, por probar en el iPhone.
+- Antes de iOS 27 no cambia nada: la guía de siempre.
 
 ## 2026-10-29 · Firma «al día.» y un color fijo para cada categoría y forma de pago
 Elegido por el dueño (propuestas C y 2 del lienzo de pulido).

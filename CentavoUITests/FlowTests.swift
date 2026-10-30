@@ -714,10 +714,13 @@ final class FlowTests: XCTestCase {
     /// Accessibility frames are clipped to what is visible, so "inside the screen" proves
     /// nothing. The ticket has to keep the same margins as the total above it.
     private func expectFitsOnScreen(_ app: XCUIApplication, _ element: XCUIElement) {
-        let total = app.staticTexts["total-mes"].frame
+        // Past the budget the hero is «te-pasaste» instead of the total; same margins.
+        let hero = app.staticTexts["total-mes"].exists ? app.staticTexts["total-mes"] : app.staticTexts["te-pasaste"]
+        let total = hero.frame
         let screen = app.windows.firstMatch.frame
-        let margin = total.minX - screen.minX
-        XCTAssertEqual(element.frame.minX, total.minX, accuracy: 1,
+        // «te-pasaste» is pulled 3 pt left on purpose (its «$» lines up with the caption).
+        let margin = total.minX - screen.minX + (app.staticTexts["total-mes"].exists ? 0 : 3)
+        XCTAssertEqual(element.frame.minX, screen.minX + margin, accuracy: 1,
                        "No respeta el margen izquierdo: \(element.frame), total en \(total)")
         XCTAssertEqual(element.frame.maxX, screen.maxX - margin, accuracy: 1,
                        "No respeta el margen derecho: \(element.frame) en \(screen)")
@@ -733,7 +736,7 @@ final class FlowTests: XCTestCase {
         let next = require(app.buttons["bienvenida-siguiente"], "No apareció la bienvenida", timeout: 20)
         snap("bienvenida-1")
         next.tap()
-        require(app.buttons["MXN"], "No ofrece pesos").tap()
+        require(app.buttons["Pesos"], "No ofrece pesos").tap()
         let budget = require(app.textFields["bienvenida-presupuesto"], "No pide presupuesto")
         budget.tap(); budget.typeAmount("9000")
         require(app.staticTexts["bienvenida-por-dia"], "No dice cuánto puedes gastar al día")
@@ -934,6 +937,50 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("último pago"), "Dice: \(health.label)")
     }
 
+    /// Over budget: «Para cerrar el mes ›» opens the three ways; the budget sheet explains both
+    /// rules with a drawing and switches it with the choice (2026-10-29).
+    func testElPlanDelMesYLaHojaDelPresupuesto() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-demo", "-monthlyBudget", "2000"]
+        app.launch()
+        require(app.buttons["para-cerrar-el-mes"], "No ofrece el plan para cerrar el mes", timeout: 20).tap()
+        require(app.staticTexts["Sin gastar más"], "La hoja no dice los caminos")
+        sleep(2)
+        snap("plan-del-mes")
+        app.buttons["hoja-listo"].tap()
+        sleep(1)
+        app.buttons["Más"].tap()
+        app.buttons["Presupuesto del mes"].tap()
+        require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
+        sleep(7)
+        snap("presupuesto-acumula")
+        require(app.buttons["Se reparte"], "No ofrece repartir").tap()
+        let suits = app.staticTexts["modo-te-conviene"]
+        XCTAssertTrue(suits.label.contains("parejo"), "No explica repartir: \(suits.label)")
+        sleep(8)
+        snap("presupuesto-reparte")
+    }
+
+    /// Tapping the bar unfolds the sum in place and tapping again folds it (2026-10-29).
+    func testLaCuentaSeAbreYSeCierraAlTocarLaBarra() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
+                               "-centavo-demo", "-monthlyBudget", "2000", "-planCerradoMes", "2026-10"]
+        app.launch()
+        let bar = require(app.buttons["barra-del-mes"], "No hay barra del presupuesto", timeout: 20)
+        sleep(2)
+        bar.tap()
+        require(app.descendants(matching: .any)["la-cuenta"], "La barra no abrió la cuenta")
+        sleep(2)
+        snap("cuenta-abierta")
+        bar.tap()
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                             object: app.descendants(matching: .any)["la-cuenta"])
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 3), .completed, "La cuenta no se cerró")
+        sleep(1)
+    }
+
     func testSinPagosDeWalletInvitaAConfigurarYAbreLaGuia() {
         let app = launch(budget: true, extra: ["-centavo-demo-large"])
         let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
@@ -943,7 +990,30 @@ final class FlowTests: XCTestCase {
             app.swipeUp()
         }
         health.tap()
+        stepByStep(app)
         require(app.buttons["guia-siguiente"], "No abrió la guía")
+    }
+
+    /// iOS 27 opens on adding the ready-made automation; the step-by-step guide is behind
+    /// «Prefiero hacerlo paso a paso».
+    private func stepByStep(_ app: XCUIApplication) {
+        let way = app.buttons["atajo-paso-a-paso"]
+        if way.waitForExistence(timeout: 5) { way.tap() }
+    }
+
+    func testElAtajoArmadoSeAgregaConUnBoton() throws {
+        let app = launch(demo: true)
+        app.buttons["Más"].tap()
+        app.buttons["Configurar atajo"].firstMatch.tap()
+        let add = app.buttons["atajo-agregar"]
+        try XCTSkipUnless(add.waitForExistence(timeout: 5), "Solo en iOS 27: antes no hay atajo armado")
+        require(app.descendants(matching: .any)["guia-comprobacion"], "No dice si ya llegó un pago")
+        snap("flujo-atajo-armado")
+        add.tap()
+        // The share sheet offers Atajos, which imports the file.
+        let shortcuts = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["Atajos", "Shortcuts"])).firstMatch
+        require(shortcuts, "La hoja no ofrece Atajos")
     }
 
     // MARK: Guía del atajo
@@ -956,6 +1026,7 @@ final class FlowTests: XCTestCase {
         } else {
             require(app.buttons["vacio-wallet"], "La pantalla vacía no ofrece conectar Wallet").tap()
         }
+        stepByStep(app)
         let next = require(app.buttons["guia-siguiente"], "No abrió la guía paso a paso")
         // 8 steps on iOS 26, 7 on iOS 27: walk until the last one.
         for _ in 0..<10 where next.isEnabled { next.tap() }

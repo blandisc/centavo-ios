@@ -31,7 +31,13 @@ struct WelcomeDemo: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             noticeSlot
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Hoy puedes gastar").ticketCaption()
+                // It moves by itself: say it is an example, or it reads as something you did
+                // (user research, 2026-10-29).
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Hoy puedes gastar").ticketCaption()
+                    Spacer(minLength: Theme.Space.s)
+                    Text("Ejemplo").ticketCaption()
+                }
                 Text(left.formatted(currencyStyle(currency).precision(.fractionLength(0))))
                     .font(.ticket(.display))
                     .tracking(Theme.Tracking.figure)

@@ -119,7 +119,7 @@ final class MonthStatusTests: XCTestCase {
         let sentence = try total(500)
         XCTAssertTrue(sentence.hasPrefix("Llevas"), sentence)
         XCTAssertTrue(sentence.contains("100.00"), sentence)
-        XCTAssertTrue(sentence.contains("EUR 20.00 aparte"), sentence)
+        XCTAssertTrue(sentence.contains("EUR 20.00 en otra moneda"), sentence)
         XCTAssertTrue(sentence.contains("Te quedan"), sentence)
         XCTAssertTrue(sentence.contains("400.00"), "El euro se sumó al presupuesto: \(sentence)")
     }

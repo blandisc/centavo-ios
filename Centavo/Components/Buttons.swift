@@ -82,9 +82,10 @@ struct SecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
+            // Ink: in grey, «Después» read as not a button (user research, 2026-10-29).
             Text(title)
-                .font(.ticket(.footnote))
-                .foregroundStyle(Theme.muted)
+                .font(.ticket(.footnoteStrong))
+                .foregroundStyle(Theme.ink)
                 .frame(minHeight: Theme.Size.tapTarget)
         }
         .buttonStyle(.plain)
