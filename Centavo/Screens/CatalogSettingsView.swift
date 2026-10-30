@@ -10,6 +10,8 @@ struct CatalogSettingsView: View {
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
+    @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
     @Query private var expenses: [Expense]
     @State private var editing: Editing?
     /// A card or category about to be deleted, waiting for «Borrar».
@@ -40,6 +42,16 @@ struct CatalogSettingsView: View {
             names.append(name)
         }
         return names
+    }
+
+    private var colors: CatalogColors {
+        CatalogColors(categories: storedCategoryColors, sources: storedSourceColors)
+    }
+
+    /// The color of a card or category, for its «Color» menu.
+    private func color(_ name: String, _ kind: CatalogColors.Kind) -> Binding<Int> {
+        Binding(get: { colors.index(name, kind: kind) },
+                set: { CatalogColors.set($0, for: name, kind: kind) })
     }
 
     private func shows(_ name: String) -> Binding<Bool> {
@@ -89,11 +101,12 @@ struct CatalogSettingsView: View {
                                     Button("Usar por defecto", systemImage: "star") { defaultSource = source.name }
                                 }
                                 Button("Editar", systemImage: "pencil") { editing = .source(source) }
+                                ColorMenu(selection: color(source.name, .source))
                                 Button("Borrar", systemImage: "trash", role: .destructive) {
                                     confirmingRemoval = .source(source)
                                 }
                             } label: {
-                                CatalogTile(name: source.name, icon: source.icon,
+                                CatalogTile(name: source.name, icon: source.icon, color: colors.source(source.name),
                                             badge: isDefault ? "star.fill" : nil)
                             }
                             .accessibilityLabel(isDefault ? "\(source.name), predeterminada" : source.name)
@@ -108,8 +121,10 @@ struct CatalogSettingsView: View {
                                 Button("Elegir ícono", systemImage: "square.grid.2x2") {
                                     editing = .source(LabeledIcon(name: card, icon: Self.guessIcon(card)))
                                 }
+                                ColorMenu(selection: color(card, .source))
                             } label: {
-                                CatalogTile(name: card, icon: Self.guessIcon(card), badge: "wave.3.right")
+                                CatalogTile(name: card, icon: Self.guessIcon(card), color: colors.source(card),
+                                            badge: "wave.3.right")
                             }
                             .accessibilityLabel("\(card), llegó en tus pagos")
                             .accessibilityIdentifier("fuente-\(card)")
@@ -140,6 +155,7 @@ struct CatalogSettingsView: View {
                                        systemImage: shown.wrappedValue ? "eye.slash" : "eye") {
                                     withAnimation(Theme.Motion.quick) { shown.wrappedValue.toggle() }
                                 }
+                                ColorMenu(selection: color(item.name, .category))
                                 if item.isCustom, let custom = categories.first(where: { $0.name == item.name }) {
                                     Button("Editar", systemImage: "pencil") { editing = .category(custom) }
                                     Button("Borrar", systemImage: "trash", role: .destructive) {
@@ -147,7 +163,7 @@ struct CatalogSettingsView: View {
                                     }
                                 }
                             } label: {
-                                CatalogTile(name: item.name, icon: item.icon,
+                                CatalogTile(name: item.name, icon: item.icon, color: colors.category(item.name),
                                             badge: shown.wrappedValue ? nil : "eye.slash",
                                             dimmed: !shown.wrappedValue)
                             }
@@ -187,7 +203,8 @@ struct CatalogSettingsView: View {
                                      onDelete: source.map { item in { remove(item) } },
                                      isDefault: source.map { UserCatalog.same($0.name, defaultSource) }
                                         ?? sources.isEmpty,
-                                     onSetDefault: setDefault) { saved in
+                                     onSetDefault: setDefault, colorKind: .source,
+                                     siblings: sources.map(\.name) + detectedCards) { saved in
                         save(saved, replacing: source)
                     }
                 case .category(let category):
@@ -195,7 +212,8 @@ struct CatalogSettingsView: View {
                                      prompt: "Mascotas, Gimnasio…", icons: UserCatalog.categoryIcons,
                                      taken: categories.map(\.name) + CategoryStyle.common.map(\.name),
                                      initial: category,
-                                     onDelete: category.map { item in { removeCategory(item) } }) { saved in
+                                     onDelete: category.map { item in { removeCategory(item) } },
+                                     colorKind: .category, siblings: allCategories.map(\.name)) { saved in
                         var list = categories
                         if let category, let index = list.firstIndex(of: category) {
                             list[index] = saved
@@ -261,11 +279,13 @@ struct CatalogSettingsView: View {
     private func removeCategory(_ category: LabeledIcon) {
         storedCategories = UserCatalog.encode(categories.filter { $0 != category })
         UserCatalog.markDeleted(category.name, true)
+        UserCatalog.setColor(nil, for: category.name, key: UserCatalog.categoryColorsKey)
     }
 
     private func remove(_ source: LabeledIcon) {
         let list = sources.filter { $0 != source }
         storedSources = UserCatalog.encode(list)
+        UserCatalog.setColor(nil, for: source.name, key: UserCatalog.sourceColorsKey)
         if UserCatalog.same(defaultSource, source.name) { defaultSource = list.first?.name ?? "" }
     }
 }
@@ -276,6 +296,8 @@ struct CatalogSettingsView: View {
 private struct CatalogTile: View {
     let name: String
     let icon: String
+    /// The card's or category's own color; the «Agregar» tile stays brass.
+    var color: Color = Theme.brass
     var badge: String?
     var dimmed = false
     var isAction = false
@@ -287,7 +309,7 @@ private struct CatalogTile: View {
         VStack(spacing: Theme.Space.xs) {
             Image(systemName: icon)
                 .font(Theme.Symbol.regular)
-                .foregroundStyle(Theme.brass)
+                .foregroundStyle(color)
                 .frame(height: symbolBox)
             // Two words may take two lines («American / Express»); one word stays on one and
             // shrinks a little rather than break («Suscripcione/s»).

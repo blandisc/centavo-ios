@@ -71,6 +71,9 @@ struct ExpenseListView: View {
     @AppStorage(WalletWatch.key) private var ignoresWallet = false
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHiddenCategories = ""
+    @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
+    @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
     /// What of the screen's entrance has already played (`Entrance`).
     @State private var entrance = Entrance()
     /// The list's width, measured. Each line takes it from here and not from
@@ -108,7 +111,9 @@ struct ExpenseListView: View {
                 settings: HomeSettings(budget: storedBudget, plans: storedPlans, currency: primaryCurrency,
                                        mode: storedMode, whereItGoesStyle: whereItGoesStyle,
                                        ignoresWallet: ignoresWallet),
-                catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories),
+                catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories,
+                                       sources: storedSources, categoryColors: storedCategoryColors,
+                                       sourceColors: storedSourceColors),
                 lastCapture: lastCapture, unread: unreadNotice(after: lastCapture),
                 selectedDay: selectedDay, selectedCategory: selectedCategory,
                 entrance: entrance, listWidth: listWidth, actions: actions
@@ -136,10 +141,12 @@ struct ExpenseListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Al día")
-                        .font(.ticket(.footnoteStrong))
-                        .tracking(Theme.Tracking.title)
-                        .textCase(.uppercase)
+                    // The app's signature (2026-10-29): lowercase, bigger than a sheet's title,
+                    // with a brass full stop. «Al día. Punto.»
+                    Text("al día\(Text(".").foregroundStyle(Theme.brass))")
+                        .font(.ticket(.subheading))
+                        .foregroundStyle(Theme.ink)
+                        .accessibilityLabel("Al día")
                         .accessibilityAddTraits(.isHeader)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1162,26 +1169,41 @@ private struct LedgerRow: View {
     /// The category's icon on a small tile, the same icons as «En qué se va».
     private var categoryTile: some View {
         let category = expense.category.flatMap { $0.isEmpty ? nil : $0 }
+        // In the category's own color, the same as in «En qué se va»; grey when it has none
+        // or does not count.
+        let color = category.flatMap { isUncounted ? nil : catalog.colors.category($0) }
         return Image(systemName: category.map(catalog.icon(for:)) ?? "questionmark")
             .resizable()
             .scaledToFit()
             .fontWeight(.medium)
-            .foregroundStyle(category == nil || isUncounted ? Theme.muted : Theme.brass)
+            .foregroundStyle(color ?? Theme.muted)
             .frame(width: iconSize, height: iconSize)
             .frame(width: tileSize, height: tileSize)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+            .background(color.map { $0.opacity(Theme.Opacity.tagFill) } ?? Theme.surface,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.control))
             .accessibilityHidden(true)
     }
 
     /// «No cuenta · Me lo reembolsan» goes first, so the line says it and not only the strike.
     /// VoiceOver hears «no cuenta para el presupuesto» with the amount instead.
-    private func meta(spoken: Bool = false) -> String? {
+    private func meta(spoken: Bool = false, withCard: Bool = true) -> String? {
         let parts = [isUncounted && !spoken ? "No cuenta" : nil, isUncounted ? expense.reason?.title : nil,
                      isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
-                     expense.category, expense.card]
+                     expense.category, withCard ? expense.card : nil]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
+
+    /// The line under the name, the card last with its icon in the card's own color.
+    private var metaLine: Text? {
+        guard let card else { return meta().map { Text($0) } }
+        let mark = Text(Image(systemName: catalog.sourceIcon(for: card)))
+            .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card))
+        guard let rest = meta(withCard: false) else { return Text("\(mark) \(card)") }
+        return Text("\(rest) · \(mark) \(card)")
     }
 
     private var merchantText: some View {
@@ -1196,8 +1218,8 @@ private struct LedgerRow: View {
     }
 
     @ViewBuilder private var metaText: some View {
-        if let line = meta() {
-            Text(line)
+        if let line = metaLine {
+            line
                 .font(.ticket(.hint))
                 .tracking(Theme.Tracking.detail)
                 .textCase(.uppercase)

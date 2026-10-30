@@ -106,11 +106,14 @@ final class HomeModel {
 
     // MARK: Categories
 
-    /// The categories someone made and the ones hidden, read once per change instead of once
-    /// per row.
-    func catalog(categories: String, hidden: String) -> CategoryCatalog {
-        catalogMemo.value(for: [categories, hidden]) {
-            CategoryCatalog(custom: UserCatalog.decode(categories), hidden: UserCatalog.decodeNames(hidden))
+    /// The categories someone made and the ones hidden, the cards' icons and everyone's
+    /// colors, read once per change instead of once per row.
+    func catalog(categories: String, hidden: String, sources: String = "",
+                 categoryColors: String = "", sourceColors: String = "") -> CategoryCatalog {
+        catalogMemo.value(for: [categories, hidden, sources, categoryColors, sourceColors]) {
+            CategoryCatalog(custom: UserCatalog.decode(categories), hidden: UserCatalog.decodeNames(hidden),
+                            sources: UserCatalog.decode(sources),
+                            colors: CatalogColors(categories: categoryColors, sources: sourceColors))
         }
     }
 
@@ -240,14 +243,18 @@ struct HomeSearch {
     let groups: [DayGroup]
 }
 
-/// The categories someone made (their icons) and the ones hidden from the choices.
+/// The categories someone made (their icons), the ones hidden from the choices, the cards'
+/// icons and the colors of both.
 struct CategoryCatalog: Equatable {
     let custom: [LabeledIcon]
     let hidden: [String]
+    var sources: [LabeledIcon] = []
+    var colors: CatalogColors = .empty
 
     static let empty = CategoryCatalog(custom: [], hidden: [])
 
     func icon(for category: String) -> String { CategoryStyle.icon(for: category, custom: custom) }
+    func sourceIcon(for card: String) -> String { PaymentChoices.icon(for: card, sources: sources) }
 
     /// The categories a long press offers: the usual ones, yours and the expense's own.
     func choices(for expense: Expense) -> [String] {

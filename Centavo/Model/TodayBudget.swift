@@ -12,6 +12,7 @@ enum TodayBudget {
                          primary: String, month: Date, now: Date = .now,
                          mode: AllowanceMode = .saved) -> WidgetSnapshot {
         let isCurrent = MonthNavigator.isSameMonth(month, as: now)
+        let colors = CatalogColors.current
         // What counts (`Expense.asAmount`): «no cuenta» stays out of today, the month and the widgets.
         let all = rows.map(\.asAmount)
         let fixed = rows.filter(\.isFixed).map(\.asAmount)
@@ -27,7 +28,8 @@ enum TodayBudget {
             spentToday: isCurrent ? MonthSummarizer.dayTotal(all, onDayOf: now, primary: primary) : 0,
             fixedSpent: fixedSpent,
             fixedToday: isCurrent ? MonthSummarizer.dayTotal(fixed, onDayOf: now, primary: primary) : 0,
-            reserved: reserved, slices: WidgetSnapshot.slices(summary.categories), mode: mode)
+            reserved: reserved, slices: WidgetSnapshot.slices(summary.categories, color: colors.categoryIndex),
+            mode: mode)
     }
 
     static func pace(budget: Decimal?, rows: [Expense], originals: [Expense], plans: [FixedPlan],
