@@ -63,10 +63,7 @@ struct BudgetSheet: View {
                 } header: {
                     Text("Lo que no gastas un día").ticketCaption()
                 } footer: {
-                    Text(mode.suits)
-                        .font(.ticket(.detail))
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HintText(mode.suits)
                         .contentTransition(.opacity)
                         .accessibilityIdentifier("modo-te-conviene")
                 }
@@ -74,19 +71,18 @@ struct BudgetSheet: View {
 
                 if BudgetStore.amount(from: stored) != nil {
                     Section {
-                        Button("Quitar presupuesto", role: .destructive) {
+                        DestructiveRowButton("Quitar presupuesto", identifier: "quitar-presupuesto") {
                             stored = ""
                             dismiss()
                         }
-                        .font(.ticket(.detail))
-                        .tracking(Theme.Tracking.action)
-                        .textCase(.uppercase)
-                        .accessibilityIdentifier("quitar-presupuesto")
                     }
                     .listRowBackground(Theme.surface)
                 }
             }
             .ticketForm()
+            // Like the other sheets: moving the form puts the keyboard away, so «Quitar
+            // presupuesto» is never left under the save bar.
+            .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle("Tu presupuesto")
             .toolbar {

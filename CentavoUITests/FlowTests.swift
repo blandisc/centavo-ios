@@ -347,7 +347,7 @@ final class FlowTests: XCTestCase {
     func testTarjetasYCategoriasPropias() {
         let app = launch(demo: true)
         app.buttons["Más"].tap()
-        require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
+        require(app.buttons["Pagos y categorías"], "No está en «Más»").tap()
         // The cards that came with payments show up without setting them up.
         require(app.buttons["fuente-BBVA"], "No aparecen las tarjetas de los pagos")
 
@@ -423,9 +423,9 @@ final class FlowTests: XCTestCase {
         for _ in 0..<3 where !isClear(cash, app) { scrollForm(app) }
         XCTAssertEqual(app.keyboards.count, 0, "Al bajar no se cerró el teclado")
         require(cash, "No ofrece efectivo sin configurar nada")
-        XCTAssertTrue(app.buttons["tarjeta-Agregar tarjeta"].exists, "El botón no dice qué agrega")
-        XCTAssertTrue(app.staticTexts["¿Con qué pagaste? (opcional)"].exists
-                      || app.staticTexts["¿CON QUÉ PAGASTE? (OPCIONAL)"].exists, "Falta el título de la sección")
+        XCTAssertEqual(app.buttons["nueva-forma-de-pago"].label, "Nueva forma de pago", "El botón no dice qué agrega")
+        XCTAssertTrue(app.staticTexts["Forma de pago · opcional"].exists
+                      || app.staticTexts["FORMA DE PAGO · OPCIONAL"].exists, "Falta el título de la sección")
         snap("flujo-metodo-de-pago-sin-tarjetas")
         cash.tap()
         XCTAssertTrue(cash.isSelected, "No se eligió el efectivo")
@@ -604,7 +604,7 @@ final class FlowTests: XCTestCase {
     func testOcultarUnaCategoriaLaQuitaAlAnotar() {
         let app = launch()
         app.buttons["Más"].tap()
-        require(app.buttons["Tarjetas y categorías"], "No está en «Más»").tap()
+        require(app.buttons["Pagos y categorías"], "No está en «Más»").tap()
         // A tile per category (2026-10-29); its menu hides it.
         let cafe = app.buttons["mostrar-Café"]
         for _ in 0..<4 where !cafe.isHittable { app.swipeUp() }
@@ -650,9 +650,13 @@ final class FlowTests: XCTestCase {
         // «Quitar presupuesto» goes under the «Hoy puedes gastar» choice: scroll the sheet to it.
         let remove = app.buttons["quitar-presupuesto"]
         require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
-        for _ in 0..<4 where !remove.isHittable {
+        // With the keyboard up it sits under «Guardar» and still reads as hittable: scroll once,
+        // like a person would, which puts the keyboard away (`scrollDismissesKeyboard`).
+        app.swipeUp()
+        for _ in 0..<3 where !remove.isHittable {
             app.swipeUp()
         }
+        XCTAssertEqual(app.keyboards.count, 0, "Al deslizar no se escondió el teclado")
         require(remove, "No ofrece quitar el presupuesto").tap()
         require(app.buttons["fijar-presupuesto"], "No quitó el presupuesto")
     }

@@ -71,6 +71,9 @@ struct ExpenseListView: View {
     @AppStorage(WalletWatch.key) private var ignoresWallet = false
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHiddenCategories = ""
+    @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
+    @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
     /// What of the screen's entrance has already played (`Entrance`).
     @State private var entrance = Entrance()
     /// The list's width, measured. Each line takes it from here and not from
@@ -108,7 +111,9 @@ struct ExpenseListView: View {
                 settings: HomeSettings(budget: storedBudget, plans: storedPlans, currency: primaryCurrency,
                                        mode: storedMode, whereItGoesStyle: whereItGoesStyle,
                                        ignoresWallet: ignoresWallet),
-                catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories),
+                catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories,
+                                       sources: storedSources, categoryColors: storedCategoryColors,
+                                       sourceColors: storedSourceColors),
                 lastCapture: lastCapture, unread: unreadNotice(after: lastCapture),
                 selectedDay: selectedDay, selectedCategory: selectedCategory,
                 entrance: entrance, listWidth: listWidth, actions: actions
@@ -136,10 +141,12 @@ struct ExpenseListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Al día")
-                        .font(.ticket(.footnoteStrong))
-                        .tracking(Theme.Tracking.title)
-                        .textCase(.uppercase)
+                    // The app's signature (2026-10-29): lowercase, bigger than a sheet's title,
+                    // with a brass full stop. «Al día. Punto.»
+                    Text("al día\(Text(".").foregroundStyle(Theme.brass))")
+                        .font(.ticket(.subheading))
+                        .foregroundStyle(Theme.ink)
+                        .accessibilityLabel("Al día")
                         .accessibilityAddTraits(.isHeader)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -147,7 +154,7 @@ struct ExpenseListView: View {
                         Section {
                             Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
                             Button("Gastos fijos", systemImage: "repeat") { showingFixed = true }
-                            Button("Tarjetas y categorías", systemImage: "creditcard") { showingCatalogs = true }
+                            Button("Pagos y categorías", systemImage: "creditcard") { showingCatalogs = true }
                         }
                         Section {
                             Button("Configurar atajo", systemImage: "wallet.pass") { showingSetup = true }
@@ -430,7 +437,10 @@ private struct HomeContent: View, Equatable {
                     month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
-                    equalHeights: settings.whereItGoesStyle != WhereItGoesStyle.hidden.rawValue,
+                    // Both pages the same height only when «En qué se va» has something to show:
+                    // empty, it left a hole the size of the calendar.
+                    equalHeights: settings.whereItGoesStyle != WhereItGoesStyle.hidden.rawValue
+                        && !month.shares.isEmpty,
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
                     entrance: entrance, model: model, actions: actions
@@ -639,9 +649,7 @@ private struct CurrencySuggestionRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
-            Text("Casi todos tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
-                .font(.ticket(.detail))
-                .foregroundStyle(Theme.muted)
+            NoteText("Casi todos tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: Theme.Space.s)
             Button("Sumar en \(CurrencyPreference.spoken(code))", action: apply)
@@ -657,7 +665,7 @@ private struct CurrencySuggestionRow: View {
     }
 }
 
-/// «Tarjetas y categorías», and pushing what changes there to iCloud like the budget.
+/// «Pagos y categorías», and pushing what changes there to iCloud like the budget.
 private struct CatalogsSheet: ViewModifier {
     @Binding var isPresented: Bool
     @AppStorage(UserCatalog.sourcesKey) private var sources = ""
@@ -1023,11 +1031,8 @@ private struct HeroTotal: View {
                 Text(isOverToday ? "Hoy te pasaste" : "Hoy puedes gastar")
                     // Read with the figure, as one sentence.
                     .accessibilityHidden(true)
-                    .font(.ticket(.captionStrong))
-                    .tracking(Theme.Tracking.caption)
-                    .textCase(.uppercase)
                     // Grey like every other caption, so the brass figure under it leads.
-                    .foregroundStyle(Theme.muted)
+                    .ticketCaption(strong: true)
                 // Counts up from zero when the screen opens, and rolls to the new figure after
                 // every payment.
                 Text(countedText)
@@ -1057,10 +1062,7 @@ private struct HeroTotal: View {
             } else if let overage {
                 // The month went past its budget: the figure that matters now is by how much.
                 Text("Te pasaste del presupuesto")
-                    .font(.ticket(.captionStrong))
-                    .tracking(Theme.Tracking.caption)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.muted)
+                    .ticketCaption(strong: true)
                 Text(wholeText(overage))
                     .accessibilityIdentifier("te-pasaste")
                     .font(.ticket(.hero))
@@ -1073,7 +1075,7 @@ private struct HeroTotal: View {
                     .contentTransition(.numericText())
                     .animation(reduceMotion ? nil : Theme.Motion.quick, value: overage)
             } else {
-                Text(verbatim: caption).ticketCaption()
+                Text(verbatim: caption).ticketCaption(strong: true)
                 Text(totalText)
                     .accessibilityIdentifier("total-mes")
                     .font(.ticket(.hero))
@@ -1123,20 +1125,22 @@ private struct EmptyTicket: View {
             .ticketProminent()
             .accessibilityIdentifier("vacio-anotar")
             .padding(.top, Theme.Space.xs)
-            HStack(spacing: Theme.Space.s) {
-                if !hasBudget {
-                    Button("Fijar presupuesto", action: onBudget)
-                        .accessibilityIdentifier("vacio-presupuesto")
-                }
-                Button("Conectar Wallet", action: onSetup)
-                    .accessibilityIdentifier("vacio-wallet")
+            // Side by side when they fit; one under the other on a narrow phone or large text.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.s) { emptyChips }
+                VStack(alignment: .leading, spacing: Theme.Space.s) { emptyChips }
             }
-            .buttonStyle(.bordered)
-            .font(.ticket(.footnoteStrong))
         }
         .padding(Theme.Space.xlx)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ticketOutline(.emphasis)
+    }
+
+    @ViewBuilder private var emptyChips: some View {
+        if !hasBudget {
+            TicketChip("Fijar presupuesto", identifier: "vacio-presupuesto", action: onBudget)
+        }
+        TicketChip("Conectar Wallet", identifier: "vacio-wallet", action: onSetup)
     }
 }
 
@@ -1148,58 +1152,44 @@ private struct LedgerRow: View {
     /// The dashed line on top; a day's first row has the divider there instead.
     var perforated = true
 
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = Theme.Size.rowTile
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = Theme.Size.rowTileSymbol
-
     private var isRefund: Bool { expense.amount < 0 }
     /// Grey and struck through, never brass: brass already means money that came back.
     private var isUncounted: Bool { expense.isUncounted }
 
-    /// The category's icon on a small tile, the same icons as «En qué se va».
-    private var categoryTile: some View {
+    /// The category's icon on a small tile, the same icons as «En qué se va»: in the
+    /// category's own color, grey when it has none or does not count.
+    private var categoryTile: CategoryIconTile {
         let category = expense.category.flatMap { $0.isEmpty ? nil : $0 }
-        return Image(systemName: category.map(catalog.icon(for:)) ?? "questionmark")
-            .resizable()
-            .scaledToFit()
-            .fontWeight(.medium)
-            .foregroundStyle(category == nil || isUncounted ? Theme.muted : Theme.brass)
-            .frame(width: iconSize, height: iconSize)
-            .frame(width: tileSize, height: tileSize)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-            .accessibilityHidden(true)
+        return CategoryIconTile(icon: category.map(catalog.icon(for:)) ?? "questionmark",
+                                color: category.flatMap { isUncounted ? nil : catalog.colors.category($0) })
     }
 
     /// «No cuenta en el presupuesto · Me lo reembolsan» goes first, so the line says it and not only the strike.
     /// VoiceOver hears «no cuenta para el presupuesto» with the amount instead.
-    private func meta(spoken: Bool = false) -> String? {
+    private func meta(spoken: Bool = false, withCard: Bool = true) -> String? {
         let parts = [isUncounted && !spoken ? "No cuenta en el presupuesto" : nil, isUncounted ? expense.reason?.title : nil,
                      isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
-                     expense.category, expense.card]
+                     expense.category, withCard ? expense.card : nil]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        // A no-break space before the dot: a wrapped line never starts with «·».
+        return parts.isEmpty ? nil : parts.joined(separator: "\u{00A0}· ")
     }
 
-    private var merchantText: some View {
-        // Up to three lines; the full name is in the expense sheet.
-        Text(expense.shownName)
-            .lineLimit(3)
-            .font(.ticket(.bodyMedium))
-            .tracking(Theme.Tracking.name)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.ink)
-            .multilineTextAlignment(.leading)
+    private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
+
+    /// The line under the name, the card last with its icon in the card's own color.
+    private var metaLine: Text? {
+        guard let card else { return meta().map { Text($0) } }
+        let mark = Text(Image(systemName: catalog.sourceIcon(for: card)))
+            .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card))
+        guard let rest = meta(withCard: false) else { return Text("\(mark) \(card)") }
+        return Text("\(rest)\u{00A0}· \(mark) \(card)")
     }
 
     @ViewBuilder private var metaText: some View {
-        if let line = meta() {
-            Text(line)
-                .font(.ticket(.hint))
-                .tracking(Theme.Tracking.detail)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.leading)
+        if let line = metaLine {
+            ExpenseMetaText(line)
                 .accessibilityLabel(meta(spoken: true) ?? "")
         }
     }
@@ -1216,33 +1206,12 @@ private struct LedgerRow: View {
     }
 
     var body: some View {
-        Group {
-            if typeSize.isAccessibilitySize {
-                // Side by side there is no room: stack it so nothing breaks mid-word.
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    merchantText
-                    metaText
-                    amountText
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                HStack(alignment: .center, spacing: Theme.Space.m) {
-                    categoryTile
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
-                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-                            merchantText
-                            metaText
-                        }
-                        Spacer(minLength: Theme.Space.s)
-                        amountText
-                    }
-                }
-            }
+        ExpenseRowLayout(name: expense.shownName, tile: categoryTile) {
+            metaText
+        } amount: {
+            amountText
         }
-        .padding(.vertical, Theme.Space.s)
-        .frame(minHeight: Theme.Size.tallRow)
         .overlay(alignment: .top) { if perforated { Perforation() } }
-        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }
@@ -1301,12 +1270,8 @@ private struct UndoBar: View {
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
             Spacer(minLength: Theme.Space.s)
-            Button("Deshacer", action: undo)
-                .font(.ticket(.label))
-                .textCase(.uppercase)
-                .tracking(Theme.Tracking.label)
-                .foregroundStyle(Theme.brass)
-                .frame(minHeight: Theme.Size.tapTarget)
+            Button(action: undo) { LinkActionLabel("Deshacer", fillsWidth: false) }
+                .buttonStyle(.plain)
                 .accessibilityIdentifier("deshacer-borrado")
         }
         .padding(.horizontal, Theme.Space.l)
@@ -1346,14 +1311,10 @@ private struct SearchHeaderRow: View {
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                 .accessibilityIdentifier("resultados-busqueda")
             if count == 0 {
-                Text("Prueba con un comercio, un mes o un monto:")
-                    .font(.ticket(.detail))
-                    .foregroundStyle(Theme.muted)
+                NoteText("Prueba con un comercio, un mes o un monto:")
                 HStack(spacing: Theme.Space.s) {
                     ForEach(examples, id: \.self) { example in
-                        Button(example) { tryExample(example) }
-                            .buttonStyle(.bordered)
-                            .font(.ticket(.detail))
+                        TicketChip(example) { tryExample(example) }
                     }
                 }
             }

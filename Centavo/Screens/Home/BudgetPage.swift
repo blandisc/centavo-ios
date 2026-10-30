@@ -83,11 +83,7 @@ struct BudgetPage: View {
     /// «Nota · Comida va 40 % arriba de lo normal…», the last line of the ticket.
     private func noteLine(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("Nota")
-                .font(.ticket(.micro))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
+            Text("Nota").ticketKey(Theme.brass)
             Text(text)
                 .font(.ticket(.detail))
                 .foregroundStyle(Theme.ink)
@@ -111,7 +107,7 @@ struct BudgetPage: View {
             VStack(spacing: Theme.Space.xs) {
                 Text("Fijar presupuesto")
                     .font(.ticket(.footnoteStrong))
-                    .tracking(Theme.Tracking.caption)
+                    .tracking(Theme.Tracking.action)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
                 Text("Para ver cuánto te queda")
@@ -170,11 +166,7 @@ struct BudgetPage: View {
     private func remainingBlock(_ label: String, _ amount: String,
                                 alignment: HorizontalAlignment = .trailing) -> some View {
         VStack(alignment: alignment, spacing: Theme.Space.xxs) {
-            Text(label)
-                .font(.ticket(.micro))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
+            Text(label).ticketKey()
             Text(amount)
                 .contentTransition(.numericText())
                 .font(.ticket(.figure))

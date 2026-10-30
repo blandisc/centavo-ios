@@ -43,6 +43,8 @@ private struct SwipeToDelete: ViewModifier {
                             Image(systemName: "trash")
                             Text("Borrar")
                                 .font(.ticket(.captionStrong))
+                                .tracking(Theme.Tracking.action)
+                                .textCase(.uppercase)
                         }
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -43,7 +43,8 @@ enum BudgetSync {
                        UserCatalog.sourcesKey, UserCatalog.defaultSourceKey, FixedPlan.key,
                        UserCatalog.hiddenCategoriesKey, UserCatalog.categoryRulesKey,
                        UserCatalog.deletedCategoriesKey, AllowanceMode.key,
-                       UserCatalog.merchantRenamesKey]
+                       UserCatalog.merchantRenamesKey, UserCatalog.categoryColorsKey,
+                       UserCatalog.sourceColorsKey]
 
     /// At launch: take what iCloud has, or hand it what this phone already had.
     static func start() {

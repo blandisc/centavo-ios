@@ -53,7 +53,8 @@ extension View {
     /// A small choice tile (a category, a symbol): brass when chosen, paper with a hairline
     /// edge when not.
     func choiceTile(selected: Bool) -> some View {
-        background(selected ? Theme.brass : Theme.background,
+        // The same fill as `CategoryTile`, so every grid of choices looks alike.
+        background(selected ? Theme.brass : Theme.raised,
                    in: RoundedRectangle(cornerRadius: Theme.Radius.control))
             .overlay {
                 if !selected {

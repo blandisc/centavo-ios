@@ -107,6 +107,8 @@ extension Theme {
         static let pageDotCurrent: CGFloat = 18
         /// A legend dot next to a figure.
         static let legendDot: CGFloat = 8
+        /// Scaled. A color to pick in a card's or category's sheet (inside a 44 pt target).
+        static let colorSwatch: CGFloat = 28
         /// The short brass tick that starts a day in the list.
         static let dayTick = CGSize(width: 14, height: 3)
         /// The «today» mark across the month bar.
@@ -164,6 +166,8 @@ extension Theme {
         static let paceAhead: Double = 0.8
         /// 0.75: a secondary figure on a colored tile.
         static let onTileSecondary: Double = 0.75
+        /// 0.18: the tile behind a category's icon, in the category's own color.
+        static let tagFill: Double = 0.18
     }
 
     /// Letter spacing for `.tracking(_:)`. Uppercase labels open up; big figures close in.

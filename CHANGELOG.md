@@ -32,6 +32,10 @@
   - «Guardar» arriba.
 - **Categorías al anotar:** «Ver N más» abre sin reacomodar las que ya ves; las demás aparecen debajo, suaves.
 - **Guía flotante:** ahora es un video que arma el teléfono, para que la ventanita sí flote sobre Atajos; la miniatura ya no se ve negra y el bloque de abajo tiene más aire.
+- **Todo se ve igual en toda la app:** un solo botón de borrar, una sola pastilla de sugerencia (adiós a los botones grises), el mismo mosaico de categoría y forma de pago en todos lados, y los gastos fijos con la misma fila que la lista, con su categoría y su color.
+- **«Forma de pago» en vez de «tarjeta»**, porque el efectivo también cuenta. «Tarjetas y categorías» ahora es «Pagos y categorías».
+- **«al día.» arriba:** el nombre de la pantalla principal ahora es una firma en minúsculas con un punto en latón.
+- **Cada categoría y cada forma de pago tiene su color**, el mismo en la lista, en «En qué se va», en la hoja de gasto y en el widget. Se cambia en «Tarjetas y categorías» (menú «Color» o al editar).
 - **«Para cerrar el mes» se pliega en su lugar:** el mismo título abierto y cerrado, una línea de resumen al cerrarlo y una flecha que gira. Cada camino dice a la derecha con cuánto de más cierras.
 - **Tarjetas y categorías en mosaicos:** las tarjetas que llegan en tus pagos aparecen solas («De tus pagos»), y cada tarjeta o categoría es un mosaico con un menú corto: usar por defecto, elegir ícono, ocultar al anotar, editar o borrar.
 - **Gastos fijos se explica:** arriba dice para qué sirve, el mes se ve en una barra (cobrado y por venir) y hay sugerencias de un toque (Renta, Luz, Internet…).

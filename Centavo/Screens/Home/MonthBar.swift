@@ -331,7 +331,7 @@ struct MonthBar: View {
             sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
             if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine("Presupuesto", wholeMoney(sum.budget))
                 sumLine("− Llevas antes de hoy", wholeMoney(sum.spentBeforeToday))
                 if pace.reserved > 0 {
@@ -343,10 +343,10 @@ struct MonthBar: View {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
                             wholeMoney(sum.variableToday.magnitude))
                 }
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
             } else if days > 0 {
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 if pace.fixedMonth > 0 {
                     sumLine("Presupuesto", wholeMoney(sum.budget))
                     sumLine("− Fijos del mes", wholeMoney(pace.fixedMonth))
@@ -361,13 +361,13 @@ struct MonthBar: View {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
                             wholeMoney(sum.variableToday.magnitude))
                 }
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",
                         wholeMoney(pace.dailyAllowance.magnitude), strong: true)
             }
             if outside != 0 {
                 // Not part of the sum: what was spent but doesn't count, said apart.
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine("Fuera del presupuesto", wholeMoney(outside))
                     .accessibilityIdentifier("fuera-del-presupuesto")
             }

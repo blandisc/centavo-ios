@@ -16,6 +16,8 @@ private struct SaveBar: View {
                 .foregroundStyle(enabled ? Theme.ink : Theme.muted)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // On the line of the sections' text (card 16 + row 16).
+                .padding(.leading, Theme.Space.l)
                 .accessibilityIdentifier("resumen-guardar")
             Button(action: action) {
                 Text("Guardar")
@@ -27,7 +29,8 @@ private struct SaveBar: View {
             .disabled(!enabled)
             .accessibilityIdentifier(identifier)
         }
-        .padding(.horizontal, Theme.Space.screen)
+        // 16 on each side: «Guardar» mirrors «Cancelar» at the top.
+        .padding(.horizontal, Theme.Space.l)
         .padding(.vertical, Theme.Space.sm)
     }
 }

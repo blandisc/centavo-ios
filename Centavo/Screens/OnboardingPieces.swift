@@ -95,7 +95,7 @@ struct WelcomeDemo: View {
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
             Spacer(minLength: Theme.Space.s)
-            Text("−" + money(payment.amount))
+            Text(money(payment.amount))
                 .font(.ticket(.footnote))
                 .foregroundStyle(Theme.muted)
                 .monospacedDigit()

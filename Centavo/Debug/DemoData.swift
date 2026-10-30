@@ -31,7 +31,8 @@ enum DemoData {
         UserDefaults.standard.removeObject(forKey: "onboarded")
         for key in [UserCatalog.categoriesKey, UserCatalog.sourcesKey, UserCatalog.defaultSourceKey,
                     UserCatalog.hiddenCategoriesKey, UserCatalog.categoryRulesKey,
-                    UserCatalog.deletedCategoriesKey, UserCatalog.merchantRenamesKey] {
+                    UserCatalog.deletedCategoriesKey, UserCatalog.merchantRenamesKey,
+                    UserCatalog.categoryColorsKey, UserCatalog.sourceColorsKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         let container = try ModelContainer(

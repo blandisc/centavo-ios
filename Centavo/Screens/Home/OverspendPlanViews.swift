@@ -141,10 +141,7 @@ struct OverspendSheet: View {
                 .padding(Theme.Space.l)
                 .ticketPanel()
             }
-            Text("El 1 de \(nextMonth) empiezas de cero: lo de más no pasa al mes siguiente.")
-                .font(.ticket(.detail))
-                .foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
+            NoteText("El 1 de \(nextMonth) empiezas de cero: lo de más no pasa al mes siguiente.")
         }
         .padding(.horizontal, Theme.Space.screen)
         .padding(.top, Theme.Space.xxl)

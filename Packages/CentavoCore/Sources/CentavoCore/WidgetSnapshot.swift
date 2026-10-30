@@ -13,11 +13,15 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         public var name: String?
         public var amount: Decimal
         public var isRest: Bool
+        /// The category's own color (`ColorTags`). Optional so a snapshot written before it
+        /// existed still reads; without it the widget colors by place.
+        public var color: Int?
 
-        public init(name: String?, amount: Decimal, isRest: Bool = false) {
+        public init(name: String?, amount: Decimal, isRest: Bool = false, color: Int? = nil) {
             self.name = name
             self.amount = amount
             self.isRest = isRest
+            self.color = color
         }
     }
 
@@ -99,9 +103,12 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
     }
 
     /// The lines for «En qué se va»: the three biggest categories and the rest as «Otras».
-    public static func slices(_ categories: [CategoryTotal]) -> [Slice] {
+    /// `color` gives each category its own color.
+    public static func slices(_ categories: [CategoryTotal],
+                              color: (String) -> Int? = { _ in nil }) -> [Slice] {
         CategoryShare.top(categories, limit: 4).map {
-            Slice(name: $0.isRest ? nil : $0.category, amount: $0.amount, isRest: $0.isRest)
+            Slice(name: $0.isRest ? nil : $0.category, amount: $0.amount, isRest: $0.isRest,
+                  color: $0.isRest ? nil : $0.category.flatMap(color))
         }
     }
 }

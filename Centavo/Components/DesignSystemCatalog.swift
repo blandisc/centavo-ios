@@ -175,7 +175,7 @@ struct RecipeSheet: View {
                 Section {
                     IconRow("Efectivo", systemImage: "banknote")
                 } header: {
-                    Text("Cómo pagas").ticketCaption()
+                    Text("Formas de pago").ticketCaption()
                 }
                 .listRowBackground(Theme.surface)
             }
