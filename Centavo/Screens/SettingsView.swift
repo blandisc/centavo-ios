@@ -83,7 +83,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Tus datos").ticketCaption()
                 } footer: {
-                    HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos.")
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos.")
+                        // Which build this is, to tell whether the iPhone has the latest (2026-10-30).
+                        HintText(AppVersion.line)
+                            .accessibilityIdentifier("version")
+                    }
                 }
                 .listRowBackground(Theme.surface)
             }

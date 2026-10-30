@@ -20,6 +20,8 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **«Llevas $X de $Y · $Z/día» va pegado debajo del boleto** y el calendario queda solo a la derecha.
+- **Ajustes dice qué compilación tienes** («Al día 0.1.0 · compilación 312 · 59f8d9e»), para saber si es la última.
 - **Los widgets traen el boleto:** el mismo «cada día contra tu tope» de la pantalla principal, y en el mediano la línea «Llevas $X de $Y · $Z/día».
 - **Deslizar sobre el boleto lleva al calendario.** Un toque elige el día; para recorrer los días, deja el dedo un instante y desliza.
 - **El boleto:** la barra del mes y el código de barras se juntan en una celda por día que se llena con lo que gastaste; lo que te sobró va en el verde rayado de antes y los días en que te pasaste, en rojo. Al deslizar, el boleto cambia por el calendario, y «Llevas $X de $Y · $Z/día» se queda fijo arriba.

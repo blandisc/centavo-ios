@@ -586,3 +586,8 @@ Pedido del dueño: los widgets siguen los cambios del hero.
 - La app guarda para los widgets lo gastado cada día fuera de los fijos (`WidgetSnapshot.days`, opcional: una foto de antes sigue mostrando la barra vieja hasta que la app vuelva a escribir). En un mes nuevo el boleto arranca vacío.
 - Los de la pantalla bloqueada no cambian: el sistema los pinta en un solo tono.
 - **Segunda vuelta (mismo día):** seguía costando atinarle. Ahora el toque y el «sostener» del boleto nunca le quitan el deslizamiento al carrusel (fallan en cuanto el dedo viaja); mientras se recorren los días el carrusel se queda quieto. **Un deslizamiento de lado sobre la cifra o la línea «Llevas…» también cambia de página**, y el carrusel tiene más alto para deslizar arriba y abajo del boleto.
+
+## 2026-10-30 · La línea bajo el boleto y la versión a la vista
+Visto en el iPhone del dueño.
+- **«Llevas $X de $Y · $Z/día» y «Ver cuenta» van justo debajo del boleto**, en la página izquierda; a la derecha queda **solo el calendario**. Sustituye «la línea fija sobre el carrusel». La cifra queda a 8 pt del carrusel: había demasiado aire entre la cifra y la línea.
+- **Versión a la vista:** cada compilación lleva su número (los commits de la rama) y su commit (`Tools/stamp-build.sh`, al final del build de la app y del widget). Ajustes lo dice al pie: «Al día 0.1.0 · compilación 312 · 59f8d9e» («+» si se compiló con cambios sin guardar).
