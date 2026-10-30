@@ -24,16 +24,12 @@ struct BudgetPage: View {
     /// What of the screen's entrance has played (`Entrance`), handed to the month bar.
     var entrance = Entrance()
     let onSetBudget: () -> Void
-    /// This month past its budget: «Para cerrar el mes ›», right under the bar it follows.
-    var overspend: OverspendPlan?
     var currency = CurrencyPreference.fallback
     var now = Date.now
     /// Which half to draw. On the main screen the bar stays put over the carousel and only
     /// «En qué se va» swipes with the calendar (owner, 2026-10-29: «que lo que cambie sea la
     /// parte de abajo»); a budget with nothing spent yet draws it whole.
     var part = Part.all
-    /// What goes right under the bar, before «Para cerrar el mes»: the month's barcode.
-    var underBar: AnyView?
 
     enum Part {
         /// The bar (or the invitation to set a budget) and «Para cerrar el mes».
@@ -76,18 +72,9 @@ struct BudgetPage: View {
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             if part != .bottom {
                 if let pace {
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        ticket(pace)
-                        underBar
-                        if let overspend {
-                            OverspendRow(plan: overspend, currency: currency, now: now)
-                        }
-                    }
+                    ticket(pace)
                 } else {
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        invitation
-                        underBar
-                    }
+                    invitation
                 }
             }
             if part != .top {
@@ -203,16 +190,5 @@ struct BudgetPage: View {
                 .lineLimit(1)
                 .minimumScaleFactor(Theme.MinimumScale.figure)
         }
-    }
-}
-
-extension BudgetPage {
-    /// The top half with `underBar` under the bar (the month's barcode).
-    init<Under: View>(spent: MoneyTotal, pace: BudgetPace?, isCurrentMonth: Bool, outside: Decimal,
-                      entrance: Entrance, onSetBudget: @escaping () -> Void, overspend: OverspendPlan?,
-                      currency: String, now: Date, part: Part, @ViewBuilder underBar: () -> Under) {
-        self.init(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
-                  entrance: entrance, onSetBudget: onSetBudget, overspend: overspend, currency: currency,
-                  now: now, part: part, underBar: AnyView(underBar()))
     }
 }

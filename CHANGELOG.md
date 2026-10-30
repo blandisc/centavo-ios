@@ -20,6 +20,9 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **La barra del mes va por días**, como un boleto perforado, con la celda de hoy marcada.
+- **El folio va junto a la fecha** («JUE 29 DE OCT · N.º 042») y ya no está «Para cerrar el mes».
+- **El código de barras vive bajo el calendario**; «En qué se va» queda en Lista o Mosaico, y la nueva vista **Mínima** deja solo la cifra, la barra y tus gastos.
 - **La lista se lee de un vistazo:** el nombre del gasto arriba y en una línea, y debajo, más callados, la categoría y la forma de pago con su nombre corto en su color («Amex»). Cada gasto ocupa dos líneas.
 - **Bienvenida y guía, tras una segunda prueba con personas:**
   - la ventanita de la guía espera en cada cuadro donde hay que tocar algo; sigues con ▶︎;

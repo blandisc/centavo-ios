@@ -1,7 +1,8 @@
 import CentavoCore
 import SwiftUI
 
-/// The swipeable middle of the main screen: budget first, then the calendar.
+/// The swipeable middle of the main screen: «En qué se va» first, then the calendar with the
+/// month's barcode under it (owner, 2026-10-29). The bar stays above, out of the carousel.
 struct MonthCarousel: View {
     let calendarModel: MonthCalendar
     var selectedDay: Int?
@@ -24,8 +25,8 @@ struct MonthCarousel: View {
     var equalHeights = false
     let onSetBudget: () -> Void
     var currency = CurrencyPreference.fallback
-    /// This month past its budget: the plan's line goes under the bar.
-    var overspend: OverspendPlan?
+    /// Under the calendar, on its page: the month's barcode.
+    var calendarFooter: AnyView?
     var now = Date.now
     /// Whether the first page has anything (`BudgetPage.hasBottom`): without «En qué se va» or
     /// a note, the calendar shows alone, with no dots.
@@ -65,8 +66,17 @@ struct MonthCarousel: View {
         if hasBudgetPage {
             pages
         } else {
-            CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay, currency: currency)
+            calendarPage
                 .padding(.horizontal, Theme.Space.screen)
+        }
+    }
+
+    /// The calendar and, under it, the month's barcode: the same month by days, both filtering
+    /// the same list.
+    private var calendarPage: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay, currency: currency)
+            calendarFooter
         }
     }
 
@@ -77,15 +87,14 @@ struct MonthCarousel: View {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
                                shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
                                onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget,
-                               overspend: overspend, currency: currency, now: now, part: .bottom)
+                               currency: currency, now: now, part: .bottom)
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .frame(width: listWidth)
                         .id(0)
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
-                    CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay,
-                                 currency: currency)
+                    calendarPage
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }

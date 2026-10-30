@@ -19,9 +19,19 @@ import Testing
         #expect(code.days[4].height == 0)
     }
 
-    @Test func aFixedChargeAloneIsNotADayOverTheLimit() {
-        let code = MonthCode(days: [day(9_800, fixed: 9_800), day(50)], today: 2, limitPerDay: 100)
+    @Test func aDayWithAFixedChargeIsBrassEvenIfMoreWent() {
+        let code = MonthCode(days: [day(9_800, fixed: 9_800), day(10_000, fixed: 9_800), day(50)],
+                             today: 3, limitPerDay: 100)
         #expect(code.days[0].kind == .fixed)
+        #expect(code.days[1].kind == .fixed)
+    }
+
+    @Test func withNoMarginNoDayIsOverAndTheCodeSaysSo() {
+        // The fixed charges take the whole budget: the limit a day is 0.
+        let code = MonthCode(days: [day(900), day(40)], today: 2, limitPerDay: 0)
+        #expect(code.hasNoMargin)
+        #expect(code.limitPerDay == nil)
+        #expect(!code.days.contains { $0.kind == .over })
     }
 
     @Test func theFiguresUnderTheCode() {

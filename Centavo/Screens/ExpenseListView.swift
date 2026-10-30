@@ -443,6 +443,7 @@ private struct HomeContent: View, Equatable {
                     equalHeights: false,
                     hasBudgetPage: BudgetPage.hasBottom(shares: month.shares, note: note,
                                                         style: settings.whereItGoesStyle),
+                    isMinimal: settings.whereItGoesStyle == WhereItGoesStyle.hidden.rawValue,
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
                     entrance: entrance, model: model, actions: actions
@@ -479,6 +480,8 @@ private struct HomeHeader: View {
     let equalHeights: Bool
     /// Whether the carousel's first page has «En qué se va» or a note (`BudgetPage.hasBottom`).
     let hasBudgetPage: Bool
+    /// The minimal view («Mínima» in Ajustes): no carousel, calendar or barcode.
+    let isMinimal: Bool
     let showsCapture: Bool
     let health: CaptureHealth
     let unread: String?
@@ -506,18 +509,11 @@ private struct HomeHeader: View {
             } else if !(storeIsEmpty && pace == nil) {
                 // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
                 // ticket below asks for the first step instead.
-                if isCurrent {
-                    ReceiptDate(now: now)
-                        .ticketRow(bottom: Theme.Space.m)
-                }
+                // The ticket's head: the date, and the folio on the same line (owner, 2026-10-29).
+                ReceiptHead(date: isCurrent ? now : viewed, isCurrent: isCurrent, payments: month.code.payments)
+                    .ticketRow(bottom: Theme.Space.m)
                 HeroTotal(summary: summary, viewed: viewed, now: now, isCurrentMonth: isCurrent,
                           pace: pace, entrance: entrance)
-                    // The ticket's folio: how many payments the month has (owner, 2026-10-29), at
-                    // the right edge, on the caption's line.
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .overlay(alignment: .topTrailing) {
-                        if month.code.payments > 0 { Folio(count: month.code.payments) }
-                    }
                     // With a budget the verdict sits right under the figure, one step away.
                     .ticketRow(bottom: pace != nil && !storeIsEmpty ? Theme.Space.s : Theme.Space.xl)
 
@@ -537,40 +533,41 @@ private struct HomeHeader: View {
                             onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
-                // The bar and the month's barcode stay put; only the part under them swipes
-                // between «En qué se va» and the calendar (owner, 2026-10-29).
+                // The bar stays put; only the part under it swipes, between «En qué se va» and
+                // the calendar with the month's barcode (owner, 2026-10-29). The minimal view
+                // has none of it.
                 BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
                            outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
-                           overspend: isCurrent ? pace.flatMap { OverspendPlan(pace: $0) } : nil,
-                           currency: currency, now: now, part: .top) {
-                    MonthCodeView(code: month.code, selectedDay: selectedDay, onSelectDay: actions.selectDay,
-                                  wholeMoney: wholeMoney, month: viewed, entrance: entrance)
+                           currency: currency, now: now, part: .top)
+                    .ticketRow(bottom: isMinimal ? Theme.Space.xl : Theme.Space.l)
+                if !isMinimal {
+                    MonthCarousel(
+                        calendarModel: month.calendar,
+                        selectedDay: selectedDay,
+                        onSelectDay: actions.selectDay,
+                        spent: summary.primary,
+                        pace: pace,
+                        isCurrentMonth: isCurrent,
+                        outside: summary.outside,
+                        shares: month.shares,
+                        returned: month.returned,
+                        note: note,
+                        selectedCategory: selectedCategory,
+                        onSelectCategory: actions.selectCategory,
+                        entrance: entrance,
+                        equalHeights: equalHeights,
+                        onSetBudget: actions.setBudget,
+                        currency: currency,
+                        calendarFooter: AnyView(MonthCodeView(code: month.code, selectedDay: selectedDay,
+                                                              onSelectDay: actions.selectDay, wholeMoney: wholeMoney,
+                                                              month: viewed, entrance: entrance)),
+                        now: now,
+                        hasBudgetPage: hasBudgetPage
+                    )
+                    // Edge to edge: each page keeps its own margin, so a swipe shows a gap
+                    // between them instead of two pages touching.
+                    .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
                 }
-                .ticketRow(bottom: Theme.Space.l)
-                MonthCarousel(
-                    calendarModel: month.calendar,
-                    selectedDay: selectedDay,
-                    onSelectDay: actions.selectDay,
-                    spent: summary.primary,
-                    pace: pace,
-                    isCurrentMonth: isCurrent,
-                    outside: summary.outside,
-                    shares: month.shares,
-                    returned: month.returned,
-                    note: note,
-                    selectedCategory: selectedCategory,
-                    onSelectCategory: actions.selectCategory,
-                    entrance: entrance,
-                    equalHeights: equalHeights,
-                    onSetBudget: actions.setBudget,
-                    currency: currency,
-                    overspend: isCurrent ? pace.flatMap { OverspendPlan(pace: $0) } : nil,
-                    now: now,
-                    hasBudgetPage: hasBudgetPage
-                )
-                // Edge to edge: each page keeps its own margin, so a swipe shows a gap
-                // between them instead of two pages touching.
-                .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
 
                 // The Wallet line stays between the carousel and the list, not under «Hoy»:
                 // it is about the capture, not about today's expenses (owner, 2026-10-21).
@@ -965,35 +962,38 @@ private struct TicketRow: ViewModifier {
 
 // MARK: - Pieces
 
-/// The top of the ticket, this month: «JUE 29 OCT» over a perforation.
-private struct ReceiptDate: View {
-    let now: Date
+/// The ticket's head over a perforation: «JUE 29 DE OCT» this month («SEP 2026» for another),
+/// and at the other end «N.º 042», the month's payments, like the number printed on a ticket.
+private struct ReceiptHead: View {
+    let date: Date
+    let isCurrent: Bool
+    let payments: Int
 
-    var body: some View {
-        Text(now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
-            .locale(Locale(identifier: "es_MX"))).replacingOccurrences(of: ".", with: ""))
-            .font(.ticket(.microStrong))
-            .tracking(Theme.Tracking.label)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, Theme.Space.s)
-            .overlay(alignment: .bottom) { Perforation() }
+    private var title: String {
+        let style: Date.FormatStyle = isCurrent ? .dateTime.weekday(.abbreviated).day().month(.abbreviated)
+            : .dateTime.month(.abbreviated).year()
+        return date.formatted(style.locale(Locale(identifier: "es_MX"))).replacingOccurrences(of: ".", with: "")
     }
-}
-
-/// «N.º 058»: the month's payments, like the number printed on a ticket.
-private struct Folio: View {
-    let count: Int
 
     var body: some View {
-        Text("N.º \(Text(String(format: "%03d", count)).foregroundStyle(Theme.brass))")
-            .font(.ticket(.micro))
-            .tracking(Theme.Tracking.label)
-            .foregroundStyle(Theme.faint)
-            .monospacedDigit()
-            .accessibilityLabel("\(count) pagos este mes")
-            .accessibilityIdentifier("folio")
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            Text(title)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: Theme.Space.s)
+            if payments > 0 {
+                Text("N.º \(Text(String(format: "%03d", payments)).foregroundStyle(Theme.brass))")
+                    .monospacedDigit()
+                    .accessibilityLabel(payments == 1 ? "1 pago este mes" : "\(payments) pagos este mes")
+                    .accessibilityIdentifier("folio")
+            }
+        }
+        .font(.ticket(.microStrong))
+        .tracking(Theme.Tracking.label)
+        .textCase(.uppercase)
+        .foregroundStyle(Theme.ink)
+        .lineLimit(1)
+        .padding(.bottom, Theme.Space.s)
+        .overlay(alignment: .bottom) { Perforation() }
     }
 }
 

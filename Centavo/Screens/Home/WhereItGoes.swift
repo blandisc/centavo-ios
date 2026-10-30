@@ -1,22 +1,24 @@
 import CentavoCore
 import SwiftUI
 
-/// How «En qué se va» is drawn, chosen in «Más».
+/// The main screen's view, chosen in «Ajustes › Vista» (2026-10-29): «En qué se va» as a list or
+/// a mosaic, with the calendar and the month's barcode a swipe away; or the minimal one, with
+/// only the figure, the bar and the expenses.
 enum WhereItGoesStyle: String, CaseIterable, Identifiable {
-    /// One bar split by category, with a line per category under it.
+    /// «Lista»: one bar split by category, with a line per category under it.
     case bar
     /// One block per category, as big as what was spent there; tapping one filters the list.
     case mosaic
-    /// Not shown: the budget page is only the month's bar.
+    /// «Mínima»: no carousel, no calendar, no barcode. The raw value is the old «No mostrar».
     case hidden
 
     static let key = "whereItGoesStyle"
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .bar: "Barra"
+        case .bar: "Lista"
         case .mosaic: "Mosaico"
-        case .hidden: "No mostrar"
+        case .hidden: "Mínima"
         }
     }
 
@@ -24,7 +26,7 @@ enum WhereItGoesStyle: String, CaseIterable, Identifiable {
         switch self {
         case .bar: "chart.bar.doc.horizontal"
         case .mosaic: "square.grid.2x2"
-        case .hidden: "eye.slash"
+        case .hidden: "minus"
         }
     }
 }
