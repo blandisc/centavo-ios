@@ -84,11 +84,17 @@ struct Perforation: View {
             .accessibilityHidden(true)
     }
 
+    /// Starts and ends on a dash, centered, so the line is as far from both edges.
     private struct Line: Shape {
         func path(in rect: CGRect) -> Path {
+            let dash = Theme.Dash.perforation.first ?? 0
+            let period = Theme.Dash.perforation.reduce(0, +)
+            let drawn = period > 0 ? max(((rect.width + period - dash) / period).rounded(.down) * period - (period - dash), 0)
+                : rect.width
+            let start = rect.minX + (rect.width - drawn) / 2
             var path = Path()
-            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+            path.move(to: CGPoint(x: start, y: rect.midY))
+            path.addLine(to: CGPoint(x: start + drawn, y: rect.midY))
             return path
         }
     }

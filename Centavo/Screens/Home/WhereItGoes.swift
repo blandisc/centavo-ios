@@ -59,6 +59,9 @@ struct WhereItGoes: View {
                         Text(money(total))
                             .foregroundStyle(Theme.ink)
                             .monospacedDigit()
+                            // Letter spacing trails the last digit too: give it back, so the
+                            // figure ends on the bar's edge.
+                            .padding(.trailing, -Theme.Tracking.caption)
                             .lineLimit(1)
                             .minimumScaleFactor(Theme.MinimumScale.figure)
                     }
@@ -273,6 +276,8 @@ private struct ShareBarLine: View {
                     Spacer(minLength: Theme.Space.s)
                     amountText.layoutPriority(1)
                     percent.frame(minWidth: percentWidth, alignment: .trailing)
+                        // The same for the spacing after the «%».
+                        .padding(.trailing, -Theme.Tracking.detail)
                 }
             }
         }

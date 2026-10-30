@@ -437,7 +437,10 @@ private struct HomeContent: View, Equatable {
                     month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
-                    equalHeights: settings.whereItGoesStyle != WhereItGoesStyle.hidden.rawValue,
+                    // Both pages the same height only when «En qué se va» has something to show:
+                    // empty, it left a hole the size of the calendar.
+                    equalHeights: settings.whereItGoesStyle != WhereItGoesStyle.hidden.rawValue
+                        && !month.shares.isEmpty,
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
                     entrance: entrance, model: model, actions: actions
@@ -1175,7 +1178,8 @@ private struct LedgerRow: View {
                      expense.category, withCard ? expense.card : nil]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        // A no-break space before the dot: a wrapped line never starts with «·».
+        return parts.isEmpty ? nil : parts.joined(separator: "\u{00A0}· ")
     }
 
     private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
@@ -1186,7 +1190,7 @@ private struct LedgerRow: View {
         let mark = Text(Image(systemName: catalog.sourceIcon(for: card)))
             .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card))
         guard let rest = meta(withCard: false) else { return Text("\(mark) \(card)") }
-        return Text("\(rest) · \(mark) \(card)")
+        return Text("\(rest)\u{00A0}· \(mark) \(card)")
     }
 
     @ViewBuilder private var metaText: some View {

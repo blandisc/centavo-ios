@@ -24,15 +24,17 @@ extension Theme.Size {
     static let shareBar: CGFloat = 10
     /// The narrowest a category piece of the split bar may be (1 % still shows).
     static let minimumBarWidth: CGFloat = 3
-    /// Scaled. Width of a category's icon column under the bar.
-    static let shareIconColumn: CGFloat = 20
+    /// Scaled. Width of a category's icon column under the bar: the same as `Size.glyph`, so
+    /// the names start on the line of the Wallet row and the day headers.
+    static let shareIconColumn: CGFloat = 14
     /// Scaled. Least width of the share column under the bar.
     static let sharePercentColumn: CGFloat = 40
     /// Scaled. Least height of a category line under the bar.
-    static let shareRow: CGFloat = 27
+    static let shareRow: CGFloat = 29
     /// Scaled. Height of «En qué se va», the bar's and the mosaic's the same, so choosing one or the
-    /// other in «Más» moves nothing below it: the bar (10) and its gap (12) over five lines of 27.
-    static let shareChartHeight: CGFloat = 157
+    /// other in «Más» moves nothing below it: the bar (10) and its gap (12) over five lines of 29.
+    /// As tall as the calendar page, so the space over the page dots is the same on both.
+    static let shareChartHeight: CGFloat = 167
     /// The tallest the chart may grow with Dynamic Type.
     static let shareChartMaxHeight: CGFloat = 260
     /// The gap between mosaic blocks.

@@ -56,7 +56,9 @@ struct FixedExpensesView: View {
             List {
                 Section {
                     explainer
-                        .listRowInsets(EdgeInsets())
+                        // On the line of the section headers and the rows' text.
+                        .listRowInsets(EdgeInsets(top: Theme.Space.none, leading: Theme.Space.l,
+                                                  bottom: Theme.Space.none, trailing: Theme.Space.l))
                         .listRowBackground(Color.clear)
                 }
 
@@ -233,6 +235,8 @@ struct FixedExpensesView: View {
             }
         }
         .scrollIndicators(.hidden)
+        // The first chip on the headers' line; they still scroll to the edge.
+        .contentMargins(.horizontal, Theme.Space.l, for: .scrollContent)
     }
 
     private func summaryFigure(_ label: String, _ amount: String, brass: Bool = false) -> some View {

@@ -306,7 +306,9 @@ struct ExpenseEditorView: View {
                             .labelStyle(.iconOnly)
                             .font(.ticket(.footnoteStrong))
                             .foregroundStyle(Theme.brass)
-                            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
+                            // The arrow on the card's edge, mirroring «0.00»; the target stays 44.
+                            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget,
+                                   alignment: .trailing)
                             .contentShape(Rectangle())
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("siguiente-teclado")
