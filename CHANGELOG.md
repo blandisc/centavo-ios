@@ -20,6 +20,7 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **El boleto y el calendario, al mismo nivel:** «Cada día del mes» queda fijo arriba de los dos y ambos empiezan en el mismo renglón. Al deslizar, la página que sale se desvanece y la otra llega frenando suave.
 - **Deslizar al calendario funciona en toda la parte de arriba** (cifra, boleto, línea y Wallet), aunque el pulgar vaya un poco en diagonal.
 - **«Llevas $X de $Y · $Z/día» va pegado debajo del boleto** y el calendario queda solo a la derecha.
 - **Ajustes dice qué compilación tienes** («Al día 0.1.0 · compilación 312 · 59f8d9e»), para saber si es la última.

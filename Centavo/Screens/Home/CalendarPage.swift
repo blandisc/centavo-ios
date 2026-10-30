@@ -22,10 +22,6 @@ struct CalendarPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            // The budget page opens with the verdict, which belongs to the hero above it; this
-            // page opens with its own heading, a section apart from the figure.
-            Text("Cada día del mes").ticketCaption()
-                .padding(.top, Theme.Space.m)
             Grid(horizontalSpacing: Theme.Space.xxs, verticalSpacing: Theme.Space.xxs) {
                 GridRow {
                     ForEach(Array(model.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
