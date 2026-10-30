@@ -38,9 +38,7 @@ struct BudgetSheet: View {
                                 .foregroundStyle(Theme.brass)
                                 .accessibilityIdentifier("presupuesto-al-dia")
                         }
-                        Text("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency).")
-                            .font(.ticket(.detail))
-                            .foregroundStyle(Theme.muted)
+                        NoteText("Con esto Al día te muestra cuánto llevas gastado, cuánto te queda y hasta dónde deberías ir a estas alturas del mes. Solo cuenta gastos en \(currency).")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -69,19 +67,18 @@ struct BudgetSheet: View {
 
                 if BudgetStore.amount(from: stored) != nil {
                     Section {
-                        Button("Quitar presupuesto", role: .destructive) {
+                        DestructiveRowButton("Quitar presupuesto", identifier: "quitar-presupuesto") {
                             stored = ""
                             dismiss()
                         }
-                        .font(.ticket(.detail))
-                        .tracking(Theme.Tracking.action)
-                        .textCase(.uppercase)
-                        .accessibilityIdentifier("quitar-presupuesto")
                     }
                     .listRowBackground(Theme.surface)
                 }
             }
             .ticketForm()
+            // Like the other sheets: moving the form puts the keyboard away, so «Quitar
+            // presupuesto» is never left under the save bar.
+            .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle("Presupuesto")
             .saveBar(amount.map { formatMoney($0, isoCode: currency, label: currency) + " al mes" } ?? "Falta el monto",

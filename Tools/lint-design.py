@@ -68,6 +68,8 @@ RULES = [
      "color del sistema: usa un color de Theme (el modo oscuro es forzado)", True),
     ("hand-made-prominent", re.compile(r"\.buttonStyle\(\s*\.(borderedProminent|glassProminent)"),
      "botón prominente a mano: usa .ticketProminent()", False),
+    ("system-bordered", re.compile(r"\.buttonStyle\(\s*\.(bordered|glass)\s*\)"),
+     "botón gris del sistema: usa TicketChip (sugerencias) o SecondaryButton", False),
     ("color-scheme", re.compile(r"\.preferredColorScheme\("),
      "esquema de color a mano: la app ya fuerza el oscuro; en #Preview usa .ticketPreview()",
      False),

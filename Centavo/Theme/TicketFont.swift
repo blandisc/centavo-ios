@@ -155,10 +155,20 @@ extension Font {
 
 extension View {
     /// Small, spaced, uppercase label: "TOTAL MXN AL 12/10".
-    func ticketCaption() -> some View {
-        self.font(.ticket(.caption))
+    /// `strong`: the hero's caption over the big figure («HOY PUEDES GASTAR», «TOTAL MXN»).
+    func ticketCaption(strong: Bool = false) -> some View {
+        self.font(.ticket(strong ? .captionStrong : .caption))
             .tracking(Theme.Tracking.caption)
             .textCase(.uppercase)
             .foregroundStyle(Theme.muted)
+    }
+
+    /// The small key over a figure inside a ticket («LLEVAS», «NOTA», «POR VENIR»): one step
+    /// quieter than a section's caption, so the figure under it leads.
+    func ticketKey(_ color: Color = Theme.muted) -> some View {
+        self.font(.ticket(.micro))
+            .tracking(Theme.Tracking.label)
+            .textCase(.uppercase)
+            .foregroundStyle(color)
     }
 }

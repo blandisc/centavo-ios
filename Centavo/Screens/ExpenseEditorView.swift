@@ -112,7 +112,6 @@ struct ExpenseEditorView: View {
     }
     /// Hidden and deleted categories: never filled in on their own.
     private var notAutoAssigned: [String] { UserCatalog.decodeNames(storedHidden) + UserCatalog.deletedNames }
-    @ScaledMetric(relativeTo: .body) private var iconHeight: CGFloat = Theme.Size.categorySymbol
 
     /// Whether something was typed or changed since the sheet opened.
     private var hasChanges: Bool {
@@ -192,11 +191,8 @@ struct ExpenseEditorView: View {
 
                 if expense?.isRepeat == true, original != nil {
                     Section {
-                        Button("Dejar de repetir") { confirmingStop = true }
-                            .font(.ticket(.footnoteStrong))
-                            .tracking(Theme.Tracking.caption)
-                            .textCase(.uppercase)
-                            .foregroundStyle(Theme.brass)
+                        Button { confirmingStop = true } label: { LinkActionLabel("Dejar de repetir") }
+                            .buttonStyle(.borderless)
                             .accessibilityIdentifier("dejar-de-repetir")
                     } footer: {
                         HintText("Lo ya anotado se queda; el siguiente ya no llega.")
@@ -206,11 +202,9 @@ struct ExpenseEditorView: View {
 
                 if expense != nil {
                     Section {
-                        Button("Borrar gasto", role: .destructive) { confirmingDelete = expense }
-                            .font(.ticket(.footnoteStrong))
-                            .tracking(Theme.Tracking.caption)
-                            .textCase(.uppercase)
-                            .accessibilityIdentifier("borrar-gasto")
+                        DestructiveRowButton("Borrar gasto", identifier: "borrar-gasto") {
+                            confirmingDelete = expense
+                        }
                     } footer: {
                         walletOrigin
                     }
@@ -272,7 +266,7 @@ struct ExpenseEditorView: View {
                     pinnedCategories.append(saved.name)
                 }
             case .source:
-                LabeledIconSheet(title: "Nueva tarjeta", prompt: "BBVA, Nu, Efectivo…",
+                LabeledIconSheet(title: "Nueva forma de pago", prompt: "BBVA, Nu, Efectivo…",
                                  icons: UserCatalog.sourceIcons, taken: paymentSources.map(\.name),
                                  colorKind: .source,
                                  siblings: PaymentChoices.names(sources: paymentSources, known: knownCards,
@@ -312,7 +306,9 @@ struct ExpenseEditorView: View {
                             .labelStyle(.iconOnly)
                             .font(.ticket(.footnoteStrong))
                             .foregroundStyle(Theme.brass)
-                            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
+                            // The arrow on the card's edge, mirroring «0.00»; the target stays 44.
+                            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget,
+                                   alignment: .trailing)
                             .contentShape(Rectangle())
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("siguiente-teclado")
@@ -420,11 +416,11 @@ struct ExpenseEditorView: View {
         Section {
             sourceGrid
         } header: {
-            Text("¿Con qué pagaste? (opcional)").ticketCaption()
+            Text("Forma de pago · opcional").ticketCaption()
         } footer: {
             if paymentSources.isEmpty {
-                HintText("Agrega tus tarjetas una vez (BBVA, Nu…). La que marques como predeterminada "
-                     + "en «Más › Tarjetas y categorías» ya vendrá elegida.")
+                HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que marques como predeterminada "
+                     + "en «Más › Pagos y categorías» ya vendrá elegida.")
             }
         }
         .listRowBackground(Theme.surface)
@@ -561,19 +557,12 @@ struct ExpenseEditorView: View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Space.s) {
                 ForEach(merchantMatches, id: \.self) { name in
-                    Button(name) {
+                    TicketChip(name) {
                         merchant = name
                         // The merchant is done: the keyboard would only cover the categories.
                         merchantFocused = false
                     }
-                        .font(.ticket(.footnote))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, Theme.Space.ml)
-                        .frame(minHeight: Theme.Size.tapTarget)
-                        .background(Theme.background, in: Capsule())
-                        .overlay { Capsule().strokeBorder(Theme.hairline) }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Usa este comercio")
+                    .accessibilityHint("Usa este comercio")
                 }
             }
         }
@@ -601,7 +590,7 @@ struct ExpenseEditorView: View {
             }
             if !split.rest.isEmpty {
                 categoryChip(showsAllCategories ? "Ver menos" : "Ver todas",
-                             icon: showsAllCategories ? "chevron.up" : "ellipsis", selected: false,
+                             icon: showsAllCategories ? "chevron.up" : "ellipsis", selected: false, isAction: true,
                              identifier: "ver-todas-categorias") {
                     withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
                         showsAllCategories.toggle()
@@ -610,12 +599,15 @@ struct ExpenseEditorView: View {
                 .accessibilityHint(showsAllCategories ? "Muestra solo las más usadas"
                                    : "\(split.rest.count) categorías más")
             }
-            categoryChip("Nueva categoría", icon: "plus", selected: false) { creating = .category }
+            categoryChip("Nueva", icon: "plus", selected: false, isAction: true, identifier: "nueva-categoria") {
+                creating = .category
+            }
+            .accessibilityLabel("Nueva categoría")
         }
         .padding(.vertical, Theme.Space.xs)
     }
 
-    /// The cards and cash set up in «Tarjetas y categorías», plus any other a payment came
+    /// The cards and cash set up in «Pagos y categorías», plus any other a payment came
     /// with (Wallet names the card). The default one is already chosen on a new expense.
     private var sourceGrid: some View {
         let sources = paymentSources
@@ -628,34 +620,22 @@ struct ExpenseEditorView: View {
                     card = UserCatalog.same(card, name) ? "" : name
                 }
             }
-            categoryChip("Agregar tarjeta", icon: "plus", selected: false, kind: "tarjeta") { creating = .source }
+            categoryChip("Nueva", icon: "plus", selected: false, isAction: true, identifier: "nueva-forma-de-pago") {
+                creating = .source
+            }
+            .accessibilityLabel("Nueva forma de pago")
         }
         .padding(.vertical, Theme.Space.xs)
         .accessibilityIdentifier("tarjetas")
     }
 
-    /// `tint`: the icon's color, the category's or card's own; brass for the actions.
+    /// `tint`: the icon's color, the category's or card's own. `isAction` for «Ver todas»,
+    /// «Nueva categoría» and «Agregar».
     private func categoryChip(_ name: String, icon: String, selected: Bool, kind: String = "categoria",
-                              tint: Color = Theme.brass, identifier: String? = nil,
+                              tint: Color = Theme.brass, isAction: Bool = false, identifier: String? = nil,
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: Theme.Space.xxs) {
-                Image(systemName: icon)
-                    .font(Theme.Symbol.regular)
-                    // Every icon in the same box, so the names line up.
-                    .frame(height: iconHeight)
-                    .foregroundStyle(selected ? Theme.onBrass : tint)
-                    .accessibilityHidden(true)
-                Text(name)
-                    .font(.ticket(.caption))
-                    .lineLimit(1)
-                    .minimumScaleFactor(Theme.MinimumScale.text)
-                    .foregroundStyle(selected ? Theme.onBrass : Theme.ink)
-            }
-            .frame(maxWidth: .infinity, minHeight: Theme.Size.categoryTile)
-            .padding(.horizontal, Theme.Space.xxs)
-                .choiceTile(selected: selected)
-                .contentShape(Rectangle())
+            CategoryTile(name: name, icon: icon, color: tint, selected: selected, isAction: isAction)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -909,15 +889,12 @@ private struct PlaceMap: View {
                     .foregroundStyle(Theme.ink)
                     .accessibilityIdentifier("lugar")
             }
-            Button("Quitar ubicación", role: .destructive) {
+            DestructiveRowButton("Quitar ubicación") {
                 expense.latitude = nil
                 expense.longitude = nil
                 expense.placeName = nil
                 try? context.save()
             }
-            .font(.ticket(.detail))
-            .buttonStyle(.borderless)
-            .frame(minHeight: Theme.Size.tapTarget)
         }
         .padding(.vertical, Theme.Space.xs)
         .task { await nameThePlace() }

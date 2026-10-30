@@ -92,7 +92,7 @@ struct OverspendPanel: View {
     @ViewBuilder private var otherPaths: some View {
         if plan.daysAfterToday > 0 {
             VStack(spacing: Theme.Space.sm) {
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 // With fixed expenses eating the whole budget there was nothing a day:
                 // the same as stopping, so it is not said twice.
                 if plan.budgetRate.perDay > 0 {
@@ -109,13 +109,7 @@ struct OverspendPanel: View {
 
     private var adjustButton: some View {
         Button(action: onAdjust) {
-            Label("Ajustar presupuesto", systemImage: "slider.horizontal.3")
-                .font(.ticket(.footnoteStrong))
-                .tracking(Theme.Tracking.action)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
-                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
-                .contentShape(Rectangle())
+            LinkActionLabel("Ajustar presupuesto", systemImage: "slider.horizontal.3")
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("ajustar-presupuesto")

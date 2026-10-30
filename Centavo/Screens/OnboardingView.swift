@@ -245,19 +245,10 @@ struct OnboardingView: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: Theme.Space.s) {
                         ForEach(fixedSuggestions, id: \.self) { name in
-                            Button {
+                            TicketChip(name, selected: draftName == name) {
                                 withAnimation(Theme.Motion.quick) { draftName = name }
                                 focused = .amount
-                            } label: {
-                                Text(name)
-                                    .font(.ticket(.footnote))
-                                    .foregroundStyle(draftName == name ? Theme.onBrass : Theme.ink)
-                                    .padding(.horizontal, Theme.Space.m)
-                                    .frame(minHeight: Theme.Size.tapTarget)
-                                    .background(draftName == name ? Theme.brass : Theme.surface,
-                                                in: RoundedRectangle(cornerRadius: Theme.Radius.control))
                             }
-                            .buttonStyle(.plain)
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
@@ -288,13 +279,7 @@ struct OnboardingView: View {
                 .padding(Theme.Space.ml)
                 .selectableCard(selected: focused == .name || focused == .amount)
                 Button(action: addFixed) {
-                    Label("Agregar", systemImage: "plus")
-                        .font(.ticket(.footnoteStrong))
-                        .tracking(Theme.Tracking.action)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Theme.brass)
-                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
-                        .contentShape(Rectangle())
+                    LinkActionLabel("Agregar", systemImage: "plus")
                 }
                 .buttonStyle(.plain)
                 .disabled(draftValue == nil
@@ -415,11 +400,14 @@ struct OnboardingView: View {
     private func fixedRow(_ item: FixedDraft) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                // Written as in the month's list.
                 Text(item.name)
                     .font(.ticket(.bodyMedium))
+                    .tracking(Theme.Tracking.name)
+                    .textCase(.uppercase)
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(item.amount.formatted(currencyStyle(currency).precision(.fractionLength(0...2)))) · día \(item.day)")
+                Text("\(item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))) · día \(item.day)")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.muted)
             }
