@@ -20,16 +20,22 @@ struct SectionLabel: View {
     }
 }
 
-/// The quietest line: a hint under a field or in a section's footer. Wraps; never shrinks.
+/// The quietest line: a hint under a field, and every section's footer. Wraps; never shrinks.
+/// (`NoteText` is for a note inside the content, or a warning.)
 struct HintText: View {
-    let text: String
+    let text: Text
 
     init(_ text: String) {
+        self.text = Text(text)
+    }
+
+    /// For a footer with symbols in it: «★ ya viene elegida…».
+    init(_ text: Text) {
         self.text = text
     }
 
     var body: some View {
-        Text(text)
+        text
             .font(.ticket(.hint))
             .tracking(Theme.Tracking.detail)
             .foregroundStyle(Theme.faint)

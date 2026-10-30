@@ -77,10 +77,8 @@ struct WhereItGoes: View {
                     }
                 }
             }
-            .font(.ticket(.micro))
-            .tracking(Theme.Tracking.label)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.muted)
+            // The same section caption as «Cada día del mes», the page beside it.
+            .ticketCaption()
             .accessibilityElement(children: .combine)
             switch style {
             case .bar:

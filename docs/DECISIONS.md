@@ -461,3 +461,14 @@ Elegido por el dueño (propuestas C y 2 del lienzo de pulido).
   - Las categorías de la app traen su color; las ocho más usadas no comparten. Una nueva toma el color que menos se repite. El efectivo empieza en verde.
   - Se cambia en «Tarjetas y categorías»: «Color» en el menú de cada mosaico, o la fila de colores al crear o editar. Se guarda solo la posición en la paleta (`ColorTags`, sincronizado por iCloud como el resto).
   - Con más de ocho, algunos se repiten, y para quien no distingue rojo y verde algunos pares se parecen: por eso el nombre siempre va escrito al lado. «Otras» y lo que no tiene categoría siguen en gris.
+
+## 2026-10-29 · Un solo lenguaje: cada cosa se ve igual en toda la app
+Pedido del dueño tras la revisión de pantallas (seis ajustes y detalles chicos, en ese orden).
+- **Un solo «Borrar»** dentro de las hojas (`DestructiveRowButton`): rojo, mayúsculas espaciadas y centrado. Lo usan «Borrar gasto», «Borrar», «Quitar presupuesto» y «Quitar ubicación». La confirmación conserva su botón prominente.
+- **Una sola acción en latón** (`LinkActionLabel`), igual en «Ajustar presupuesto», «Agregar gasto fijo», «Agregar» de la bienvenida, «Dejar de repetir» y «Deshacer».
+- **Una sola pastilla de sugerencia** (`TicketChip`): delineada y llena de latón al elegirla. Reemplaza las cuatro formas que había y los botones grises del sistema (pantalla vacía y ejemplos de búsqueda). El lint ya no deja usar `.buttonStyle(.bordered)`.
+- **Un solo mosaico de categoría y forma de pago** (`CategoryTile`), en la hoja de gasto y en «Pagos y categorías». Toda acción de agregar se llama «Nueva» y va punteada.
+- **«Forma de pago», no «tarjeta»:** el efectivo no es tarjeta. La pantalla se llama «Pagos y categorías» (el título largo no cabe en la barra). Las secciones se llaman «Formas de pago» y «Forma de pago · opcional», y sin elegir dice «Sin especificar».
+- **Títulos iguales:** cada bloque de la pantalla principal usa el mismo encabezado (`ticketCaption`); el de la cifra grande, siempre en seminegrita. Las llaves chicas sobre una cifra usan `ticketKey`.
+- **Una sola fila de gasto** (`ExpenseRowLayout`): los gastos fijos se ven como la lista, con su categoría y su color. La bienvenida y «¿Borrar este gasto?» escriben el nombre en mayúsculas, y los montos llevan siempre centavos.
+- **Detalles:** todo pie de sección es `HintText`; dentro de un ticket las divisiones son punteadas; las fechas siempre salen en español; la bienvenida ya no pone «−» a los pagos; la hoja del presupuesto se llama como en el menú («Presupuesto del mes»), y el título de «¿Borrar este gasto?» va en tinta, como el de las demás hojas.

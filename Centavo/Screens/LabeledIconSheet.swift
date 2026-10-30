@@ -113,16 +113,9 @@ struct LabeledIconSheet: View {
 
                 if initial != nil, let onDelete {
                     Section {
-                        Button(role: .destructive) {
+                        DestructiveRowButton("Borrar", identifier: "borrar-etiqueta") {
                             confirmingDelete = true
-                        } label: {
-                            Text("Borrar")
-                                .font(.ticket(.footnoteStrong))
-                                .tracking(Theme.Tracking.caption)
-                                .textCase(.uppercase)
-                                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
                         }
-                        .accessibilityIdentifier("borrar-etiqueta")
                         .confirmationDialog("¿Borrar «\(initial?.name ?? "")»?", isPresented: $confirmingDelete,
                                             titleVisibility: .visible) {
                             Button("Borrar", role: .destructive) {
@@ -134,7 +127,7 @@ struct LabeledIconSheet: View {
                             Text("Los gastos que ya la tienen no cambian.")
                         }
                     } footer: {
-                        NoteText("Los gastos que ya la tienen no cambian.")
+                        HintText("Los gastos que ya la tienen no cambian.")
                     }
                     .listRowBackground(Theme.surface)
                 }

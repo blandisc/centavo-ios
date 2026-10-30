@@ -2,7 +2,7 @@ import CentavoCore
 import SwiftData
 import SwiftUI
 
-/// «Tarjetas y categorías»: the ways someone pays (one of them the default for what they
+/// «Pagos y categorías»: the ways someone pays (one of them the default for what they
 /// write down by hand) and the categories of their own, each with its icon.
 struct CatalogSettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -106,8 +106,8 @@ struct CatalogSettingsView: View {
                                     confirmingRemoval = .source(source)
                                 }
                             } label: {
-                                CatalogTile(name: source.name, icon: source.icon, color: colors.source(source.name),
-                                            badge: isDefault ? "star.fill" : nil)
+                                CategoryTile(name: source.name, icon: source.icon, color: colors.source(source.name),
+                                            badge: isDefault ? "star.fill" : nil, twoLines: true)
                             }
                             .accessibilityLabel(isDefault ? "\(source.name), predeterminada" : source.name)
                             .accessibilityIdentifier("fuente-\(source.name)")
@@ -123,26 +123,24 @@ struct CatalogSettingsView: View {
                                 }
                                 ColorMenu(selection: color(card, .source))
                             } label: {
-                                CatalogTile(name: card, icon: Self.guessIcon(card), color: colors.source(card),
-                                            badge: "wave.3.right")
+                                CategoryTile(name: card, icon: Self.guessIcon(card), color: colors.source(card),
+                                            badge: "wave.3.right", twoLines: true)
                             }
                             .accessibilityLabel("\(card), llegó en tus pagos")
                             .accessibilityIdentifier("fuente-\(card)")
                         }
                         Button { editing = .source(nil) } label: {
-                            CatalogTile(name: "Agregar", icon: "plus", isAction: true)
+                            CategoryTile(name: "Nueva", icon: "plus", isAction: true, twoLines: true)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Agregar tarjeta o efectivo")
+                        .accessibilityLabel("Nueva forma de pago")
                         .accessibilityIdentifier("agregar-fuente")
                     }
                     .padding(.vertical, Theme.Space.xs)
                 } header: {
-                    Text("Cómo pagas").ticketCaption()
+                    Text("Formas de pago").ticketCaption()
                 } footer: {
-                    Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano. \(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono.")
-                        .font(.ticket(.detail))
-                        .foregroundStyle(Theme.muted)
+                    HintText(Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano. \(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono."))
                 }
                 .listRowBackground(Theme.surface)
 
@@ -163,15 +161,15 @@ struct CatalogSettingsView: View {
                                     }
                                 }
                             } label: {
-                                CatalogTile(name: item.name, icon: item.icon, color: colors.category(item.name),
+                                CategoryTile(name: item.name, icon: item.icon, color: colors.category(item.name),
                                             badge: shown.wrappedValue ? nil : "eye.slash",
-                                            dimmed: !shown.wrappedValue)
+                                            dimmed: !shown.wrappedValue, twoLines: true)
                             }
                             .accessibilityLabel(shown.wrappedValue ? item.name : "\(item.name), oculta")
                             .accessibilityIdentifier("mostrar-\(item.name)")
                         }
                         Button { editing = .category(nil) } label: {
-                            CatalogTile(name: "Nueva", icon: "plus", isAction: true)
+                            CategoryTile(name: "Nueva", icon: "plus", isAction: true, twoLines: true)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Nueva categoría")
@@ -181,13 +179,13 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Categorías").ticketCaption()
                 } footer: {
-                    NoteText("Toca una para ocultarla al anotar, o para cambiar las tuyas. Los gastos que ya la tienen no cambian.")
+                    HintText("Toca una para ocultarla al anotar, o para cambiar las tuyas. Los gastos que ya la tienen no cambian.")
                 }
                 .listRowBackground(Theme.surface)
             }
             .ticketForm()
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle("Tarjetas y categorías")
+            .ticketBarTitle("Pagos y categorías")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Listo") { dismiss() }
@@ -197,7 +195,7 @@ struct CatalogSettingsView: View {
             .sheet(item: $editing) { item in
                 switch item {
                 case .source(let source):
-                    LabeledIconSheet(title: source == nil ? "Nueva tarjeta" : "Editar tarjeta",
+                    LabeledIconSheet(title: source == nil ? "Nueva forma de pago" : "Editar forma de pago",
                                      prompt: "BBVA, Nu, Efectivo…", icons: UserCatalog.sourceIcons,
                                      taken: sources.map(\.name), initial: source,
                                      onDelete: source.map { item in { remove(item) } },
@@ -287,60 +285,5 @@ struct CatalogSettingsView: View {
         storedSources = UserCatalog.encode(list)
         UserCatalog.setColor(nil, for: source.name, key: UserCatalog.sourceColorsKey)
         if UserCatalog.same(defaultSource, source.name) { defaultSource = list.first?.name ?? "" }
-    }
-}
-
-/// One card or category on «Tarjetas y categorías»: its icon over its name, in a small
-/// square tile, compact enough that a dozen fit without scrolling. A badge in the corner
-/// marks the default card (★) or a hidden category; a hidden one is dimmed.
-private struct CatalogTile: View {
-    let name: String
-    let icon: String
-    /// The card's or category's own color; the «Agregar» tile stays brass.
-    var color: Color = Theme.brass
-    var badge: String?
-    var dimmed = false
-    var isAction = false
-
-    @ScaledMetric(relativeTo: .body) private var symbolBox = Theme.Size.categorySymbol
-    @ScaledMetric(relativeTo: .body) private var height = Theme.Size.catalogTileHeight
-
-    var body: some View {
-        VStack(spacing: Theme.Space.xs) {
-            Image(systemName: icon)
-                .font(Theme.Symbol.regular)
-                .foregroundStyle(color)
-                .frame(height: symbolBox)
-            // Two words may take two lines («American / Express»); one word stays on one and
-            // shrinks a little rather than break («Suscripcione/s»).
-            Text(name)
-                .font(.ticket(.detail))
-                .foregroundStyle(isAction ? Theme.brass : Theme.ink)
-                .multilineTextAlignment(.center)
-                .lineLimit(name.contains(" ") ? 2 : 1)
-                .minimumScaleFactor(Theme.MinimumScale.figure)
-        }
-        .padding(.horizontal, Theme.Space.xs)
-        // Every tile the same height, whatever its name: a grid of equal tickets.
-        .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
-        .background(isAction ? Color.clear : Theme.raised,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-        .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.control)
-                .strokeBorder(isAction ? Theme.brassLow : Theme.hairline,
-                              style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
-                                                 dash: isAction ? Theme.Dash.ticket : []))
-        }
-        .overlay(alignment: .topTrailing) {
-            if let badge {
-                Image(systemName: badge)
-                    .font(.ticket(.micro))
-                    .foregroundStyle(badge == "star.fill" ? Theme.brass : Theme.faint)
-                    .padding(Theme.Space.xs)
-                    .accessibilityHidden(true)
-            }
-        }
-        .opacity(dimmed ? Theme.Opacity.unselected : Theme.Opacity.visible)
-        .contentShape(Rectangle())
     }
 }

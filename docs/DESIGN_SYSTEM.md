@@ -43,7 +43,8 @@ Todos los valores son puntos al tamaño de letra predeterminado.
 | `Theme.dimmed` | Algo presente pero no actual (el otro puntito del carrusel) |
 | `Theme.danger` | Solo borrar |
 | `Theme.good` | «Vas bien» |
-| `Theme.categories[i]`, `Theme.categoryRest` | Las 4 categorías más grandes y «Otras» |
+| `Theme.categories[i]`, `Theme.categoryColorNames[i]` | La paleta de 8 colores fijos de categorías y formas de pago (`CatalogColors`, `ColorTags`); nunca se elige por lugar |
+| `Theme.categoryRest` | «Otras» y lo que no tiene categoría |
 | `Theme.Shortcuts.*` | **Solo** para los dibujos de la app Atajos en la guía |
 
 ### Tipografía (`TicketStyle`, en `Theme/TicketFont.swift`)
@@ -119,7 +120,7 @@ Símbolos SF: `.font(Theme.Symbol.regular)` o `.font(Theme.Symbol.large)`.
 | `stepEmblem` | 44 | **Base de `@ScaledMetric`**: el emblema de latón de cada paso (bienvenida y guía del atajo), del alto de un renglón de título, con `Theme.Space.m` de hueco |
 | `pageDot`, `pageDotCurrent`, `legendDot`, `dayTick`, `todayMarkWidth`, `mapPreview` | | Piezas de gráficas y de la lista |
 
-Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`, `Tokens+Onboarding.swift`.
+Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`, `Tokens+Onboarding.swift`.
 
 **Widgets** (`CentavoWidgets/`, también los revisa el lint): su caja la fija el sistema, así que tienen roles de letra propios (`.font(.widget(.caption))`, `WidgetTextStyle`) y sus medidas en `Theme/Tokens+Widgets.swift`. Los colores salen de `Ink`, que usa los de `Theme` a todo color y el tono único del sistema cuando iOS tiñe el widget o lo pone en la pantalla bloqueada.
 
@@ -142,16 +143,23 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swi
 |---|---|---|
 | `.ticketForm()` | Todo `Form`/`List` de pantalla u hoja | `Form { … }.ticketForm()` |
 | `.ticketBarTitle(_:)` | Título chico en mayúsculas de una hoja | `.ticketBarTitle("Nuevo gasto")` con `.navigationBarTitleDisplayMode(.inline)` |
-| `Text(…).ticketCaption()` | Encabezado de `Section` | `header: { Text("Tarjetas").ticketCaption() }` |
+| `Text(…).ticketCaption(strong:)` | Encabezado de `Section` y de cada bloque de la pantalla principal («En qué se va», «Cada día del mes»); `strong: true` solo sobre la cifra grande | `header: { Text("Formas de pago").ticketCaption() }` |
+| `Text(…).ticketKey(_:)` | Llave chica sobre una cifra dentro de un ticket («Llevas», «Nota») | `Text("Por venir").ticketKey()` |
 | `.saveBar(_:enabled:action:)` | «Guardar» de toda hoja que guarda (abajo, con resumen) | `.saveBar("$89 en Oxxo", enabled: ok, action: save)` |
 | `.ticketProminent(_:)` | **El único** estilo de botón prominente (Liquid Glass en iOS 26) | `Button { … } label: { PrimaryButtonLabel("Listo") }.ticketProminent()` |
 | `PrimaryButtonLabel` | Etiqueta de la acción principal a todo lo ancho | `PrimaryButtonLabel("Configurar ahora", systemImage: "wallet.pass")` |
 | `SecondaryButton` | La alternativa callada («Después») | `SecondaryButton("Después") { … }` |
+| `LinkActionLabel` | Acción callada en latón dentro de una pantalla («Ajustar presupuesto», «Agregar gasto fijo», «Deshacer») | `Button(action: a) { LinkActionLabel("Agregar", systemImage: "plus") }.buttonStyle(.plain)` |
+| `DestructiveRowButton` | **La única** forma de borrar o quitar dentro de una hoja; luego se confirma | `DestructiveRowButton("Borrar gasto", identifier: "borrar-gasto") { … }` |
+| `TicketChip` | Toda sugerencia de un toque (comercios, fijos, ejemplos de búsqueda); `selected` la llena de latón | `TicketChip("Renta", systemImage: "plus") { … }` |
+| `CategoryTile` | Categoría o forma de pago como mosaico (hoja de gasto y «Pagos y categorías») | `CategoryTile(name: "Comida", icon: "fork.knife", color: colors.category("Comida"))` |
+| `ExpenseRowLayout` + `CategoryIconTile` + `ExpenseMetaText` | **La** fila de un gasto, en cualquier lista | `ExpenseRowLayout(name: n, tile: CategoryIconTile(icon: i, color: c)) { ExpenseMetaText("Comida · BBVA") } amount: { … }` |
+| `ColorRow`, `ColorMenu` | Elegir el color de una categoría o forma de pago (hoja o menú de un mosaico) | `ColorRow(selection: $color)` |
 | `AmountInputField` | Escribir un monto (teclado decimal, miles automáticos) | `AmountInputField("Monto", text: $t, prompt: "0.00", identifier: "monto")` |
 | `TicketTextField` | Escribir texto de una línea | `TicketTextField("Comercio", text: $n, prompt: "Oxxo, Uber…")` |
-| `SectionLabel` | Etiqueta en mayúsculas dentro de una fila (toggle, stepper) | `Toggle(isOn: $x) { SectionLabel("Es una devolución") }` |
-| `HintText` | Pista bajo un campo o en el pie de sección | `footer: { HintText("Puedes cambiarlo después.") }` |
-| `NoteText` | Nota que explica (`muted`) o avisa (`color: Theme.danger`) | `NoteText("Ya existe.", color: Theme.danger)` |
+| `SectionLabel` | Etiqueta en mayúsculas dentro de una fila (toggle, stepper); `.detail` con interletrado `label` | `Toggle(isOn: $x) { SectionLabel("Es una devolución") }` |
+| `HintText` | **Todo** pie de sección y pista bajo un campo (también con símbolos: `HintText(Text("\\(Image(…)) …"))`) | `footer: { HintText("Puedes cambiarlo después.") }` |
+| `NoteText` | Nota dentro del contenido que explica (`muted`) o avisa (`color: Theme.danger`); nunca como pie de sección | `NoteText("Ya existe.", color: Theme.danger)` |
 | `IconRow` | Fila de formulario con ícono (columna escalable) | `IconRow("BBVA", systemImage: "creditcard")` |
 | `AdaptiveStack` | Fila que con letra de accesibilidad se vuelve columna | `AdaptiveStack { a; b }` |
 | `TicketOutline` / `.ticketOutline(_:)` | Ticket en blanco punteado (estado vacío, aviso) | `.ticketOutline(.emphasis)` |
@@ -161,7 +169,7 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+List.swi
 | `StepHeader` | Encabezado reutilizable de cada paso: «Paso X de N» + emblema junto al título | `StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")` |
 | `StepDots` | Avance de pasos por puntitos en la barra inferior; decorativo (la etiqueta «Paso X de N» lleva el progreso) | `StepDots(current: 2, of: 5)` |
 | `.choiceTile(selected:)` | Cuadro chico de elección (categoría, símbolo) | cuadrícula de íconos |
-| `Perforation()` | Línea punteada entre renglones del ticket | `.overlay(alignment: .top) { Perforation() }` |
+| `Perforation()` | Toda línea divisoria dentro de un ticket (renglones, la resta del presupuesto); nunca `Divider()` ahí | `.overlay(alignment: .top) { Perforation() }` |
 | `.confirmsDelete(of:…)` | Preguntar antes de borrar un gasto | lista y hoja de gasto |
 | `.ticketPreview()` | Envoltura de todo `#Preview` | `#Preview { MiVista().ticketPreview() }` |
 
@@ -234,6 +242,7 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 | `.font(.system(size: 15))`, `.font(.ticket(15))`, `.font(.body)` en texto | `.font(.ticket(.body))` |
 | `Color(red:…)`, `Color(hex:)`, `.foregroundStyle(.secondary)`, `Color.gray`, `.red` | `Theme.muted`, `Theme.danger`… |
 | `.buttonStyle(.borderedProminent)` | `.ticketProminent()` |
+| `.buttonStyle(.bordered)` (botón gris del sistema) | `TicketChip` o `SecondaryButton` |
 | `.opacity(0.4)`, `.tracking(1.2)`, `lineWidth: 1.5`, `dash: [5, 4]` | `Theme.Opacity.unselected`, `Theme.Tracking.label`, `Theme.Stroke.emphasis`, `Theme.Dash.ticket` |
 | `.minimumScaleFactor(0.5)` | Envolver/apilar; si no hay otra, `Theme.MinimumScale.text` |
 | `withAnimation(.spring(duration: 0.4))` | `withAnimation(Theme.Motion.animation(.resize, reduceMotion: reduceMotion))` |
