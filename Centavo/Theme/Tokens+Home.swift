@@ -94,3 +94,39 @@ extension AnyTransition {
     }
 }
 
+
+// The month's barcode under the budget bar (`MonthCodeView`).
+extension Theme.Size {
+    /// Scaled. Height of the barcode's bars at their tallest.
+    static let monthCode: CGFloat = 40
+    /// The shortest a day's bar is drawn, so a quiet day still reads as a bar.
+    static let monthCodeFloor: CGFloat = 0.1
+    /// Gap between two days' bars.
+    static let monthCodeGap: CGFloat = 2
+    /// The scanner's light that crosses the code now and then.
+    static let monthCodeScan: CGFloat = 2
+    /// How far the scanner's light glows.
+    static let monthCodeGlow: CGFloat = 6
+    /// Width of the card a day opens while the finger is on it.
+    static let monthCodeCard: CGFloat = 210
+}
+
+extension Theme.Opacity {
+    /// 0.5: a plain day's bar, so the brass and red days stand out.
+    static let codeBar: Double = 0.5
+    /// 0.22: the other days while one is picked.
+    static let codeBarAside: Double = 0.22
+}
+
+extension Theme.Motion {
+    /// The scanner's light crosses the code once every this many seconds…
+    static let scanEvery: Duration = .seconds(9)
+    /// …taking this long.
+    static let scan: Animation = .easeInOut(duration: 1.4)
+    /// …and is gone this long after it set off (the crossing plus a beat).
+    static let scanShown: Duration = .seconds(1.3)
+    /// …then fades out (`settle`) before going back to the left, unseen.
+    static let scanFade: Duration = .seconds(0.4)
+    /// Today's bar breathes, like a cursor waiting.
+    static let todayBreath: Animation = .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
+}

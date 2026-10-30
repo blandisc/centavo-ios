@@ -28,6 +28,25 @@ struct BudgetPage: View {
     var overspend: OverspendPlan?
     var currency = CurrencyPreference.fallback
     var now = Date.now
+    /// Which half to draw. On the main screen the bar stays put over the carousel and only
+    /// «En qué se va» swipes with the calendar (owner, 2026-10-29: «que lo que cambie sea la
+    /// parte de abajo»); a budget with nothing spent yet draws it whole.
+    var part = Part.all
+    /// What goes right under the bar, before «Para cerrar el mes»: the month's barcode.
+    var underBar: AnyView?
+
+    enum Part {
+        /// The bar (or the invitation to set a budget) and «Para cerrar el mes».
+        case top
+        /// «En qué se va» and the month's note.
+        case bottom
+        case all
+    }
+
+    /// Whether `.bottom` has anything to draw.
+    static func hasBottom(shares: [CategoryShare], note: String?, style: String) -> Bool {
+        (!shares.isEmpty && style != WhereItGoesStyle.hidden.rawValue) || note != nil
+    }
 
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = Theme.Size.budgetBar
     /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
@@ -55,22 +74,30 @@ struct BudgetPage: View {
         // What was spent is already the big total right above; this page only says how it
         // measures against the budget.
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-            if let pace {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    ticket(pace)
-                    if let overspend {
-                        OverspendRow(plan: overspend, currency: currency, now: now)
+            if part != .bottom {
+                if let pace {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        ticket(pace)
+                        underBar
+                        if let overspend {
+                            OverspendRow(plan: overspend, currency: currency, now: now)
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        invitation
+                        underBar
                     }
                 }
-            } else {
-                invitation
             }
-            if !shares.isEmpty, storedStyle != WhereItGoesStyle.hidden.rawValue {
-                whereItGoes
-                    .transition(.opacity)
-            }
-            if let note {
-                noteLine(note)
+            if part != .top {
+                if !shares.isEmpty, storedStyle != WhereItGoesStyle.hidden.rawValue {
+                    whereItGoes
+                        .transition(.opacity)
+                }
+                if let note {
+                    noteLine(note)
+                }
             }
         }
         // Choosing a view of «En qué se va» in «Más» fades it, while the carousel eases its
@@ -179,3 +206,13 @@ struct BudgetPage: View {
     }
 }
 
+extension BudgetPage {
+    /// The top half with `underBar` under the bar (the month's barcode).
+    init<Under: View>(spent: MoneyTotal, pace: BudgetPace?, isCurrentMonth: Bool, outside: Decimal,
+                      entrance: Entrance, onSetBudget: @escaping () -> Void, overspend: OverspendPlan?,
+                      currency: String, now: Date, part: Part, @ViewBuilder underBar: () -> Under) {
+        self.init(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
+                  entrance: entrance, onSetBudget: onSetBudget, overspend: overspend, currency: currency,
+                  now: now, part: part, underBar: AnyView(underBar()))
+    }
+}

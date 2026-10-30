@@ -63,6 +63,7 @@ final class HomeModel {
             summary: summary,
             pace: pace,
             calendar: MonthCalendar.make(amounts, inMonthOf: inputs.viewed, primary: primary, today: inputs.now),
+            code: monthCode(rows, inputs: inputs, pace: pace),
             shares: CategoryShare.top(summary.categories),
             returned: CategoryShare.returned(summary.categories),
             currencySwitch: inputs.isCurrent
@@ -74,6 +75,30 @@ final class HomeModel {
             shownTotal: filtered ? DayGroup(day: inputs.viewed, items: shown).total(in: primary) : nil,
             groups: DayGroup.split(shown)
         )
+    }
+
+    // MARK: The month's barcode
+
+    /// Each day of the viewed month added up in its currency, for the barcode under the bar.
+    private static func monthCode(_ rows: [Expense], inputs: MonthInputs, pace: BudgetPace?) -> MonthCode {
+        let calendar = Calendar.current
+        let days = calendar.range(of: .day, in: .month, for: inputs.viewed)?.count ?? 31
+        let byDay = Dictionary(grouping: rows) { calendar.component(.day, from: $0.date) }
+        let input = (1...days).map { number -> MonthCode.DayInput in
+            let dayRows = byDay[number] ?? []
+            guard !dayRows.isEmpty else { return MonthCode.DayInput() }
+            func sum(_ list: [Expense]) -> Decimal {
+                MonthSummarizer.summarize(list.map(\.asAmount), inMonthOf: inputs.viewed,
+                                          primary: inputs.currency).primary.amount
+            }
+            let counted = dayRows.filter { !$0.isUncounted }
+            let biggest = counted.max { $0.amount < $1.amount }
+            return MonthCode.DayInput(total: sum(dayRows), variable: sum(dayRows.filter { !$0.isFixed }),
+                                      payments: dayRows.count, fixedPayments: dayRows.filter(\.isFixed).count,
+                                      biggest: biggest.map { ($0.shownName, $0.amount) })
+        }
+        let today = inputs.isCurrent ? calendar.component(.day, from: inputs.now) : nil
+        return MonthCode(days: input, today: today, limitPerDay: pace?.dailyBase)
     }
 
     // MARK: The note
@@ -225,6 +250,8 @@ struct HomeMonth {
     let summary: MonthSummary
     let pace: BudgetPace?
     let calendar: MonthCalendar
+    /// One bar per day under the budget bar, and the figures under it (`MonthCode`).
+    let code: MonthCode
     let shares: [CategoryShare]
     let returned: Decimal
     /// Most of this month's payments are in this other currency: offer to add up in it.

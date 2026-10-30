@@ -12,41 +12,69 @@ struct OverspendRow: View {
     let now: Date
 
     @State private var showing = false
+    /// The month whose «Para cerrar el mes» was closed with its ✕ («2026-10»): it stays away
+    /// for the rest of that month and comes back if the next one goes over too (owner, 2026-10-29).
+    @AppStorage(Self.dismissedKey) private var dismissedMonth = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static let dismissedKey = "overspendDismissedMonth"
+
+    private var thisMonth: String {
+        let parts = Calendar.current.dateComponents([.year, .month], from: now)
+        return "\(parts.year ?? 0)-\(parts.month ?? 0)"
+    }
 
     private func whole(_ amount: Decimal) -> String {
         amount.formatted(currencyStyle(currency).precision(.fractionLength(0)))
     }
 
     var body: some View {
-        Button { showing = true } label: {
-            HStack(spacing: Theme.Space.s) {
-                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-                    Text("Para cerrar el mes")
-                        .font(.ticket(.bodyStrong))
-                        .foregroundStyle(Theme.brass)
-                    Text(plan.daysAfterToday > 0
-                         ? "Sin gastar más: \(whole(plan.stop.closesOver)) de más"
-                         : "Hoy cierra con \(whole(plan.stop.closesOver)) de más")
-                        .font(.ticket(.detail))
-                        .foregroundStyle(Theme.muted)
+        if dismissedMonth != thisMonth {
+            HStack(spacing: Theme.Space.none) {
+                Button { showing = true } label: {
+                    HStack(spacing: Theme.Space.s) {
+                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                            Text("Para cerrar el mes")
+                                .font(.ticket(.bodyStrong))
+                                .foregroundStyle(Theme.brass)
+                            Text(plan.daysAfterToday > 0
+                                 ? "Sin gastar más: \(whole(plan.stop.closesOver)) de más"
+                                 : "Hoy cierra con \(whole(plan.stop.closesOver)) de más")
+                                .font(.ticket(.detail))
+                                .foregroundStyle(Theme.muted)
+                        }
+                        Spacer(minLength: Theme.Space.s)
+                        Image(systemName: "chevron.right")
+                            .font(.ticket(.detail))
+                            .foregroundStyle(Theme.faint)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.leading, Theme.Space.l)
+                    .padding(.vertical, Theme.Space.m)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                Spacer(minLength: Theme.Space.s)
-                Image(systemName: "chevron.right")
-                    .font(.ticket(.detail))
-                    .foregroundStyle(Theme.faint)
-                    .accessibilityHidden(true)
+                .buttonStyle(.plain)
+                .accessibilityHint("Muestra cómo cerrarías el mes según lo que gastes")
+                .accessibilityIdentifier("para-cerrar-el-mes")
+                Button("Quitar «Para cerrar el mes»", systemImage: "xmark") {
+                    withAnimation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion)) {
+                        dismissedMonth = thisMonth
+                    }
+                }
+                .labelStyle(.iconOnly)
+                .font(.ticket(.detail))
+                .foregroundStyle(Theme.faint)
+                .frame(width: Theme.Size.tapTarget, height: Theme.Size.tapTarget)
+                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("quitar-para-cerrar")
             }
-            .padding(.horizontal, Theme.Space.l)
-            .padding(.vertical, Theme.Space.m)
-            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
             .ticketPanel()
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Muestra cómo cerrarías el mes según lo que gastes")
-        .accessibilityIdentifier("para-cerrar-el-mes")
-        .sheet(isPresented: $showing) {
-            OverspendSheet(plan: plan, currency: currency, now: now)
+            .transition(.opacity)
+            .sheet(isPresented: $showing) {
+                OverspendSheet(plan: plan, currency: currency, now: now)
+            }
         }
     }
 }
