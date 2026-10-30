@@ -854,6 +854,12 @@ final class FlowTests: XCTestCase {
         snap("flujo-codigo-del-mes")
         require(app.buttons["ver-todo-el-mes"], "Soltar en un día no lo filtró")
         require(row(app, containing: "Cinépolis"), "No muestra el gasto de ese día")
+        // A quick swipe on the boleto goes to the calendar (owner, 2026-10-30).
+        code.swipeLeft()
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Día ")).firstMatch,
+                "Deslizar el boleto no llevó al calendario")
+        app.buttons["Presupuesto"].tap()
+        sleep(1)
         // A tap anywhere else lets the day go (owner, 2026-10-30).
         app.staticTexts["hoy-puedes-gastar"].tap()
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),

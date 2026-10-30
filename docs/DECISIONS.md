@@ -575,3 +575,6 @@ Elegido por el dueño entre tres formas de juntar la barra del mes y el código 
 - **Boleto ⇄ calendario:** el carrusel tiene a la izquierda el boleto y, debajo, «En qué se va» (Lista o Mosaico; nada en Mínima), y a la derecha el calendario.
 - **Los datos, en una línea fija** sobre el carrusel, que no cambia al deslizar: «Llevas $X de $Y · $Z/día» y «Ver cuenta». La barra del mes deja su pista (`MonthBar.showsTrack`) y queda solo esa línea y la cuenta.
 - La ficha del día sale sobre el boleto y se queda en el día elegido; el carrusel deja lugar arriba para ella.
+
+## 2026-10-30 · Deslizar sobre el boleto
+En «Mínima» la página izquierda es casi solo el boleto, y el boleto tomaba el dedo al primer contacto: casi no quedaba dónde deslizar al calendario. Ahora un **deslizamiento rápido** es del carrusel; **un toque** elige el día; **sostener un instante (0.25 s) y deslizar** recorre los días con su ficha, como las gráficas de Salud y Bolsa dentro de algo que se desliza.

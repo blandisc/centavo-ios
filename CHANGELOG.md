@@ -20,6 +20,7 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **Deslizar sobre el boleto lleva al calendario.** Un toque elige el día; para recorrer los días, deja el dedo un instante y desliza.
 - **El boleto:** la barra del mes y el código de barras se juntan en una celda por día que se llena con lo que gastaste; lo que te sobró va en el verde rayado de antes y los días en que te pasaste, en rojo. Al deslizar, el boleto cambia por el calendario, y «Llevas $X de $Y · $Z/día» se queda fijo arriba.
 - **La vista (Lista, Mosaico o Mínima) vuelve al menú «···»**, y el carrusel está siempre: a la izquierda el código de barras (con «En qué se va» debajo en Lista o Mosaico) y a la derecha el calendario. La cifra tiene más aire.
 - **La barra del mes va por días**, como un boleto perforado, con la celda de hoy marcada.
