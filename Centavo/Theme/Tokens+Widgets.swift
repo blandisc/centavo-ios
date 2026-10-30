@@ -93,6 +93,10 @@ extension Theme.Size {
     static let widgetStripThin: CGFloat = 6
     /// Gap between the pieces of a strip; also the narrowest a piece may be drawn.
     static let widgetStripGap: CGFloat = 2
+    /// Height of the boleto's cells on a widget (2026-10-30).
+    static let widgetTicket: CGFloat = 18
+    /// …on the medium one, which has the room.
+    static let widgetTicketTall: CGFloat = 24
     /// How much taller than the strip the «Podrías llevar» rule is, in all.
     static let widgetMarkExtra: CGFloat = 4
     /// Half of `todayMarkWidth`: centers the rule on its x.

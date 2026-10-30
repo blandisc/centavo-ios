@@ -59,3 +59,19 @@ import Testing
         #expect(decoded.color == nil)
     }
 }
+
+@Suite struct WidgetSnapshotDaysTests {
+    @Test func theDaysCarryOverInTheMonthAndEmptyInTheNext() {
+        let calendar = Calendar(identifier: .gregorian)
+        let taken = calendar.date(from: DateComponents(year: 2026, month: 10, day: 3, hour: 12))!
+        let snapshot = WidgetSnapshot(budget: 3_100, isoCode: "MXN", label: "$", takenAt: taken, spent: 300,
+                                      days: [100, 0, 200])
+        let later = calendar.date(from: DateComponents(year: 2026, month: 10, day: 5, hour: 9))!
+        #expect(snapshot.month(at: later, calendar: calendar).days == [100, 0, 200])
+        let next = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1, hour: 9))!
+        #expect(snapshot.month(at: next, calendar: calendar).days == [])
+        // A snapshot from before the days existed still reads, with none.
+        let old = #"{"label":"$","takenAt":0,"spent":0,"spentToday":0,"fixedSpent":0,"fixedToday":0,"reserved":0,"slices":[]}"#
+        #expect(WidgetSnapshot.decode(Data(old.utf8))?.days == nil)
+    }
+}

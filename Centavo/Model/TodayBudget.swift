@@ -29,7 +29,22 @@ enum TodayBudget {
             fixedSpent: fixedSpent,
             fixedToday: isCurrent ? MonthSummarizer.dayTotal(fixed, onDayOf: now, primary: primary) : 0,
             reserved: reserved, slices: WidgetSnapshot.slices(summary.categories, color: colors.categoryIndex),
-            mode: mode)
+            mode: mode, days: dailyVariable(rows, month: month, primary: primary,
+                                           through: isCurrent ? now : MonthNavigator.closingMoment(of: month)))
+    }
+
+    /// What went each day of `month` outside the fixed expenses, from the 1st to `through`'s day:
+    /// the boleto's cells on the widgets.
+    private static func dailyVariable(_ rows: [Expense], month: Date, primary: String, through: Date) -> [Decimal] {
+        let calendar = Calendar.current
+        let last = calendar.component(.day, from: through)
+        let byDay = Dictionary(grouping: rows.filter { !$0.isFixed && MonthNavigator.isSameMonth($0.date, as: month) }) {
+            calendar.component(.day, from: $0.date)
+        }
+        return (1...max(last, 1)).map { day in
+            guard let list = byDay[day] else { return 0 }
+            return MonthSummarizer.summarize(list.map(\.asAmount), inMonthOf: month, primary: primary).primary.amount
+        }
     }
 
     static func pace(budget: Decimal?, rows: [Expense], originals: [Expense], plans: [FixedPlan],

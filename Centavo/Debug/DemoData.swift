@@ -139,8 +139,15 @@ enum DemoData {
                                               .init(name: nil, amount: 2_390, isRest: true)]
         func month(_ budget: Decimal?, spent: Decimal, today: Decimal, reserved: Decimal = 1_200,
                    at date: Date) -> WidgetSnapshot {
-            WidgetSnapshot(budget: budget, isoCode: "MXN", label: "$", takenAt: date, spent: spent,
-                           spentToday: today, reserved: reserved, slices: spent > 0 ? slices : [])
+            // The boleto's days: what went before today spread over a believable month, then today.
+            let day = Calendar.current.component(.day, from: date)
+            let shape: [Decimal] = [3, 1, 0, 2, 5, 1, 0, 4, 2, 1, 6, 2, 0, 3, 1, 2, 7, 1, 2, 3, 4]
+            let before = spent - today
+            let weight = shape.prefix(max(day - 1, 0)).reduce(0, +)
+            let days = (1..<max(day, 1)).map { weight > 0 ? before * shape[($0 - 1) % shape.count] / weight : 0 } + [today]
+            return WidgetSnapshot(budget: budget, isoCode: "MXN", label: "$", takenAt: date, spent: spent,
+                                  spentToday: today, reserved: reserved, slices: spent > 0 ? slices : [],
+                                  days: spent > 0 ? days : [])
         }
         // A fixed Thursday, October 22nd, so the numbers read the same any day: $348 a day
         // ((12,000 − 1,200 of fixed expenses) ÷ 31).
