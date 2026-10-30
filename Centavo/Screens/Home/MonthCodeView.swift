@@ -95,7 +95,7 @@ struct MonthCodeView: View {
             if day.kind == .future {
                 shape.strokeBorder(Theme.dimmed, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
                                                                     dash: Theme.Dash.dotted))
-            } else if day.kind == .over {
+            } else if isOver(day) {
                 shape.fill(Theme.danger)
             } else {
                 shape.fill(Theme.raised)
@@ -112,7 +112,7 @@ struct MonthCodeView: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .overlay(alignment: .top) {
-            if day.kind == .over {
+            if isOver(day) {
                 // Past the day's limit: a tick over the cell, like a mark on the ticket.
                 RoundedRectangle(cornerRadius: Theme.Radius.bar)
                     .fill(Theme.danger)
@@ -126,6 +126,13 @@ struct MonthCodeView: View {
                     .strokeBorder(Theme.ink, lineWidth: Theme.Stroke.emphasis)
             }
         }
+    }
+
+    /// Past the day's limit, today included (today is outlined, and red too once over it).
+    private func isOver(_ day: MonthCode.Day) -> Bool {
+        if day.kind == .over { return true }
+        guard day.kind == .today, let limit = code.limitPerDay else { return false }
+        return day.input.variable > limit
     }
 
     /// How much of the cell what went that day fills: against the day's limit, or against the

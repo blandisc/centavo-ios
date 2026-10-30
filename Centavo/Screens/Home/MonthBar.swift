@@ -107,8 +107,9 @@ struct MonthBar: View {
                     .transition(.unfold)
             }
         }
-        // Without the sentence the bar would sit flush under the figure.
-        .padding(.top, verdictLine == nil ? Theme.Space.s : Theme.Space.none)
+        // Without the sentence the bar would sit flush under the figure; without the track the line
+        // sits right under the boleto.
+        .padding(.top, verdictLine == nil && showsTrack ? Theme.Space.s : Theme.Space.none)
         .animation(reduceMotion ? nil : Theme.Motion.toggle, value: verdictLine == nil)
         .onAppear {
             if reduceMotion { drawn = true } else { withAnimation { drawn = true } }

@@ -540,8 +540,9 @@ private struct HomeHeader: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .simultaneousGesture(pageSwipe)
-                    // The figure gets room of its own before the bar (owner, 2026-10-30: «déjalo respirar»).
-                    .ticketRow(bottom: Theme.Space.xl)
+                    // The boleto follows close (owner, 2026-10-30: «mira el espacio»); the carousel adds
+                    // its own room to swipe on.
+                    .ticketRow(bottom: Theme.Space.s)
 
                 if let code = month.currencySwitch {
                     CurrencySuggestionRow(code: code) { actions.setPrimary(code) }
@@ -559,16 +560,9 @@ private struct HomeHeader: View {
                             onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
-                // The bar stays put; under it the carousel, in every view (owner, 2026-10-30):
-                // on the left the month's barcode, with «En qué se va» under it in Lista or
-                // Mosaico; on the right the calendar.
-                BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
-                           outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
-                           currency: currency, now: now, part: .top, showsTrack: false,
-                           averagePerDay: month.code.averagePerDay)
-                    // The line above the carousel swipes it too: a bigger place to aim at.
-                    .simultaneousGesture(pageSwipe)
-                    .ticketRow(bottom: Theme.Space.xl)
+                // Under the figure, the carousel in every view (owner, 2026-10-30): on the left the
+                // boleto with its line right under it («Llevas $X de $Y · $Z/día», «Ver cuenta»)
+                // and «En qué se va» in Lista or Mosaico; on the right only the calendar.
                 MonthCarousel(
                     calendarModel: month.calendar,
                     selectedDay: selectedDay,
@@ -586,10 +580,15 @@ private struct HomeHeader: View {
                     equalHeights: equalHeights,
                     onSetBudget: actions.setBudget,
                     currency: currency,
-                    budgetHeader: AnyView(MonthCodeView(code: month.code, selectedDay: selectedDay,
-                                                        onSelectDay: actions.selectDay,
-                                                        onScrubbing: { model.scrubbing = $0 }, wholeMoney: wholeMoney,
-                                                        month: viewed, entrance: entrance)),
+                    budgetHeader: AnyView(VStack(alignment: .leading, spacing: Theme.Space.s) {
+                        MonthCodeView(code: month.code, selectedDay: selectedDay, onSelectDay: actions.selectDay,
+                                      onScrubbing: { model.scrubbing = $0 }, wholeMoney: wholeMoney,
+                                      month: viewed, entrance: entrance)
+                        BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
+                                   outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
+                                   currency: currency, now: now, part: .top, showsTrack: false,
+                                   averagePerDay: month.code.averagePerDay)
+                    }),
                     now: now,
                     request: model.carouselRequest,
                     scrollLocked: model.scrubbing
