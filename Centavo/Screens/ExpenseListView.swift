@@ -1164,10 +1164,11 @@ private struct LedgerRow: View {
                                 color: category.flatMap { isUncounted ? nil : catalog.colors.category($0) })
     }
 
-    /// «No cuenta en el presupuesto · Me lo reembolsan» goes first, so the line says it and not only the strike.
-    /// VoiceOver hears «no cuenta para el presupuesto» with the amount instead.
+    /// «No cuenta» goes first, so the line says it and not only the strike; why it doesn't
+    /// count is in the expense sheet (the list keeps one short line, owner 2026-10-29).
+    /// VoiceOver hears the reason too, and «no cuenta para el presupuesto» with the amount.
     private func meta(spoken: Bool = false, withCard: Bool = true) -> String? {
-        let parts = [isUncounted && !spoken ? "No cuenta en el presupuesto" : nil, isUncounted ? expense.reason?.title : nil,
+        let parts = [isUncounted && !spoken ? "No cuenta" : nil, isUncounted && spoken ? expense.reason?.title : nil,
                      isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
                      expense.category, withCard ? expense.card : nil]
             .compactMap { $0 }
@@ -1178,13 +1179,14 @@ private struct LedgerRow: View {
 
     private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
 
-    /// The line under the name, the card last with its icon in the card's own color.
+    /// The line under the name, the way of paying last, by its short name («Amex») in its own
+    /// color: the one touch of color in the line.
     private var metaLine: Text? {
         guard let card else { return meta().map { Text($0) } }
-        let mark = Text(Image(systemName: catalog.sourceIcon(for: card)))
+        let payment = Text(PaymentName.short(card))
             .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card))
-        guard let rest = meta(withCard: false) else { return Text("\(mark) \(card)") }
-        return Text("\(rest)\u{00A0}· \(mark) \(card)")
+        guard let rest = meta(withCard: false) else { return payment }
+        return Text("\(rest)\u{00A0}· \(payment)")
     }
 
     @ViewBuilder private var metaText: some View {

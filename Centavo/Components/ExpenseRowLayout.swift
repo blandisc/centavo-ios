@@ -1,8 +1,10 @@
 import SwiftUI
 
 /// One expense as a row, the same wherever an expense is listed (the month's list, «Gastos
-/// fijos»): its category's tile, the name in uppercase over a quiet line, the amount on the
-/// right. With accessibility text sizes it stacks, so nothing breaks mid-word.
+/// fijos»): its category's tile, the name as it arrives, in uppercase, on one line, over a
+/// quieter line in lowercase, and the amount on the right. Two levels, so the eye reads the
+/// name first (owner, 2026-10-29: the list read as a wall of capitals). With accessibility
+/// text sizes it stacks and the name wraps, so nothing is cut.
 struct ExpenseRowLayout<Meta: View, Amount: View>: View {
     let name: String
     let tile: CategoryIconTile
@@ -12,9 +14,10 @@ struct ExpenseRowLayout<Meta: View, Amount: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var nameText: some View {
-        // Up to three lines; the full name is in the expense sheet.
+        // One line, as the bank sends it; the full name is in the expense sheet.
         Text(name)
-            .lineLimit(3)
+            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+            .truncationMode(.tail)
             .font(.ticket(.bodyMedium))
             .tracking(Theme.Tracking.name)
             .textCase(.uppercase)
@@ -51,7 +54,8 @@ struct ExpenseRowLayout<Meta: View, Amount: View>: View {
     }
 }
 
-/// The quiet line under an expense's name: small, spaced, uppercase, grey.
+/// The quiet line under an expense's name: small, grey and in lowercase, one step under the
+/// name. Wraps when it must, never shrinks.
 struct ExpenseMetaText: View {
     let text: Text
 
@@ -61,8 +65,6 @@ struct ExpenseMetaText: View {
     var body: some View {
         text
             .font(.ticket(.hint))
-            .tracking(Theme.Tracking.detail)
-            .textCase(.uppercase)
             .foregroundStyle(Theme.muted)
             .multilineTextAlignment(.leading)
     }
