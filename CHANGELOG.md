@@ -20,6 +20,7 @@
 - **Mantener presionado un gasto** ahora ofrece «Categoría» para cambiarla sin abrir la hoja, y «Anotar otra vez» para repetirlo con la fecha de hoy.
 
 ### Changed
+- **La vista (Lista, Mosaico o Mínima) vuelve al menú «···»**, y el carrusel está siempre: a la izquierda el código de barras (con «En qué se va» debajo en Lista o Mosaico) y a la derecha el calendario. La cifra tiene más aire.
 - **La barra del mes va por días**, como un boleto perforado, con la celda de hoy marcada.
 - **El folio va junto a la fecha** («JUE 29 DE OCT · N.º 042») y ya no está «Para cerrar el mes».
 - **El código de barras vive bajo el calendario**; «En qué se va» queda en Lista o Mosaico, y la nueva vista **Mínima** deja solo la cifra, la barra y tus gastos.

@@ -1,8 +1,9 @@
 import CentavoCore
 import SwiftUI
 
-/// The swipeable middle of the main screen: «En qué se va» first, then the calendar with the
-/// month's barcode under it (owner, 2026-10-29). The bar stays above, out of the carousel.
+/// The swipeable middle of the main screen, in every view (owner, 2026-10-30): on the left the
+/// month's barcode with «En qué se va» under it (Lista or Mosaico; alone in Mínima), on the right
+/// the calendar. The bar stays above, out of the carousel.
 struct MonthCarousel: View {
     let calendarModel: MonthCalendar
     var selectedDay: Int?
@@ -25,13 +26,11 @@ struct MonthCarousel: View {
     var equalHeights = false
     let onSetBudget: () -> Void
     var currency = CurrencyPreference.fallback
-    /// Under the calendar, on its page: the month's barcode.
-    var calendarFooter: AnyView?
+    /// At the top of the first page: the month's barcode.
+    var budgetHeader: AnyView?
     var now = Date.now
-    /// Whether the first page has anything (`BudgetPage.hasBottom`): without «En qué se va» or
-    /// a note, the calendar shows alone, with no dots.
-    var hasBudgetPage = true
 
+    @AppStorage(WhereItGoesStyle.key) private var storedStyle = WhereItGoesStyle.bar.rawValue
     @State private var position = ScrollPosition(idType: Int.self)
     /// The page shown or on its way, by finger or by dot, to put the carousel back on it when
     /// the phone turns.
@@ -62,33 +61,26 @@ struct MonthCarousel: View {
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
-    var body: some View {
-        if hasBudgetPage {
-            pages
-        } else {
-            calendarPage
-                .padding(.horizontal, Theme.Space.screen)
-        }
-    }
+    var body: some View { pages }
 
-    /// The calendar and, under it, the month's barcode: the same month by days, both filtering
-    /// the same list.
     private var calendarPage: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay, currency: currency)
-            calendarFooter
-        }
+        CalendarPage(model: calendarModel, selectedDay: selectedDay, onSelectDay: onSelectDay, currency: currency)
     }
 
     private var pages: some View {
         VStack(spacing: Theme.Space.none) {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: Theme.Space.none) {
-                    BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
-                               shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
-                               onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget,
-                               currency: currency, now: now, part: .bottom)
-                        .padding(.horizontal, Theme.Space.screen)
+                    VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                        budgetHeader
+                        if BudgetPage.hasBottom(shares: shares, note: note, style: storedStyle) {
+                        BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
+                                   shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
+                                   onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget,
+                                   currency: currency, now: now, part: .bottom)
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .frame(width: listWidth)

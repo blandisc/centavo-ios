@@ -16,7 +16,6 @@ struct SettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     @AppStorage(PaymentPlace.key) private var savesPlace = false
     @AppStorage(WalletWatch.key) private var ignoresWallet = false
     /// The whole history as a CSV, read once when the sheet opens (not on every redraw).
@@ -33,19 +32,11 @@ struct SettingsView: View {
                     } label: {
                         IconRow("Moneda principal", systemImage: "dollarsign.circle") { EmptyView() }
                     }
-                    Picker(selection: $whereItGoesStyle) {
-                        ForEach(WhereItGoesStyle.allCases) { style in
-                            Text(style.title).tag(style.rawValue)
-                        }
-                    } label: {
-                        IconRow("Vista", systemImage: "square.grid.2x2") { EmptyView() }
-                    }
                 } header: {
-                    Text("Vista").ticketCaption()
+                    Text("Moneda").ticketCaption()
                 } footer: {
                     HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. "
-                             + "Lista y Mosaico muestran en qué se va y, al deslizar, el calendario; "
-                             + "Mínima deja solo la cifra, la barra y tus gastos.")
+                             + "La vista (Lista, Mosaico o Mínima) se elige en «···».")
                 }
                 .listRowBackground(Theme.surface)
 

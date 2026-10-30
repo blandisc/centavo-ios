@@ -556,3 +556,9 @@ Elegido por el dueño tras el prototipo v4. Sustituye en lo que choca a «El có
 - **El carrusel:** «En qué se va» (Lista o Mosaico, como siempre) y, a la derecha, el calendario con el **código de barras debajo**; los dos filtran la misma lista.
 - **Vista «Mínima»** en Ajustes (antes «No mostrar», mismo valor guardado): sin carrusel, sin calendario y sin código. «Barra» se llama ahora «Lista», y el ajuste se llama «Vista».
 - **Sin margen:** si los fijos se comen el presupuesto, el código dice «sin margen» en vez de «tope $0» y no pinta días de rojo. Un día con un fijo va en latón aunque ese día se haya gastado más.
+
+## 2026-10-30 · La vista vuelve al menú y el carrusel está siempre
+Pedido del dueño tras usar la versión 4 en su iPhone.
+- **«Vista» en el menú «···», en primer nivel** (Lista, Mosaico, Mínima, con la elegida marcada), como estaba; sale de Ajustes, que queda con la moneda.
+- **El carrusel está en todas las vistas:** a la izquierda siempre el código de barras, con «En qué se va» debajo en Lista o Mosaico (solo el código en Mínima); a la derecha siempre el calendario. Sustituye «Mínima: sin carrusel» y «el código bajo el calendario».
+- **La cifra respira:** 24 pt entre la cabecera del ticket y «Te pasaste del presupuesto», 8 entre ese título y la cifra, y 20 de la cifra a la barra.
