@@ -73,7 +73,14 @@ struct MonthCarousel: View {
     }
 
     private var pages: some View {
-        VStack(spacing: Theme.Space.none) {
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            // One heading for both pages, outside the scroll: it stays still while the boleto
+            // turns into the calendar, and both start on the same line under it (owner, 2026-10-30).
+            Text("Cada día del mes").ticketCaption()
+                .padding(.horizontal, Theme.Space.screen)
+                // The air the boleto had under the figure, now over the heading.
+                .padding(.top, Theme.Space.m)
+                .accessibilityAddTraits(.isHeader)
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: Theme.Space.none) {
                     VStack(alignment: .leading, spacing: Theme.Space.xxl) {
@@ -94,6 +101,7 @@ struct MonthCarousel: View {
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
                         .frame(width: listWidth)
                         .id(0)
+                        .modifier(PageFade(reduceMotion: reduceMotion))
                     // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
                     calendarPage
                         .padding(.horizontal, Theme.Space.screen)
@@ -103,6 +111,7 @@ struct MonthCarousel: View {
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
                         .frame(width: listWidth)
                         .id(1)
+                        .modifier(PageFade(reduceMotion: reduceMotion))
                 }
                 .scrollTargetLayout()
             }
@@ -111,7 +120,7 @@ struct MonthCarousel: View {
             .scrollDisabled(scrollLocked)
             .onChange(of: request) { _, asked in
                 page = asked.page
-                withAnimation(reduceMotion ? nil : Theme.Motion.page) { position.scrollTo(id: asked.page, anchor: .leading) }
+                withAnimation(reduceMotion ? nil : Theme.Motion.pageTurn) { position.scrollTo(id: asked.page, anchor: .leading) }
             }
             // Turning the phone changes the pages' width but not where the scroll stands, so it
             // was left between two pages: the other one peeking in and, with the height following
@@ -153,9 +162,21 @@ struct MonthCarousel: View {
             PageDots(names: pageNames, scroll: scroll) { index in
                 // The height follows the scroll, so it comes along with the page.
                 page = index
-                withAnimation(reduceMotion ? nil : Theme.Motion.page) { position.scrollTo(id: index, anchor: .leading) }
+                withAnimation(reduceMotion ? nil : Theme.Motion.pageTurn) { position.scrollTo(id: index, anchor: .leading) }
             }
             .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+/// A page fading as it leaves and coming in as it arrives, with the finger: the two never show
+/// whole side by side, so the boleto reads as turning into the calendar (owner, 2026-10-30).
+private struct PageFade: ViewModifier {
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content.scrollTransition(axis: .horizontal) { page, phase in
+            page.opacity(reduceMotion ? Theme.Opacity.visible : Theme.Opacity.visible - abs(phase.value))
         }
     }
 }

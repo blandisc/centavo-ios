@@ -539,18 +539,23 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Liverpool"), "No regresó a todo el mes")
     }
 
-    /// Con «En qué se va» a la vista (barra o mosaico), el presupuesto y el calendario miden lo mismo:
-    /// los puntitos del carrusel, y la lista de abajo, no se mueven al cambiar de página.
-    func testElCarruselMideLoMismoEnSusDosPaginas() {
+    /// Con «En qué se va» a la vista (barra o mosaico), cada página tiene su propia altura (decisión
+    /// del 2026-10-30: el hueco bajo el mosaico): al pasar al calendario, este se ve completo, con su
+    /// último día arriba de los puntitos, y el título «Cada día del mes» no se mueve.
+    func testElCalendarioSeVeCompletoYSuTituloNoSeMueve() {
         for style in ["bar", "mosaic"] {
             let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", style])
+            let title = require(app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Cada día del mes")).firstMatch, "No está el título (\(style))")
+            let titleY = title.frame.minY
             let dot = require(app.buttons["Calendario"], "No hay puntito del calendario (\(style))")
-            let before = dot.frame.minY
             dot.tap()
             require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Día 12'")).firstMatch,
                     "No abrió el calendario (\(style))")
-            XCTAssertEqual(dot.frame.minY, before, accuracy: 1,
-                           "Los puntitos se movieron al pasar al calendario (\(style))")
+            let days = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Día '"))
+            let last = days.element(boundBy: days.count - 1)
+            XCTAssertLessThanOrEqual(last.frame.maxY, dot.frame.minY + 1,
+                                     "El calendario quedó cortado (\(style))")
+            XCTAssertEqual(title.frame.minY, titleY, accuracy: 1, "El título se movió (\(style))")
             app.terminate()
         }
     }
