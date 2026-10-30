@@ -78,7 +78,11 @@ struct HoyView: View {
             Spacer(minLength: Theme.Space.xs)
             if let pace = state.pace {
                 Group {
-                    MonthStrip(pace: pace, ink: ink)
+                    if let days = entry.month?.days {
+                        DayTicket(days: days, pace: pace, ink: ink)
+                    } else {
+                        MonthStrip(pace: pace, ink: ink)
+                    }
                     // Only «Llevas $X» under the bar, in full (the budget is in the medium one).
                     keyText("Llevas", money.whole(pace.spent), ink: ink)
                         .font(.widget(.spent))
@@ -128,12 +132,19 @@ struct HoyView: View {
             Spacer(minLength: Theme.Space.xs)
             if let pace = state.pace {
                 Group {
-                    if !pace.isOverBudget {
-                        annotation(pace)
+                    if let days = entry.month?.days {
+                        // As on the main screen (2026-10-30): the boleto and one line under it.
+                        DayTicket(days: days, pace: pace, ink: ink, height: Theme.Size.widgetTicketTall)
+                        dataLine(pace)
+                            .padding(.top, Theme.Space.s)
+                    } else {
+                        if !pace.isOverBudget {
+                            annotation(pace)
+                        }
+                        MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripTall, tiles: true)
+                        keys(pace)
+                            .padding(.top, Theme.Space.xs)
                     }
-                    MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripTall, tiles: true)
-                    keys(pace)
-                        .padding(.top, Theme.Space.xs)
                 }
                 .accessibilityHidden(true)
             } else {
@@ -168,6 +179,22 @@ struct HoyView: View {
         }
         .frame(height: Theme.Size.widgetAnnotation)
         .padding(.bottom, Theme.Space.s)
+    }
+
+    /// «LLEVAS $24,518 DE $24,180 · $791/DÍA», the main screen's line; what went in red past the budget.
+    private func dataLine(_ pace: BudgetPace) -> some View {
+        let average = pace.spent / Decimal(max(pace.day, 1))
+        return (Text("Llevas ").foregroundStyle(ink.muted)
+            + Text(money.whole(pace.spent)).foregroundStyle(pace.isOverBudget ? ink.danger : ink.primary)
+            + Text(" de ").foregroundStyle(ink.muted)
+            + Text(money.whole(pace.budget)).foregroundStyle(ink.primary)
+            + Text(" · ").foregroundStyle(ink.brass)
+            + Text(money.whole(average)).foregroundStyle(ink.primary)
+            + Text("/día").foregroundStyle(ink.muted))
+            .font(.widget(.key))
+            .textCase(.uppercase)
+            .lineLimit(1)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
     }
 
     private func keys(_ pace: BudgetPace) -> some View {
@@ -245,7 +272,11 @@ struct WhereItGoesView: View {
             }
             Spacer(minLength: Theme.Space.xxs)
             if let pace = state.pace {
-                MonthStrip(pace: pace, ink: ink)
+                if let days = entry.month?.days {
+                    DayTicket(days: days, pace: pace, ink: ink)
+                } else {
+                    MonthStrip(pace: pace, ink: ink)
+                }
                 keyText("Llevas", money.whole(pace.spent), ink: ink)
                     .font(.widget(.key))
                     .textCase(.uppercase)

@@ -41,10 +41,15 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
     /// The rule chosen in the budget sheet. Optional so a snapshot written before it existed
     /// still reads (as `.carry`).
     public var mode: AllowanceMode?
+    /// What went each day of the month outside the fixed expenses, in the month's currency, from
+    /// the 1st to the day it was taken: the boleto's cells (2026-10-30). Optional so a snapshot
+    /// written before it existed still reads (its widgets keep the old bar).
+    public var days: [Decimal]?
 
     public init(budget: Decimal?, isoCode: String?, label: String, takenAt: Date, spent: Decimal,
                 spentToday: Decimal = 0, fixedSpent: Decimal = 0, fixedToday: Decimal = 0,
-                reserved: Decimal = 0, slices: [Slice] = [], mode: AllowanceMode = .carry) {
+                reserved: Decimal = 0, slices: [Slice] = [], mode: AllowanceMode = .carry,
+                days: [Decimal]? = nil) {
         self.budget = budget
         self.isoCode = isoCode
         self.label = label
@@ -56,6 +61,7 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         self.reserved = reserved
         self.slices = slices
         self.mode = mode
+        self.days = days
     }
 
     /// The month as it stands at `date`, which may be days after `takenAt`.
@@ -70,6 +76,7 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         month.spent = 0
         month.fixedSpent = 0
         month.slices = []
+        month.days = days.map { _ in [] }
         return month
     }
 

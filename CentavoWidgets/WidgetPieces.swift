@@ -253,6 +253,74 @@ struct MonthStrip: View {
     }
 }
 
+/// The boleto, as on the main screen (2026-10-30): one cell per day of the month, as tall as
+/// what a day may spend. Brass rises with what went that day, what was left over keeps the
+/// green hatch, a day past it is red; today is outlined and the days to come are dashed.
+struct DayTicket: View {
+    /// What went each day outside the fixed expenses, from the 1st (`WidgetSnapshot.days`).
+    let days: [Decimal]
+    let pace: BudgetPace
+    let ink: Ink
+    var height = Theme.Size.widgetTicket
+
+    /// The budget, less the month's fixed expenses, over its days: the same in either rule.
+    private var limit: Decimal {
+        max((pace.budget - pace.fixedMonth) / Decimal(max(pace.daysInMonth, 1)), 0)
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Size.widgetStripGap) {
+            ForEach(1...max(pace.daysInMonth, 1), id: \.self) { day in
+                cell(day)
+            }
+        }
+        .frame(height: height)
+    }
+
+    @ViewBuilder private func cell(_ day: Int) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.widgetTile)
+        let spent = day <= days.count ? days[day - 1] : 0
+        if day > pace.day {
+            shape.strokeBorder(ink.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                dash: Theme.Dash.widgetReserved))
+        } else if limit > 0, spent > limit {
+            shape.fill(ink.danger).widgetAccentable()
+        } else {
+            // How much of the day's limit went, held to the cell.
+            let share = limit > 0 ? min(max(CGFloat(NSDecimalNumber(decimal: spent / limit).doubleValue), .zero), 1) : .zero
+            ZStack(alignment: .bottom) {
+                shape.fill(ink.track)
+                if limit > 0 {
+                    WidgetHatch()
+                        .stroke(ink.good, lineWidth: Theme.Stroke.mark)
+                        .opacity(Theme.Opacity.paceBehind)
+                        .clipShape(shape)
+                }
+                shape.fill(ink.brass)
+                    .frame(height: height * share)
+                    .widgetAccentable()
+            }
+            .overlay {
+                if day == pace.day { shape.strokeBorder(ink.primary, lineWidth: Theme.Stroke.hairline) }
+            }
+        }
+    }
+}
+
+/// Thin diagonal lines, like the shading on a printed form (the app's `Hatch`).
+struct WidgetHatch: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        var x = rect.minX - rect.height
+        while x < rect.maxX {
+            path.move(to: CGPoint(x: x, y: rect.maxY))
+            path.addLine(to: CGPoint(x: x + rect.height, y: rect.minY))
+            x += Theme.Size.hatchSpacing
+        }
+        return path
+    }
+}
+
 /// «LLEVAS $8,140»: a label in grey and its figure in ink.
 func keyText(_ label: String, _ value: String, ink: Ink) -> Text {
     Text(label + " ").foregroundStyle(ink.muted) + Text(value).foregroundStyle(ink.primary)

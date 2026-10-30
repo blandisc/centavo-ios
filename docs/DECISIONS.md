@@ -578,3 +578,10 @@ Elegido por el dueño entre tres formas de juntar la barra del mes y el código 
 
 ## 2026-10-30 · Deslizar sobre el boleto
 En «Mínima» la página izquierda es casi solo el boleto, y el boleto tomaba el dedo al primer contacto: casi no quedaba dónde deslizar al calendario. Ahora un **deslizamiento rápido** es del carrusel; **un toque** elige el día; **sostener un instante (0.25 s) y deslizar** recorre los días con su ficha, como las gráficas de Salud y Bolsa dentro de algo que se desliza.
+
+## 2026-10-30 · Los widgets con el boleto
+Pedido del dueño: los widgets siguen los cambios del hero.
+- **El boleto en los widgets** (`DayTicket`): «Hoy puedes gastar» chico y mediano y el lado izquierdo de «Hoy y en qué se va» cambian la barra larga y «Podrías llevar» por el boleto por días, con el mismo verde rayado, el rojo y el día de hoy delineado.
+- **El mediano lleva la línea de la pantalla principal:** «Llevas $X de $Y · $Z/día».
+- La app guarda para los widgets lo gastado cada día fuera de los fijos (`WidgetSnapshot.days`, opcional: una foto de antes sigue mostrando la barra vieja hasta que la app vuelva a escribir). En un mes nuevo el boleto arranca vacío.
+- Los de la pantalla bloqueada no cambian: el sistema los pinta en un solo tono.
