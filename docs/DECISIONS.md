@@ -562,3 +562,9 @@ Pedido del dueño tras usar la versión 4 en su iPhone.
 - **«Vista» en el menú «···», en primer nivel** (Lista, Mosaico, Mínima, con la elegida marcada), como estaba; sale de Ajustes, que queda con la moneda.
 - **El carrusel está en todas las vistas:** a la izquierda siempre el código de barras, con «En qué se va» debajo en Lista o Mosaico (solo el código en Mínima); a la derecha siempre el calendario. Sustituye «Mínima: sin carrusel» y «el código bajo el calendario».
 - **La cifra respira:** 24 pt entre la cabecera del ticket y «Te pasaste del presupuesto», 8 entre ese título y la cifra, y 20 de la cifra a la barra.
+
+## 2026-10-30 · Arreglos del código de barras
+Visto en el iPhone del dueño.
+- **El tope por día es el presupuesto (menos fijos) entre los días del mes**, en cualquier regla. Con «Se reparte» tomaba lo que queda por repartir, que llega a $0 al pasarse, y el código decía «tope $0»/«sin margen» y dejaba todo gris.
+- **Sin color para los fijos** en el código (el dueño no tiene) y **sin la luz del escáner**.
+- **La ficha del día se queda** sobre el día elegido; **un toque en cualquier otro lugar** quita el día o la categoría elegidos y su ficha.

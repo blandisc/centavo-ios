@@ -854,6 +854,11 @@ final class FlowTests: XCTestCase {
         snap("flujo-codigo-del-mes")
         require(app.buttons["ver-todo-el-mes"], "Soltar en un día no lo filtró")
         require(row(app, containing: "Cinépolis"), "No muestra el gasto de ese día")
+        // A tap anywhere else lets the day go (owner, 2026-10-30).
+        app.staticTexts["hoy-puedes-gastar"].tap()
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                             object: app.buttons["ver-todo-el-mes"])
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 3), .completed, "Tocar fuera no quitó el filtro")
     }
 
     // MARK: En qué se va

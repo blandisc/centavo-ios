@@ -4,8 +4,9 @@ import Foundation
 /// bar per day, as tall as what went that day, and the figures printed under it.
 ///
 /// The app hands each day's sums in the month's currency; this decides what each bar means
-/// (a day of fixed charges, a day past the daily limit, today, one still to come) and the
-/// figures: how many payments, the average a day and the limit a day.
+/// (a day past the daily limit, today, one still to come) and the figures: how many payments,
+/// the average a day and the limit a day. Fixed charges get no color of their own (owner,
+/// 2026-10-30): they only stay out of what a day is measured by.
 public struct MonthCode: Equatable, Sendable {
     /// One day as the app adds it up.
     public struct DayInput: Equatable, Sendable {
@@ -36,8 +37,6 @@ public struct MonthCode: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
         /// A day like any other.
         case plain
-        /// A day with a fixed charge (the rent): brass, even if more went that day.
-        case fixed
         /// What went that day, fixed charges aside, passed the limit a day: red.
         case over
         case today
@@ -81,8 +80,6 @@ public struct MonthCode: Equatable, Sendable {
                 kind = .future
             } else if number == today {
                 kind = .today
-            } else if day.fixedPayments > 0 {
-                kind = .fixed
             } else if let limit, day.variable > limit {
                 kind = .over
             } else {

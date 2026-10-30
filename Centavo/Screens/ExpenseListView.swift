@@ -460,6 +460,13 @@ private struct HomeContent: View, Equatable {
             .padding(.top, Theme.Space.s)
             .padding(.bottom, Theme.Space.xxl)
             .environment(\.listWidth, listWidth)
+            // A tap anywhere else lets the picked day or category go, its card with it (owner,
+            // 2026-10-30). Rows, bars and buttons take their own taps first.
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if selectedDay != nil { actions.clearDay() }
+                if selectedCategory != nil { actions.clearCategory() }
+            }
         }
         // A warning the moment the budget is blown.
         .sensoryFeedback(.warning, trigger: isCurrent && (month.pace?.remaining ?? 0) < 0) { old, new in
