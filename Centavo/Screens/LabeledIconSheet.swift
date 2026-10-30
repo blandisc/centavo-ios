@@ -14,12 +14,17 @@ struct LabeledIconSheet: View {
     var isDefault = false
     /// With it, the sheet offers «Usar por defecto»; called after `onSave` with the saved name.
     var onSetDefault: ((String, Bool) -> Void)?
+    /// Whose colors it picks from, and the others of its kind, so a new one gets a color
+    /// none of them has.
+    var colorKind: CatalogColors.Kind = .category
+    var siblings: [String] = []
     let onSave: (LabeledIcon) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var icon = ""
     @State private var usesByDefault = false
+    @State private var color = 0
     @State private var confirmingDelete = false
     @FocusState private var nameFocused: Bool
     @ScaledMetric(relativeTo: .body) private var iconColumn = Theme.Size.iconColumnWide
@@ -36,7 +41,7 @@ struct LabeledIconSheet: View {
                     HStack(spacing: Theme.Space.m) {
                         Image(systemName: icon.isEmpty ? (icons.first ?? "tag") : icon)
                             .font(Theme.Symbol.large)
-                            .foregroundStyle(Theme.brass)
+                            .foregroundStyle(Theme.categories[color])
                             .frame(width: iconColumn)
                             .accessibilityHidden(true)
                         TextField("Nombre", text: $name, prompt: Text(prompt).foregroundStyle(Theme.faint))
@@ -71,6 +76,14 @@ struct LabeledIconSheet: View {
                 }
 
                 Section {
+                    ColorRow(selection: $color)
+                        .padding(.vertical, Theme.Space.xxs)
+                } header: {
+                    Text("Color").ticketCaption()
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.choiceTile), spacing: Theme.Space.s)],
                               spacing: Theme.Space.s) {
                         ForEach(icons, id: \.self) { symbol in
@@ -80,7 +93,7 @@ struct LabeledIconSheet: View {
                             } label: {
                                 Image(systemName: symbol)
                                     .font(Theme.Symbol.large)
-                                    .foregroundStyle(selected ? Theme.onBrass : Theme.brass)
+                                    .foregroundStyle(selected ? Theme.onBrass : Theme.categories[color])
                                     .frame(maxWidth: .infinity, minHeight: Theme.Size.choiceTile)
                                     .choiceTile(selected: selected)
                                     .contentShape(Rectangle())
@@ -100,16 +113,9 @@ struct LabeledIconSheet: View {
 
                 if initial != nil, let onDelete {
                     Section {
-                        Button(role: .destructive) {
+                        DestructiveRowButton("Borrar", identifier: "borrar-etiqueta") {
                             confirmingDelete = true
-                        } label: {
-                            Text("Borrar")
-                                .font(.ticket(.footnoteStrong))
-                                .tracking(Theme.Tracking.caption)
-                                .textCase(.uppercase)
-                                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
                         }
-                        .accessibilityIdentifier("borrar-etiqueta")
                         .confirmationDialog("¿Borrar «\(initial?.name ?? "")»?", isPresented: $confirmingDelete,
                                             titleVisibility: .visible) {
                             Button("Borrar", role: .destructive) {
@@ -121,7 +127,7 @@ struct LabeledIconSheet: View {
                             Text("Los gastos que ya la tienen no cambian.")
                         }
                     } footer: {
-                        NoteText("Los gastos que ya la tienen no cambian.")
+                        HintText("Los gastos que ya la tienen no cambian.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -134,6 +140,11 @@ struct LabeledIconSheet: View {
             .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes uno con ese nombre" : trimmed,
                      enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
                 onSave(LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon))
+                // A renamed one leaves its old name's color behind.
+                if let old = initial?.name, !UserCatalog.same(old, trimmed) {
+                    UserCatalog.setColor(nil, for: old, key: colorKind.key)
+                }
+                CatalogColors.set(color, for: trimmed, kind: colorKind)
                 onSetDefault?(trimmed, usesByDefault)
                 dismiss()
             }
@@ -149,6 +160,9 @@ struct LabeledIconSheet: View {
             name = initial?.name ?? ""
             icon = initial?.icon ?? (icons.first ?? "tag")
             usesByDefault = isDefault
+            let colors = CatalogColors.current
+            color = initial.map { colors.index($0.name, kind: colorKind) }
+                ?? colors.nextFree(colorKind, among: siblings)
             nameFocused = initial == nil
         }
     }

@@ -82,12 +82,80 @@ struct SecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
+            // Ink: in grey, «Después» read as not a button (user research, 2026-10-29).
             Text(title)
-                .font(.ticket(.footnote))
-                .foregroundStyle(Theme.muted)
+                .font(.ticket(.footnoteStrong))
+                .foregroundStyle(Theme.ink)
                 .frame(minHeight: Theme.Size.tapTarget)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier ?? "")
+    }
+}
+
+/// A quiet action written in brass inside a screen («Ajustar presupuesto», «Agregar gasto
+/// fijo», «Deshacer»): uppercase and spaced like every action, optionally with a symbol,
+/// at least 44 pt tall. Put it in a plain `Button`.
+///
+///     Button(action: onAdjust) { LinkActionLabel("Ajustar presupuesto", systemImage: "slider.horizontal.3") }
+///         .buttonStyle(.plain)
+struct LinkActionLabel: View {
+    let title: String
+    var systemImage: String?
+    /// `.center` for a button across a card, `.leading` for one in a list row.
+    var alignment: Alignment = .center
+    /// `false` for one beside other content (the undo bar), so it only takes its width.
+    var fillsWidth = true
+
+    init(_ title: String, systemImage: String? = nil, alignment: Alignment = .center, fillsWidth: Bool = true) {
+        self.title = title
+        self.systemImage = systemImage
+        self.alignment = alignment
+        self.fillsWidth = fillsWidth
+    }
+
+    var body: some View {
+        Group {
+            if let systemImage {
+                Label(title, systemImage: systemImage)
+            } else {
+                Text(title)
+            }
+        }
+        .font(.ticket(.footnoteStrong))
+        .tracking(Theme.Tracking.action)
+        .textCase(.uppercase)
+        .foregroundStyle(Theme.brass)
+        .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: Theme.Size.tapTarget, alignment: alignment)
+        .contentShape(Rectangle())
+    }
+}
+
+/// The one way to delete or take something away inside a sheet («Borrar gasto», «Quitar
+/// presupuesto»): red, uppercase and spaced, centered across its row, at least 44 pt. The
+/// confirmation that follows (`DeleteSheet`, a dialog) has the prominent red button.
+struct DestructiveRowButton: View {
+    let title: String
+    var identifier: String?
+    let action: () -> Void
+
+    init(_ title: String, identifier: String? = nil, action: @escaping () -> Void) {
+        self.title = title
+        self.identifier = identifier
+        self.action = action
+    }
+
+    var body: some View {
+        Button(role: .destructive, action: action) {
+            Text(title)
+                .font(.ticket(.footnoteStrong))
+                .tracking(Theme.Tracking.action)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.danger)
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
         .accessibilityIdentifier(identifier ?? "")
     }
 }
@@ -103,6 +171,9 @@ struct SecondaryButton: View {
             .foregroundStyle(Theme.onBrass)
             .ticketProminent()
         SecondaryButton("Después") {}
+        DestructiveRowButton("Borrar gasto") {}
+        Button {} label: { LinkActionLabel("Ajustar presupuesto", systemImage: "slider.horizontal.3") }
+            .buttonStyle(.plain)
     }
     .padding(Theme.Space.screen)
     .ticketPreview()

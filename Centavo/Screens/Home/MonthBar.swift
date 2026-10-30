@@ -73,11 +73,23 @@ struct MonthBar: View {
 
             // Each figure where what it measures is: «Llevas» under the brass, «Presupuesto» at
             // the bar's end, «Podrías llevar» over the rule (owner's choice, 2026-10-22).
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) { spentKey; budgetKey }
+            // The whole line opens the sum too, 44 pt tall: the chevron alone was too small a
+            // target and was not even the button (owner, 2026-10-29).
+            Button {
+                withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
+            } label: {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) { spentKey; budgetKey }
+                }
+                .font(.ticket(.detail))
+                .frame(minHeight: Theme.Size.tapTarget)
+                .contentShape(Rectangle())
             }
-            .font(.ticket(.detail))
+            .buttonStyle(.plain)
+            .padding(.vertical, -Theme.Space.ml)
+            .accessibilityLabel(showsSum ? "Ocultar la cuenta" : "Ver la cuenta")
+            .accessibilityIdentifier("ver-cuenta")
 
 
             if showsSum {
@@ -233,19 +245,22 @@ struct MonthBar: View {
             swatch(isOver ? Theme.danger : Theme.brass)
             Text("Llevas").foregroundStyle(Theme.muted)
             totalText
+            // Past it, the budget goes right after what went: «Llevas $2,366 de $2,000».
+            if isOver {
+                Text("de").foregroundStyle(Theme.muted)
+                Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
+            }
         }
         .fixedSize()
     }
 
     /// «Presupuesto $8,000», at the end of the bar it measures; past it, «· de más $366».
     private var budgetKeyText: Text {
-        var text = Text("Presupuesto ").foregroundStyle(Theme.muted)
-        text = text + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
-        if isOver {
-            text = text + Text(" · de más ").foregroundStyle(Theme.muted)
-            text = text + Text(wholeMoney(pace.sum.remaining.magnitude)).foregroundStyle(Theme.danger)
-        }
-        return text
+        // Past it the hero already says how far («Te pasaste $366»), and «Llevas» carries the
+        // budget: this end only opens the sum.
+        if isOver { return Text(showsSum ? "Ocultar cuenta" : "Ver cuenta").foregroundStyle(Theme.brass) }
+        return Text("Presupuesto ").foregroundStyle(Theme.muted)
+            + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
     }
 
     /// «Presupuesto $8,000», at the end of the bar it measures.
@@ -316,7 +331,7 @@ struct MonthBar: View {
             sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
             if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine("Presupuesto", wholeMoney(sum.budget))
                 sumLine("− Llevas antes de hoy", wholeMoney(sum.spentBeforeToday))
                 if pace.reserved > 0 {
@@ -328,10 +343,10 @@ struct MonthBar: View {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
                             wholeMoney(sum.variableToday.magnitude))
                 }
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
             } else if days > 0 {
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 if pace.fixedMonth > 0 {
                     sumLine("Presupuesto", wholeMoney(sum.budget))
                     sumLine("− Fijos del mes", wholeMoney(pace.fixedMonth))
@@ -346,13 +361,13 @@ struct MonthBar: View {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
                             wholeMoney(sum.variableToday.magnitude))
                 }
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",
                         wholeMoney(pace.dailyAllowance.magnitude), strong: true)
             }
             if outside != 0 {
                 // Not part of the sum: what was spent but doesn't count, said apart.
-                Divider().overlay(Theme.hairline)
+                Perforation()
                 sumLine("Fuera del presupuesto", wholeMoney(outside))
                     .accessibilityIdentifier("fuera-del-presupuesto")
             }

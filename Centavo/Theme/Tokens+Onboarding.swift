@@ -28,6 +28,43 @@ extension Theme.Size {
     /// Scaled. Width and height of the floating guide's thumbnail on a guide step (3:4).
     static let companionThumbWidth: CGFloat = 66
     static let companionThumbHeight: CGFloat = 88
+    /// The most height the floating guide's instruction may take; past it the instruction
+    /// steps down a size instead of being cut, and the screenshot takes whatever is left.
+    static let companionTextBudget: CGFloat = 196
+    /// Height of the floating guide's progress bar: one segment per guide step. About 2 pt
+    /// in the window, the least that still reads as a bar.
+    static let companionProgress: CGFloat = 6
+    /// Side of the brass emblem tile that fills the floating guide's stage when a picture has
+    /// no screenshot: the guide's own step emblem, drawn big.
+    static let companionEmblem: CGFloat = 132
+}
+
+extension Theme.Symbol {
+    /// The floating guide's stage when a picture has no screenshot: the step's symbol, big,
+    /// inside its emblem tile. Regular, not light: a light stroke thins out in the window.
+    static let companionStage: Font = .system(size: 60, weight: .regular)
+}
+
+extension Theme {
+    /// Type of the floating guide's pictures. They are read in a window a third of the screen
+    /// wide (about 0.36×), so everything is drawn bigger than on a screen, and the card pins
+    /// the text size: these are fixed sizes for a picture, not roles that grow.
+    enum Companion {
+        /// The instruction, largest first: the card takes the biggest one that fits
+        /// `Theme.Size.companionTextBudget`, so a long instruction is never cut.
+        static let instruction: [Font] = [
+            .ticket(28, weight: .semibold, relativeTo: .title),
+            .ticket(24, weight: .semibold, relativeTo: .title2),
+            .ticket(21, weight: .semibold, relativeTo: .title3),
+            .ticket(19, weight: .semibold, relativeTo: .title3),
+        ]
+        /// «PASO 3 DE 8», in brass: it is how the person knows where the playing guide is.
+        static let stepNumber: Font = .ticket(17, weight: .semibold, relativeTo: .footnote)
+        /// The step's title under it, in ink: grey did not read in the window (user research).
+        static let stepTitle: Font = .ticket(18, weight: .medium, relativeTo: .body)
+        /// «ASÍ DEBE VERSE», the tag of a result picture.
+        static let tag: Font = .ticket(16, weight: .semibold, relativeTo: .footnote)
+    }
 }
 
 extension Theme.Opacity {
@@ -62,6 +99,13 @@ extension Theme.Motion {
     static let companionSettle: Double = 0.5
     /// A jump of the player longer than this is the window's ⏩ / ⏪, not playing along.
     static let companionJump: Double = 3
+    /// Seconds the floating guide's video takes to fade one picture into the next; it ends
+    /// as the next picture starts, so a skip (at `companionSettle`) lands on a clean picture.
+    static let companionFade: Double = 0.4
+    /// In-between frames of that fade.
+    static let companionFadeSteps = 8
+    /// How long before its fade a picture with something to tap stops and waits for ▶︎.
+    static let companionHold: Double = 0.15
     /// Seconds to wait for the window before opening Atajos without it.
     static let companionFallback: Double = 1.2
 }

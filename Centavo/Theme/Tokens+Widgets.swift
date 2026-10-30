@@ -184,9 +184,13 @@ struct Ink {
     /// A caption on the lock screen, one step under the figure.
     var lockCaption: Color { .primary.opacity(Theme.Opacity.widgetSecondary) }
 
-    /// The `index`-th category of «En qué se va»: the app's colors, or the one tone fading.
-    func category(_ index: Int, isRest: Bool) -> Color {
+    /// The `index`-th category of «En qué se va»: its own color (`color`, a place in
+    /// `Theme.categories`), or the one tone fading when the system tints the widget. A snapshot
+    /// from before the colors were fixed colors by place.
+    func category(_ index: Int, isRest: Bool, color: Int? = nil) -> Color {
         guard full else { return .primary.opacity([1, 0.75, 0.5, 0.3][min(index, 3)]) }
-        return isRest ? Theme.categoryRest : Theme.categories[min(index, Theme.categories.count - 1)]
+        if isRest { return Theme.categoryRest }
+        let place = color ?? index
+        return Theme.categories[min(max(place, 0), Theme.categories.count - 1)]
     }
 }

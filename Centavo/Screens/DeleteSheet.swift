@@ -14,7 +14,7 @@ private struct DeleteSheet: View {
     @State private var height: CGFloat = 320 // ds-allow: altura inicial antes de medir el contenido
 
     private var details: String {
-        [expense.category, expense.card, expense.date.formatted(.dateTime.day().month(.abbreviated))]
+        [expense.category, expense.card, expense.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
@@ -22,11 +22,12 @@ private struct DeleteSheet: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.none) {
+            // Ink like every other sheet's title.
             Text("¿Borrar este gasto?")
                 .font(.ticket(.footnoteStrong))
                 .tracking(Theme.Tracking.title)
                 .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
+                .foregroundStyle(Theme.ink)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.bottom, Theme.Space.xl)
 
@@ -35,8 +36,11 @@ private struct DeleteSheet: View {
                     .font(.ticket(.display))
                     .foregroundStyle(Theme.ink)
                     .monospacedDigit()
+                // Written as in the list, so it reads as the same expense.
                 Text(expense.shownName)
                     .font(.ticket(.bodyMedium))
+                    .tracking(Theme.Tracking.name)
+                    .textCase(.uppercase)
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2)
                 if !details.isEmpty {

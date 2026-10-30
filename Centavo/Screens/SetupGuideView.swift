@@ -24,6 +24,9 @@ struct SetupGuideView: View {
         return descriptor
     }
     @State private var step = GuideDebug.firstStep
+    /// iOS 27 starts on adding the ready-made automation (`ShortcutInstallView`); the
+    /// step-by-step guide is the way back if that fails.
+    @State private var stepByStep = !ShortcutsVersion.isIOS27 || GuideDebug.opensOnStep
     /// The floating guide that goes into Atajos with the person (Picture in Picture).
     @State private var companion = GuideCompanion()
     @ScaledMetric(relativeTo: .body) private var stepNumberWidth = Theme.Size.stepNumber
@@ -34,6 +37,29 @@ struct SetupGuideView: View {
     private var isLast: Bool { step == steps.count - 1 }
 
     var body: some View {
+        if stepByStep {
+            guide
+        } else {
+            NavigationStack {
+                ShortcutInstallView(latest: captured.first) {
+                    withAnimation(Theme.Motion.settle) { stepByStep = true }
+                }
+                .background(Theme.background.ignoresSafeArea())
+                .presentationBackground(Theme.background)
+                .navigationBarTitleDisplayMode(.inline)
+                .ticketBarTitle("Configurar atajo")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Listo") { dismiss() }
+                            .font(.ticket(.footnoteStrong))
+                            .accessibilityIdentifier("hoja-listo")
+                    }
+                }
+            }
+        }
+    }
+
+    private var guide: some View {
         NavigationStack {
             TabView(selection: $step) {
                 ForEach(steps.indices, id: \.self) { index in
@@ -142,61 +168,47 @@ struct SetupGuideView: View {
         }
     }
 
-    /// The dock above the bottom bar on every step done in Atajos: the floating guide's
-    /// thumbnail (the layer Picture in Picture floats) and one button that floats it and opens
-    /// Atajos under it. Without Picture in Picture, a plain «Abrir Atajos».
+    /// The dock above the bottom bar on every step done in Atajos: one button that floats the
+    /// guide and opens Atajos under it, the guide already playing. Without Picture in Picture,
+    /// a plain «Abrir Atajos».
     private var launcher: some View {
-        HStack(spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if GuideCompanion.isSupported {
-                // Tapping the thumbnail floats it here, to see it before going to Atajos.
-                Button { companion.float(from: step, thenOpen: nil) } label: {
-                    CompanionLayerView(companion: companion)
-                        .frame(width: thumbWidth, height: thumbHeight)
-                        .overlay {
-                            Image(systemName: "play.fill")
-                                .font(Theme.Symbol.regular)
-                                .foregroundStyle(Theme.ink)
-                                .padding(Theme.Space.xs)
-                                .background(Theme.background.opacity(Theme.Opacity.paceAhead), in: Circle())
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Ver la guía flotante")
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Theme.hairline)
-                }
-                .accessibilityIdentifier("guia-ver-flotante")
+                Text(companion.isFloating
+                     ? "La guía flota sobre Atajos. Avanza con ⏩."
+                     : "Esta guía te acompaña en una ventanita sobre Atajos.")
+                    .font(.ticket(.detail))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button {
+                let url = URL(string: "shortcuts://")!
                 if GuideCompanion.isSupported {
-                    Text(companion.isFloating
-                         ? "La guía flota sobre Atajos. Avanza con ⏩."
-                         : "Esta guía te acompaña en una ventanita sobre Atajos.")
-                        .font(.ticket(.detail))
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
+                    companion.float(from: step, thenOpen: url)
+                } else {
+                    openURL(url)
                 }
-                Button {
-                    let url = URL(string: "shortcuts://")!
-                    if GuideCompanion.isSupported {
-                        companion.float(from: step, thenOpen: url)
-                    } else {
-                        openURL(url)
-                    }
-                } label: {
-                    PrimaryButtonLabel("Abrir Atajos", systemImage: GuideCompanion.isSupported
-                                       ? "pip.enter" : "arrow.up.forward.app")
-                }
-                .ticketProminent()
-                .accessibilityIdentifier("guia-abrir-atajos")
+            } label: {
+                PrimaryButtonLabel("Abrir Atajos", systemImage: GuideCompanion.isSupported
+                                   ? "pip.enter" : "arrow.up.forward.app")
             }
+            .ticketProminent()
+            .accessibilityIdentifier("guia-abrir-atajos")
         }
         .padding(.horizontal, Theme.Space.screen)
         // Room above the bar's step buttons: the dock sat right on them (owner, 2026-10-29).
         .padding(.top, Theme.Space.l)
         .padding(.bottom, Theme.Space.xxl)
         .background(Theme.surface)
+        // The layer the window floats from, hidden behind the dock: it has to be on screen,
+        // but no thumbnail beside the button (owner, 2026-10-29).
+        .background {
+            if GuideCompanion.isSupported {
+                CompanionLayerView(companion: companion)
+                    .frame(width: thumbWidth, height: thumbHeight)
+                    .accessibilityHidden(true)
+            }
+        }
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
@@ -209,13 +221,14 @@ struct SetupGuideView: View {
                 return frames.map { frame in
                     var photo: String?
                     if case .photo(let name) = frame.screen { photo = name }
-                    return GuideCompanion.Page(step: index, stepTitle: guide.title,
-                                               caption: frame.caption, photo: photo,
+                    return GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
+                                               caption: frame.caption, photo: photo, focus: frame.focus,
                                                isResult: frame.isResult)
                 }
             }
             let lines = guide.taps.isEmpty ? [guide.lead ?? guide.title] : guide.taps
-            return lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, caption: $0) }
+            return lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
+                                                 caption: $0) }
         }
     }
 
@@ -296,7 +309,16 @@ enum GuideDebug {
         return 0
     }
 
+    /// `-centavo-guia-paso N` or `-centavo-atajo` (the ready-made automation, iOS 27).
     static var opensAtLaunch: Bool {
+        #if DEBUG
+        opensOnStep || ProcessInfo.processInfo.arguments.contains("-centavo-atajo")
+        #else
+        false
+        #endif
+    }
+
+    static var opensOnStep: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-centavo-guia-paso")
         #else
@@ -324,7 +346,7 @@ private struct GuideStep {
         GuideStep(
             title: "Abre Atajos",
             symbol: "square.2.layers.3d",
-            lead: "Apple no deja que Al día la cree por ti. Son 2 minutos, una sola vez.",
+            lead: "Apple no deja que Al día la cree por ti. Son unos 5 minutos, una sola vez.",
             taps: ["Abre la app Atajos (viene con el iPhone).",
                    "Abajo, al centro, toca «Automatización»."],
             opensShortcuts: true,
@@ -413,7 +435,7 @@ private struct GuideStep {
         GuideStep(
             title: "Crea un atajo nuevo",
             symbol: "plus.square",
-            lead: "Apple no deja que Al día lo cree por ti. Son 2 minutos, una sola vez.",
+            lead: "Apple no deja que Al día lo cree por ti. Son unos 5 minutos, una sola vez.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.newShortcut)
@@ -445,9 +467,9 @@ private struct GuideStep {
             scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
-            title: "Conéctalos",
+            title: "Conecta el aviso",
             symbol: "link",
-            lead: "Así Al día recibe el aviso completo: la tarjeta, el comercio y el monto.",
+            lead: "Así Al día recibe cada aviso de Wallet con el monto y la tarjeta. Son tres toques.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectNotice)
@@ -457,7 +479,7 @@ private struct GuideStep {
         GuideStep(
             title: "Conecta el comercio",
             symbol: "bag",
-            lead: "El comercio va en el subtítulo del aviso y hay que conectarlo aparte.",
+            lead: "Wallet manda el nombre de la tienda aparte. Se conecta casi igual que el paso anterior.",
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectSubtitle)
@@ -495,7 +517,7 @@ private struct GuideStep {
 // MARK: - Is it working?
 
 /// The last step's answer: the first payment the automation saved, or that it is still waiting.
-private struct CaptureCheck: View {
+struct CaptureCheck: View {
     let latest: Expense?
 
     /// Proof only if it is recent: a capture from days ago says nothing about the automation

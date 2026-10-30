@@ -44,10 +44,16 @@ enum Theme {
     /// «Vas bien»: under what an even month would have spent. 7:1 on `background`.
     static var good: Color { Color(hex: 0x8DBF86) }
 
-    /// «En qué se va»: one color per category, biggest first. Four, every pair of which reads
-    /// apart on `background` (checked for normal and color-blind vision); more looked alike.
+    /// One fixed color per category and per way of paying (`ColorTags`, 2026-10-29), the same
+    /// in the list, «En qué se va», «Pagos y categorías» and the widget. Eight, all readable
+    /// on `background`; with more names than colors some repeat, which is why the name is
+    /// always written beside it. The order is the order the color row shows them.
     static let categories: [Color] = [Color(hex: 0xC2861F), Color(hex: 0x1E9C73),
-                                      Color(hex: 0x4C86D9), Color(hex: 0xE07A9A)]
+                                      Color(hex: 0x4C86D9), Color(hex: 0xE07A9A),
+                                      Color(hex: 0x9B7FE0), Color(hex: 0x2BB3C0),
+                                      Color(hex: 0xE0743F), Color(hex: 0xA6B04A)]
+    /// What VoiceOver and the color menu call each of `categories`, in the same order.
+    static let categoryColorNames = ["Ocre", "Verde", "Azul", "Rosa", "Violeta", "Turquesa", "Coral", "Oliva"]
     /// «Otras», everything past the four: grey, so it never reads as a category of its own.
     static var categoryRest: Color { Color(hex: 0x6E6A62) }
 
@@ -78,11 +84,17 @@ struct Perforation: View {
             .accessibilityHidden(true)
     }
 
+    /// Starts and ends on a dash, centered, so the line is as far from both edges.
     private struct Line: Shape {
         func path(in rect: CGRect) -> Path {
+            let dash = Theme.Dash.perforation.first ?? 0
+            let period = Theme.Dash.perforation.reduce(0, +)
+            let drawn = period > 0 ? max(((rect.width + period - dash) / period).rounded(.down) * period - (period - dash), 0)
+                : rect.width
+            let start = rect.minX + (rect.width - drawn) / 2
             var path = Path()
-            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+            path.move(to: CGPoint(x: start, y: rect.midY))
+            path.addLine(to: CGPoint(x: start + drawn, y: rect.midY))
             return path
         }
     }

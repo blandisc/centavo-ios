@@ -12,6 +12,8 @@ struct FixedExpensesView: View {
     @Query(filter: #Predicate<Expense> { $0.isRepeat == true }) private var copies: [Expense]
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
+    @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
     /// The new fixed expense being written, with the name of a suggestion if one was tapped.
     @State private var adding: NewFixed?
     @State private var editing: Expense?
@@ -53,8 +55,9 @@ struct FixedExpensesView: View {
         NavigationStack {
             List {
                 Section {
+                    // The system's own row insets: on the line of the section headers and the
+                    // rows' text on every iPhone (16 or 20 pt, depending on its width).
                     explainer
-                        .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
 
@@ -83,17 +86,14 @@ struct FixedExpensesView: View {
                             }
                     }
                     Button { adding = NewFixed(name: "") } label: {
-                        Label("Agregar gasto fijo", systemImage: "plus")
-                            .font(.ticket(.footnoteStrong))
-                            .foregroundStyle(Theme.brass)
-                            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+                        LinkActionLabel("Agregar gasto fijo", systemImage: "plus", alignment: .leading)
                     }
                     .accessibilityIdentifier("agregar-fijo")
                 } header: {
                     Text("Tus gastos fijos").ticketCaption()
                 } footer: {
                     if !items.isEmpty {
-                        NoteText("Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
+                        HintText("Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -101,7 +101,6 @@ struct FixedExpensesView: View {
                 if !suggestions.isEmpty {
                     Section {
                         suggestionChips
-                            .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                     } header: {
                         Text(items.isEmpty ? "Empieza con uno" : "¿Te falta alguno?").ticketCaption()
@@ -139,33 +138,31 @@ struct FixedExpensesView: View {
         }
     }
 
+    /// The same row as the month's list: the category's tile, the name, the amount, and under
+    /// it how it repeats and when it comes next (brass while it is still to come this month).
     private func row(_ item: FixedItem) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(item.name)
-                    .font(.ticket(.bodyMedium))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
-                Spacer(minLength: Theme.Space.s)
-                Text(money(item.amount, item.currency))
-                    .font(.ticket(.body))
-                    .foregroundStyle(Theme.ink)
-                    .fixedSize()
+        let category = (item.original?.category ?? item.plan?.category).flatMap { $0.isEmpty ? nil : $0 }
+        let colors = CatalogColors(categories: storedCategoryColors, sources: "")
+        let tile = CategoryIconTile(
+            icon: category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) } ?? "repeat",
+            color: category.map(colors.category), background: Theme.raised)
+        return ExpenseRowLayout(name: item.name, tile: tile) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                ExpenseMetaText(([category, item.ruleText].compactMap { $0 }).joined(separator: " · "))
+                if let next = item.next {
+                    Text((item.original == nil ? "Empieza: " : "Próximo: ")
+                         + next.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+                            .locale(Locale(identifier: "es_MX"))))
+                        .font(.ticket(.hint))
+                        .foregroundStyle(item.coming.isEmpty ? Theme.muted : Theme.brass)
+                }
             }
-            Text(item.ruleText)
-                .font(.ticket(.hint))
-                .tracking(Theme.Tracking.detail)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
-            if let next = item.next {
-                Text((item.original == nil ? "Empieza: " : "Próximo: ")
-                     + next.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                    .font(.ticket(.hint))
-                    .foregroundStyle(item.coming.isEmpty ? Theme.muted : Theme.brass)
-            }
+        } amount: {
+            Text(money(item.amount, item.currency))
+                .font(.ticket(.body))
+                .foregroundStyle(Theme.ink)
+                .fixedSize()
         }
-        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
-        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
@@ -229,29 +226,20 @@ struct FixedExpensesView: View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Space.s) {
                 ForEach(suggestions, id: \.self) { name in
-                    Button { adding = NewFixed(name: name) } label: {
-                        Label(name, systemImage: "plus")
-                            .font(.ticket(.footnote))
-                            .foregroundStyle(Theme.ink)
-                            .padding(.horizontal, Theme.Space.m)
-                            .frame(minHeight: Theme.Size.tapTarget)
-                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+                    TicketChip(name, systemImage: "plus", identifier: "sugerencia-fijo-\(name)") {
+                        adding = NewFixed(name: name)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("sugerencia-fijo-\(name)")
                 }
             }
         }
         .scrollIndicators(.hidden)
+        // The first chip on the headers' line (the row's own inset); they scroll to the edge.
+        .scrollClipDisabled()
     }
 
     private func summaryFigure(_ label: String, _ amount: String, brass: Bool = false) -> some View {
         VStack(alignment: brass ? .trailing : .leading, spacing: Theme.Space.xxxs) {
-            Text(label)
-                .font(.ticket(.micro))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.muted)
+            Text(label).ticketKey()
             Text(amount)
                 .font(.ticket(.headline))
                 .foregroundStyle(brass ? Theme.brass : Theme.ink)
@@ -363,13 +351,13 @@ struct FixedPlanSheet: View {
                     .tint(Theme.brass)
                     .accessibilityIdentifier("fijo-categoria")
                     Picker(selection: $card) {
-                        Text("Sin tarjeta").tag("")
+                        Text("Sin especificar").tag("")
                         ForEach(PaymentChoices.names(sources: sources, known: knownCards, current: card),
                                 id: \.self) { name in
                             Label(name, systemImage: PaymentChoices.icon(for: name, sources: sources)).tag(name)
                         }
                     } label: {
-                        SectionLabel("Con qué pagas")
+                        SectionLabel("Forma de pago")
                     }
                     .pickerStyle(.menu)
                     .tint(Theme.brass)
@@ -377,7 +365,7 @@ struct FixedPlanSheet: View {
                 } header: {
                     Text("Opcional").ticketCaption()
                 } footer: {
-                    HintText("Cada cobro llega con esta categoría y esta tarjeta.")
+                    HintText("Cada cobro llega con esta categoría y esta forma de pago.")
                 }
                 .listRowBackground(Theme.surface)
 

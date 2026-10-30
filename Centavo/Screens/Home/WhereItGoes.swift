@@ -43,6 +43,7 @@ struct WhereItGoes: View {
     var onSelect: (CategoryShare?) -> Void = { _ in }
 
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
+    @AppStorage(UserCatalog.categoryColorsKey) private var storedColors = ""
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var total: Decimal { shares.reduce(0) { $0 + $1.amount } - returned }
@@ -58,6 +59,9 @@ struct WhereItGoes: View {
                         Text(money(total))
                             .foregroundStyle(Theme.ink)
                             .monospacedDigit()
+                            // Letter spacing trails the last digit too: give it back, so the
+                            // figure ends on the bar's edge.
+                            .padding(.trailing, -Theme.Tracking.caption)
                             .lineLimit(1)
                             .minimumScaleFactor(Theme.MinimumScale.figure)
                     }
@@ -76,10 +80,8 @@ struct WhereItGoes: View {
                     }
                 }
             }
-            .font(.ticket(.micro))
-            .tracking(Theme.Tracking.label)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.muted)
+            // The same section caption as «Cada día del mes», the page beside it.
+            .ticketCaption()
             .accessibilityElement(children: .combine)
             switch style {
             case .bar:
@@ -111,13 +113,17 @@ struct WhereItGoes: View {
 
     private var lines: [CategoryLine] {
         let custom = UserCatalog.decode(storedCategories)
-        return shares.enumerated().map { index, share in
+        let colors = CatalogColors(categories: storedColors, sources: "")
+        return shares.map { share in
             CategoryLine(
                 share: share,
                 name: share.isRest ? "Otras" : share.category ?? "Sin categoría",
                 icon: share.isRest ? "ellipsis"
                     : share.category.map { CategoryStyle.icon(for: $0, custom: custom) } ?? "questionmark",
-                color: share.isRest || index >= Theme.categories.count ? Theme.categoryRest : Theme.categories[index]
+                // Each category keeps its own color all month and every month; «Otras» and
+                // what has no category are grey.
+                color: share.isRest ? Theme.categoryRest
+                    : share.category.map(colors.category) ?? Theme.categoryRest
             )
         }
     }
@@ -270,6 +276,8 @@ private struct ShareBarLine: View {
                     Spacer(minLength: Theme.Space.s)
                     amountText.layoutPriority(1)
                     percent.frame(minWidth: percentWidth, alignment: .trailing)
+                        // The same for the spacing after the «%».
+                        .padding(.trailing, -Theme.Tracking.detail)
                 }
             }
         }

@@ -58,7 +58,7 @@ enum MonthStatus {
         return pace.isOverToday ? "Hoy ya te pasaste por \(today)." : "Hoy puedes gastar \(today)."
     }
 
-    /// "Llevas $2,366.00 este mes, más USD 24.99 aparte. Te quedan $5,634.00 del presupuesto. Hoy…"
+    /// "Llevas $2,366.00 este mes, más USD 24.99 en otra moneda. Te quedan $5,634.00 del presupuesto. Hoy…"
     static func totalSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
                               primary: String = primaryCurrency) throws -> String {
         let summary = try summarize(in: context, now: now, primary: primary)
@@ -67,7 +67,7 @@ enum MonthStatus {
             let others = summary.others
                 .map { "\($0.label) \($0.amount.formatted(.number.precision(.fractionLength(2))))" }
                 .formatted(.list(type: .and))
-            sentence += ", más \(others) aparte"
+            sentence += ", más \(others) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")"
         }
         sentence += "."
         if let budgetLine = try budgetSentence(in: context, budget: budget, now: now, primary: primary) {

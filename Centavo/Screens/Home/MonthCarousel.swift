@@ -24,6 +24,9 @@ struct MonthCarousel: View {
     var equalHeights = false
     let onSetBudget: () -> Void
     var currency = CurrencyPreference.fallback
+    /// This month past its budget: the plan's line goes under the bar.
+    var overspend: OverspendPlan?
+    var now = Date.now
 
     @State private var position = ScrollPosition(idType: Int.self)
     /// The page shown or on its way, by finger or by dot, to put the carousel back on it when
@@ -61,7 +64,8 @@ struct MonthCarousel: View {
                 HStack(alignment: .top, spacing: Theme.Space.none) {
                     BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
                                shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
-                               onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget)
+                               onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget,
+                               overspend: overspend, currency: currency, now: now)
                         .padding(.horizontal, Theme.Space.screen)
                         .fixedSize(horizontal: false, vertical: true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
