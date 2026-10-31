@@ -49,6 +49,10 @@ struct MonthCarousel: View {
     /// The page the carousel last came to rest on, to answer with a tick when it lands elsewhere.
     @State private var restingPage = 0
     @State private var landings = 0
+    /// True while a finger drags the pages or they glide to rest. The page swipe over the header
+    /// then leaves them alone: a second animation on top of iOS's own stopped the glide dead and
+    /// started it again, which the owner felt as a jolt (2026-10-30).
+    @State private var moving = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Each page is as wide as the screen: measured by the list, not `containerRelativeFrame`,
     /// which stayed at the landscape width when the phone turned back upright.
@@ -115,10 +119,14 @@ struct MonthCarousel: View {
                 }
                 .scrollTargetLayout()
             }
-            .scrollTargetBehavior(.paging)
+            // iOS glides the page to rest with the finger's own momentum; this only picks the page,
+            // with less travel than a half page (see `EasyPaging`).
+            .scrollTargetBehavior(EasyPaging(page: page))
             .scrollPosition($position, anchor: .leading)
             .scrollDisabled(scrollLocked)
             .onChange(of: request) { _, asked in
+                // The finger is on the pages: iOS is already taking them there.
+                guard !moving else { return }
                 page = asked.page
                 withAnimation(reduceMotion ? nil : Theme.Motion.pageTurn) { position.scrollTo(id: asked.page, anchor: .leading) }
             }
@@ -133,6 +141,7 @@ struct MonthCarousel: View {
             // A light tick when the page lands on the other one, like a ticket torn off; none while
             // it moves, none if it springs back.
             .onScrollPhaseChange { _, phase in
+                moving = phase != .idle
                 guard phase == .idle else { return }
                 let landed = scroll.value < 0.5 ? 0 : 1
                 page = landed
@@ -169,6 +178,25 @@ struct MonthCarousel: View {
     }
 }
 
+/// Paging for the carousel's two pages that turns with a short swipe: the page goes over once the
+/// finger, with its momentum, would carry it `pageSwipeDistance` past where it rested, not half a
+/// page as `.paging` asks. Where it lands is all this decides; the glide there is iOS's own.
+private struct EasyPaging: ScrollTargetBehavior {
+    /// The page the carousel rested on when the finger came down.
+    let page: Int
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        let width = context.containerSize.width
+        guard width > 0 else { return }
+        let lastPage = max(Int((context.contentSize.width / width).rounded()) - 1, 0)
+        let travel = context.originalTarget.rect.minX - CGFloat(page) * width
+        var next = page
+        if travel >= Theme.Size.pageSwipeDistance { next += 1 }
+        if travel <= -Theme.Size.pageSwipeDistance { next -= 1 }
+        target.rect.origin.x = CGFloat(min(max(next, 0), lastPage)) * width
+    }
+}
+
 /// A page fading as it leaves and coming in as it arrives, with the finger: the two never show
 /// whole side by side, so the boleto reads as turning into the calendar (owner, 2026-10-30).
 private struct PageFade: ViewModifier {
@@ -176,7 +204,9 @@ private struct PageFade: ViewModifier {
 
     func body(content: Content) -> some View {
         content.scrollTransition(axis: .horizontal) { page, phase in
-            page.opacity(reduceMotion ? Theme.Opacity.visible : Theme.Opacity.visible - abs(phase.value))
+            // Squared: each page stays mostly there until the other has come halfway, so the middle
+            // of the swipe is not two half-dim pages.
+            page.opacity(reduceMotion ? Theme.Opacity.visible : Theme.Opacity.visible - phase.value * phase.value)
         }
     }
 }
