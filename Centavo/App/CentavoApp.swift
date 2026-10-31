@@ -21,7 +21,7 @@ struct CentavoApp: App {
             Group {
                 switch Store.opened {
                 case .success(let container):
-                    ExpenseListView().modelContainer(container)
+                    RootView().modelContainer(container)
                 case .failure:
                     StoreErrorView()
                 }

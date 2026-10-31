@@ -76,8 +76,33 @@ struct BackupTests {
     @Test("Un respaldo de una versión más nueva lo dice en vez de fallar raro")
     func newerFormat() throws {
         var newer = String(data: try sample().encoded(), encoding: .utf8)!
-        newer = newer.replacingOccurrences(of: "\"format\":1", with: "\"format\":2")
+        newer = newer.replacingOccurrences(of: "\"format\":2", with: "\"format\":3")
         #expect(throws: BackupError.newerFormat) { try BackupPayload.decoded(from: Data(newer.utf8)) }
+    }
+
+    @Test("Un respaldo de antes de «Mi dinero» (formato 1) se sigue leyendo, sin dinero")
+    func formatOne() throws {
+        var old = String(data: try sample().encoded(), encoding: .utf8)!
+        old = old.replacingOccurrences(of: "\"format\":2", with: "\"format\":1")
+        let back = try BackupPayload.decoded(from: Data(old.utf8))
+        #expect(back.money == nil)
+        #expect(back.expenses == sample().expenses)
+        #expect(back.summary.accountCount == nil)
+    }
+
+    @Test("«Mi dinero» viaja en el respaldo, con sus montos exactos")
+    func moneyRoundTrip() throws {
+        var payload = sample()
+        payload.money = BackupMoney(
+            accounts: [.init(id: "A1", name: "CETES", kind: "cuenta", currency: "MXN", yearlyRate: "9.8",
+                             order: 0, archived: false, createdAt: Date(timeIntervalSinceReferenceDate: 5))],
+            cuts: [.init(id: "C1", month: "2026-10", date: Date(timeIntervalSinceReferenceDate: 9), mainCurrency: "MXN",
+                         rates: "USD=18.5", entries: [.init(account: "A1", balance: "150000.01", movement: "-0.1")])])
+        let file = try BackupSeal.seal(payload, password: "clave", rounds: rounds)
+        let back = try BackupSeal.open(file, password: "clave")
+        #expect(back == payload)
+        #expect(back.summary.accountCount == 1)
+        #expect(back.summary.cutCount == 1)
     }
 
     @Test("Los montos se escriben con punto, sea cual sea la región")

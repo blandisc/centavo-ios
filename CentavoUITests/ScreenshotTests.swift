@@ -29,6 +29,34 @@ final class ScreenshotTests: XCTestCase {
         add(attachment)
     }
 
+    func testMiDinero() {
+        let app = launch(["-centavo-dinero-demo"])
+        snap("40-hoy-con-pestanas")
+        app.tabBars.buttons["Mi dinero"].tap()
+        XCTAssertTrue(app.staticTexts["dinero-patrimonio"].waitForExistence(timeout: 5), "No abrió «Mi dinero»")
+        sleep(1)
+        snap("41-mi-dinero")
+        app.swipeUp()
+        sleep(1)
+        snap("42-mi-dinero-cuentas")
+        app.buttons["dinero-hacer-corte"].tap()
+        sleep(1)
+        snap("43-corte")
+        let keep = app.buttons["corte-sin-cambio-CETES"]
+        if keep.waitForExistence(timeout: 3) { keep.tap(); sleep(1) }
+        snap("44-corte-un-revisado")
+    }
+
+    func testMiDineroVacio() {
+        let app = launch(["-centavo-dinero-vacio"])
+        app.tabBars.buttons["Mi dinero"].tap()
+        XCTAssertTrue(app.buttons["dinero-primera-cuenta"].waitForExistence(timeout: 5))
+        snap("45-mi-dinero-vacio")
+        app.buttons["dinero-primera-cuenta"].tap()
+        sleep(1)
+        snap("46-nueva-cuenta")
+    }
+
     func testRespaldo() {
         let app = launch()
         app.buttons["Más"].tap()

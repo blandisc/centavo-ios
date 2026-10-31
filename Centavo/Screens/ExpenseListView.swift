@@ -176,17 +176,12 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Anotar gasto", systemImage: "plus") { adding = true }
                 }
-                // ‹ month › is one piece of glass; search sits apart at the other end.
-                ToolbarItemGroup(placement: .bottomBar) {
+                // ‹ › up top since «Mi dinero» put tabs at the bottom (2026-10-31). Only the
+                // arrows: the ticket's head already names the month, and the signature must
+                // keep its place in the middle. Search stays down there, beside the tabs.
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
                         .disabled(offset <= earliest)
-                    Text(viewed, format: .dateTime.month(.abbreviated).year().locale(Self.mexico))
-                        .font(.ticket(.bodyMedium))
-                        .tracking(Theme.Tracking.title)
-                        .textCase(.uppercase)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .padding(.horizontal, Theme.Space.xxs)
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
                 }

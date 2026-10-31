@@ -44,7 +44,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Centavo/Centavo.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Al día"
-        INFOPLIST_KEY_NSFaceIDUsageDescription: "Para mostrarte la contraseña del respaldo."
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Para proteger «Mi dinero» y mostrarte la contraseña del respaldo."
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Para guardar dónde pagaste cada gasto, como lo muestra Wallet. Solo si enciendes «Guardar dónde pagas»."
         # Merged with the generated keys: only the launch screen lives there.
         INFOPLIST_FILE: Centavo/Info.plist

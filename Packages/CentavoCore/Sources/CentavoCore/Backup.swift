@@ -6,8 +6,9 @@ import Foundation
 /// `Double`, so `0.1` would come back as `0.1000000000000000512` and every restore would
 /// nudge the money. Dates travel as seconds since 2001, which a `Double` keeps exactly.
 public struct BackupPayload: Codable, Equatable, Sendable {
-    /// Bumped when the shape changes in a way an older app cannot read.
-    public static let currentFormat = 1
+    /// Bumped when the shape changes in a way an older app cannot read. 2 (2026-10-31) adds
+    /// «Mi dinero»: an app that only knows 1 refuses it instead of restoring without it.
+    public static let currentFormat = 2
 
     public var format: Int
     public var createdAt: Date
@@ -15,14 +16,17 @@ public struct BackupPayload: Codable, Equatable, Sendable {
     public var writtenBy: String
     public var expenses: [BackupExpense]
     public var settings: [String: BackupSetting]
+    /// «Mi dinero». `nil` in a format-1 file: restoring it leaves «Mi dinero» as it is.
+    public var money: BackupMoney?
 
     public init(createdAt: Date, writtenBy: String, expenses: [BackupExpense],
-                settings: [String: BackupSetting]) {
+                settings: [String: BackupSetting], money: BackupMoney? = nil) {
         self.format = Self.currentFormat
         self.createdAt = createdAt
         self.writtenBy = writtenBy
         self.expenses = expenses
         self.settings = settings
+        self.money = money
     }
 
     public func encoded() throws -> Data {
@@ -46,15 +50,74 @@ public struct BackupPayload: Codable, Equatable, Sendable {
     public var summary: BackupSummary {
         let dates = expenses.map(\.date)
         return BackupSummary(createdAt: createdAt, expenseCount: expenses.count,
-                             firstExpense: dates.min(), lastExpense: dates.max())
+                             firstExpense: dates.min(), lastExpense: dates.max(),
+                             accountCount: money?.accounts.count, cutCount: money?.cuts.count)
     }
 }
 
+/// Counts only: the restore sheet is shown before Face ID, so no money figures.
 public struct BackupSummary: Equatable, Sendable {
     public var createdAt: Date
     public var expenseCount: Int
     public var firstExpense: Date?
     public var lastExpense: Date?
+    /// `nil` when the file has no «Mi dinero» at all (format 1).
+    public var accountCount: Int?
+    public var cutCount: Int?
+}
+
+/// «Mi dinero» as the backup keeps it: amounts as text, cuts already finished (a draft is
+/// work in progress and stays out).
+public struct BackupMoney: Codable, Equatable, Sendable {
+    public var accounts: [Account]
+    public var cuts: [Cut]
+
+    public init(accounts: [Account], cuts: [Cut]) {
+        self.accounts = accounts
+        self.cuts = cuts
+    }
+
+    public struct Account: Codable, Equatable, Sendable {
+        public var id: String
+        public var name: String
+        public var kind: String
+        public var currency: String
+        public var yearlyRate: String?
+        public var order: Int
+        public var archived: Bool
+        public var createdAt: Date
+
+        public init(id: String, name: String, kind: String, currency: String, yearlyRate: String?,
+                    order: Int, archived: Bool, createdAt: Date) {
+            self.id = id; self.name = name; self.kind = kind; self.currency = currency
+            self.yearlyRate = yearlyRate; self.order = order; self.archived = archived; self.createdAt = createdAt
+        }
+    }
+
+    public struct Cut: Codable, Equatable, Sendable {
+        public var id: String
+        public var month: String
+        public var date: Date
+        public var mainCurrency: String
+        public var rates: String
+        public var entries: [Entry]
+
+        public init(id: String, month: String, date: Date, mainCurrency: String, rates: String, entries: [Entry]) {
+            self.id = id; self.month = month; self.date = date; self.mainCurrency = mainCurrency
+            self.rates = rates; self.entries = entries
+        }
+    }
+
+    public struct Entry: Codable, Equatable, Sendable {
+        public var account: String
+        public var balance: String
+        public var yieldOverride: String?
+        public var movement: String?
+
+        public init(account: String, balance: String, yieldOverride: String? = nil, movement: String? = nil) {
+            self.account = account; self.balance = balance; self.yieldOverride = yieldOverride; self.movement = movement
+        }
+    }
 }
 
 /// One expense, field for field as the app stores it. Every field but the three a payment
