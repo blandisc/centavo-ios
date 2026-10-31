@@ -539,6 +539,30 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Liverpool"), "No regresó a todo el mes")
     }
 
+    /// Arrastrar despacio, como un dedo (dueño, 2026-10-30: «se regresa» y «cambia de golpe»): unos
+    /// puntos y soltar regresa a la misma página; 70 pt y soltar sin impulso cambia de página, en
+    /// los dos sentidos, empezando sobre la cifra o sobre el calendario.
+    func testArrastrarDespacioCambiaDePaginaYUnPocoRegresa() {
+        let app = launch(demo: true, budget: true)
+        let calendar = require(app.buttons["Calendario"], "No hay puntito del calendario")
+        let budget = require(app.buttons["Presupuesto"], "No hay puntito del presupuesto")
+        let figure = require(app.staticTexts["hoy-puedes-gastar"], "No está la cifra")
+        func drag(from start: XCUICoordinate, by dx: CGFloat) {
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: dx, dy: 0)),
+                        withVelocity: 60, thenHoldForDuration: 0.3)
+            sleep(1)
+        }
+        let onFigure = figure.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 120, dy: 0))
+        drag(from: onFigure, by: -20)
+        XCTAssertTrue(budget.isSelected, "Unos puntos cambiaron de página")
+        drag(from: onFigure, by: -70)
+        XCTAssertTrue(calendar.isSelected, "Arrastrar 70 pt despacio no llevó al calendario")
+        let day = require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Día 12")).firstMatch,
+                          "No se ve el calendario")
+        drag(from: day.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)), by: 70)
+        XCTAssertTrue(budget.isSelected, "Arrastrar 70 pt despacio sobre el calendario no regresó")
+    }
+
     /// Con «En qué se va» a la vista (barra o mosaico), cada página tiene su propia altura (decisión
     /// del 2026-10-30: el hueco bajo el mosaico): al pasar al calendario, este se ve completo, con su
     /// último día arriba de los puntitos, y el título «Cada día del mes» no se mueve.

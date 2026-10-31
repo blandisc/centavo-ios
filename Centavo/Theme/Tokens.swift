@@ -216,9 +216,15 @@ extension Theme {
         static let select: Animation = .easeOut(duration: 0.12)
         /// A page changing.
         static let page: Animation = .snappy(duration: 0.3)
-        /// The hero's two pages (boleto and calendar) turning: slower than `page` and braking
-        /// gently on arrival, with no bounce (owner, 2026-10-30: «más suave, elegante»).
-        static let pageTurn: Animation = .smooth(duration: 0.55)
+        /// The hero's two pages (boleto and calendar) gliding to rest once the finger lets go:
+        /// they leave at the finger's speed (`velocity`, in page-distances per second) and brake
+        /// to a stop with no bounce (owner, 2026-10-30: «más suave, elegante»). A tapped dot
+        /// glides from rest.
+        static func pageGlide(velocity: Double = 0) -> Animation {
+            .interpolatingSpring(duration: 0.5, bounce: 0, initialVelocity: min(velocity, pageGlideTopSpeed))
+        }
+        /// A flick over a few points left would otherwise shoot the glide off.
+        static let pageGlideTopSpeed: Double = 8
         /// A swipe settling, a dot sliding.
         static let settle: Animation = .smooth(duration: 0.3)
         /// A height easing to the next page.
