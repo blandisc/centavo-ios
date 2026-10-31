@@ -29,6 +29,30 @@ final class ScreenshotTests: XCTestCase {
         add(attachment)
     }
 
+    func testRespaldo() {
+        let app = launch()
+        app.buttons["Más"].tap()
+        XCTAssertTrue(app.buttons["Ajustes"].waitForExistence(timeout: 5))
+        app.buttons["Ajustes"].tap()
+        let backup = app.buttons["ajustes-respaldo"]
+        XCTAssertTrue(backup.waitForExistence(timeout: 5))
+        snap("30-ajustes-respaldo")
+        backup.tap()
+        sleep(1)
+        snap("31-respaldo-sin-configurar")
+        let password = app.secureTextFields["respaldo-contrasena"]
+        if password.waitForExistence(timeout: 3) {
+            password.tap()
+            password.typeText("clave-de-prueba")
+            let again = app.secureTextFields["respaldo-repite"]
+            again.tap()
+            again.typeText("clave-de-prueba")
+            app.buttons["respaldo-guardar-contrasena"].tap()
+            sleep(1)
+        }
+        snap("32-respaldo-con-contrasena")
+    }
+
     func testPrincipalPresupuesto() {
         _ = launch()
         snap("01-principal-presupuesto")

@@ -80,6 +80,16 @@ struct SettingsView: View {
                     Button(action: importCSV) {
                         IconRow("Importar CSV", systemImage: "square.and.arrow.down") { EmptyView() }
                     }
+                    NavigationLink {
+                        BackupSettingsView()
+                    } label: {
+                        IconRow("Respaldo diario", systemImage: "lock.icloud") {
+                            Text(backupText)
+                                .font(.ticket(.detail))
+                                .foregroundStyle(Theme.muted)
+                        }
+                    }
+                    .accessibilityIdentifier("ajustes-respaldo")
                 } header: {
                     Text("Tus datos").ticketCaption()
                 } footer: {
@@ -109,6 +119,14 @@ struct SettingsView: View {
                 csv = ExpensesCSVFile(expenses: all, primaryCurrency: currency)
             }
         }
+    }
+
+    /// «Hoy», «Hace 4 días» or what's missing. Muted always: the guide's line is the warning.
+    private var backupText: String {
+        guard DailyBackup.isSetUp else { return "Sin configurar" }
+        guard let last = DailyBackup.lastBackup else { return "Sin respaldo" }
+        if Calendar.current.isDateInToday(last) { return "Hoy" }
+        return last.formatted(.relative(presentation: .named).locale(Locale(identifier: "es_MX"))).capitalized
     }
 
     private var healthText: String {

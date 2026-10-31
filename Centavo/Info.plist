@@ -32,5 +32,26 @@
 			</array>
 		</dict>
 	</array>
+	<!-- The daily backup's file (DailyBackup), so Archivos lets you pick it to restore. -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.blandisc.centavo.respaldo</string>
+			<key>UTTypeDescription</key>
+			<string>Respaldo de Al día</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>aldia</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

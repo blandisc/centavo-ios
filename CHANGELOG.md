@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- **Respaldo diario con contraseña:** en Ajustes → «Respaldo diario» eliges una contraseña y una carpeta (por ejemplo iCloud Drive/Al día). «Respaldar ahora» guarda un archivo con todos tus gastos y ajustes, lo vuelve a abrir para comprobarlo y conserva los últimos 30 días y uno por mes. Con la acción «Respaldar Al día» en una automatización de Atajos se hace solo cada noche. «Restaurar respaldo» te muestra de qué día es y cuántos gastos trae antes de reemplazar nada, y guarda primero una copia de lo que hay.
 - **El código de barras de tu mes:** bajo la barra del presupuesto, una barra por día. Pon el dedo y deslízalo para ver cuánto gastaste cada día; suéltalo en uno y la lista muestra solo ese día. Debajo, tus pagos, tu promedio y tu tope por día.
 - **El folio «N.º»** junto a la cifra (los pagos del mes) y la fecha arriba, como un ticket.
 - **«Para cerrar el mes» se puede quitar** con su ✕ por lo que queda del mes.
