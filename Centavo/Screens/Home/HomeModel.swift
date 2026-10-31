@@ -1,6 +1,7 @@
 import CentavoCore
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// What the main screen works out from the expenses, kept until what it comes from changes.
 ///
@@ -24,8 +25,8 @@ final class HomeModel {
     var scrubbing = false
     /// This sideways swipe began while the boleto was being read: it doesn't turn the page.
     @ObservationIgnored var swipeBlocked = false
-    /// A page asked of the carousel from outside it: a swipe on the figure or the line above.
-    var carouselRequest = CarouselRequest()
+    /// Where the carousel's pages stand, moved by the swipe over the whole top of the screen.
+    let carousel = CarouselMotion()
     /// Goes up each time the store saves, so a search on screen is asked again (an edit can
     /// make an expense match or stop matching).
     private(set) var revision = 0
@@ -299,8 +300,53 @@ struct CategoryCatalog: Equatable {
     }
 }
 
-/// «Go to this page», asked of the carousel; `serial` makes asking twice for the same page count.
-struct CarouselRequest: Equatable {
+/// Where the carousel's two pages stand (owner, 2026-10-30, «brusca»: a finger and an animation
+/// took turns moving them, and the glide stopped dead or snapped back). Now one thing moves them:
+/// they follow the finger anywhere at the top of the screen and, when it lets go, glide on at its
+/// speed to the page it was headed for. Its own object, so only the carousel redraws while it moves.
+@MainActor @Observable
+final class CarouselMotion {
+    static let pageCount = 2
+    /// The page they rest on, or glide to.
     var page = 0
-    var serial = 0
+    /// How far a finger has pulled them from `page`, in points (left is negative).
+    var drag: CGFloat = 0
+    /// One page's width, measured by the carousel.
+    var width = CGFloat.zero
+    /// Goes up each time they land on another page, for the tick.
+    var landings = 0
+
+    /// 0 on the boleto, 1 on the calendar, in between while they move; past either end the
+    /// finger pulls against resistance.
+    var progress: CGFloat {
+        guard width > 0 else { return CGFloat(page) }
+        let raw = CGFloat(page) - drag / width
+        let last = CGFloat(Self.pageCount - 1)
+        if raw < 0 { return raw * Theme.Size.pageEdgeResistance }
+        if raw > last { return last + (raw - last) * Theme.Size.pageEdgeResistance }
+        return raw
+    }
+
+    /// The finger let go after moving `dx` at `velocity` (points per second): a short swipe or a
+    /// flick turns the page toward where the finger went; a flick back the other way wins.
+    func release(_ dx: CGFloat, velocity: CGFloat, reduceMotion: Bool) {
+        let flick = abs(velocity) >= Theme.Size.pageSwipeVelocity
+        let swiped = abs(dx) >= Theme.Size.pageSwipeDistance
+        var target = page
+        if flick || swiped { target += (flick ? velocity : dx) < 0 ? 1 : -1 }
+        go(to: min(max(target, 0), Self.pageCount - 1), velocity: velocity, reduceMotion: reduceMotion)
+    }
+
+    /// Glides to `target` from wherever the pages are, leaving at the finger's speed when it is
+    /// headed there (none from a tapped dot).
+    func go(to target: Int, velocity: CGFloat = 0, reduceMotion: Bool) {
+        let distance = (CGFloat(target) - progress) * width
+        // In page-distances per second; positive only when the finger was going that way.
+        let speed = abs(distance) > 1 ? max(-velocity / distance, 0) : 0
+        if target != page { landings += 1 }
+        withAnimation(reduceMotion ? nil : Theme.Motion.pageGlide(velocity: speed)) {
+            page = target
+            drag = 0
+        }
+    }
 }

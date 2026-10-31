@@ -497,22 +497,26 @@ private struct HomeHeader: View {
     let entrance: Entrance
     let model: HomeModel
     let actions: HomeActions
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// A sideways swipe anywhere at the top of the screen (the figure, the boleto, its line, the
     /// calendar, the Wallet line): the calendar (to the left) or back (owner, 2026-10-30, a third
     /// time: hard to hit). UIKit's sideways pan, alongside the carousel's own scroll and the
     /// buttons under it; up and down is still the screen's scroll.
+    /// The pages follow the finger and glide on when it lets go (`CarouselMotion`).
     private var pageSwipe: SidewaysPan {
-        SidewaysPan(ratio: Theme.Size.pageSwipeRatio, alongside: true, changed: { _ in
+        SidewaysPan(ratio: Theme.Size.pageSwipeRatio, alongside: true, holdsScroll: true, changed: { dx in
             // Holding the boleto and sliding reads its days: not a page turn.
             if model.scrubbing { model.swipeBlocked = true }
+            guard !model.swipeBlocked else { return }
+            model.carousel.drag = dx
         }) { dx, velocity in
             defer { model.swipeBlocked = false }
-            guard !model.swipeBlocked, !model.scrubbing else { return }
-            let toCalendar = dx <= -Theme.Size.pageSwipeDistance || velocity <= -Theme.Size.pageSwipeVelocity
-            let back = dx >= Theme.Size.pageSwipeDistance || velocity >= Theme.Size.pageSwipeVelocity
-            guard toCalendar != back else { return }
-            model.carouselRequest = CarouselRequest(page: toCalendar ? 1 : 0, serial: model.carouselRequest.serial + 1)
+            guard !model.swipeBlocked, !model.scrubbing else {
+                model.carousel.go(to: model.carousel.page, reduceMotion: reduceMotion)
+                return
+            }
+            model.carousel.release(dx, velocity: velocity, reduceMotion: reduceMotion)
         }
     }
 
@@ -593,8 +597,7 @@ private struct HomeHeader: View {
                                    averagePerDay: month.code.averagePerDay)
                     }),
                     now: now,
-                    request: model.carouselRequest,
-                    scrollLocked: model.scrubbing
+                    motion: model.carousel
                 )
                 // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                 // between them instead of two pages touching.

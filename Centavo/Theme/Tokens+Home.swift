@@ -110,10 +110,11 @@ extension Theme.Size {
     static let pageSwipeRatio: CGFloat = 1
     /// A quick sideways flick turns the page even if short.
     static let pageSwipeVelocity: CGFloat = 300
-    /// A swipe over the figure starts counting after this…
-    static let pageSwipeStart: CGFloat = 12
-    /// …and turns the carousel's page once it went this far sideways.
+    /// A swipe turns the carousel's page once it went this far sideways.
     static let pageSwipeDistance: CGFloat = 36
+    /// Past the first or the last page the pages follow the finger at this fraction, like the
+    /// edge of any iOS scroll.
+    static let pageEdgeResistance: CGFloat = 0.3
     /// The red tick over a day past its limit.
     static let monthCodeTick: CGFloat = 3
     /// Room the carousel leaves over its top for the boleto's day card, which rises over the
