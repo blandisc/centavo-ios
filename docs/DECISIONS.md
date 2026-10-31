@@ -630,3 +630,8 @@ Decisiones del dueño sobre el recorrido (bocetos: https://claude.ai/artifact/9N
 - **El corte (decisión 1 A): una sola hoja con pendientes.** Cada cuenta espera su saldo escrito o «Sin cambio»; el saldo anterior es solo el texto de ejemplo y el rendimiento estimado solo una pista. «Guardar» dice «N sin revisar» hasta que no falte nada. El teclado trae «Sin cambio» y «Siguiente» (a la próxima pendiente). Si sales, el corte te espera como lo dejaste (borrador que nunca cuenta). Un corte por mes: rehacerlo reemplaza al del mismo mes.
 - **Respaldo formato 2:** incluye «Mi dinero» (sin borradores) y comprueba también cuántas cuentas y cortes trae. Restaurar un respaldo de formato 1 deja «Mi dinero» como está y lo dice antes de confirmar.
 - **Siguiente:** el desglose de «ahorraste» (con altas, transferencias, tipo de cambio por cuenta, «ya cayó» con monto), la primera vez guiada, el cierre del mes, gráficas, importar y el aviso del corte.
+
+## 2026-10-31 · La forma de pago, como tarjetita en su color
+Pedido del dueño: «no me gusta que diga Amex, me gustaría que esté en una tarjetita naranja».
+- **En la línea de cada gasto, la forma de pago es su ícono relleno** (una tarjeta, o el que tenga en «Pagos y categorías») **en su color**, en vez del nombre corto. Sustituye «la forma de pago, sin ícono y con su nombre corto en su color» (2026-10-29). En gris si el gasto no cuenta.
+- VoiceOver sigue leyendo el nombre completo; la hoja del gasto también lo muestra.

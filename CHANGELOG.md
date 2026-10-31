@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **La forma de pago en la lista es una tarjetita en su color** (el ícono de la forma de pago, relleno) en lugar de su nombre corto («Amex»). VoiceOver sigue diciendo el nombre.
 ### Added
 - **«Mi dinero», primera parte:** una pestaña nueva abajo, junto a «Hoy», protegida con Face ID cada vez que la abres. Agrega tus cuentas, inversiones, lo que te deben y lo que debes (con su moneda, tipo de cambio y tasa anual) y ves tu patrimonio en un número. «Hacer corte» abre una hoja con todas tus cuentas: cada una espera su saldo de hoy o «Sin cambio», y «Guardar» dice cuántas faltan. El respaldo diario ya incluye «Mi dinero».
 ### Changed

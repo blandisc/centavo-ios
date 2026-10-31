@@ -1277,12 +1277,16 @@ private struct LedgerRow: View {
 
     private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
 
-    /// The line under the name, the way of paying last, by its short name («Amex») in its own
-    /// color, and brass dots between the parts, like the rest of the ticket (owner, 2026-10-29).
+    /// The line under the name, the way of paying last as its own icon (a little card, filled)
+    /// in its own color, and brass dots between the parts, like the rest of the ticket. The
+    /// icon replaced the short name («Amex») at the owner's request (2026-10-31); VoiceOver
+    /// still reads the name.
     private var metaLine: Text? {
         var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { Text($0) }
         if let card {
-            parts.append(Text(PaymentName.short(card))
+            let icon = catalog.sourceIcon(for: card)
+            let filled = UIImage(systemName: icon + ".fill") == nil ? icon : icon + ".fill"
+            parts.append(Text(Image(systemName: filled))
                 .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card)))
         }
         guard let first = parts.first else { return nil }
