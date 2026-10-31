@@ -270,6 +270,11 @@ struct BackupSettingsView: View {
             let style = Date.FormatStyle.dateTime.month(.abbreviated).year().locale(mx)
             text += " (de \(first.formatted(style)) a \(lastOne.formatted(style)))"
         }
+        if let accounts = summary.accountCount, let cuts = summary.cutCount {
+            text += ", y «Mi dinero» con \(accounts) cuentas y \(cuts) cortes"
+        } else {
+            text += ". No trae «Mi dinero»: el tuyo se queda como está"
+        }
         return text + "."
     }
 }

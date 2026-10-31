@@ -116,7 +116,9 @@ enum DailyBackup {
             reread = try? Data(contentsOf: url)
         }
         guard let reread, let back = try? BackupSeal.open(reread, password: password),
-              back.expenses.count == payload.expenses.count else { throw Failure.notWritten }
+              back.expenses.count == payload.expenses.count,
+              back.money?.accounts.count == payload.money?.accounts.count,
+              back.money?.cuts.count == payload.money?.cuts.count else { throw Failure.notWritten }
 
         guard trims, let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
         else { return }
@@ -130,10 +132,85 @@ enum DailyBackup {
     // MARK: What goes in
 
     @MainActor
-    static func snapshot(in context: ModelContext, now: Date = .now) throws -> BackupPayload {
+    static func snapshot(in context: ModelContext, now: Date = .now,
+                         moneyContainer: ModelContainer? = DailyBackup.moneyContainer) throws -> BackupPayload {
         let expenses = try context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)]))
         return BackupPayload(createdAt: now, writtenBy: AppVersion.line,
-                             expenses: expenses.map(\.backedUp), settings: Settings.current())
+                             expenses: expenses.map(\.backedUp), settings: Settings.current(),
+                             money: try moneySnapshot(moneyContainer))
+    }
+
+    /// «Mi dinero», read without Face ID: the backup is written in the background and the file
+    /// is locked with the password anyway. `nil` only when its store can't open.
+    static var moneyContainer: ModelContainer? { try? MoneyStore.opened.get() }
+
+    @MainActor
+    static func moneySnapshot(_ container: ModelContainer?) throws -> BackupMoney? {
+        guard let container else { return nil }
+        let context = ModelContext(container)
+        let accounts = try context.fetch(FetchDescriptor<MoneyAccount>(sortBy: [SortDescriptor(\.createdAt)]))
+        let cuts = try context.fetch(MoneyCut.finished)
+        return BackupMoney(
+            accounts: accounts.map { account in
+                .init(id: account.id.uuidString, name: account.name, kind: account.kindRaw, currency: account.currency,
+                      yearlyRate: account.yearlyRate.map(BackupNumber.text), order: account.order,
+                      archived: account.archived, createdAt: account.createdAt)
+            },
+            cuts: cuts.map { cut in
+                .init(id: cut.id.uuidString, month: cut.month, date: cut.date, mainCurrency: cut.mainCurrency,
+                      rates: cut.rates, entries: (cut.entries ?? []).compactMap { entry in
+                          guard let account = entry.account else { return nil }
+                          return .init(account: account.id.uuidString, balance: BackupNumber.text(entry.balance),
+                                       yieldOverride: entry.yieldOverride.map(BackupNumber.text),
+                                       movement: entry.movement.map(BackupNumber.text))
+                      })
+            })
+    }
+
+    /// Replaces «Mi dinero» with the backup's, in one save. A damaged figure stops it whole.
+    @MainActor
+    static func restoreMoney(_ money: BackupMoney, into container: ModelContainer) throws {
+        func number(_ text: String) throws -> Decimal {
+            guard let value = BackupNumber.value(text) else { throw Failure.unreadable(.damaged) }
+            return value
+        }
+        func optional(_ text: String?) throws -> Decimal? { try text.map(number) }
+
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        do {
+            for cut in try context.fetch(FetchDescriptor<MoneyCut>()) { context.delete(cut) }
+            for entry in try context.fetch(FetchDescriptor<MoneyEntry>()) { context.delete(entry) }
+            for account in try context.fetch(FetchDescriptor<MoneyAccount>()) { context.delete(account) }
+            var byID: [String: MoneyAccount] = [:]
+            for row in money.accounts {
+                let account = MoneyAccount(name: row.name, kind: MoneyKind(rawValue: row.kind) ?? .account,
+                                           currency: row.currency, yearlyRate: try optional(row.yearlyRate), order: row.order)
+                account.id = UUID(uuidString: row.id) ?? UUID()
+                account.archived = row.archived
+                account.createdAt = row.createdAt
+                context.insert(account)
+                byID[row.id] = account
+            }
+            for row in money.cuts {
+                let cut = MoneyCut(month: row.month, date: row.date, mainCurrency: row.mainCurrency, isDraft: false)
+                cut.id = UUID(uuidString: row.id) ?? UUID()
+                cut.rates = row.rates
+                context.insert(cut)
+                for line in row.entries {
+                    guard let account = byID[line.account] else { throw Failure.unreadable(.damaged) }
+                    let entry = MoneyEntry(balance: try number(line.balance), account: account, reviewed: true)
+                    entry.yieldOverride = try optional(line.yieldOverride)
+                    entry.movement = try optional(line.movement)
+                    context.insert(entry)
+                    entry.cut = cut
+                }
+            }
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
     /// Every setting the app keeps in `UserDefaults`, read from the app's own domain rather than
@@ -202,9 +279,14 @@ enum DailyBackup {
 
     /// Replaces every expense and setting with the backup's, all at once: one save, so it's
     /// either the old data or the new, never a mix. Settings change only after the save.
+    /// «Mi dinero» first (a format-1 file has none and leaves it as it is), then the expenses.
+    /// Two stores can't be saved as one, so each is all-or-nothing on its own, and the safety
+    /// copy taken before covers both.
     @MainActor
-    static func restore(_ payload: BackupPayload, into container: ModelContainer) throws {
+    static func restore(_ payload: BackupPayload, into container: ModelContainer,
+                        money moneyContainer: ModelContainer? = DailyBackup.moneyContainer) throws {
         let expenses = try payload.expenses.map { try Expense(backup: $0) }
+        if let money = payload.money, let moneyContainer { try restoreMoney(money, into: moneyContainer) }
         let context = ModelContext(container)
         context.autosaveEnabled = false
         do {

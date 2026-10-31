@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- **«Mi dinero», primera parte:** una pestaña nueva abajo, junto a «Hoy», protegida con Face ID cada vez que la abres. Agrega tus cuentas, inversiones, lo que te deben y lo que debes (con su moneda, tipo de cambio y tasa anual) y ves tu patrimonio en un número. «Hacer corte» abre una hoja con todas tus cuentas: cada una espera su saldo de hoy o «Sin cambio», y «Guardar» dice cuántas faltan. El respaldo diario ya incluye «Mi dinero».
+### Changed
+- **El cambio de mes de «Hoy» sube a la barra de arriba** (‹ ›, a la izquierda de la firma) y la búsqueda queda como botón junto a las pestañas.
 - **Respaldo diario con contraseña:** en Ajustes → «Respaldo diario» eliges una contraseña y una carpeta (por ejemplo iCloud Drive/Al día). «Respaldar ahora» guarda un archivo con todos tus gastos y ajustes, lo vuelve a abrir para comprobarlo y conserva los últimos 30 días y uno por mes. Con la acción «Respaldar Al día» en una automatización de Atajos se hace solo cada noche. «Restaurar respaldo» te muestra de qué día es y cuántos gastos trae antes de reemplazar nada, y guarda primero una copia de lo que hay.
 - **El código de barras de tu mes:** bajo la barra del presupuesto, una barra por día. Pon el dedo y deslízalo para ver cuánto gastaste cada día; suéltalo en uno y la lista muestra solo ese día. Debajo, tus pagos, tu promedio y tu tope por día.
 - **El folio «N.º»** junto a la cifra (los pagos del mes) y la fecha arriba, como un ticket.

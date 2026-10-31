@@ -620,3 +620,13 @@ Bocetos: https://claude.ai/artifact/3nX4njaKgV7fegF9zvzaxC. Se construye por pas
 - **Gráficas mes a mes:** patrimonio, ahorro contra lo que debías y gasto por categoría.
 - **Importar y exportar** un CSV (`corte,tipo,nombre,moneda,monto,tasa_anual,movimiento,repite`) que pueda armar el agente del dueño.
 - **Fuera:** conectar bancos y metas.
+
+## 2026-10-31 · «Mi dinero», primera parte: pestañas, Face ID, cuentas y el corte
+Decisiones del dueño sobre el recorrido (bocetos: https://claude.ai/artifact/9NGPJEhPnWb2TWL7PXJApA) y plan revisado por un agente independiente.
+- **Pestañas abajo: «Hoy» y «Mi dinero».** Probado en el simulador: la barra de pestañas tapa la barra inferior de «Hoy». El cambio de mes sube arriba a la izquierda **solo con las flechas ‹ ›** (el mes ya lo dice la cabecera del ticket); con la etiqueta «OCT 2026» iOS escondía la firma, y el dueño pidió no perderla. La búsqueda queda abajo, como botón junto a las pestañas (iOS lo acomoda solo). Fuera de eso «Hoy» no cambia: el dueño pidió no tocarlo por ahora (sin línea de ahorro, sin aviso del respaldo).
+- **Almacén aparte** (`dinero.store`, sin iCloud): un problema con «Mi dinero» nunca detiene «Hoy» ni la captura de Wallet, y el almacén de gastos no se migra. Modelos con forma compatible con CloudKit (todo opcional, relaciones con inversa, sin `.unique`).
+- **Face ID cada vez que se abre la pestaña**, y se vuelve a bloquear al cambiar de pestaña o salir de la app. En el selector de apps la pestaña se tapa. Si Face ID falla, el código del iPhone. Un iPhone sin código abre sin pedir nada (no hay con qué comprobar).
+- **Cuentas, inversiones, por cobrar y deudas**, con moneda (fija desde que se crea), tipo de cambio y tasa anual opcional. Se archivan, no se borran: los cortes pasados las conservan. Una cuenta nueva entra en el último corte con su saldo de hoy.
+- **El corte (decisión 1 A): una sola hoja con pendientes.** Cada cuenta espera su saldo escrito o «Sin cambio»; el saldo anterior es solo el texto de ejemplo y el rendimiento estimado solo una pista. «Guardar» dice «N sin revisar» hasta que no falte nada. El teclado trae «Sin cambio» y «Siguiente» (a la próxima pendiente). Si sales, el corte te espera como lo dejaste (borrador que nunca cuenta). Un corte por mes: rehacerlo reemplaza al del mismo mes.
+- **Respaldo formato 2:** incluye «Mi dinero» (sin borradores) y comprueba también cuántas cuentas y cortes trae. Restaurar un respaldo de formato 1 deja «Mi dinero» como está y lo dice antes de confirmar.
+- **Siguiente:** el desglose de «ahorraste» (con altas, transferencias, tipo de cambio por cuenta, «ya cayó» con monto), la primera vez guiada, el cierre del mes, gráficas, importar y el aviso del corte.
