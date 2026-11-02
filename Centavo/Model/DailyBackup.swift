@@ -188,38 +188,41 @@ enum DailyBackup {
         return try work(folder)
     }
 
-    /// Today's file, unless that would put less over what today's file already has
-    /// (`BackupPlan`). Returns the name written.
+    /// Today's file, unless that would put less over what today's file, or the newest backup in
+    /// the folder, already has (`BackupPlan`). Returns the name written.
     static func writeToday(_ payload: BackupPayload, password: String, now: Date) throws -> String {
         try inFolder { folder in
             let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? []
             // A file only in iCloud, not on this phone yet, shows as «.name.icloud».
-            let present = Set(names.map(Self.visibleName))
-            let daily = BackupRetention.fileName(for: now)
-            let today: BackupPlan.Today
-            if names.contains(daily) {
-                today = holds(folder.appending(path: daily), password: password)
-            } else {
-                today = present.contains(daily) ? .unreadable : .none
+            let present = Array(Set(names.map(Self.visibleName)))
+            func state(of name: String?) -> BackupPlan.Today {
+                guard let name else { return .none }
+                if names.contains(name) { return holds(folder.appending(path: name), password: password) }
+                return present.contains(name) ? .unreadable : .none
             }
-            let plan = BackupPlan.decide(expenses: payload.expenses.count, hasMoney: payload.money != nil, today: today,
+            let daily = BackupRetention.fileName(for: now)
+            let today = state(of: daily)
+            let newestName = BackupRetention.newestDaily(present, now: now)
+            let newest = newestName == daily ? today : state(of: newestName)
+            let plan = BackupPlan.decide(expenses: payload.expenses.count, hasMoney: payload.money?.hasContent ?? false,
+                                         today: today, newest: newest,
                                          folderHasBackups: present.contains(where: BackupRetention.isBackupFile))
             switch plan {
             case .newPhone:
                 throw Failure.newPhone
             case .aside:
-                // Today's file had more: this one goes apart, and nothing is trimmed.
+                // The day's file, or the newest, had much more: this one goes apart, nothing trimmed.
                 let name = BackupRetention.asideName(for: now)
                 try writeChecked(payload, password: password, named: name, in: folder)
                 return name
-            case .daily:
+            case .daily, .dailyKeepingOld:
                 // In iCloud, nothing is trimmed until the last file made it up (iCloud full).
                 let previous = UserDefaults.standard.string(forKey: fileKey)
                     .flatMap { cloudState(of: folder.appending(path: $0)) }
-                let trims = !payload.expenses.isEmpty
+                let trims = plan == .daily && !payload.expenses.isEmpty
                     && BackupCloud.mayTrim(folderInCloud: isInCloud(folder), previous: previous)
                 try writeChecked(payload, password: password, named: daily, in: folder)
-                if trims { trim(folder) }
+                if trims { trim(folder, now: now) }
                 return daily
             }
         }
@@ -236,20 +239,55 @@ enum DailyBackup {
         guard let data = coordinatedRead(url), let back = try? BackupSeal.open(data, password: password) else {
             return .unreadable
         }
-        return .holds(expenses: back.expenses.count, money: back.money != nil)
+        return .holds(expenses: back.expenses.count, money: back.money?.hasContent ?? false)
     }
 
     /// Before a restore replaces everything, what there was goes to the folder (never trimmed:
     /// the name isn't a daily one) and to the app's own Documents, whichever works. A cut left
     /// half-done goes too (2026-11-02, second audit): restoring replaces it, and this copy is
     /// where it's kept.
+    ///
+    /// Locking the copy takes a moment off the main thread, and a Wallet payment can be saved in
+    /// it: the restore would delete it with no copy (independent review). So once written, the
+    /// expenses are counted again and, if any came, the copy is taken again.
     @MainActor
     static func safetyCopy(in context: ModelContext, password: String, now: Date = .now) async throws {
+        for _ in 0..<safetyAttempts {
+            let payload = try await writeSafetyCopy(in: context, password: password, now: now)
+            if try expensesMark(in: context) == mark(of: payload) { return }
+        }
+        // Payments keep arriving: better not to restore now than to lose one.
+        throw Failure.notWritten
+    }
+
+    static let safetyAttempts = 3
+
+    /// How many expenses and the newest date: what a payment arriving changes.
+    struct ExpensesMark: Equatable {
+        var count: Int
+        var newest: Date?
+    }
+
+    static func mark(of payload: BackupPayload) -> ExpensesMark {
+        ExpensesMark(count: payload.expenses.count, newest: payload.expenses.map(\.date).max())
+    }
+
+    @MainActor
+    static func expensesMark(in context: ModelContext) throws -> ExpensesMark {
+        var newest = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        newest.fetchLimit = 1
+        return ExpensesMark(count: try context.fetchCount(FetchDescriptor<Expense>()),
+                            newest: try context.fetch(newest).first?.date)
+    }
+
+    @MainActor
+    private static func writeSafetyCopy(in context: ModelContext, password: String,
+                                        now: Date) async throws -> BackupPayload {
         // A «Mi dinero» that doesn't open can't be copied, but the expenses still can (and its
         // file is set aside, never deleted, if the restore needs a new one).
         let payload = try (try? snapshot(in: context, now: now, drafts: true))
             ?? snapshot(in: context, now: now, moneyContainer: nil)
-        let name = BackupRetention.safetyName(for: now)
+        let name = BackupRetention.safetyName(for: .now)
         try await apart {
             let sealed = try BackupSeal.seal(payload, password: password)
             var saved = false
@@ -262,6 +300,7 @@ enum DailyBackup {
             if inFolder != nil { saved = true }
             if !saved { throw Failure.notWritten }
         }
+        return payload
     }
 
     /// Writes a file and reads it back: only a file that comes back byte for byte, and opens with
@@ -305,9 +344,9 @@ enum DailyBackup {
     }
 
     /// The last 30 days and the newest of each month stay (`BackupRetention`).
-    private static func trim(_ folder: URL) {
+    private static func trim(_ folder: URL, now: Date) {
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)) else { return }
-        for old in BackupRetention.toDelete(names) {
+        for old in BackupRetention.toDelete(names, now: now) {
             var coordination: NSError?
             NSFileCoordinator().coordinate(writingItemAt: folder.appending(path: old), options: .forDeleting,
                                            error: &coordination) { url in
@@ -517,19 +556,50 @@ enum DailyBackup {
     static func restore(_ payload: BackupPayload, into container: ModelContainer, now: Date = .now) throws {
         // A file without «Mi dinero» never needs it open.
         guard payload.money != nil else { return try restore(payload, into: container, money: nil) }
-        // Before anything changes: a backup that can't even be turned into expenses stops here,
-        // and a damaged «Mi dinero» isn't set aside for nothing.
+        // Before anything changes: a backup that can't be turned into expenses, or whose «Mi
+        // dinero» wouldn't restore whole, stops here, and a damaged «Mi dinero» is never set
+        // aside for nothing (independent review).
         _ = try payload.expenses.map { try Expense(backup: $0) }
+        guard payload.money?.isWhole ?? true else { throw Failure.unreadable(.damaged) }
         do {
             try restore(payload, into: container, money: moneyContainer())
         } catch Failure.moneyUnreadable {
+            // Once more first: a store busy a moment ago may open now.
+            MoneyStore.forget()
+            if case .success(let again) = MoneyStore.opened {
+                return try restore(payload, into: container, money: again)
+            }
             // «Mi dinero» is there and doesn't open: restoring is what fixes it (2026-11-02, second
             // audit). Its files go aside, never deleted, and a new one takes the backup's.
-            try setAsideMoneyFiles(at: MoneyStore.url, now: now)
+            let moved = try setAsideMoneyFiles(at: MoneyStore.url, now: now)
             MoneyStore.forget()
-            guard case .success(let fresh) = MoneyStore.opened else { throw Failure.moneyNotReady }
-            try restore(payload, into: container, money: fresh, wasDamaged: true)
+            guard case .success(let fresh) = MoneyStore.opened else {
+                undoSetAside(moved, at: MoneyStore.url)
+                throw Failure.moneyNotReady
+            }
+            do {
+                try restore(payload, into: container, money: fresh, wasDamaged: true)
+            } catch Failure.halfRestored {
+                // «Mi dinero» is the backup's already: that stays, the damaged one aside.
+                throw Failure.halfRestored
+            } catch {
+                // Nothing went in: the new store goes and the old files come back as they were,
+                // never an empty «Mi dinero» with the good one hidden.
+                undoSetAside(moved, at: MoneyStore.url)
+                throw error
+            }
         }
+    }
+
+    /// Puts set-aside files back where they were, after removing the new store made in their place.
+    static func undoSetAside(_ moved: [(from: URL, to: URL)], at url: URL) {
+        MoneyStore.forget()
+        let manager = FileManager.default
+        let folder = url.deletingLastPathComponent()
+        for suffix in ["", "-wal", "-shm"] {
+            try? manager.removeItem(at: folder.appending(path: url.lastPathComponent + suffix))
+        }
+        for file in moved { try? manager.moveItem(at: file.to, to: file.from) }
     }
 
     /// `wasDamaged`: «Mi dinero» was set aside for this restore, so there's nothing to put back
@@ -568,7 +638,8 @@ enum DailyBackup {
     /// Moves a store that doesn't open, with its `-wal` and `-shm`, to «dinero.store.danado-<fecha>»
     /// next to it: never deleted, and a new store can be made in its place. All or nothing: a
     /// journal left behind would be read into the new store.
-    static func setAsideMoneyFiles(at url: URL, now: Date = .now) throws {
+    @discardableResult
+    static func setAsideMoneyFiles(at url: URL, now: Date = .now) throws -> [(from: URL, to: URL)] {
         let manager = FileManager.default
         let folder = url.deletingLastPathComponent()
         var base = url.lastPathComponent + ".danado-" + BackupRetention.stamp(now, withTime: true)
@@ -590,6 +661,7 @@ enum DailyBackup {
                 throw Failure.moneyNotReady
             }
         }
+        return moved
     }
 }
 

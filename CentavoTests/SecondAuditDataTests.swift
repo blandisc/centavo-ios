@@ -59,6 +59,49 @@ final class SecondAuditDataTests: XCTestCase {
         XCTAssertEqual(try all().count, 2, "Se guarda marcada, nunca se descarta")
     }
 
+    /// Review 5. Another shop a minute later through the other automation is another purchase,
+    /// and an expense typed by hand never takes part.
+    func testTheOtherAutomationNeedsALikeShop() throws {
+        try ExpenseRecorder.record(amountText: "$50.00", merchant: "OXXO ROBLE MTY", card: "Amex",
+                                   in: context, primary: "MXN", rules: CategoryRules(), hidden: [],
+                                   renames: MerchantRenames(), now: now)
+        let other = try ExpenseRecorder.record(amountText: "MXN 50.00", merchant: "Starbucks", card: "American Express México",
+                                               rawNotice: "American Express México\nStarbucks\nMXN 50.00",
+                                               in: context, primary: "MXN", rules: CategoryRules(), hidden: [],
+                                               renames: MerchantRenames(), now: now.addingTimeInterval(60))
+        XCTAssertEqual(other, .saved(merchant: "Starbucks"))
+        context.insert(Expense(amount: 30, currencyMarker: "MXN", merchant: "Café", date: now.addingTimeInterval(70)))
+        try context.save()
+        let notice = try ExpenseRecorder.record(amountText: "MXN 30.00", merchant: "Café", card: nil,
+                                                rawNotice: "Amex\nCafé\nMXN 30.00", in: context, primary: "MXN",
+                                                rules: CategoryRules(), hidden: [], renames: MerchantRenames(),
+                                                now: now.addingTimeInterval(80))
+        XCTAssertEqual(notice, .saved(merchant: "Café"), "Un gasto a mano nunca marca una captura")
+    }
+
+    /// Review 3. What the copy before a restore counts: a payment arriving changes it.
+    func testAPaymentDuringTheSafetyCopyIsNoticed() throws {
+        context.insert(Expense(amount: 89, currencyMarker: "MXN", merchant: "Oxxo", date: now))
+        try context.save()
+        let payload = try DailyBackup.snapshot(in: context, moneyContainer: nil)
+        XCTAssertEqual(try DailyBackup.expensesMark(in: context), DailyBackup.mark(of: payload))
+        context.insert(Expense(amount: 50, currencyMarker: "MXN", merchant: "Didi", date: now.addingTimeInterval(5)))
+        try context.save()
+        XCTAssertNotEqual(try DailyBackup.expensesMark(in: context), DailyBackup.mark(of: payload))
+    }
+
+    /// Review 2. A file whose «Mi dinero» wouldn't restore whole changes nothing at all.
+    func testABrokenMiDineroStopsTheRestoreBeforeAnything() throws {
+        context.insert(Expense(amount: 1, currencyMarker: "MXN", merchant: "Antes", date: now))
+        try context.save()
+        let cut = BackupMoney.Cut(id: "c", month: "2026-10", date: now, mainCurrency: "MXN", rates: "",
+                                  entries: [.init(account: "no-viene", balance: "10")])
+        let payload = BackupPayload(createdAt: now, writtenBy: "prueba", expenses: [BackupExpense(amount: 5, date: now, merchant: "Nuevo")],
+                                    settings: [:], money: BackupMoney(accounts: [], cuts: [cut]))
+        XCTAssertThrowsError(try DailyBackup.restore(payload, into: context.container))
+        XCTAssertEqual(try all().map(\.merchant), ["Antes"])
+    }
+
     /// 19. A merchant named by hand isn't turned back into what the notice said.
     func testTheRepairLeavesANameWrittenByHand() throws {
         let notice = "Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena"
@@ -96,6 +139,18 @@ final class SecondAuditDataTests: XCTestCase {
         for _ in 0..<2 { original("Gym", 500, on: at(10, 10)).fixedID = "gym" }
         XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(11, 30)), 1)
         XCTAssertEqual(try all().filter { $0.repeatsMonthly == true }.count, 2)
+    }
+
+    /// Review 8. The same exact date and different content is likely an edit not yet synced
+    /// (Netflix 299 → 329): neither is deleted.
+    func testTwinsOnTheSameDateAreBothKept() throws {
+        let old = original("Netflix", 299, on: at(10, 25))
+        let edited = original("Netflix", 329, on: at(10, 25))
+        old.fixedID = "netflix"
+        edited.fixedID = "netflix"
+        try context.save()
+        try RecurringExpenses.logDue(in: context, now: at(10, 30))
+        XCTAssertEqual(Set(try all().filter { $0.repeatsMonthly == true }.map(\.amount)), [299, 329])
     }
 
     /// 12. A plan two devices started now leaves one original.

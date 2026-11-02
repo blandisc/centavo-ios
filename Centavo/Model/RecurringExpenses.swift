@@ -105,13 +105,14 @@ enum RecurringExpenses {
     }
 
     /// Two originals with one `fixedID`: the one `FixedTwins` picks stays, with the furthest
-    /// `repeatsThrough` of both, and the other goes. When nothing tells them apart, both stay
-    /// (deleting either could, on another device, delete the other one too). Returns the gone.
+    /// `repeatsThrough` of both, and the other goes. With the same exact date both stay: what
+    /// differs then is likely an edit, and deleting either could, on another device, delete the
+    /// other one too (independent review). Returns the gone.
     private static func resolveTwins(_ originals: [Expense], in context: ModelContext) -> Set<ObjectIdentifier> {
         var gone = Set<ObjectIdentifier>()
         let groups = Dictionary(grouping: originals.filter { $0.fixedID != nil }, by: { $0.fixedID ?? "" })
         for twins in groups.values where twins.count > 1 {
-            guard let keep = FixedTwins.keeper(twins.map(twinKey)) else { continue }
+            guard let keep = FixedTwins.keeper(twins.map(\.date)) else { continue }
             let furthest = twins.compactMap(\.repeatsThrough).max()
             for (index, twin) in twins.enumerated() where index != keep {
                 context.delete(twin)
@@ -120,14 +121,6 @@ enum RecurringExpenses {
             if let furthest { twins[keep].repeatsThrough = furthest }
         }
         return gone
-    }
-
-    /// What tells two originals apart on every device: what travels with them, never the
-    /// store's own id. Fields people rarely edit, so a change not yet synced doesn't flip it.
-    private static func twinKey(_ expense: Expense) -> FixedTwins.Key {
-        let content = [BackupNumber.text(expense.amount), expense.currencyMarker ?? "", expense.merchant,
-                       expense.rawAmount ?? "", expense.card ?? ""].joined(separator: "|")
-        return FixedTwins.Key(date: expense.date, notice: expense.rawNotice, content: content)
     }
 
     /// The fixed expenses set up to start on a day that has now come: their first charge is

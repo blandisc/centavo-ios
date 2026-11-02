@@ -10,15 +10,18 @@ public struct RecentCapture: Equatable, Sendable {
     public var currency: String?
     /// It came from a Wallet notification («Notificación», iOS 27), not from «Transacción».
     public var fromNotice: Bool
+    /// Already marked «¿repetida?»: from the other automation, it's the pair of an earlier one.
+    public var markedRepeated: Bool
 
     public init(amount: Decimal, merchant: String, card: String?, date: Date,
-                currency: String? = nil, fromNotice: Bool = false) {
+                currency: String? = nil, fromNotice: Bool = false, markedRepeated: Bool = false) {
         self.amount = amount
         self.merchant = merchant
         self.card = card
         self.date = date
         self.currency = currency
         self.fromNotice = fromNotice
+        self.markedRepeated = markedRepeated
     }
 }
 
@@ -41,24 +44,54 @@ public enum CaptureGuard {
 
     /// How close the same payment arrives through both automations («Transacción» and
     /// «Notificación»), each with its own text («OXXO ROBLE MTY» and «Oxxo», «Amex» and
-    /// «American Express México»): only the amount and currency are compared (2026-11-02).
+    /// «American Express México»): same amount and currency, and a shop that starts alike or the
+    /// same card (2026-11-02; the shop or card since the independent review).
     public static let otherSourceWindow: TimeInterval = 2 * 60
 
+    /// Only Wallet captures are ever `recent` (one typed or said by hand never enters).
     public static func check(amount: Decimal, merchant: String, card: String?,
                              at date: Date, recent: [RecentCapture],
                              currency: String? = nil, fromNotice: Bool = false) -> Verdict {
         if amount == 0 { return .empty }
-        let isRepeat = recent.contains { previous in
-            guard previous.amount == amount else { return false }
-            let apart = abs(previous.date.timeIntervalSince(date))
-            if previous.fromNotice != fromNotice {
-                return apart <= otherSourceWindow && key(previous.currency ?? "") == key(currency ?? "")
-            }
-            return key(previous.merchant) == key(merchant)
+        let new = RecentCapture(amount: amount, merchant: merchant, card: card, date: date,
+                                currency: currency, fromNotice: fromNotice)
+        let sameSource = recent.contains { previous in
+            previous.fromNotice == fromNotice && previous.amount == amount
+                && key(previous.merchant) == key(merchant)
                 && key(previous.card ?? "") == key(card ?? "")
-                && apart <= duplicateWindow
+                && abs(previous.date.timeIntervalSince(date)) <= duplicateWindow
         }
-        return isRepeat ? .duplicate : .save
+        if sameSource { return .duplicate }
+        // One to one: a pair already made (the later one marked) takes both out.
+        var free = recent.sorted { $0.date < $1.date }
+        for marked in free.filter({ $0.markedRepeated }) where free.contains(marked) {
+            guard let partner = free.firstIndex(where: {
+                $0 != marked && $0.fromNotice != marked.fromNotice && $0.date <= marked.date && alike($0, marked)
+            }) else { continue }
+            let partnerCapture = free[partner]
+            free.removeAll { $0 == partnerCapture || $0 == marked }
+        }
+        return free.contains { $0.fromNotice != fromNotice && alike($0, new) } ? .duplicate : .save
+    }
+
+    /// The same payment told by the other automation.
+    private static func alike(_ one: RecentCapture, _ other: RecentCapture) -> Bool {
+        guard one.amount == other.amount, key(one.currency ?? "") == key(other.currency ?? ""),
+              abs(one.date.timeIntervalSince(other.date)) <= otherSourceWindow else { return false }
+        let sameCard = !key(one.card ?? "").isEmpty && key(one.card ?? "") == key(other.card ?? "")
+        return sameCard || shopsAlike(one.merchant, other.merchant)
+    }
+
+    /// «OXXO ROBLE MTY» and «Oxxo»: one starts with the other, or both with the same word.
+    static func shopsAlike(_ one: String, _ other: String) -> Bool {
+        let a = words(one), b = words(other)
+        guard let first = a.first, let second = b.first else { return false }
+        let joinedA = a.joined(), joinedB = b.joined()
+        return first == second || joinedA.hasPrefix(joinedB) || joinedB.hasPrefix(joinedA)
+    }
+
+    private static func words(_ text: String) -> [String] {
+        key(text).components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
     }
 
     private static func key(_ text: String) -> String {

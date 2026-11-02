@@ -6,26 +6,52 @@ import Foundation
 public enum BackupPlan: Equatable, Sendable {
     /// Today's name, and the cleanup runs.
     case daily
-    /// Another name the cleanup never touches, and no cleanup: today's file had more.
+    /// Today's name, but nothing old is trimmed: the newest backup couldn't be read to compare
+    /// (another password, or still only in iCloud).
+    case dailyKeepingOld
+    /// Another name the cleanup never touches, and no cleanup: the file of the day, or the newest
+    /// backup, had much more.
     case aside
-    /// Nothing written and nothing trimmed: this phone has no expenses and the folder has backups.
+    /// Nothing written and nothing trimmed: this phone has nothing and the folder has backups.
     case newPhone
 
-    /// What today's file (if there is one) holds.
+    /// What a backup file holds: today's (if there is one) or the newest daily one.
     public enum Today: Equatable, Sendable {
         case none
-        /// It's there and doesn't open (another password, damaged): never replaced.
+        /// It's there and doesn't open (another password, damaged, not downloaded).
         case unreadable
+        /// `money`: «Mi dinero» with something in it (`BackupMoney.hasContent`).
         case holds(expenses: Int, money: Bool)
     }
 
-    public static func decide(expenses: Int, hasMoney: Bool, today: Today, folderHasBackups: Bool) -> BackupPlan {
-        if expenses == 0 && folderHasBackups { return .newPhone }
+    /// Fewer than this many, and fewer than half, is not a few deleted: a new iPhone, or one
+    /// before iCloud brought its data (2026-11-02, independent review).
+    public static let muchFewer = 5
+
+    /// - Parameters:
+    ///   - hasMoney: «Mi dinero» with something in it, on this phone.
+    ///   - today: the file with today's name.
+    ///   - newest: the newest daily file in the folder (maybe today's): a new iPhone with a few
+    ///     expenses must not become «the newest» and, thirty days later, the only one.
+    public static func decide(expenses: Int, hasMoney: Bool, today: Today, newest: Today,
+                              folderHasBackups: Bool) -> BackupPlan {
+        // Nothing at all here, and backups there: restore first. Someone who only uses «Mi
+        // dinero», or emptied everything after an empty backup, still backs up.
+        if expenses == 0 && !hasMoney && folderHasBackups && newest != .holds(expenses: 0, money: false) {
+            return .newPhone
+        }
         switch today {
-        case .none: return .daily
+        case .none: break
         case .unreadable: return .aside
         case .holds(let count, let money):
-            return expenses < count || (money && !hasMoney) ? .aside : .daily
+            if expenses < count || (money && !hasMoney) { return .aside }
+        }
+        switch newest {
+        case .none: return .daily
+        case .unreadable: return .dailyKeepingOld
+        case .holds(let count, let money):
+            let fewer = count - expenses >= muchFewer && expenses * 2 < count
+            return fewer || (money && !hasMoney) ? .aside : .daily
         }
     }
 }

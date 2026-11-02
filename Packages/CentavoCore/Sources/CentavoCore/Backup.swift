@@ -97,6 +97,26 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         self.drafts = drafts
     }
 
+    /// Something in it: an account, a cut or an income. An empty «Mi dinero» is nothing to keep.
+    public var hasContent: Bool {
+        !accounts.isEmpty || !cuts.isEmpty || !(incomes ?? []).isEmpty || !(drafts ?? []).isEmpty
+    }
+
+    /// Every figure reads and every line of a cut or a draft names an account the file brings:
+    /// restoring it can't stop halfway. Checked before a damaged «Mi dinero» is set aside
+    /// (independent review), so a broken file never leaves it empty with the good one hidden.
+    public var isWhole: Bool {
+        func reads(_ text: String?) -> Bool { text.map { BackupNumber.value($0) != nil } ?? true }
+        let ids = Set(accounts.map(\.id))
+        guard accounts.allSatisfy({ reads($0.yearlyRate) }),
+              (incomes ?? []).allSatisfy({ reads($0.amount) }) else { return false }
+        return (cuts + (drafts ?? [])).allSatisfy { cut in
+            cut.entries.allSatisfy { line in
+                ids.contains(line.account) && reads(line.balance) && reads(line.yieldOverride) && reads(line.movement)
+            }
+        }
+    }
+
     /// What comes in each month (format 3).
     public struct Income: Codable, Equatable, Sendable {
         public var id: String
@@ -315,9 +335,25 @@ public enum BackupRetention {
         return String(day)
     }
 
+    /// A day no clock gives yet: «2569-…» was written by a phone set to the Buddhist calendar
+    /// before names were Gregorian. Such files are left alone: never deleted (they may be the
+    /// only copy of their day) and never counted among the newest 30 (independent review).
+    static func isPlausible(_ day: String, now: Date) -> Bool {
+        guard let year = Int(day.prefix(4)) else { return false }
+        return year <= calendar().component(.year, from: now) + 1
+    }
+
+    /// The newest daily file, by the day in its name.
+    public static func newestDaily(_ names: [String], now: Date = .now) -> String? {
+        names.compactMap { name in day(of: name).map { (name: name, day: $0) } }
+            .filter { isPlausible($0.day, now: now) }
+            .max { $0.day < $1.day }?.name
+    }
+
     /// The names to delete, from everything in the folder.
-    public static func toDelete(_ names: [String]) -> [String] {
+    public static func toDelete(_ names: [String], now: Date = .now) -> [String] {
         let backups = names.compactMap { name in day(of: name).map { (name: name, day: $0) } }
+            .filter { isPlausible($0.day, now: now) }
             .sorted { $0.day > $1.day }
         var keep = Set(backups.prefix(dailyKept).map(\.name))
         var monthsSeen = Set<String>()

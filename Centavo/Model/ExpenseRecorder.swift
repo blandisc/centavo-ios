@@ -244,7 +244,8 @@ enum ExpenseRecorder {
         let rows = (try? context.fetch(descriptor)) ?? []
         return rows.map {
             RecentCapture(amount: $0.amount, merchant: $0.merchant, card: $0.card, date: $0.date,
-                          currency: $0.currencyMarker, fromNotice: $0.rawNotice != nil)
+                          currency: $0.currencyMarker, fromNotice: $0.rawNotice != nil,
+                          markedRepeated: $0.maybeRepeated == true)
         }
     }
 

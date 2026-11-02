@@ -47,24 +47,53 @@ struct SecondAuditDataTests {
 
     // MARK: Un respaldo vacío no pisa el bueno (2)
 
+    private func decide(_ expenses: Int, money: Bool = true, today: BackupPlan.Today = .none,
+                        newest: BackupPlan.Today = .none, folder: Bool = true) -> BackupPlan {
+        BackupPlan.decide(expenses: expenses, hasMoney: money, today: today, newest: newest, folderHasBackups: folder)
+    }
+
     @Test("Un iPhone vacío con respaldos en la carpeta no respalda ni limpia")
     func anEmptyPhoneDoesNotBackUp() {
-        #expect(BackupPlan.decide(expenses: 0, hasMoney: false, today: .none, folderHasBackups: true) == .newPhone)
-        #expect(BackupPlan.decide(expenses: 0, hasMoney: false, today: .none, folderHasBackups: false) == .daily)
+        #expect(decide(0, money: false, newest: .holds(expenses: 80, money: false)) == .newPhone)
+        #expect(decide(0, money: false, newest: .unreadable) == .newPhone)
+        #expect(decide(0, money: false, folder: false) == .daily)
+    }
+
+    @Test("Quien solo usa «Mi dinero», o borró sus gastos, sigue respaldando")
+    func onlyMiDineroStillBacksUp() {
+        #expect(decide(0, money: true, newest: .holds(expenses: 0, money: true)) == .daily)
+        // Everything deleted on purpose, and an empty backup before: nothing to protect.
+        #expect(decide(0, money: false, newest: .holds(expenses: 0, money: false)) == .daily)
+    }
+
+    @Test("Un iPhone nuevo con unos gastos no pisa ni limpia el respaldo más reciente, aunque sea de otro día")
+    func aNewPhoneWithAFewExpensesGoesAside() {
+        #expect(decide(3, newest: .holds(expenses: 500, money: true)) == .aside)
+        #expect(decide(500, money: false, newest: .holds(expenses: 500, money: true)) == .aside)
+        // A few deleted is normal life.
+        #expect(decide(497, newest: .holds(expenses: 500, money: true)) == .daily)
+        // Another password (or not downloaded): written, but nothing old is trimmed.
+        #expect(decide(500, newest: .unreadable) == .dailyKeepingOld)
     }
 
     @Test("Nunca reemplaza el archivo del día por uno con menos gastos o sin «Mi dinero»")
     func neverReplacesTodaysWithLess() {
-        #expect(BackupPlan.decide(expenses: 3, hasMoney: true, today: .holds(expenses: 500, money: true),
-                                  folderHasBackups: true) == .aside)
-        #expect(BackupPlan.decide(expenses: 500, hasMoney: false, today: .holds(expenses: 500, money: true),
-                                  folderHasBackups: true) == .aside)
-        #expect(BackupPlan.decide(expenses: 500, hasMoney: true, today: .unreadable, folderHasBackups: true) == .aside)
-        #expect(BackupPlan.decide(expenses: 501, hasMoney: true, today: .holds(expenses: 500, money: true),
-                                  folderHasBackups: true) == .daily)
-        #expect(BackupPlan.decide(expenses: 500, hasMoney: true, today: .holds(expenses: 500, money: false),
-                                  folderHasBackups: true) == .daily)
-        #expect(BackupPlan.decide(expenses: 2, hasMoney: false, today: .none, folderHasBackups: true) == .daily)
+        #expect(decide(3, today: .holds(expenses: 500, money: true)) == .aside)
+        #expect(decide(500, money: false, today: .holds(expenses: 500, money: true)) == .aside)
+        #expect(decide(500, today: .unreadable) == .aside)
+        #expect(decide(501, today: .holds(expenses: 500, money: true)) == .daily)
+        #expect(decide(500, today: .holds(expenses: 500, money: false)) == .daily)
+        #expect(decide(499, today: .holds(expenses: 500, money: true)) == .aside)
+    }
+
+    @Test("Nombres con años imposibles (calendario budista) no ocupan lugar entre los 30 y no se borran")
+    func impossibleYearsStayQuiet() {
+        let now = mx(2026, 11, 2)
+        let buddhist = (1...5).map { String(format: "al-dia-2569-10-%02d.aldia", $0) }
+        let real = (1...30).map { String(format: "al-dia-2026-10-%02d.aldia", $0) } + ["al-dia-2026-09-15.aldia", "al-dia-2026-09-30.aldia"]
+        let deleted = BackupRetention.toDelete(buddhist + real, now: now)
+        #expect(deleted == ["al-dia-2026-09-15.aldia"])
+        #expect(BackupRetention.newestDaily(buddhist + real, now: now) == "al-dia-2026-10-30.aldia")
     }
 
     // MARK: El corte a medias en la copia previa (4)
@@ -80,6 +109,30 @@ struct SecondAuditDataTests {
         let old = BackupPayload(createdAt: mx(2026, 11, 2), writtenBy: "prueba", expenses: [], settings: [:],
                                 money: BackupMoney(accounts: [], cuts: []))
         #expect(try BackupPayload.decoded(from: old.encoded()).money?.drafts == nil)
+    }
+
+    @Test("Antes de apartar un «Mi dinero» dañado, todo lo del respaldo se comprueba")
+    func miDineroIsCheckedWhole() {
+        let account = BackupMoney.Account(id: "a", name: "Nu", kind: "cuenta", currency: "MXN", yearlyRate: "9.5",
+                                          order: 0, archived: false, createdAt: mx(2026, 10, 1))
+        let line = BackupMoney.Entry(account: "a", balance: "10.5")
+        let cut = BackupMoney.Cut(id: "c", month: "2026-10", date: mx(2026, 10, 31), mainCurrency: "MXN", rates: "",
+                                  entries: [line])
+        #expect(BackupMoney(accounts: [account], cuts: [cut]).isWhole)
+        var lost = cut
+        lost.entries = [BackupMoney.Entry(account: "otra", balance: "1")]
+        #expect(!BackupMoney(accounts: [account], cuts: [], drafts: [lost]).isWhole, "Un borrador con una cuenta que no viene")
+        var broken = cut
+        broken.entries = [BackupMoney.Entry(account: "a", balance: "12,5OO")]
+        #expect(!BackupMoney(accounts: [account], cuts: [broken]).isWhole)
+        var badRate = account
+        badRate.yearlyRate = "x"
+        #expect(!BackupMoney(accounts: [badRate], cuts: []).isWhole)
+        let income = BackupMoney.Income(id: "i", name: "Sueldo", institution: nil, amount: "mil", currency: "MXN",
+                                        since: mx(2026, 1, 1), archived: false)
+        #expect(!BackupMoney(accounts: [], cuts: [], incomes: [income]).isWhole)
+        #expect(!BackupMoney(accounts: [], cuts: []).hasContent)
+        #expect(BackupMoney(accounts: [account], cuts: []).hasContent)
     }
 
     // MARK: iCloud lleno (3)
@@ -124,18 +177,65 @@ struct SecondAuditDataTests {
                                    recent: [notice], currency: "MXN", fromNotice: true) == .save)
     }
 
+    @Test("Entre automatizaciones, $50 en OXXO y $50 en Starbucks un minuto después son dos compras")
+    func otherSourceNeedsALikeShopOrCard() {
+        let now = mx(2026, 11, 2, 13)
+        let oxxo = RecentCapture(amount: 50, merchant: "OXXO ROBLE MTY", card: "Amex", date: now.addingTimeInterval(-60),
+                                 currency: "MXN", fromNotice: false)
+        #expect(CaptureGuard.check(amount: 50, merchant: "Starbucks", card: "American Express México", at: now,
+                                   recent: [oxxo], currency: "MXN", fromNotice: true) == .save)
+        // The same card, written the same, is enough.
+        #expect(CaptureGuard.check(amount: 50, merchant: "Starbucks", card: "amex", at: now,
+                                   recent: [oxxo], currency: "MXN", fromNotice: true) == .duplicate)
+    }
+
+    @Test("Un pago ya emparejado con su aviso no marca a otro")
+    func pairsAreOneToOne() {
+        let now = mx(2026, 11, 2, 13)
+        let wallet = RecentCapture(amount: 50, merchant: "OXXO ROBLE MTY", card: "Amex", date: now.addingTimeInterval(-90),
+                                   currency: "MXN", fromNotice: false)
+        var notice = RecentCapture(amount: 50, merchant: "Oxxo", card: "American Express México",
+                                   date: now.addingTimeInterval(-60), currency: "MXN", fromNotice: true)
+        notice.markedRepeated = true
+        // A second Oxxo coffee through «Transacción»: the notice is already the pair of the first.
+        #expect(CaptureGuard.check(amount: 50, merchant: "OXXO", card: "Amex", at: now,
+                                   recent: [wallet, notice], currency: "MXN", fromNotice: false) == .save)
+        #expect(CaptureGuard.check(amount: 50, merchant: "Oxxo Roble", card: nil, at: now,
+                                   recent: [wallet, notice], currency: "MXN", fromNotice: true) == .save)
+    }
+
     // MARK: Monedas con tres decimales (17)
 
-    @Test("Con KWD, BHD, OMR, JOD, TND, LYD o IQD, tres dígitos al final son decimales", arguments: [
+    @Test("Con KWD, BHD, OMR, JOD, TND o LYD, tres dígitos tras el punto son decimales", arguments: [
         ("JOD 1.250", "1.25"),
         ("BHD 0.750", "0.75"),
         ("KWD 1,250.500", "1250.5"),
         ("12.345 OMR", "12.345"),
         ("TND 3.5", "3.5"),
+        ("LYD 1250", "1250"),
     ])
     func threeDecimalCurrencies(_ text: String, _ value: String) throws {
         let parsed = try #require(AmountParser.parse(text))
         #expect(parsed.value == Decimal(string: value)!)
+    }
+
+    @Test("Lo dudoso en dinares no se lee como un monto falso: queda para avisar")
+    func doubtfulDinarsAreNotGuessed() {
+        // «1,250» could be a thousand or one and a quarter; «1.250.500» has nothing after its
+        // decimals. Neither is guessed.
+        #expect(AmountParser.parse("JOD 1,250") == nil)
+        #expect(AmountParser.parse("KWD 1.250.500") == nil)
+        #expect(WalletNotice.mentionsMoney("Visa\nTienda\nJOD 1,250"))
+    }
+
+    @Test("El dinar iraquí no usa decimales: «IQD 1.250» son mil doscientos cincuenta, como iOS lo escribe")
+    func iraqiDinarHasNoDecimals() throws {
+        let format = NumberFormatter()
+        format.numberStyle = .currency
+        format.currencyCode = "IQD"
+        #expect(format.maximumFractionDigits == 0)
+        #expect(!AmountParser.threeDecimalCurrencies.contains("IQD"))
+        #expect(try #require(AmountParser.parse("IQD 1.250")).value == 1_250)
     }
 
     @Test("Las demás monedas siguen igual: «MXN 1.250» son mil doscientos cincuenta")
@@ -195,14 +295,13 @@ struct SecondAuditDataTests {
 
     @Test("Dos originales del mismo fijo: cada dispositivo conserva el mismo")
     func theSameOriginalIsKeptEverywhere() {
-        let first = FixedTwins.Key(date: mx(2026, 10, 1), notice: nil, content: "renta|8000")
-        let later = FixedTwins.Key(date: mx(2026, 10, 1).addingTimeInterval(0.0003), notice: nil, content: "renta|8000")
+        let first = mx(2026, 10, 1)
+        let later = mx(2026, 10, 1).addingTimeInterval(0.0003)
         #expect(FixedTwins.keeper([later, first]) == 1)
         #expect(FixedTwins.keeper([first, later]) == 0)
-        let noticed = FixedTwins.Key(date: mx(2026, 10, 1), notice: "b", content: "x")
-        let other = FixedTwins.Key(date: mx(2026, 10, 1), notice: "a", content: "x")
-        #expect(FixedTwins.keeper([noticed, other]) == 1)
-        // Nothing tells them apart: no device deletes either (it could be a different one).
+        // The same date: what differs is likely an edit (Netflix 299 → 329) not yet synced, so
+        // the content never decides; neither is deleted.
         #expect(FixedTwins.keeper([first, first]) == nil)
+        #expect(FixedTwins.keeper([first, first, later]) == nil)
     }
 }

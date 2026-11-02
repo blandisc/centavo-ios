@@ -114,10 +114,11 @@ public enum AmountParser {
     /// languages, and the en dash some notices put before a refund (`–$50.00`).
     static let minusSigns: Set<Character> = ["-", "−", "–"]
 
-    /// Currencies whose cents come in thousandths (Kuwaiti, Bahraini, Omani, Jordanian,
-    /// Tunisian, Libyan dinars and the Iraqi dinar): «JOD 1.250» is one and a quarter, never
-    /// 1,250, and «BHD 0.750» is three quarters (2026-11-02, second audit).
-    public static let threeDecimalCurrencies: Set<String> = ["KWD", "BHD", "OMR", "JOD", "TND", "LYD", "IQD"]
+    /// Currencies whose cents come in thousandths (Kuwaiti, Bahraini, Omani, Jordanian, Tunisian
+    /// and Libyan dinars, as iOS writes them): «JOD 1.250» is one and a quarter, never 1,250, and
+    /// «BHD 0.750» is three quarters (2026-11-02, second audit). Not the Iraqi dinar: iOS writes it
+    /// with no decimals (independent review).
+    public static let threeDecimalCurrencies: Set<String> = ["KWD", "BHD", "OMR", "JOD", "TND", "LYD"]
 
     /// `parse`'s rule: the last separator is decimal before one or two digits, a group before
     /// three. With a currency that has three decimals, three digits after it are decimals too.
@@ -129,7 +130,16 @@ public enum AmountParser {
         case 1...2:
             return (String(head), String(tail))
         case 3 where threeDecimals:
-            return (String(head), String(tail))
+            // Decimals only when nothing else can be meant: a point with no separator before it
+            // («1.250»), or after the other kind («1,250.500»). «1,250» (a thousand, or one and a
+            // quarter?) and «1.250.500» are not guessed: unread, the notice is kept to say so.
+            let point = numeric[lastSep] == "."
+            let other: Character = point ? "," : "."
+            let before = head.filter { $0 == "." || $0 == "," }
+            if before.isEmpty ? point : before.allSatisfy({ $0 == other }) {
+                return (String(head), String(tail))
+            }
+            return nil
         case 3:
             // A group of three: `1,000` is a thousand. Not after another kind of
             // separator (`1,234.567`: that one is decimal) nor with nothing to group
