@@ -20,6 +20,7 @@ struct ExpenseListView: View {
     /// The newest payment the Wallet automation saved (only it keeps the raw text). Asked of
     /// the store, one row, instead of scanning every expense on each redraw.
     @Query(Self.latestCapture) private var latestCaptures: [Expense]
+    @AppStorage(WalletWatch.lastArrivalKey) private var walletArrival: Double = 0
 
     private static var latestCapture: FetchDescriptor<Expense> {
         var descriptor = FetchDescriptor<Expense>(
@@ -101,7 +102,7 @@ struct ExpenseListView: View {
         let offset = min(0, max(monthOffset, earliest))
         let isCurrent = offset == 0
         let viewed = MonthNavigator.month(offsetBy: offset, from: now)
-        let lastCapture = latestCaptures.first?.date
+        let lastCapture = WalletWatch.lastCapture(stored: walletArrival, newestInStore: latestCaptures.first?.date)
 
         NavigationStack {
             HomeContent(
@@ -256,6 +257,9 @@ struct ExpenseListView: View {
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
                                           onReview: { showingBudget = true }))
             .task {
+                // Before the remembered arrival existed, only the store knew: carry it over once,
+                // so deleting those payments later can't make Wallet look disconnected.
+                if walletArrival == 0, let newest = latestCaptures.first?.date { WalletWatch.noteArrival(newest) }
                 // Siri learns the categories it can be asked about («¿Cuánto llevo en Café?»).
                 CentavoShortcuts.updateAppShortcutParameters()
                 // Never chosen: settle it once, from what the payments are in (pesos if none),

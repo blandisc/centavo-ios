@@ -635,3 +635,8 @@ Decisiones del dueño sobre el recorrido (bocetos: https://claude.ai/artifact/9N
 Pedido del dueño: «no me gusta que diga Amex, me gustaría que esté en una tarjetita naranja».
 - **En la línea de cada gasto, la forma de pago es su ícono relleno** (una tarjeta, o el que tenga en «Pagos y categorías») **en su color**, en vez del nombre corto. Sustituye «la forma de pago, sin ícono y con su nombre corto en su color» (2026-10-29). En gris si el gasto no cuenta.
 - VoiceOver sigue leyendo el nombre completo; la hoja del gasto también lo muestra.
+
+## 2026-11-01 · Borrar pagos no desconecta Wallet
+Visto por el dueño: borró algunos cargos y la pantalla dijo «Wallet sin conectar». La salud de la captura (2026-10-15) salía del gasto de Wallet más nuevo guardado; al borrarlos, parecía que Wallet nunca había mandado nada.
+- **La app recuerda cuándo llegó el último pago de Wallet** (`WalletWatch.lastArrivalKey`), aparte de los gastos: cada vez que la automatización manda un pago legible, aunque sea repetido. El aviso toma lo más reciente entre ese recuerdo y el gasto de Wallet más nuevo que quede.
+- La primera vez que abre la app con esto, el recuerdo se llena con el gasto de Wallet más nuevo que ya tenía.
