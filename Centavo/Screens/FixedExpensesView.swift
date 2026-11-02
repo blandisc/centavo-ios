@@ -19,6 +19,7 @@ struct FixedExpensesView: View {
     @State private var editing: Expense?
     /// A fixed expense about to stop or be deleted, waiting for the answer.
     @State private var confirming: FixedItem?
+    @State private var saveProblem: String?
 
     private var primary: String { CurrencyPreference.resolve(storedCurrency) }
     private var items: [FixedItem] { FixedOutlook.items(originals: originals, plans: FixedPlan.decode(storedPlans)) }
@@ -132,6 +133,9 @@ struct FixedExpensesView: View {
                 Text(item.original != nil ? "Lo ya anotado se queda; los siguientes ya no llegan."
                      : "Todavía no se anota nada; ya no empezará.")
             }
+            .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
+                Button("Aceptar", role: .cancel) {}
+            } message: { Text(saveProblem ?? "") }
             .sheet(item: $adding) { FixedPlanSheet(initialName: $0.name) }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
             .onAppear { try? RecurringExpenses.logDue(in: context) }
@@ -252,6 +256,10 @@ struct FixedExpensesView: View {
         original.repeatsThrough = nil
         original.repeatDay = nil
         original.repeatRule = nil
+        do { try context.save() } catch {
+            context.rollback()
+            saveProblem = "Al día no pudo dejar de repetirlo. Intenta otra vez."
+        }
     }
 
     private func remove(_ plan: FixedPlan) {
@@ -270,6 +278,7 @@ struct FixedPlanSheet: View {
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @State private var amountText = ""
+    @State private var problem: String?
     @State private var merchant = ""
     @State private var rule = RepeatRule.monthly
     @State private var firstDay = Date.now
@@ -400,6 +409,9 @@ struct FixedPlanSheet: View {
                         : "\(name) · " + FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first!,
                      enabled: amount != nil && !name.isEmpty, action: save)
             .onAppear(perform: load)
+            .alert("No se guardó", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+                Button("Aceptar", role: .cancel) {}
+            } message: { Text(problem ?? "") }
             .onChange(of: merchant) { _, new in
                 guard !pickedCategory else { return }
                 category = CategoryMemory.suggestion(for: new.trimmingCharacters(in: .whitespaces),
@@ -434,6 +446,13 @@ struct FixedPlanSheet: View {
         if pickedCategory, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
         if plan.firstDate <= .now {
             context.insert(RecurringExpenses.original(from: plan))
+            do {
+                try context.save()
+            } catch {
+                context.rollback()
+                problem = "Al día no pudo guardar el gasto fijo. Intenta otra vez."
+                return
+            }
             try? RecurringExpenses.logDue(in: context)
         } else {
             FixedPlan.save(FixedPlan.saved + [plan])

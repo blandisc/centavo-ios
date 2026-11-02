@@ -160,4 +160,23 @@ struct MoneyImportTests {
         #expect(text.contains("Mi moneda principal es USD"))
         #expect(text.contains("No incluyas números de cuenta"))
     }
+
+    @Test("Un monto con más de dos decimales va a revisión, no se acepta callado")
+    func moreThanCents() throws {
+        let lines = MoneyImport.parse("tipo,nombre,moneda,monto,tasa_anual,tipo_cambio\ncuenta,A,USD,8333.333,10.125,18.125\ncuenta,B,MXN,18.125,,", main: "MXN").lines
+        #expect(!lines[0].isReady && lines[0].problems == ["El monto «8333.333» trae más de dos decimales: déjalo en centavos, como 8333.33."])
+        #expect(lines[0].amount == d("8333.333"), "Se lee completo para que se vea al revisarlo")
+        #expect(lines[0].yearlyRate == d("10.125") && lines[0].exchange == d("18.125"), "Las tasas sí llevan más decimales")
+        #expect(lines[1].amount == d("18.125"), "Con punto decimal, «18.125» es 18.125, no 18,125")
+        #expect(!lines[1].isReady)
+    }
+
+    @Test("Montos con punto decimal y comas de miles, como pide el formato")
+    func pointDecimalAmounts() {
+        let lines = MoneyImport.parse("tipo;nombre;monto\ncuenta;A;1,234.56\ncuenta;B;$12,500\ncuenta;C;15000.125\ncuenta;D;1.234,56", main: "MXN").lines
+        #expect(lines[0].amount == d("1234.56") && lines[0].isReady)
+        #expect(lines[1].amount == 12_500 && lines[1].isReady)
+        #expect(lines[2].amount == d("15000.125") && !lines[2].isReady)
+        #expect(lines[3].amount == nil && !lines[3].problems.isEmpty, "Formato europeo: a revisión, no adivinado")
+    }
 }

@@ -76,6 +76,14 @@ private struct GroupsThousands: ViewModifier {
     func body(content: Content) -> some View {
         content.onChange(of: text) { old, new in
             var typed = new
+            // Pasted (more than one character at once): read like any amount, so «12,50» is
+            // twelve fifty and «1.234,56» is a thousand, then written the way the field writes.
+            // Only when the field's own reading (commas are thousands) would get it wrong.
+            if new.count > old.count + 1, let pasted = AmountParser.parse(new)?.value, pasted >= 0,
+               Decimal(string: new.replacingOccurrences(of: ",", with: ""), locale: Locale(identifier: "en_US_POSIX")) != pasted {
+                typed = BackupNumber.text(pasted)
+                if let dot = typed.firstIndex(of: "."), typed[typed.index(after: dot)...].count == 1 { typed += "0" }
+            }
             // Where the decimal pad has a "," key, the comma just typed is the decimal point;
             // the commas already there are the thousands this put in.
             if Locale.current.decimalSeparator == ",", typed.hasSuffix(","), typed.count == old.count + 1 {

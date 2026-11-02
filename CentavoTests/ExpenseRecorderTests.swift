@@ -26,8 +26,8 @@ final class ExpenseRecorderTests: XCTestCase {
                         at date: Date? = nil, rules: CategoryRules = CategoryRules(),
                         hidden: [String] = []) throws -> CaptureOutcome {
         try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                   in: context, rules: rules, hidden: hidden, renames: MerchantRenames(),
-                                   now: date ?? now)
+                                   in: context, primary: "MXN", rules: rules, hidden: hidden,
+                                   renames: MerchantRenames(), now: date ?? now)
     }
 
     private func filed(_ merchant: String, _ category: String?, daysAgo: Double) throws {
@@ -40,7 +40,7 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try record("$89.00"), .saved(merchant: "Oxxo"))
         let expense = try XCTUnwrap(saved().first)
         XCTAssertEqual(expense.amount, 89)
-        XCTAssertEqual(expense.currencyMarker, "$")
+        XCTAssertEqual(expense.currencyMarker, "MXN", "«$» se guarda con la moneda principal de ese momento")
         XCTAssertEqual(expense.merchant, "Oxxo")
         XCTAssertEqual(expense.card, "BBVA")
         XCTAssertEqual(expense.rawAmount, "$89.00")
@@ -123,7 +123,7 @@ final class ExpenseRecorderTests: XCTestCase {
     func testTheCardAfterTheAmountSavesTheAmountAndABankIsNoCurrency() throws {
         XCTAssertEqual(try record("Oxxo $89.00 1234", nil), .saved(merchant: "Sin comercio"))
         XCTAssertEqual(try saved().first?.amount, 89)
-        XCTAssertEqual(try saved().first?.currencyMarker, "$")
+        XCTAssertEqual(try saved().first?.currencyMarker, "MXN")
         XCTAssertEqual(try record("BBVA 1234", "Seven", at: now.addingTimeInterval(3_600)), .unreadable)
         XCTAssertEqual(try saved().count, 1)
     }
@@ -205,11 +205,60 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().count, 0)
     }
 
-    func testTheSameTapTwiceWithinMinutesIsOnePayment() throws {
+    /// 2026-11-02: two equal purchases minutes apart can be two coffees. The second is kept,
+    /// marked «¿repetida?», never dropped.
+    func testTheSameTapTwiceWithinMinutesIsKeptAndMarked() throws {
         XCTAssertEqual(try record("$89.00"), .saved(merchant: "Oxxo"))
         XCTAssertEqual(try record("$89.00", "OXXO ", card: "bbva", at: now.addingTimeInterval(90)),
-                       .duplicate(merchant: "OXXO"))
-        XCTAssertEqual(try saved().count, 1)
+                       .maybeRepeated(merchant: "OXXO"))
+        let rows = try saved()
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertNil(rows[0].maybeRepeated)
+        XCTAssertEqual(rows[1].maybeRepeated, true)
+    }
+
+    func testAnExpenseTypedByHandNeverMakesACaptureLookRepeated() throws {
+        context.insert(Expense(amount: 89, currencyMarker: "MXN", merchant: "Oxxo", card: "BBVA", date: now))
+        try context.save()
+        XCTAssertEqual(try record("$89.00", at: now.addingTimeInterval(60)), .saved(merchant: "Oxxo"))
+        XCTAssertNil(try saved().last?.maybeRepeated)
+    }
+
+    func testABareDollarIsSavedAsTheMainCurrencyOfThatMoment() throws {
+        try ExpenseRecorder.record(amountText: "$89.00", merchant: "Oxxo", card: nil, in: context,
+                                   primary: "USD", rules: CategoryRules(), hidden: [], renames: MerchantRenames(), now: now)
+        XCTAssertEqual(try saved().first?.currencyMarker, "USD")
+    }
+
+    func testOldBareDollarsArePinnedOnce() throws {
+        context.insert(Expense(amount: 10, currencyMarker: "$", merchant: "A", date: now))
+        context.insert(Expense(amount: 20, currencyMarker: nil, merchant: "B", date: now))
+        context.insert(Expense(amount: 30, currencyMarker: "USD", merchant: "C", date: now))
+        try context.save()
+        XCTAssertEqual(try ExpenseRecorder.pinBareDollars(in: context, primary: "MXN"), 2)
+        XCTAssertEqual(try ExpenseRecorder.pinBareDollars(in: context, primary: "EUR"), 0, "Una sola vez")
+        XCTAssertEqual(try saved().compactMap(\.currencyMarker).sorted(), ["MXN", "MXN", "USD"])
+    }
+
+    /// A notice the capture already read keeps its amount: reading the text again lost the
+    /// thousands of «CHF 1'234.50».
+    func testTheAmountANoticeReadIsTheOneSaved() throws {
+        let notice = try XCTUnwrap(WalletNotice.parse("Visa · Hotel Zürich · CHF 1'234.50"))
+        try ExpenseRecorder.record(amountText: notice.amountText, merchant: notice.merchant, card: notice.card,
+                                   amount: notice.amount, in: context, rules: CategoryRules(), hidden: [],
+                                   renames: MerchantRenames(), now: now)
+        XCTAssertEqual(try saved().first?.amount, notice.amount.value)
+        XCTAssertEqual(try saved().first?.amount, Decimal(string: "1234.50"))
+    }
+
+    func testThePaymentIsSavedBeforeThePlaceIsAdded() throws {
+        var handed: Expense?
+        try ExpenseRecorder.record(amountText: "$89.00", merchant: "Oxxo", card: nil, in: context,
+                                   rules: CategoryRules(), hidden: [], renames: MerchantRenames(), now: now) { handed = $0 }
+        XCTAssertFalse(context.hasChanges, "Debe estar guardado antes de buscar la ubicación")
+        let expense = try XCTUnwrap(handed)
+        ExpenseRecorder.addPlace(.init(latitude: 19.4, longitude: -99.1), to: expense, in: context)
+        XCTAssertEqual(try saved().first?.latitude, 19.4)
     }
 
     func testTheSamePurchaseLaterIsANewPayment() throws {

@@ -34,7 +34,7 @@ public struct WalletNotice: Equatable, Sendable {
         // The last line with money: a concept like "OXXO 123 MTY" can look like an amount too.
         guard let index = lines.lastIndex(where: { line in
             CaptureText.amount(in: line).map { $0.currencyMarker != nil } ?? false
-        }), let amount = CaptureText.amount(in: lines[index]) else { return nil }
+        }), let (figure, amount) = CaptureText.figure(in: lines[index]) else { return nil }
 
         // Lines that say nothing about the purchase («Wallet», «Ahora», «10:32») go first.
         let clean: (String) -> String? = { line in
@@ -45,8 +45,9 @@ public struct WalletNotice: Equatable, Sendable {
         let after = lines[(index + 1)...].compactMap(clean)
         let isCard = { (line: String) in looksLikeCard(line, knownCards: knownCards) }
         // The amount may share its line with the merchant ("Google MXN 319.00").
+        // The same piece the amount was read from, so the app reads the same amount from it again.
         let leftover = lines[index]
-            .replacingOccurrences(of: amountPattern(in: lines[index]) ?? lines[index], with: "")
+            .replacingOccurrences(of: figure, with: "")
             .trimmingCharacters(in: .whitespaces.union(.punctuationCharacters))
         // The bank is told apart by its name first, not by where it sits: Atajos and each bank
         // put the lines in their own order, and every guess by position took the bank for the
@@ -73,12 +74,11 @@ public struct WalletNotice: Equatable, Sendable {
         }
         if card == merchant { card = nil }
         let merchantName = merchant.map(withoutJoiner)
-        let figure = amountPattern(in: lines[index]) ?? lines[index]
         guard isRefund else {
             return WalletNotice(amount: amount, amountText: figure, merchant: merchantName, card: card)
         }
         let negative = ParsedAmount(value: -amount.value.magnitude, currencyMarker: amount.currencyMarker)
-        return WalletNotice(amount: negative, amountText: figure.hasPrefix("-") ? figure : "-" + figure,
+        return WalletNotice(amount: negative, amountText: amount.value < 0 ? figure : "-" + figure,
                             merchant: merchantName, card: card)
     }
 
@@ -114,7 +114,7 @@ public struct WalletNotice: Equatable, Sendable {
         let isRefund = refunds.contains(where: folded.contains)
         let value = isRefund ? -amount.value.magnitude : amount.value
         return WalletNotice(amount: ParsedAmount(value: value, currencyMarker: amount.currencyMarker),
-                            amountText: isRefund && !figure.hasPrefix("-") ? "-" + figure : figure,
+                            amountText: isRefund && amount.value >= 0 ? "-" + figure : figure,
                             merchant: shop, card: inNotice(card))
     }
 
@@ -136,7 +136,7 @@ public struct WalletNotice: Equatable, Sendable {
                                   locale: Locale(identifier: "es_MX"))
         guard let word = refunds.first(where: { folded.hasPrefix($0) }) else { return line }
         var rest = String(line.dropFirst(word.count)).trimmingCharacters(in: .whitespaces.union(.punctuationCharacters))
-        for joiner in ["de ", "en "] where rest.lowercased().hasPrefix(joiner) {
+        for joiner in ["de ", "en ", "from ", "at ", "for "] where rest.lowercased().hasPrefix(joiner) {
             rest = String(rest.dropFirst(joiner.count))
         }
         return rest.isEmpty ? nil : rest
@@ -191,20 +191,11 @@ public struct WalletNotice: Equatable, Sendable {
     /// Words on a card, never on a shop's name.
     static let cardWords: Set<String> = ["tarjeta", "credito", "debito", "visa", "mastercard", "card"]
 
-    /// Money back from a purchase: it is logged, as a refund.
+    /// Money back from a purchase: it is logged, as a refund. In Spanish and in English, the
+    /// language Wallet writes in when the iPhone is set to it.
     static let refunds = ["reembolso", "devolucion", "reverso", "reversion", "cargo cancelado",
-                          "compra cancelada"]
+                          "compra cancelada", "refund", "returned", "reversal"]
     /// Money that came in from someone: not spending at all.
-    static let received = ["recibiste", "te enviaron", "te envio", "te mando", "deposito recibido"]
-
-    /// The currency figure inside a line ("MXN 319.00" in "Google MXN 319.00").
-    private static func amountPattern(in line: String) -> String? {
-        let regex = try? NSRegularExpression(pattern:
-            // Digits may be grouped with spaces ("MXN 1 234,56"): a space counts only before a
-            // group of exactly three.
-            #"[-−]?(?:[A-Z]{1,2}\$|\b[A-Z]{3}\b|[$€£¥₱₩₹])\s?[-−]?\d(?:[\d.,]| (?=\d{3}(?!\d)))*|[-−]?\d(?:[\d.,]| (?=\d{3}(?!\d)))*\s?(?:[$€£¥₱₩₹]|\b[A-Z]{3}\b)"#)
-        guard let match = regex?.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
-              let range = Range(match.range, in: line) else { return nil }
-        return String(line[range])
-    }
+    static let received = ["recibiste", "te enviaron", "te envio", "te mando", "deposito recibido",
+                           "you received", "sent you", "received from"]
 }

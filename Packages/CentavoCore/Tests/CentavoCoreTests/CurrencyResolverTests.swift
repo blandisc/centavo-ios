@@ -48,3 +48,19 @@ import Testing
         #expect(!CurrencyResolver.recognizes(marker))
     }
 }
+
+@Suite struct CurrencyPinTests {
+    @Test func aBareDollarIsPinnedToTheMainCurrencyAtCapture() {
+        #expect(CurrencyResolver.pinned("$", primary: "MXN") == "MXN")
+        #expect(CurrencyResolver.pinned(" $ ", primary: "usd") == "USD")
+        #expect(CurrencyResolver.pinned(nil, primary: "EUR") == "EUR")
+        #expect(CurrencyResolver.pinned("", primary: "MXN") == "MXN")
+    }
+
+    @Test func aMarkerThatSaysItsCurrencyIsKept() {
+        #expect(CurrencyResolver.pinned("US$", primary: "MXN") == "US$")
+        #expect(CurrencyResolver.pinned("CHF", primary: "MXN") == "CHF")
+        #expect(!CurrencyResolver.isAmbiguous("MX$"))
+        #expect(CurrencyResolver.isAmbiguous("$"))
+    }
+}

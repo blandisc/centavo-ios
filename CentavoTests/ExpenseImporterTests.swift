@@ -46,6 +46,27 @@ final class ExpenseImporterTests: XCTestCase {
         XCTAssertEqual(try all().count, 1)
     }
 
+    /// Two «Uber $100» logged the same moment are two expenses: both come in, and importing the
+    /// file again brings neither.
+    func testTwoIdenticalRowsInAFileAreTwoExpenses() throws {
+        let date = Date(timeIntervalSince1970: 1_792_000_000)
+        let uber = ExpenseRecord(date: date, merchant: "Uber", amount: 100, currency: "MXN")
+        let csv = CSVExporter.csv(from: [uber, uber])
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context),
+                       .init(added: 2, alreadyThere: 0, unreadable: 0))
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context),
+                       .init(added: 0, alreadyThere: 2, unreadable: 0))
+        XCTAssertEqual(try all().count, 2)
+    }
+
+    func testTheSameMomentOnAnotherCardIsAnotherExpense() throws {
+        let date = Date(timeIntervalSince1970: 1_792_000_000)
+        context.insert(Expense(amount: 100, currencyMarker: "MXN", merchant: "Uber", card: "Amex", date: date))
+        try context.save()
+        let csv = CSVExporter.csv(from: [ExpenseRecord(date: date, merchant: "Uber", amount: 100, currency: "MXN", card: "BBVA")])
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context).added, 1)
+    }
+
     /// A Wallet capture carries fractions of a second; the export drops them. Re-importing
     /// the export must still recognize it (rounding put :20.7 at :21 and duplicated it).
     func testAFractionOfASecondDoesNotDuplicate() throws {

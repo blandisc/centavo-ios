@@ -199,37 +199,90 @@ public enum QuickEntryParser {
         "de", "por", "fue", "fueron", "son", "pague", "gaste", "costo", "costaron", "anota", "apunta",
     ]
 
+    /// «2 mil», «1.5 millones»: the word multiplies the number before it.
+    private static let multipliers: [String: Decimal] = ["mil": 1_000, "millon": 1_000_000, "millones": 1_000_000]
+
+    /// A number as said, maybe with «mil» or «millones» after it (and «2 mil 500»): where it
+    /// starts and ends among the words, and what it is worth.
+    private struct Figure {
+        var index: Int
+        var end: Int
+        var value: Decimal
+        /// Said with a word that multiplies it: the text to keep is the value, not the digits.
+        var scaled: Bool
+    }
+
+    private static func figure(at index: Int, in words: Words) -> Figure? {
+        let word = words.original[index]
+        guard word.contains(where: \.isNumber),
+              word.allSatisfy({ $0.isNumber || ".,$".contains($0) }),
+              let parsed = AmountParser.parse(word), parsed.value > 0 else { return nil }
+        var figure = Figure(index: index, end: index, value: parsed.value, scaled: false)
+        guard let next = words.word(index + 1), let times = multipliers[next] else { return figure }
+        figure.value *= times
+        figure.end = index + 1
+        figure.scaled = true
+        // «2 mil 500»: what comes after the thousands, when it fits under them.
+        if times == 1_000, let rest = words.word(index + 2), rest.allSatisfy(\.isNumber),
+           let more = Decimal(string: rest), more < 1_000 {
+            figure.value += more
+            figure.end = index + 2
+        }
+        // Past `AmountParser`'s twelve digits it is not a price anyone said.
+        guard figure.value < 1_000_000_000_000 else { return nil }
+        return figure
+    }
+
+    /// Words after a number that say what it counts is not: joiners, days, currencies.
+    private static let notCounted: Set<String> = leading.union(trailing).union(notMerchantWords)
+        .union(currencyWords).union(multipliers.keys).union(["para", "del", "al", "a"])
+
+    /// «4 personas», «3 tacos»: a number followed by the thing it counts.
+    private static func isCount(_ figure: Figure, in words: Words) -> Bool {
+        guard !figure.scaled, let next = words.word(figure.end + 1) else { return false }
+        return next.count >= 3 && next.allSatisfy(\.isLetter) && !notCounted.contains(next)
+    }
+
     /// The amount: a number with a currency first, then one right after «de», «por», «gasté»…;
     /// with neither, the biggest number, since a count is smaller than a price («3 tacos 60»,
     /// «Farmacia 24 horas 180»). `certain` is false in that last case: the model may know better.
-    private static func amountChoice(in words: Words) -> (index: Int, certain: Bool)? {
-        var candidates: [(index: Int, value: Decimal)] = []
-        for index in words.folded.indices where words.free(index) {
-            let word = words.original[index]
-            guard word.contains(where: \.isNumber),
-                  word.allSatisfy({ $0.isNumber || ".,$".contains($0) }),
-                  let parsed = AmountParser.parse(word), parsed.value > 0 else { continue }
-            candidates.append((index, parsed.value))
+    /// A number after «de» that counts something («Cena de 4 personas 1200») is not led when
+    /// there is another number to take.
+    private static func amountChoice(in words: Words) -> (figure: Figure, certain: Bool)? {
+        var candidates: [Figure] = []
+        var index = 0
+        while index < words.folded.count {
+            if words.free(index), let figure = figure(at: index, in: words) {
+                candidates.append(figure)
+                index = figure.end + 1
+            } else {
+                index += 1
+            }
         }
         if let marked = candidates.first(where: { candidate in
             words.original[candidate.index].contains("$")
-                || words.word(candidate.index + 1).map(currencyWords.contains) == true
-        }) { return (marked.index, true) }
-        if let led = candidates.first(where: { words.word($0.index - 1).map(amountLeads.contains) == true }) {
-            return (led.index, true)
+                || words.word(candidate.end + 1).map(currencyWords.contains) == true
+        }) { return (marked, true) }
+        if let led = candidates.first(where: { candidate in
+            words.word(candidate.index - 1).map(amountLeads.contains) == true
+                && !(candidates.count > 1 && isCount(candidate, in: words))
+        }) {
+            return (led, true)
         }
         guard let biggest = candidates.max(by: { $0.value < $1.value }) else { return nil }
-        return (biggest.index, candidates.count == 1)
+        return (biggest, candidates.count == 1)
     }
 
     private static func takeAmount(_ words: inout Words) -> String? {
-        guard let index = amountChoice(in: words)?.index else { return nil }
-        if let next = words.word(index + 1), currencyWords.contains(next) {
-            words.use(index...(index + 1))
-            return words.original[index] + " " + words.original[index + 1]
+        guard let figure = amountChoice(in: words)?.figure else { return nil }
+        // «2 mil» is kept as 2000: `AmountParser` reads digits, not words.
+        let said = figure.scaled ? BackupNumber.text(figure.value) : words.original[figure.index]
+        if let next = words.word(figure.end + 1), currencyWords.contains(next) {
+            words.use(figure.index...(figure.end + 1))
+            return said + " " + words.original[figure.end + 1]
         }
-        words.use(index...index)
-        return words.original[index]
+        words.use(figure.index...figure.end)
+        return said
     }
 
     private static func takeSource(_ words: inout Words, among sources: [String]) -> String? {

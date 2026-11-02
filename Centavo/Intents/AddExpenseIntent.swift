@@ -41,7 +41,7 @@ struct AddExpenseIntent: AppIntent {
             throw $amount.needsValueError("No entendí «\(amount)». Dime solo la cantidad, por ejemplo 89.50.")
         case .empty:
             throw $amount.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
-        case .duplicate(let name), .saved(let name):
+        case .maybeRepeated(let name), .saved(let name):
             let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
             let notice = ["Anotado: \(spoken(amount)) en \(name).", budgetLine].compactMap { $0 }
             return .result(dialog: "\(notice.joined(separator: " "))")
@@ -52,6 +52,6 @@ struct AddExpenseIntent: AppIntent {
     private func spoken(_ text: String) -> String {
         guard let parsed = AmountParser.parse(text) else { return text }
         let code = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: MonthStatus.primaryCurrency)
-        return formatMoney(parsed.value, isoCode: code, label: code)
+        return formatMoney(parsed.value, isoCode: code, label: code, main: CurrencyPreference.current)
     }
 }

@@ -34,6 +34,19 @@ public enum CurrencyResolver {
         return nil
     }
 
+    /// Whether a marker says nothing about its currency: a bare `$`, or none at all.
+    public static func isAmbiguous(_ marker: String?) -> Bool {
+        let normalized = normalize(marker)
+        return normalized.isEmpty || normalized == "$"
+    }
+
+    /// The marker a captured payment is saved with (2026-11-02): a bare `$` (or none) becomes
+    /// the main currency's code at that moment, so changing the main currency later never
+    /// moves it to another currency. Any other marker is kept as it came.
+    public static func pinned(_ marker: String?, primary: String) -> String? {
+        isAmbiguous(marker) ? normalize(primary) : marker
+    }
+
     /// Whether a marker typed by hand is worth keeping as a currency: one we know, a
     /// three-letter code, or a lone symbol (`₱`). A word like `pesos` is not a currency,
     /// it is somebody explaining themselves, and keeping it would file the expense under

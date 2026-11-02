@@ -40,6 +40,8 @@ final class ScreenshotTests: XCTestCase {
         sleep(1)
         snap("42-mi-dinero-cuentas")
         app.buttons["dinero-hacer-corte"].tap()
+        let month = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Corte de'")).firstMatch
+        if month.waitForExistence(timeout: 3) { month.tap() }
         sleep(1)
         snap("43-corte")
         let keep = app.buttons["corte-sin-cambio-CETES"]

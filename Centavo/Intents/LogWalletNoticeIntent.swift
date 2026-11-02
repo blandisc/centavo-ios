@@ -52,17 +52,16 @@ struct LogWalletNoticeIntent: AppIntent {
             return .result()
         }
         UnreadNotice.clear()
+        // The amount the notice already read, not its text read again (`ExpenseRecorder.record`).
+        var expense: Expense?
+        let outcome = try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
+                                                 card: parsed.card, amount: parsed.amount, rawNotice: text,
+                                                 in: context) { expense = $0 }
         // Where the iPhone is right now, if «Guardar dónde pagas» is on: Wallet keeps its own.
-        let place = await PaymentPlace.current()
-        switch try ExpenseRecorder.record(amountText: parsed.amountText, merchant: parsed.merchant,
-                                          card: parsed.card, rawNotice: text, place: place, in: context) {
-        case .unreadable, .empty:
-            return .result()
-        case .duplicate(let merchant):
-            return .result()
-        case .saved(let merchant):
-            // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
-            return .result()
-        }
+        // After saving, so a slow location never costs a payment.
+        if let expense { ExpenseRecorder.addPlace(await PaymentPlace.current(), to: expense, in: context) }
+        // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
+        if outcome == .unreadable { UnreadNotice.note(notice, always: true) }
+        return .result()
     }
 }

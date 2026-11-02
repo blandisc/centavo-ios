@@ -18,6 +18,9 @@ struct BackupSettingsView: View {
     @State private var choosingFolder = false
 
     @State private var last = DailyBackup.lastBackup
+    @State private var cloud = DailyBackup.cloudState()
+    /// The folder picked is only on this phone: said once, when it's picked.
+    @State private var localFolder = false
     @State private var working = false
     @State private var problem: String?
 
@@ -49,6 +52,7 @@ struct BackupSettingsView: View {
             do {
                 try DailyBackup.choose(folder: url)
                 folderName = DailyBackup.folderName
+                localFolder = !DailyBackup.isInCloud(url)
             } catch {
                 problem = "No se pudo usar esa carpeta. Elige otra."
             }
@@ -71,13 +75,20 @@ struct BackupSettingsView: View {
             Button("Cancelar", role: .cancel) { pending = nil }
             Button("Restaurar", role: .destructive) { if let pending { restore(pending) } }
         } message: {
-            if let pending { Text(Self.describe(pending.summary) + "\n\nReemplaza todo lo que hay en este iPhone. Antes se guarda una copia de lo actual en tu carpeta.") }
+            if let pending { Text(Self.describe(pending.summary) + "\n\nReemplaza todo lo que hay en este iPhone, y en tus otros dispositivos si usan Al día con iCloud. Antes se guarda una copia de lo actual en tu carpeta.") }
         }
         .alert("Listo", isPresented: Binding(get: { restored != nil }, set: { if !$0 { restored = nil } })) {
             Button("Aceptar", role: .cancel) { restored = nil }
         } message: {
             if let restored { Text("Se restauraron \(restored.expenseCount) gastos y tus ajustes.") }
         }
+        .alert("Esa carpeta está solo en este iPhone", isPresented: $localFolder) {
+            Button("Elegir otra") { choosingFolder = true }
+            Button("Usarla así", role: .cancel) {}
+        } message: {
+            Text("Si pierdes el iPhone, el respaldo se pierde con él. Elige una carpeta dentro de iCloud Drive.")
+        }
+        .onAppear { cloud = DailyBackup.cloudState() }
         .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button("Aceptar", role: .cancel) { problem = nil }
         } message: {
@@ -201,7 +212,17 @@ struct BackupSettingsView: View {
 
     private var lastText: String {
         guard let last else { return hasPassword && folderName != nil ? "Todavía no hay respaldo." : "Primero la contraseña y la carpeta." }
-        return "Último respaldo: " + last.formatted(.relative(presentation: .named).locale(Locale(identifier: "es_MX")))
+        var text = "Último respaldo: " + last.formatted(.relative(presentation: .named).locale(Locale(identifier: "es_MX")))
+        switch cloud {
+        case .uploading: text += ". Guardado, aún no sube a iCloud."
+        case .failed: text += ". Guardado en el iPhone, pero no pudo subir a iCloud: revisa que tengas espacio."
+        case .local: text += ". Está solo en este iPhone: elige una carpeta en iCloud Drive."
+        case .uploaded, nil: break
+        }
+        if let failed = DailyBackup.lastFailure, failed > last {
+            text += "\nEl último intento no se pudo hacer."
+        }
+        return text
     }
 
     private func savePassword() {
@@ -224,6 +245,7 @@ struct BackupSettingsView: View {
         defer { working = false }
         do {
             last = try DailyBackup.runNow(in: context)
+            cloud = DailyBackup.cloudState()
         } catch {
             problem = message(for: error)
         }
@@ -232,13 +254,18 @@ struct BackupSettingsView: View {
     private func open(_ url: URL, password: String?) {
         fileToOpen = url
         guard let password else { askingPassword = true; return }
-        do {
-            pending = try DailyBackup.read(url, password: password)
-            openedWith = password
-        } catch DailyBackup.Failure.unreadable(.wrongPassword) {
-            askingPassword = true
-        } catch {
-            problem = message(for: error)
+        working = true
+        // The key takes a moment to derive: off the main thread, so the screen doesn't freeze.
+        Task {
+            defer { working = false }
+            do {
+                pending = try await Task.detached { try DailyBackup.read(url, password: password) }.value
+                openedWith = password
+            } catch DailyBackup.Failure.unreadable(.wrongPassword) {
+                askingPassword = true
+            } catch {
+                problem = message(for: error)
+            }
         }
     }
 

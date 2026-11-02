@@ -58,6 +58,23 @@ import Testing
         #expect(row.contains("12345.60"))
     }
 
+    @Test func amountsAreNeverRounded() {
+        let rows = lines([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "A", amount: Decimal(string: "0.125")!, currency: "MXN"),
+            ExpenseRecord(date: Self.date(2026, 10, 2), merchant: "B", amount: 89, currency: "MXN"),
+            ExpenseRecord(date: Self.date(2026, 10, 3), merchant: "C", amount: Decimal(string: "-12.5")!, currency: "MXN"),
+        ])
+        #expect(rows[1].contains(",0.125,") && rows[2].contains(",89.00,") && rows[3].contains(",-12.50,"))
+    }
+
+    @Test func aPartThatCountsIsWrittenAsTheAmountThatCounts() {
+        let row = lines([
+            ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Cena", amount: 1200, currency: "MXN",
+                          countedAmount: 600, uncountedReason: .reimbursed),
+        ])[1]
+        #expect(row.hasSuffix(",1200.00,MXN,,,600.00,Me lo reembolsan"))
+    }
+
     @Test func refundsKeepTheirMinus() {
         let row = lines([
             ExpenseRecord(date: Self.date(2026, 10, 1), merchant: "Liverpool",

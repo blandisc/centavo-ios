@@ -166,4 +166,51 @@ import Testing
         #expect(notice.card == "American Express México")
         #expect(notice.amount.value == 205)
     }
+
+    /// The app saves `amountText` and reads it again: it has to be the whole figure.
+    @Test(arguments: [
+        ("Visa\nMigros\nCHF 1'234.50", "1234.5"),
+        ("Visa\nMigros\nCHF 1’234.50", "1234.5"),
+        ("Visa\nFnac\n1\u{00A0}234,56 €", "1234.56"),
+        ("Visa\nFnac\n1\u{202F}234,56 €", "1234.56"),
+        ("Visa\nFnac MXN 1\u{00A0}234,56", "1234.56"),
+    ] as [(String, String)])
+    func groupedAmountsAreSavedWhole(text: String, expected: String) throws {
+        let notice = try #require(WalletNotice.parse(text))
+        #expect(notice.amount.value == Decimal(string: expected))
+        #expect(CaptureText.amount(in: notice.amountText)?.value == Decimal(string: expected),
+                "Guardó «\(notice.amountText)»")
+    }
+
+    /// «ALL» is the code of the Albanian lek, and also a word in a shop's name.
+    @Test func aCodeThatIsAlsoAWordDoesNotWinOverARealFigure() throws {
+        let notice = try #require(WalletNotice.parse("BBVA\nALL 2 GO MXN 300.00"))
+        #expect(notice.amount.value == 300)
+        #expect(notice.amount.currencyMarker == "MXN")
+        #expect(notice.amountText == "MXN 300.00")
+        #expect(notice.merchant == "ALL 2 GO")
+        #expect(CaptureText.amount(in: "ALL 2 GO MXN 300.00")?.value == 300)
+    }
+
+    @Test(arguments: [
+        "Visa\nRefund from Amazon\nUSD 20.00", "Visa\nAmazon\nRefund: $20.00",
+        "Visa\nAmazon\nReturned $20.00", "Visa\nAmazon\nReversal USD 20.00",
+        "Visa\nAmazon\n–$20.00", "Visa\nAmazon\n−$20.00", "Visa\nAmazon\n$–20.00",
+    ])
+    func refundsInEnglishOrWithADashSubtract(text: String) throws {
+        let notice = try #require(WalletNotice.parse(text))
+        #expect(notice.amount.value == -20, "«\(text)»")
+        #expect(CaptureText.amount(in: notice.amountText)?.value == -20, "Guardó «\(notice.amountText)»")
+    }
+
+    @Test func anEnglishRefundKeepsTheShop() throws {
+        let notice = try #require(WalletNotice.parse("Visa\nRefund from Amazon\nUSD 20.00"))
+        #expect(notice.merchant == "Amazon")
+    }
+
+    @Test(arguments: ["Apple Cash\nYou received $20 from Ana", "Apple Cash\nAna sent you $20.00",
+                      "Apple Cash\nPayment received from Ana\n$20.00"])
+    func moneyThatCameInInEnglishIsNotSpending(text: String) {
+        #expect(WalletNotice.parse(text) == nil)
+    }
 }

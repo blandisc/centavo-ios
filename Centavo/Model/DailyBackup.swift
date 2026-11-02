@@ -16,16 +16,21 @@ enum DailyBackup {
     static let folderKey = "respaldo.carpeta"
     static let lastKey = "respaldo.ultimo"
     static let folderNameKey = "respaldo.carpetaNombre"
+    /// The last time a run failed, cleared by the next one that works: «Hoy» says so.
+    static let failedKey = "respaldo.fallo"
+    /// The newest file's name, to ask iCloud whether it went up.
+    static let fileKey = "respaldo.archivo"
 
     enum Failure: Error, CustomLocalizedStringResourceConvertible, Equatable {
-        case noPassword, noFolder, folderGone, notWritten, unreadable(BackupError)
+        case noPassword, noFolder, folderGone, notWritten, moneyUnreadable, unreadable(BackupError)
 
         var localizedStringResource: LocalizedStringResource {
             switch self {
             case .noPassword: "Primero crea la contraseña del respaldo en Ajustes de Al día."
             case .noFolder: "Primero elige la carpeta del respaldo en Ajustes de Al día."
             case .folderGone: "La carpeta del respaldo ya no está. Elígela otra vez en Ajustes de Al día."
-            case .notWritten: "No se pudo guardar el respaldo en la carpeta. Revisa que haya espacio en iCloud."
+            case .notWritten: "No se pudo guardar el respaldo en la carpeta. Revisa que siga ahí y que haya espacio."
+            case .moneyUnreadable: "No se hizo el respaldo: «Mi dinero» no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez."
             case .unreadable(.wrongPassword): "La contraseña no abre este respaldo."
             case .unreadable(.notABackup): "Ese archivo no es un respaldo de Al día."
             case .unreadable(.newerFormat): "Ese respaldo es de una versión más nueva de Al día. Actualiza la app."
@@ -40,10 +45,49 @@ enum DailyBackup {
     static var folderName: String? { UserDefaults.standard.string(forKey: folderNameKey) }
     static var isSetUp: Bool { BackupPassword.read() != nil && UserDefaults.standard.data(forKey: folderKey) != nil }
 
+    static var lastFailure: Date? { UserDefaults.standard.object(forKey: failedKey) as? Date }
+
     /// Three days without a backup (or none yet, once it's set up) is worth a line.
     static func isOverdue(now: Date = .now) -> Bool {
         guard let lastBackup else { return true }
         return now.timeIntervalSince(lastBackup) > 3 * 24 * 60 * 60
+    }
+
+    /// What «Hoy» says, quietly, once the backup is set up: nothing while it's fine.
+    static func warning(now: Date = .now) -> String? {
+        guard isSetUp else { return nil }
+        if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
+            return "El último respaldo no se pudo hacer. Revísalo en Ajustes."
+        }
+        if isOverdue(now: now) { return "Llevas más de 3 días sin respaldo. Revísalo en Ajustes." }
+        return nil
+    }
+
+    /// Where the newest file is: only on this phone, still going up to iCloud, or up.
+    enum CloudState: Equatable {
+        case local, uploading, uploaded, failed
+    }
+
+    /// Asked of the newest file each time: iCloud uploads after the app wrote it.
+    static func cloudState() -> CloudState? {
+        guard let name = UserDefaults.standard.string(forKey: fileKey), let folder = try? folder() else { return nil }
+        let access = folder.startAccessingSecurityScopedResource()
+        defer { if access { folder.stopAccessingSecurityScopedResource() } }
+        var file = folder.appending(path: name)
+        file.removeAllCachedResourceValues()
+        guard let values = try? file.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemIsUploadedKey,
+                                                             .ubiquitousItemUploadingErrorKey]) else { return nil }
+        guard values.isUbiquitousItem == true else { return .local }
+        if values.ubiquitousItemUploadingError != nil { return .failed }
+        return values.ubiquitousItemIsUploaded == true ? .uploaded : .uploading
+    }
+
+    /// Whether a folder lives in iCloud Drive (and so outside this phone).
+    static func isInCloud(_ url: URL) -> Bool {
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        return (try? url.resourceValues(forKeys: [.isUbiquitousItemKey]))?.isUbiquitousItem == true
+            || FileManager.default.isUbiquitousItem(at: url)
     }
 
     // MARK: Folder
@@ -62,8 +106,15 @@ enum DailyBackup {
         var stale = false
         guard let url = try? URL(resolvingBookmarkData: bookmark, options: [], relativeTo: nil,
                                  bookmarkDataIsStale: &stale) else { throw Failure.folderGone }
+        // A folder sent to the trash still resolves: writing there would look fine and be lost.
+        if isTrashed(url) { throw Failure.folderGone }
         if stale { try? choose(folder: url) }
         return url
+    }
+
+    /// A folder in the trash (Archivos keeps it in «.Trash» until it's emptied).
+    static func isTrashed(_ url: URL) -> Bool {
+        url.standardizedFileURL.pathComponents.contains(".Trash")
     }
 
     // MARK: Writing
@@ -71,11 +122,19 @@ enum DailyBackup {
     /// Writes today's file, checks it opens, and trims old ones. Returns when it was written.
     @MainActor @discardableResult
     static func runNow(in context: ModelContext, now: Date = .now) throws -> Date {
-        guard let password = BackupPassword.read() else { throw Failure.noPassword }
-        let payload = try snapshot(in: context, now: now)
-        try write(payload, password: password, named: BackupRetention.fileName(for: now), trims: true)
-        UserDefaults.standard.set(now, forKey: lastKey)
-        return now
+        do {
+            guard let password = BackupPassword.read() else { throw Failure.noPassword }
+            let payload = try snapshot(in: context, now: now)
+            let name = BackupRetention.fileName(for: now)
+            try write(payload, password: password, named: name, trims: true)
+            UserDefaults.standard.set(now, forKey: lastKey)
+            UserDefaults.standard.set(name, forKey: fileKey)
+            UserDefaults.standard.removeObject(forKey: failedKey)
+            return now
+        } catch {
+            UserDefaults.standard.set(now, forKey: failedKey)
+            throw error
+        }
     }
 
     /// Before a restore replaces everything, what there was goes to the folder (never trimmed:
@@ -115,6 +174,7 @@ enum DailyBackup {
         coordinator.coordinate(readingItemAt: target, options: [], error: nil) { url in
             reread = try? Data(contentsOf: url)
         }
+        // «Mi dinero» is compared too: a file without it, when there was some, isn't a backup.
         guard let reread, let back = try? BackupSeal.open(reread, password: password),
               back.expenses.count == payload.expenses.count,
               back.money?.accounts.count == payload.money?.accounts.count,
@@ -133,8 +193,13 @@ enum DailyBackup {
     // MARK: What goes in
 
     @MainActor
+    static func snapshot(in context: ModelContext, now: Date = .now) throws -> BackupPayload {
+        try snapshot(in: context, now: now, moneyContainer: moneyContainer())
+    }
+
+    @MainActor
     static func snapshot(in context: ModelContext, now: Date = .now,
-                         moneyContainer: ModelContainer? = DailyBackup.moneyContainer) throws -> BackupPayload {
+                         moneyContainer: ModelContainer?) throws -> BackupPayload {
         let expenses = try context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)]))
         return BackupPayload(createdAt: now, writtenBy: AppVersion.line,
                              expenses: expenses.map(\.backedUp), settings: Settings.current(),
@@ -142,8 +207,15 @@ enum DailyBackup {
     }
 
     /// «Mi dinero», read without Face ID: the backup is written in the background and the file
-    /// is locked with the password anyway. `nil` only when its store can't open.
-    static var moneyContainer: ModelContainer? { try? MoneyStore.opened.get() }
+    /// is locked with the password anyway. `nil` only when it was never written on this phone; a
+    /// store that's there and doesn't open stops the backup, so a file without it never
+    /// counts as done (and never makes the cleanup drop the good ones).
+    static func moneyContainer() throws -> ModelContainer? {
+        switch MoneyStore.opened {
+        case .success(let container): return container
+        case .failure: if MoneyStore.hasFile { throw Failure.moneyUnreadable } else { return nil }
+        }
+    }
 
     @MainActor
     static func moneySnapshot(_ container: ModelContainer?) throws -> BackupMoney? {
@@ -165,13 +237,13 @@ enum DailyBackup {
                           guard let account = entry.account else { return nil }
                           return .init(account: account.id.uuidString, balance: BackupNumber.text(entry.balance),
                                        yieldOverride: entry.yieldOverride.map(BackupNumber.text),
-                                       movement: entry.movement.map(BackupNumber.text))
+                                       movement: entry.movement.map(BackupNumber.text), reviewed: entry.reviewed)
                       })
             },
             incomes: incomes.map { income in
                 .init(id: income.id.uuidString, name: income.name, institution: income.institution,
                       amount: BackupNumber.text(income.amount), currency: income.currency,
-                      since: income.since, archived: income.archived)
+                      since: income.since, archived: income.archived, createdAt: income.createdAt)
             })
     }
 
@@ -199,6 +271,7 @@ enum DailyBackup {
                                          currency: row.currency, since: row.since)
                 income.id = UUID(uuidString: row.id) ?? UUID()
                 income.archived = row.archived
+                if let createdAt = row.createdAt { income.createdAt = createdAt }
                 context.insert(income)
             }
             var byID: [String: MoneyAccount] = [:]
@@ -220,7 +293,8 @@ enum DailyBackup {
                 context.insert(cut)
                 for line in row.entries {
                     guard let account = byID[line.account] else { throw Failure.unreadable(.damaged) }
-                    let entry = MoneyEntry(balance: try number(line.balance), account: account, reviewed: true)
+                    // A file from before kept no «reviewed»: a finished cut's lines were all looked at.
+                    let entry = MoneyEntry(balance: try number(line.balance), account: account, reviewed: line.reviewed ?? true)
                     entry.yieldOverride = try optional(line.yieldOverride)
                     entry.movement = try optional(line.movement)
                     context.insert(entry)
@@ -301,13 +375,25 @@ enum DailyBackup {
     /// Replaces every expense and setting with the backup's, all at once: one save, so it's
     /// either the old data or the new, never a mix. Settings change only after the save.
     /// «Mi dinero» first (a format-1 file has none and leaves it as it is), then the expenses.
-    /// Two stores can't be saved as one, so each is all-or-nothing on its own, and the safety
-    /// copy taken before covers both.
+    /// Two stores can't be saved as one: if the expenses fail after «Mi dinero» changed, «Mi
+    /// dinero» goes back to what it was, so «nothing changed» stays true. The safety copy taken
+    /// before covers both anyway.
+    @MainActor
+    static func restore(_ payload: BackupPayload, into container: ModelContainer) throws {
+        try restore(payload, into: container, money: moneyContainer())
+    }
+
     @MainActor
     static func restore(_ payload: BackupPayload, into container: ModelContainer,
-                        money moneyContainer: ModelContainer? = DailyBackup.moneyContainer) throws {
+                        money moneyContainer: ModelContainer?) throws {
         let expenses = try payload.expenses.map { try Expense(backup: $0) }
-        if let money = payload.money, let moneyContainer { try restoreMoney(money, into: moneyContainer) }
+        var before: BackupMoney?
+        if let money = payload.money {
+            // The file brings «Mi dinero» and it can't be put back: nothing changes.
+            guard let moneyContainer else { throw Failure.moneyUnreadable }
+            before = try moneySnapshot(moneyContainer)
+            try restoreMoney(money, into: moneyContainer)
+        }
         let context = ModelContext(container)
         context.autosaveEnabled = false
         do {
@@ -316,6 +402,7 @@ enum DailyBackup {
             try context.save()
         } catch {
             context.rollback()
+            if let before, let moneyContainer { try? restoreMoney(before, into: moneyContainer) }
             throw error
         }
         Settings.restore(payload.settings)
@@ -339,6 +426,9 @@ extension Expense {
         row.repeatDay = repeatDay
         row.repeatRule = repeatRule
         row.isRepeat = isRepeat
+        row.fixedID = fixedID
+        row.fixedOf = fixedOf
+        row.maybeRepeated = maybeRepeated
         row.displayName = displayName
         row.categorySource = categorySource
         row.countedAmount = countedAmount.map(BackupNumber.text)
@@ -362,6 +452,9 @@ extension Expense {
         repeatDay = row.repeatDay
         repeatRule = row.repeatRule
         isRepeat = row.isRepeat
+        fixedID = row.fixedID
+        fixedOf = row.fixedOf
+        maybeRepeated = row.maybeRepeated
         displayName = row.displayName
         categorySource = row.categorySource
         countedAmount = counted

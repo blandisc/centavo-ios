@@ -168,4 +168,41 @@ final class RecurringExpensesTests: XCTestCase {
         XCTAssertEqual(original.date, at(11, 3))
         XCTAssertTrue(FixedPlan.saved.isEmpty, "El plan ya empezó")
     }
+
+    /// Two fixed expenses that look the same (two children at one school) each log their copy.
+    func testTwoIdenticalFixedExpensesEachLogTheirCopy() throws {
+        for _ in 0..<2 {
+            let school = Expense(amount: 5_000, currencyMarker: "MXN", merchant: "Colegio", date: at(8, 5))
+            school.repeatsMonthly = true
+            school.repeatsThrough = school.date
+            context.insert(school)
+        }
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 4)
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.count, 4)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 0)
+    }
+
+    /// Copies from before the ids still count: nothing is logged twice after the update.
+    func testCopiesFromBeforeIdsAreNotLoggedAgain() throws {
+        let netflix = addNetflix()
+        let old = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(9, 24))
+        old.isRepeat = true
+        context.insert(old)
+        netflix.repeatsThrough = at(8, 24)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 1)
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.map(\.date), [at(9, 24), at(10, 24)])
+    }
+
+    /// Two devices on one iCloud logging the same copy leave one.
+    func testTheSameCopyTwiceIsLeftOnce() throws {
+        let netflix = addNetflix()
+        try RecurringExpenses.logDue(in: context, now: at(9, 30))
+        let twin = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(9, 24))
+        twin.isRepeat = true
+        twin.fixedOf = netflix.fixedID
+        context.insert(twin)
+        try context.save()
+        try RecurringExpenses.logDue(in: context, now: at(9, 30))
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.count, 1)
+    }
 }

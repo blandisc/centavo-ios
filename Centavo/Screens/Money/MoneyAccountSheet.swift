@@ -23,10 +23,11 @@ struct MoneyAccountSheet: View {
 
     private var isNew: Bool { account == nil }
     private var isForeign: Bool { currency != mainCurrency }
-    private var takesRate: Bool { kind == .account || kind == .debt }
+    /// The same rule as the first time: an investment keeps its rate (editing it used to drop it).
+    private var takesRate: Bool { account.map { MoneySubtype.of($0).takesRate } ?? (kind != .receivable) }
     private static let currencies = ["MXN", "USD", "EUR"]
 
-    private var parsedBalance: Decimal? { AmountParser.parse(balance)?.value }
+    private var parsedBalance: Decimal? { MoneyAmount.read(balance) }
     private var parsedRate: Decimal? { rate.isEmpty ? nil : MoneyMath.decimal(rate) }
     private var parsedExchange: Decimal? { MoneyMath.decimal(exchange) }
     private var institutionOrNil: String? {
@@ -135,7 +136,7 @@ struct MoneyAccountSheet: View {
                 Button("Cancelar", role: .cancel) {}
                 Button("Archivar", role: .destructive, action: archive)
             } message: {
-                Text("Deja de salir en tu patrimonio y en los próximos cortes.")
+                Text("Deja de sumar en tu patrimonio y de salir en los próximos cortes; los cortes pasados la conservan. La puedes regresar desde «Archivadas».")
             }
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
@@ -204,7 +205,12 @@ struct MoneyAccountSheet: View {
 
     private func archive() {
         account?.archived = true
-        try? context.save()
-        dismiss()
+        do {
+            try context.save()
+            dismiss()
+        } catch {
+            context.rollback()
+            problem = "No se archivó la cuenta. Intenta otra vez."
+        }
     }
 }

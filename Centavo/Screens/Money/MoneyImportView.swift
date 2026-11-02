@@ -252,7 +252,7 @@ struct MoneyImportView: View {
             MoneyRow(title: row.wrappedValue.draft.trimmedName.isEmpty ? "Sin nombre" : row.wrappedValue.draft.trimmedName,
                      subtitle: row.wrappedValue.subtitle(main: mainCurrency),
                      swatch: needs ? Theme.brass : Theme.categories[Int(UInt(bitPattern: id.hashValue) % UInt(Theme.categories.count))],
-                     figure: row.wrappedValue.figure, isOpen: isOpen,
+                     figure: row.wrappedValue.figure(main: mainCurrency), isOpen: isOpen,
                      toggle: { withAnimation(motion) { open = isOpen ? nil : id } }) {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Picker("Qué es", selection: row.draft.subtype) {
@@ -475,9 +475,9 @@ struct MoneyImportRow: Identifiable {
         return draft.rate.isEmpty || draft.yearlyRate != nil
     }
 
-    var figure: String? {
+    func figure(main: String) -> String? {
         guard let balance = draft.balance else { return nil }
-        let text = formatMoney(balance, isoCode: draft.currency, label: draft.currency)
+        let text = formatMoney(balance, isoCode: draft.currency, label: draft.currency, main: main)
         return draft.subtype.kind == .debt ? "−" + text : text
     }
 
@@ -490,7 +490,13 @@ struct MoneyImportRow: Identifiable {
     }
 
     var toSave: MoneyLineToSave? {
-        guard let amount = draft.balance else { return nil }
+        guard var amount = draft.balance else { return nil }
+        // The same rule as reading the file: a debt, money owed or an income is written positive,
+        // even when the row was an overdrawn account before its type was changed. Only an
+        // account (or an investment) can be below zero.
+        if amount < 0, draft.subtype.kind == .debt || draft.subtype.kind == .receivable || draft.subtype == .income {
+            amount = -amount
+        }
         return MoneyLineToSave(subtype: draft.subtype, name: draft.trimmedName, institution: draft.trimmedInstitution,
                                currency: draft.currency, amount: amount,
                                yearlyRate: draft.subtype.takesRate ? draft.yearlyRate : nil)

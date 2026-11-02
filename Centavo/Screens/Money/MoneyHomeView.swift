@@ -8,6 +8,7 @@ struct MoneyHomeView: View {
     @Environment(\.modelContext) private var context
     @Query(MoneyStore.activeAccounts) private var accounts: [MoneyAccount]
     @Query(MoneyCut.finished) private var cuts: [MoneyCut]
+    @Query(filter: #Predicate<MoneyAccount> { $0.archived }, sort: \MoneyAccount.name) private var archived: [MoneyAccount]
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// Where «Primera cuenta» is: 0 not started, 1…4 a step, 5 done (`MoneyStep`).
     @AppStorage(MoneyHomeView.stepKey) private var step = 0
@@ -16,6 +17,7 @@ struct MoneyHomeView: View {
     @State private var adding = false
     @State private var editing: MoneyAccount?
     @State private var cutting: MoneyCut?
+    @State private var choosingMonth = false
     @State private var problem: String?
 
     private var main: String { CurrencyPreference.resolve(storedCurrency) }
@@ -57,6 +59,14 @@ struct MoneyHomeView: View {
             }
             .sheet(item: $editing) { MoneyAccountSheet(account: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover() }
             .sheet(item: $cutting) { MoneyCutSheet(draft: $0).moneyPrivacyCover() }
+            .confirmationDialog("¿De qué mes es el corte?", isPresented: $choosingMonth, titleVisibility: .visible) {
+                ForEach(MoneyStore.suggestedMonths(), id: \.self) { month in
+                    Button("Corte de \(MoneyHead.fullMonthName(month))") { startCut(for: month) }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Si ese mes ya tiene corte, Al día pregunta antes de reemplazarlo.")
+            }
 
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
@@ -115,13 +125,38 @@ struct MoneyHomeView: View {
             group("Cuentas", kinds: [.account, .investment])
             group("Por cobrar", kinds: [.receivable])
             group("Debes", kinds: [.debt])
+            if !archived.isEmpty {
+                Section {
+                    ForEach(archived) { account in
+                        HStack {
+                            Text(account.name)
+                                .font(.ticket(.bodyMedium))
+                                .tracking(Theme.Tracking.name)
+                                .textCase(.uppercase)
+                                .foregroundStyle(Theme.muted)
+                            Spacer()
+                            Button("Regresar") { unarchive(account) }
+                                .font(.ticket(.label))
+                                .foregroundStyle(Theme.brass)
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("dinero-regresar-\(account.name)")
+                        }
+                        .listRowBackground(Theme.background)
+                        .listRowSeparatorTint(Theme.hairline)
+                    }
+                } header: {
+                    Text("Archivadas").ticketCaption()
+                } footer: {
+                    HintText("No suman en tu patrimonio ni salen en el corte. Al regresarla, el próximo corte te pide su saldo.")
+                }
+            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
     }
 
     private var hero: some View {
-        let worth = latest?.netWorth ?? NetWorth()
+        let worth = latest?.activeNetWorth ?? NetWorth()
         let currency = latest?.mainCurrency ?? main
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             MoneyHead(date: .now, cutNumber: cuts.count)
@@ -154,7 +189,7 @@ struct MoneyHomeView: View {
         }
         if worth.receivable > 0 {
             parts.append(Text(formatMoney(worth.receivable, isoCode: currency, label: currency)).foregroundStyle(Theme.brass)
-                         + Text(" por caer"))
+                         + Text(" te deben"))
         }
         let line = parts.enumerated().reduce(Text("")) { sum, item in
             item.offset == 0 ? item.element : sum + Text(" · ").foregroundStyle(Theme.brass) + item.element
@@ -194,9 +229,31 @@ struct MoneyHomeView: View {
         return NetWorth(lines: lines, main: cut.mainCurrency, rates: cut.rateTable).owned
     }
 
+    private func unarchive(_ account: MoneyAccount) {
+        account.archived = false
+        do { try context.save() } catch {
+            context.rollback()
+            problem = "No se pudo regresar la cuenta. Intenta otra vez."
+        }
+    }
+
+    /// A cut left half-done opens as it was, whatever its month. Otherwise the cut asks which
+    /// month it's for: in the first days, the one that just ended comes first.
     private func startCut() {
         do {
-            cutting = try MoneyStore.draftForThisMonth(in: context, mainCurrency: latest?.mainCurrency ?? main)
+            if let draft = try MoneyStore.openDraft(in: context) {
+                cutting = draft
+            } else {
+                choosingMonth = true
+            }
+        } catch {
+            problem = "No se pudo empezar el corte."
+        }
+    }
+
+    private func startCut(for month: String) {
+        do {
+            cutting = try MoneyStore.draft(for: month, in: context, mainCurrency: latest?.mainCurrency ?? main)
         } catch {
             problem = "No se pudo empezar el corte."
         }
@@ -215,7 +272,7 @@ struct MoneyAccountRow: View {
         var bits: [String] = account.institution.map { [$0] } ?? []
         if let rate = account.yearlyRate { bits.append("\(rate.formatted(.number.precision(.fractionLength(0...2))))% anual") }
         if account.currency != cut.mainCurrency, let balance {
-            bits.append(formatMoney(balance, isoCode: account.currency, label: account.currency))
+            bits.append(formatMoney(balance, isoCode: account.currency, label: account.currency, main: cut.mainCurrency))
         }
         switch MoneySubtype.of(account) {
         case .account: break
@@ -228,7 +285,10 @@ struct MoneyAccountRow: View {
 
     private var shown: String {
         guard let balance else { return "—" }
-        let rate = account.currency == cut.mainCurrency ? 1 : (cut.rateTable[account.currency] ?? 0)
+        // Without a rate it isn't zero: it's money that can't be added up yet.
+        guard let rate = account.currency == cut.mainCurrency ? 1 : cut.rateTable[account.currency] else {
+            return "sin tipo de cambio"
+        }
         let value = MoneyMath.cents(balance * rate)
         let text = formatMoney(value, isoCode: cut.mainCurrency, label: cut.mainCurrency)
         return account.kind == .debt ? "−" + text : text
@@ -273,6 +333,14 @@ struct MoneyHead: View {
         guard parts.count == 2, let date = Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: 1))
         else { return key }
         return date.formatted(.dateTime.month(.abbreviated).locale(mexico)).replacingOccurrences(of: ".", with: "")
+    }
+
+    /// «septiembre» for «2026-09».
+    static func fullMonthName(_ key: String) -> String {
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 2, let date = Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: 1))
+        else { return key }
+        return date.formatted(.dateTime.month(.wide).locale(mexico))
     }
 
     var body: some View {

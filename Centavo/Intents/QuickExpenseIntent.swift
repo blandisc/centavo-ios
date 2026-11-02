@@ -39,7 +39,7 @@ struct QuickExpenseIntent: AppIntent {
                                                 card: entry.source, in: context, now: entry.date) {
         case .unreadable, .empty:
             throw $sentence.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
-        case .duplicate(let name), .saved(let name):
+        case .maybeRepeated(let name), .saved(let name):
             let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
             let day = QuickExpense.spokenDay(entry.date).map { ", \($0)" } ?? ""
             let paid = entry.source.map { ", con \($0.lowercased() == "efectivo" ? "efectivo" : $0)" } ?? ""
@@ -52,6 +52,6 @@ struct QuickExpenseIntent: AppIntent {
     private func spoken(_ text: String) -> String {
         guard let parsed = AmountParser.parse(text) else { return text }
         let code = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: MonthStatus.primaryCurrency)
-        return formatMoney(parsed.value, isoCode: code, label: code)
+        return formatMoney(parsed.value, isoCode: code, label: code, main: CurrencyPreference.current)
     }
 }

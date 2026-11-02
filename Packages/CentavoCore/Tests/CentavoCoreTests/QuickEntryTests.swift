@@ -148,4 +148,29 @@ import Testing
             #expect(refined.merchant == base.merchant, "«\(wrong)»")
         }
     }
+
+    /// «mil» and «millones» multiply: «2 mil pesos» is two thousand, never two.
+    @Test(arguments: [
+        ("2 mil pesos en Oxxo", "2000 pesos", "Oxxo"),
+        ("renta de 8 mil", "8000", "Renta"),
+        ("2 mil 500 de renta", "2500", "Renta"),
+        ("1.5 millones de la casa", "1500000", "Casa"),
+        ("un coche de 1 millón", "1000000", "Coche"),
+    ] as [(String, String, String)])
+    func thousandsAndMillionsSaidInWords(sentence: String, amount: String, merchant: String) throws {
+        let entry = try #require(parse(sentence))
+        #expect(entry.amountText == amount, "«\(sentence)»")
+        #expect(entry.merchant == merchant, "«\(sentence)»")
+        #expect(AmountParser.parse(entry.amountText.components(separatedBy: " ")[0]) != nil)
+    }
+
+    /// A small number before a noun is a count, even right after «de», when there is a price too.
+    @Test(arguments: [
+        ("Cena de 4 personas 1200", "1200"),
+        ("boletos de 3 personas por 900", "900"),
+        ("Cena de 4 personas", "4"),
+    ] as [(String, String)])
+    func aCountAfterDeIsNotTheAmount(sentence: String, amount: String) {
+        #expect(parse(sentence)?.amountText == amount, "«\(sentence)»")
+    }
 }

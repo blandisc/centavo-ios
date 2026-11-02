@@ -30,18 +30,17 @@ enum UserCatalog {
     static let categoryColorsKey = "categoryColors"
     static let sourceColorsKey = "sourceColors"
 
+    /// One at a time (`LenientList`): a name that doesn't read never empties the list.
     static func decodeNames(_ stored: String) -> [String] {
-        (try? JSONDecoder().decode([String].self, from: Data(stored.utf8))) ?? []
+        LenientList.decode(String.self, from: stored).items
     }
 
-    static func encodeNames(_ names: [String]) -> String {
-        (try? JSONEncoder().encode(names)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+    static func encodeNames(_ names: [String], keepingUnreadFrom stored: String = "") -> String {
+        LenientList.encode(names, keepingUnreadFrom: stored)
     }
 
     static func decode(_ stored: String) -> [LabeledIcon] {
-        guard let data = stored.data(using: .utf8),
-              let list = try? JSONDecoder().decode([LabeledIcon].self, from: data) else { return [] }
-        return list
+        LenientList.decode(LabeledIcon.self, from: stored).items
     }
 
     /// The cards and ways of paying someone set up, for code outside a view (the Wallet intent).
@@ -140,9 +139,9 @@ enum UserCatalog {
         return encodeNames(list)
     }
 
-    static func encode(_ list: [LabeledIcon]) -> String {
-        guard let data = try? JSONEncoder().encode(list) else { return "" }
-        return String(decoding: data, as: UTF8.self)
+    /// `stored`: what the list was; an item there that doesn't read is written back as it was.
+    static func encode(_ list: [LabeledIcon], keepingUnreadFrom stored: String = "") -> String {
+        LenientList.encode(list, keepingUnreadFrom: stored)
     }
 
     /// Names compare the way people read them: "nu" and "Nu " are the same card.
