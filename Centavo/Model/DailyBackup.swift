@@ -22,11 +22,21 @@ enum DailyBackup {
     static let fileKey = "respaldo.archivo"
 
     enum Failure: Error, CustomLocalizedStringResourceConvertible, Equatable {
-        case noPassword, noFolder, folderGone, notWritten, moneyUnreadable, unreadable(BackupError)
+        case noPassword, passwordUnavailable, noFolder, folderGone, notWritten, moneyUnreadable, unreadable(BackupError)
+        /// This phone has no expenses and the folder already has backups: restore first.
+        case newPhone
+        /// Restoring: «Mi dinero» was damaged, was set aside, and a new one didn't open either.
+        case moneyNotReady
+        /// Restoring: the expenses failed after «Mi dinero» changed, and it couldn't go back.
+        case halfRestored
 
         var localizedStringResource: LocalizedStringResource {
             switch self {
             case .noPassword: "Primero crea la contraseña del respaldo en Ajustes de Al día."
+            case .passwordUnavailable: "El iPhone no dejó leer la contraseña del respaldo (suele pasar si no se ha desbloqueado desde que se encendió). Desbloquéalo y respalda otra vez."
+            case .newPhone: "Parece un iPhone nuevo: restaura tu respaldo antes de respaldar."
+            case .moneyNotReady: "No se pudo abrir «Mi dinero» para restaurarlo. Tus gastos no cambiaron. Si «Mi dinero» no abría, quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
+            case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó en tu carpeta."
             case .noFolder: "Primero elige la carpeta del respaldo en Ajustes de Al día."
             case .folderGone: "La carpeta del respaldo ya no está. Elígela otra vez en Ajustes de Al día."
             case .notWritten: "No se pudo guardar el respaldo en la carpeta. Revisa que siga ahí y que haya espacio."
@@ -43,7 +53,11 @@ enum DailyBackup {
 
     static var lastBackup: Date? { UserDefaults.standard.object(forKey: lastKey) as? Date }
     static var folderName: String? { UserDefaults.standard.string(forKey: folderNameKey) }
-    static var isSetUp: Bool { BackupPassword.read() != nil && UserDefaults.standard.data(forKey: folderKey) != nil }
+    /// A password that can't be read right now (the phone locked since it was turned on) still
+    /// counts as set up: the warning in «Hoy» should still show.
+    static var isSetUp: Bool {
+        BackupPassword.lookup() != .missing && UserDefaults.standard.data(forKey: folderKey) != nil
+    }
 
     static var lastFailure: Date? { UserDefaults.standard.object(forKey: failedKey) as? Date }
 
@@ -57,23 +71,31 @@ enum DailyBackup {
     static func warning(now: Date = .now) -> String? {
         guard isSetUp else { return nil }
         if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
-            return "El último respaldo no se pudo hacer. Revísalo en Ajustes."
+            return "El último respaldo no se pudo hacer. Revísalo en Más › Ajustes › Respaldo diario."
         }
-        if isOverdue(now: now) { return "Llevas más de 3 días sin respaldo. Revísalo en Ajustes." }
+        if isOverdue(now: now) { return "Llevas más de 3 días sin respaldo. Revísalo en Más › Ajustes › Respaldo diario." }
+        // Written on the phone but not up in iCloud (full, or no network for a day): the date in
+        // «Último respaldo» alone would say it's fine (2026-11-02, second audit).
+        if BackupCloud.isStuck(cloudState(), writtenAt: lastBackup, now: now) {
+            return "El último respaldo no ha subido a iCloud; puede que no haya espacio. Revísalo en Más › Ajustes › Respaldo diario."
+        }
         return nil
     }
 
     /// Where the newest file is: only on this phone, still going up to iCloud, or up.
-    enum CloudState: Equatable {
-        case local, uploading, uploaded, failed
-    }
+    typealias CloudState = BackupCloudState
 
     /// Asked of the newest file each time: iCloud uploads after the app wrote it.
     static func cloudState() -> CloudState? {
         guard let name = UserDefaults.standard.string(forKey: fileKey), let folder = try? folder() else { return nil }
         let access = folder.startAccessingSecurityScopedResource()
         defer { if access { folder.stopAccessingSecurityScopedResource() } }
-        var file = folder.appending(path: name)
+        return cloudState(of: folder.appending(path: name))
+    }
+
+    /// Whether one file in the folder is only here, going up, up, or failed to go up.
+    static func cloudState(of url: URL) -> CloudState? {
+        var file = url
         file.removeAllCachedResourceValues()
         guard let values = try? file.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemIsUploadedKey,
                                                              .ubiquitousItemUploadingErrorKey]) else { return nil }
@@ -120,10 +142,14 @@ enum DailyBackup {
     // MARK: Writing
 
     /// Writes today's file, checks it opens, and trims old ones. Returns when it was written.
+    ///
+    /// The expenses and «Mi dinero» are read here, on the main actor; locking the file (600,000
+    /// rounds of PBKDF2), writing it and reading it back run apart, so «Respaldar ahora» doesn't
+    /// freeze the screen (2026-11-02, second audit).
     @MainActor @discardableResult
-    static func runNow(in context: ModelContext, now: Date = .now) throws -> Date {
+    static func runNow(in context: ModelContext, now: Date = .now) async throws -> Date {
         do {
-            guard let password = BackupPassword.read() else { throw Failure.noPassword }
+            let password = try BackupPassword.current()
             let payload: BackupPayload
             do {
                 payload = try snapshot(in: context, now: now)
@@ -131,11 +157,14 @@ enum DailyBackup {
                 // The expenses are still kept, in a file of their own that the cleanup never
                 // touches; the day doesn't count as backed up and the good files stay.
                 let partial = try snapshot(in: context, now: now, moneyContainer: nil)
-                try write(partial, password: password, named: partialName(for: now), trims: false)
+                try await apart {
+                    try inFolder { folder in
+                        try writeChecked(partial, password: password, named: BackupRetention.partialName(for: now), in: folder)
+                    }
+                }
                 throw Failure.moneyUnreadable
             }
-            let name = BackupRetention.fileName(for: now)
-            try write(payload, password: password, named: name, trims: true)
+            let name = try await apart { try writeToday(payload, password: password, now: now) }
             UserDefaults.standard.set(now, forKey: lastKey)
             UserDefaults.standard.set(name, forKey: fileKey)
             UserDefaults.standard.removeObject(forKey: failedKey)
@@ -146,55 +175,142 @@ enum DailyBackup {
         }
     }
 
-    /// Before a restore replaces everything, what there was goes to the folder (never trimmed:
-    /// the name isn't a daily one) and to the app's own Documents, whichever works.
-    @MainActor
-    static func safetyCopy(in context: ModelContext, password: String, now: Date = .now) throws {
-        // A «Mi dinero» that doesn't open can't be copied, but the expenses still can.
-        let payload = try (try? snapshot(in: context, now: now)) ?? snapshot(in: context, now: now, moneyContainer: nil)
-        let stamp = now.formatted(.iso8601.year().month().day().dateSeparator(.dash).time(includingFractionalSeconds: false)
-            .timeSeparator(.omitted)).replacingOccurrences(of: ":", with: "")
-        let name = "\(BackupRetention.prefix)antes-de-restaurar-\(stamp).\(BackupRetention.fileExtension)"
-        let sealed = try BackupSeal.seal(payload, password: password)
-        var saved = false
-        if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            saved = (try? sealed.write(to: docs.appending(path: name), options: .atomic)) != nil
-        }
-        if (try? write(payload, password: password, named: name, trims: false, sealed: sealed)) != nil { saved = true }
-        if !saved { throw Failure.notWritten }
+    /// Heavy work off the main thread.
+    private static func apart<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
+        try await Task.detached(priority: .userInitiated, operation: work).value
     }
 
-    private static func write(_ payload: BackupPayload, password: String, named name: String,
-                              trims: Bool, sealed: Data? = nil) throws {
-        let sealed = try sealed ?? BackupSeal.seal(payload, password: password)
+    /// The chosen folder, opened for the length of `work`.
+    private static func inFolder<T>(_ work: (URL) throws -> T) throws -> T {
         let folder = try folder()
         let access = folder.startAccessingSecurityScopedResource()
         defer { if access { folder.stopAccessingSecurityScopedResource() } }
+        return try work(folder)
+    }
+
+    /// Today's file, unless that would put less over what today's file already has
+    /// (`BackupPlan`). Returns the name written.
+    static func writeToday(_ payload: BackupPayload, password: String, now: Date) throws -> String {
+        try inFolder { folder in
+            let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? []
+            // A file only in iCloud, not on this phone yet, shows as «.name.icloud».
+            let present = Set(names.map(Self.visibleName))
+            let daily = BackupRetention.fileName(for: now)
+            let today: BackupPlan.Today
+            if names.contains(daily) {
+                today = holds(folder.appending(path: daily), password: password)
+            } else {
+                today = present.contains(daily) ? .unreadable : .none
+            }
+            let plan = BackupPlan.decide(expenses: payload.expenses.count, hasMoney: payload.money != nil, today: today,
+                                         folderHasBackups: present.contains(where: BackupRetention.isBackupFile))
+            switch plan {
+            case .newPhone:
+                throw Failure.newPhone
+            case .aside:
+                // Today's file had more: this one goes apart, and nothing is trimmed.
+                let name = BackupRetention.asideName(for: now)
+                try writeChecked(payload, password: password, named: name, in: folder)
+                return name
+            case .daily:
+                // In iCloud, nothing is trimmed until the last file made it up (iCloud full).
+                let previous = UserDefaults.standard.string(forKey: fileKey)
+                    .flatMap { cloudState(of: folder.appending(path: $0)) }
+                let trims = !payload.expenses.isEmpty
+                    && BackupCloud.mayTrim(folderInCloud: isInCloud(folder), previous: previous)
+                try writeChecked(payload, password: password, named: daily, in: folder)
+                if trims { trim(folder) }
+                return daily
+            }
+        }
+    }
+
+    /// «.al-dia-2026-11-01.aldia.icloud» (in iCloud, not downloaded) is «al-dia-2026-11-01.aldia».
+    static func visibleName(_ name: String) -> String {
+        guard name.hasPrefix("."), name.hasSuffix(".icloud") else { return name }
+        return String(name.dropFirst().dropLast(".icloud".count))
+    }
+
+    /// What today's file holds, or that it can't be read (another password, damaged).
+    private static func holds(_ url: URL, password: String) -> BackupPlan.Today {
+        guard let data = coordinatedRead(url), let back = try? BackupSeal.open(data, password: password) else {
+            return .unreadable
+        }
+        return .holds(expenses: back.expenses.count, money: back.money != nil)
+    }
+
+    /// Before a restore replaces everything, what there was goes to the folder (never trimmed:
+    /// the name isn't a daily one) and to the app's own Documents, whichever works. A cut left
+    /// half-done goes too (2026-11-02, second audit): restoring replaces it, and this copy is
+    /// where it's kept.
+    @MainActor
+    static func safetyCopy(in context: ModelContext, password: String, now: Date = .now) async throws {
+        // A «Mi dinero» that doesn't open can't be copied, but the expenses still can (and its
+        // file is set aside, never deleted, if the restore needs a new one).
+        let payload = try (try? snapshot(in: context, now: now, drafts: true))
+            ?? snapshot(in: context, now: now, moneyContainer: nil)
+        let name = BackupRetention.safetyName(for: now)
+        try await apart {
+            let sealed = try BackupSeal.seal(payload, password: password)
+            var saved = false
+            if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                saved = (try? sealed.write(to: docs.appending(path: name), options: .atomic)) != nil
+            }
+            let inFolder = try? inFolder { folder in
+                try writeChecked(payload, password: password, named: name, in: folder, sealed: sealed)
+            }
+            if inFolder != nil { saved = true }
+            if !saved { throw Failure.notWritten }
+        }
+    }
+
+    /// Writes a file and reads it back: only a file that comes back byte for byte, and opens with
+    /// the password holding the same counts, counts as written. Every coordination error is
+    /// checked (a `nil` error pointer let a write that never ran pass, 2026-11-02).
+    private static func writeChecked(_ payload: BackupPayload, password: String, named name: String,
+                                     in folder: URL, sealed: Data? = nil) throws {
+        let sealed = try sealed ?? BackupSeal.seal(payload, password: password)
         let target = folder.appending(path: name)
 
+        var coordination: NSError?
         var problem: Error?
-        let coordinator = NSFileCoordinator()
-        coordinator.coordinate(writingItemAt: target, options: .forReplacing, error: nil) { url in
-            do { try sealed.write(to: url, options: .atomic) } catch { problem = error }
+        var wrote = false
+        NSFileCoordinator().coordinate(writingItemAt: target, options: .forReplacing, error: &coordination) { url in
+            do {
+                try sealed.write(to: url, options: .atomic)
+                wrote = true
+            } catch {
+                problem = error
+            }
         }
-        guard problem == nil else { throw Failure.notWritten }
+        guard coordination == nil, problem == nil, wrote else { throw Failure.notWritten }
 
         // Read it back and open it: only a file that opens counts as a backup.
-        var reread: Data?
-        coordinator.coordinate(readingItemAt: target, options: [], error: nil) { url in
-            reread = try? Data(contentsOf: url)
-        }
         // «Mi dinero» is compared too: a file without it, when there was some, isn't a backup.
-        guard let reread, let back = try? BackupSeal.open(reread, password: password),
+        guard let reread = coordinatedRead(target), reread == sealed,
+              let back = try? BackupSeal.open(reread, password: password),
               back.expenses.count == payload.expenses.count,
               back.money?.accounts.count == payload.money?.accounts.count,
               back.money?.cuts.count == payload.money?.cuts.count,
-              back.money?.incomes?.count == payload.money?.incomes?.count else { throw Failure.notWritten }
+              back.money?.incomes?.count == payload.money?.incomes?.count,
+              back.money?.drafts?.count == payload.money?.drafts?.count else { throw Failure.notWritten }
+    }
 
-        guard trims, let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
-        else { return }
+    /// A file's bytes through the coordinator (iCloud may still be bringing it), or `nil`.
+    private static func coordinatedRead(_ url: URL) -> Data? {
+        var coordination: NSError?
+        var data: Data?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordination) { data = try? Data(contentsOf: $0) }
+        return coordination == nil ? data : nil
+    }
+
+    /// The last 30 days and the newest of each month stay (`BackupRetention`).
+    private static func trim(_ folder: URL) {
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)) else { return }
         for old in BackupRetention.toDelete(names) {
-            coordinator.coordinate(writingItemAt: folder.appending(path: old), options: .forDeleting, error: nil) { url in
+            var coordination: NSError?
+            NSFileCoordinator().coordinate(writingItemAt: folder.appending(path: old), options: .forDeleting,
+                                           error: &coordination) { url in
                 try? FileManager.default.removeItem(at: url)
             }
         }
@@ -202,18 +318,19 @@ enum DailyBackup {
 
     // MARK: What goes in
 
+    /// `drafts`: a cut left half-done goes too (only the copy before a restore).
     @MainActor
-    static func snapshot(in context: ModelContext, now: Date = .now) throws -> BackupPayload {
-        try snapshot(in: context, now: now, moneyContainer: moneyContainer())
+    static func snapshot(in context: ModelContext, now: Date = .now, drafts: Bool = false) throws -> BackupPayload {
+        try snapshot(in: context, now: now, moneyContainer: moneyContainer(), drafts: drafts)
     }
 
     @MainActor
     static func snapshot(in context: ModelContext, now: Date = .now,
-                         moneyContainer: ModelContainer?) throws -> BackupPayload {
+                         moneyContainer: ModelContainer?, drafts: Bool = false) throws -> BackupPayload {
         let expenses = try context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)]))
         return BackupPayload(createdAt: now, writtenBy: AppVersion.line,
                              expenses: expenses.map(\.backedUp), settings: Settings.current(),
-                             money: try moneySnapshot(moneyContainer))
+                             money: try moneySnapshot(moneyContainer, drafts: drafts))
     }
 
     /// «Mi dinero», read without Face ID: the backup is written in the background and the file
@@ -228,12 +345,23 @@ enum DailyBackup {
     }
 
     @MainActor
-    static func moneySnapshot(_ container: ModelContainer?) throws -> BackupMoney? {
+    static func moneySnapshot(_ container: ModelContainer?, drafts: Bool = false) throws -> BackupMoney? {
         guard let container else { return nil }
         let context = ModelContext(container)
         let accounts = try context.fetch(FetchDescriptor<MoneyAccount>(sortBy: [SortDescriptor(\.createdAt)]))
         let cuts = try context.fetch(MoneyCut.finished)
         let incomes = try context.fetch(FetchDescriptor<MoneyIncome>(sortBy: [SortDescriptor(\.createdAt)]))
+        let halfDone = drafts ? try MoneyStore.drafts(in: context) : []
+        func row(_ cut: MoneyCut) -> BackupMoney.Cut {
+            .init(id: cut.id.uuidString, month: cut.month, date: cut.date, mainCurrency: cut.mainCurrency,
+                  rates: cut.rates, entries: (cut.entries ?? []).compactMap { entry in
+                      guard let account = entry.account else { return nil }
+                      return .init(account: account.id.uuidString, balance: BackupNumber.text(entry.balance),
+                                   yieldOverride: entry.yieldOverride.map(BackupNumber.text),
+                                   movement: entry.movement.map(BackupNumber.text), reviewed: entry.reviewed)
+                  },
+                  reviewedRates: cut.isDraft ? cut.reviewedRates : nil)
+        }
         return BackupMoney(
             accounts: accounts.map { account in
                 .init(id: account.id.uuidString, name: account.name, kind: account.kindRaw, currency: account.currency,
@@ -241,21 +369,14 @@ enum DailyBackup {
                       archived: account.archived, createdAt: account.createdAt,
                       subtype: account.subtype, institution: account.institution)
             },
-            cuts: cuts.map { cut in
-                .init(id: cut.id.uuidString, month: cut.month, date: cut.date, mainCurrency: cut.mainCurrency,
-                      rates: cut.rates, entries: (cut.entries ?? []).compactMap { entry in
-                          guard let account = entry.account else { return nil }
-                          return .init(account: account.id.uuidString, balance: BackupNumber.text(entry.balance),
-                                       yieldOverride: entry.yieldOverride.map(BackupNumber.text),
-                                       movement: entry.movement.map(BackupNumber.text), reviewed: entry.reviewed)
-                      })
-            },
+            cuts: cuts.map(row),
             incomes: incomes.map { income in
                 .init(id: income.id.uuidString, name: income.name, institution: income.institution,
                       amount: BackupNumber.text(income.amount), currency: income.currency,
                       since: income.since, archived: income.archived, createdAt: income.createdAt,
                       until: income.until)
-            })
+            },
+            drafts: drafts ? halfDone.map(row) : nil)
     }
 
     /// Replaces «Mi dinero» with the backup's, in one save. A damaged figure stops it whole.
@@ -298,15 +419,19 @@ enum DailyBackup {
                 context.insert(account)
                 byID[row.id] = account
             }
-            for row in money.cuts {
-                let cut = MoneyCut(month: row.month, date: row.date, mainCurrency: row.mainCurrency, isDraft: false)
+            // The copy taken before a restore also brings the cuts that were half-done.
+            let rows = money.cuts.map { ($0, false) } + (money.drafts ?? []).map { ($0, true) }
+            for (row, isDraft) in rows {
+                let cut = MoneyCut(month: row.month, date: row.date, mainCurrency: row.mainCurrency, isDraft: isDraft)
                 cut.id = UUID(uuidString: row.id) ?? UUID()
                 cut.rates = row.rates
+                if isDraft { cut.reviewedRates = row.reviewedRates ?? "" }
                 context.insert(cut)
                 for line in row.entries {
                     guard let account = byID[line.account] else { throw Failure.unreadable(.damaged) }
                     // A file from before kept no «reviewed»: a finished cut's lines were all looked at.
-                    let entry = MoneyEntry(balance: try number(line.balance), account: account, reviewed: line.reviewed ?? true)
+                    let entry = MoneyEntry(balance: try number(line.balance), account: account,
+                                           reviewed: line.reviewed ?? !isDraft)
                     entry.yieldOverride = try optional(line.yieldOverride)
                     entry.movement = try optional(line.movement)
                     context.insert(entry)
@@ -376,9 +501,7 @@ enum DailyBackup {
     static func read(_ url: URL, password: String) throws -> BackupPayload {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        var data: Data?
-        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: nil) { data = try? Data(contentsOf: $0) }
-        guard let data else { throw Failure.unreadable(.damaged) }
+        guard let data = coordinatedRead(url) else { throw Failure.unreadable(.damaged) }
         do { return try BackupSeal.open(data, password: password) } catch let error as BackupError {
             throw Failure.unreadable(error)
         }
@@ -391,26 +514,36 @@ enum DailyBackup {
     /// dinero» goes back to what it was, so «nothing changed» stays true. The safety copy taken
     /// before covers both anyway.
     @MainActor
-    static func restore(_ payload: BackupPayload, into container: ModelContainer) throws {
+    static func restore(_ payload: BackupPayload, into container: ModelContainer, now: Date = .now) throws {
         // A file without «Mi dinero» never needs it open.
-        try restore(payload, into: container, money: payload.money == nil ? nil : moneyContainer())
+        guard payload.money != nil else { return try restore(payload, into: container, money: nil) }
+        // Before anything changes: a backup that can't even be turned into expenses stops here,
+        // and a damaged «Mi dinero» isn't set aside for nothing.
+        _ = try payload.expenses.map { try Expense(backup: $0) }
+        do {
+            try restore(payload, into: container, money: moneyContainer())
+        } catch Failure.moneyUnreadable {
+            // «Mi dinero» is there and doesn't open: restoring is what fixes it (2026-11-02, second
+            // audit). Its files go aside, never deleted, and a new one takes the backup's.
+            try setAsideMoneyFiles(at: MoneyStore.url, now: now)
+            MoneyStore.forget()
+            guard case .success(let fresh) = MoneyStore.opened else { throw Failure.moneyNotReady }
+            try restore(payload, into: container, money: fresh, wasDamaged: true)
+        }
     }
 
-    /// A day's expenses alone, when «Mi dinero» didn't open: not a daily name, so never trimmed.
-    static func partialName(for date: Date) -> String {
-        let day = date.formatted(.iso8601.year().month().day().dateSeparator(.dash))
-        return "\(BackupRetention.prefix)solo-gastos-\(day).\(BackupRetention.fileExtension)"
-    }
-
+    /// `wasDamaged`: «Mi dinero» was set aside for this restore, so there's nothing to put back
+    /// if the expenses fail.
     @MainActor
     static func restore(_ payload: BackupPayload, into container: ModelContainer,
-                        money moneyContainer: ModelContainer?) throws {
+                        money moneyContainer: ModelContainer?, wasDamaged: Bool = false) throws {
         let expenses = try payload.expenses.map { try Expense(backup: $0) }
         var before: BackupMoney?
         if let money = payload.money {
-            // The file brings «Mi dinero» and it can't be put back: nothing changes.
-            guard let moneyContainer else { throw Failure.moneyUnreadable }
-            before = try moneySnapshot(moneyContainer)
+            // The file brings «Mi dinero» and there's none to put it in: nothing changes.
+            guard let moneyContainer else { throw Failure.moneyNotReady }
+            // Drafts included: if the expenses fail, «Mi dinero» comes back whole.
+            if !wasDamaged { before = try moneySnapshot(moneyContainer, drafts: true) }
             try restoreMoney(money, into: moneyContainer)
         }
         let context = ModelContext(container)
@@ -421,11 +554,42 @@ enum DailyBackup {
             try context.save()
         } catch {
             context.rollback()
-            if let before, let moneyContainer { try? restoreMoney(before, into: moneyContainer) }
+            if payload.money != nil, let moneyContainer {
+                // «Mi dinero» already changed. Only «nothing changed» if it really went back.
+                guard let before else { throw Failure.halfRestored }
+                do { try restoreMoney(before, into: moneyContainer) } catch { throw Failure.halfRestored }
+            }
             throw error
         }
         Settings.restore(payload.settings)
         WidgetBridge.refreshAfterIntent()
+    }
+
+    /// Moves a store that doesn't open, with its `-wal` and `-shm`, to «dinero.store.danado-<fecha>»
+    /// next to it: never deleted, and a new store can be made in its place. All or nothing: a
+    /// journal left behind would be read into the new store.
+    static func setAsideMoneyFiles(at url: URL, now: Date = .now) throws {
+        let manager = FileManager.default
+        let folder = url.deletingLastPathComponent()
+        var base = url.lastPathComponent + ".danado-" + BackupRetention.stamp(now, withTime: true)
+        var extra = 1
+        while manager.fileExists(atPath: folder.appending(path: base).path(percentEncoded: false)) {
+            extra += 1
+            base = url.lastPathComponent + ".danado-" + BackupRetention.stamp(now, withTime: true) + "-\(extra)"
+        }
+        var moved: [(from: URL, to: URL)] = []
+        for suffix in ["", "-wal", "-shm"] {
+            let from = folder.appending(path: url.lastPathComponent + suffix)
+            guard manager.fileExists(atPath: from.path(percentEncoded: false)) else { continue }
+            let to = folder.appending(path: base + suffix)
+            do {
+                try manager.moveItem(at: from, to: to)
+                moved.append((from, to))
+            } catch {
+                for file in moved { try? manager.moveItem(at: file.to, to: file.from) }
+                throw Failure.moneyNotReady
+            }
+        }
     }
 }
 
@@ -493,21 +657,58 @@ enum BackupPassword {
          kSecAttrAccount as String: account]
     }
 
-    static func read() -> String? {
+    /// What the Keychain says: the password, that there is none, or that it can't be read right
+    /// now (locked since the phone was turned on, or another error). Only `missing` means
+    /// «create one» (2026-11-02, second audit: a locked Keychain at night said so, wrongly).
+    enum Lookup: Equatable {
+        case found(String)
+        case missing
+        case unavailable(OSStatus)
+    }
+
+    static func lookup() -> Lookup {
         var item: CFTypeRef?
         var ask = query
         ask[kSecReturnData as String] = true
         ask[kSecMatchLimit as String] = kSecMatchLimitOne
-        guard SecItemCopyMatching(ask as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        let status = SecItemCopyMatching(ask as CFDictionary, &item)
+        switch status {
+        case errSecSuccess:
+            guard let data = item as? Data, let password = String(data: data, encoding: .utf8) else {
+                return .unavailable(errSecDecode)
+            }
+            return .found(password)
+        case errSecItemNotFound:
+            return .missing
+        default:
+            return .unavailable(status)
+        }
     }
 
+    /// The password, or only when there is none, «create one».
+    static func current() throws -> String {
+        switch lookup() {
+        case .found(let password): return password
+        case .missing: throw DailyBackup.Failure.noPassword
+        case .unavailable: throw DailyBackup.Failure.passwordUnavailable
+        }
+    }
+
+    static func read() -> String? {
+        if case .found(let password) = lookup() { return password }
+        return nil
+    }
+
+    /// Changes the one there is, or adds it if there's none. Never deletes first: a failed add
+    /// after a delete left the phone with no password at all.
     @discardableResult
     static func save(_ password: String) -> Bool {
-        SecItemDelete(query as CFDictionary)
+        let data = Data(password.utf8)
+        let updated = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updated == errSecSuccess { return true }
+        guard updated == errSecItemNotFound else { return false }
         var add = query
-        add[kSecValueData as String] = Data(password.utf8)
+        add[kSecValueData as String] = data
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
     }

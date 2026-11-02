@@ -250,12 +250,9 @@ struct FixedExpensesView: View {
         }
     }
 
-    /// What is already logged stays; only what is to come stops.
+    /// What is already logged stays, the original still as a fixed charge; only what is to come stops.
     private func stop(_ original: Expense) {
-        original.repeatsMonthly = nil
-        original.repeatsThrough = nil
-        original.repeatDay = nil
-        original.repeatRule = nil
+        RecurringExpenses.stopRepeating(original)
         do { try context.save() } catch {
             context.rollback()
             saveProblem = "Al día no pudo dejar de repetirlo. Intenta otra vez."

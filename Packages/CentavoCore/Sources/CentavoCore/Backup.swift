@@ -86,11 +86,15 @@ public struct BackupMoney: Codable, Equatable, Sendable {
     public var cuts: [Cut]
     /// Format 3. `nil` in an older file.
     public var incomes: [Income]?
+    /// Cuts left half-done. Only in the copy taken before a restore (2026-11-02, second audit),
+    /// so restoring that copy brings them back; `nil` in the daily files, which leave drafts out.
+    public var drafts: [Cut]?
 
-    public init(accounts: [Account], cuts: [Cut], incomes: [Income]? = nil) {
+    public init(accounts: [Account], cuts: [Cut], incomes: [Income]? = nil, drafts: [Cut]? = nil) {
         self.accounts = accounts
         self.cuts = cuts
         self.incomes = incomes
+        self.drafts = drafts
     }
 
     /// What comes in each month (format 3).
@@ -143,10 +147,13 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         public var mainCurrency: String
         public var rates: String
         public var entries: [Entry]
+        /// A draft's currencies already looked at. `nil` in a finished cut and in older files.
+        public var reviewedRates: String?
 
-        public init(id: String, month: String, date: Date, mainCurrency: String, rates: String, entries: [Entry]) {
+        public init(id: String, month: String, date: Date, mainCurrency: String, rates: String, entries: [Entry],
+                    reviewedRates: String? = nil) {
             self.id = id; self.month = month; self.date = date; self.mainCurrency = mainCurrency
-            self.rates = rates; self.entries = entries
+            self.rates = rates; self.entries = entries; self.reviewedRates = reviewedRates
         }
     }
 

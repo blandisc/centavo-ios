@@ -67,6 +67,21 @@ struct SecondAuditDataTests {
         #expect(BackupPlan.decide(expenses: 2, hasMoney: false, today: .none, folderHasBackups: true) == .daily)
     }
 
+    // MARK: El corte a medias en la copia previa (4)
+
+    @Test("La copia previa lleva los borradores y un archivo de antes se sigue leyendo")
+    func draftsTravelInTheSafetyCopy() throws {
+        let draft = BackupMoney.Cut(id: "c", month: "2026-11", date: mx(2026, 11, 2), mainCurrency: "MXN", rates: "",
+                                    entries: [.init(account: "a", balance: "10.5", reviewed: false)], reviewedRates: "USD")
+        let money = BackupMoney(accounts: [], cuts: [], incomes: [], drafts: [draft])
+        let payload = BackupPayload(createdAt: mx(2026, 11, 2), writtenBy: "prueba", expenses: [], settings: [:], money: money)
+        let back = try BackupPayload.decoded(from: payload.encoded())
+        #expect(back.money?.drafts == [draft])
+        let old = BackupPayload(createdAt: mx(2026, 11, 2), writtenBy: "prueba", expenses: [], settings: [:],
+                                money: BackupMoney(accounts: [], cuts: []))
+        #expect(try BackupPayload.decoded(from: old.encoded()).money?.drafts == nil)
+    }
+
     // MARK: iCloud lleno (3)
 
     @Test("Avisa si el último archivo no subió o lleva más de un día subiendo")

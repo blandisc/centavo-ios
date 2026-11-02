@@ -9,7 +9,7 @@ struct BackupSettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var hasPassword = BackupPassword.read() != nil
+    @State private var hasPassword = BackupPassword.lookup() != .missing
     @State private var newPassword = ""
     @State private var repeated = ""
     @State private var changingPassword = false
@@ -139,6 +139,10 @@ struct BackupSettingsView: View {
                     .font(.ticket(.field))
                     .textContentType(.newPassword)
                     .accessibilityIdentifier("respaldo-repite")
+                if let passwordProblem {
+                    NoteText(passwordProblem, color: Theme.danger)
+                        .accessibilityIdentifier("respaldo-contrasena-problema")
+                }
                 Button(action: savePassword) {
                     LinkActionLabel("Guardar contraseña", alignment: .leading)
                 }
@@ -210,7 +214,7 @@ struct BackupSettingsView: View {
         } header: {
             Text("Cada día, solo").ticketCaption()
         } footer: {
-            HintText("A las 21:00 el iPhone suele estar despierto. Al reinstalar Al día desde la Mac, el atajo sigue: si un día no se respalda, aquí lo verás.")
+            HintText("A las 21:00 el iPhone suele estar despierto. Si un día no se respalda, aquí lo verás y «Hoy» te avisará.")
         }
         .listRowBackground(Theme.surface)
     }
@@ -220,6 +224,7 @@ struct BackupSettingsView: View {
             Button { Task { await startRestoring() } } label: {
                 IconRow("Restaurar respaldo", systemImage: "clock.arrow.circlepath") { EmptyView() }
             }
+            .disabled(working)
             .accessibilityIdentifier("respaldo-restaurar")
         } footer: {
             HintText("Primero confirmas que eres tú. Antes de restaurar ves de qué día es y cuántos gastos trae. Nada cambia hasta que confirmas.")
@@ -231,6 +236,13 @@ struct BackupSettingsView: View {
 
     private var passwordIsValid: Bool {
         newPassword.count >= Self.minimumLength && newPassword == repeated
+    }
+
+    /// Why «Guardar contraseña» is off, once there's something typed to say it about.
+    private var passwordProblem: String? {
+        if !newPassword.isEmpty, newPassword.count < Self.minimumLength { return "Mínimo \(Self.minimumLength) caracteres." }
+        if !repeated.isEmpty, repeated != newPassword { return "No coinciden." }
+        return nil
     }
 
     private var lastText: String {
@@ -249,7 +261,12 @@ struct BackupSettingsView: View {
     }
 
     private func savePassword() {
-        guard passwordIsValid, BackupPassword.save(newPassword) else { return }
+        guard passwordIsValid else { return }
+        guard BackupPassword.save(newPassword) else {
+            fail("No se guardó la contraseña",
+                 hasPassword ? "La anterior sigue igual. Intenta otra vez." : "Intenta otra vez. Sin contraseña no se puede respaldar.")
+            return
+        }
         newPassword = ""
         repeated = ""
         hasPassword = true
@@ -283,14 +300,17 @@ struct BackupSettingsView: View {
         }
     }
 
+    /// The file is locked and written off the main thread: the screen keeps moving meanwhile.
     private func backUpNow() {
         working = true
-        defer { working = false }
-        do {
-            last = try DailyBackup.runNow(in: context)
-            cloud = DailyBackup.cloudState()
-        } catch {
-            fail("No se pudo respaldar", message(for: error))
+        Task {
+            defer { working = false }
+            do {
+                last = try await DailyBackup.runNow(in: context)
+                cloud = DailyBackup.cloudState()
+            } catch {
+                fail("No se pudo respaldar", message(for: error))
+            }
         }
     }
 
@@ -317,16 +337,20 @@ struct BackupSettingsView: View {
 
     private func restore(_ payload: BackupPayload) {
         pending = nil
-        do {
-            // The current data is kept first, locked with the password that's set (or the
-            // backup's own, typed a moment ago, when this phone has none yet).
-            if let password = BackupPassword.read() ?? openedWith {
-                try DailyBackup.safetyCopy(in: context, password: password)
+        working = true
+        Task {
+            defer { working = false }
+            do {
+                // The current data is kept first, locked with the password that's set (or the
+                // backup's own, typed a moment ago, when this phone has none yet).
+                if let password = BackupPassword.read() ?? openedWith {
+                    try await DailyBackup.safetyCopy(in: context, password: password)
+                }
+                try DailyBackup.restore(payload, into: context.container)
+                restored = payload.summary
+            } catch {
+                fail("No se pudo restaurar", message(for: error))
             }
-            try DailyBackup.restore(payload, into: context.container)
-            restored = payload.summary
-        } catch {
-            fail("No se pudo restaurar", message(for: error))
         }
     }
 

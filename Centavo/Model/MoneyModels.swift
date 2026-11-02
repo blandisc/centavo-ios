@@ -306,6 +306,14 @@ enum MoneyStore {
     /// is a problem to say out loud, never an empty «Mi dinero».
     static var hasFile: Bool { FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) }
 
+    /// Forgets the container kept by `opened`, so the next ask opens the file again: a restore
+    /// that set a damaged store aside makes a new one in its place (2026-11-02, second audit).
+    static func forget() {
+        openLock.lock()
+        defer { openLock.unlock() }
+        openedContainer = nil
+    }
+
     private static let openLock = NSLock()
     nonisolated(unsafe) private static var openedContainer: ModelContainer?
 

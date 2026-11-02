@@ -484,10 +484,13 @@ private struct GuideStep {
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectSubtitle)
         ),
+        // The same purchase through both automations arrives twice, each with its own text
+        // (2026-11-02, second audit): the old one goes.
         GuideStep(
             title: "Guárdalo",
             symbol: "checkmark.circle",
             taps: [],
+            note: ShortcutInstallView.removeOldAutomation,
             opensShortcuts: true,
             scene: .frames(GuideFrame.saveNotice)
         ),
