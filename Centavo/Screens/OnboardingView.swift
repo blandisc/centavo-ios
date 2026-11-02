@@ -118,6 +118,9 @@ struct OnboardingView: View {
                 }
                 .ticketProminent()
                 .accessibilityIdentifier("bienvenida-siguiente")
+                if page == pages - 1 {
+                    SecondaryButton("Cómo funciona · 1 min", identifier: "bienvenida-tutorial") { finish(.tutorial) }
+                }
             }
             .padding(.horizontal, Theme.Space.screen)
             .padding(.vertical, Theme.Space.s)
