@@ -8,7 +8,7 @@ struct StoreErrorView: View {
                 .font(.ticket(.footnoteStrong))
                 .tracking(Theme.Tracking.title)
                 .textCase(.uppercase)
-            Text("No se pudo abrir tu base de datos")
+            Text("Al día no pudo abrir tus gastos")
                 .font(.ticket(.heading))
                 .accessibilityIdentifier("error-base")
             Text("Tus gastos siguen guardados en el teléfono: no se borró nada. Cierra Al día por completo y vuelve a abrirlo. Si pasa otra vez, reinicia el teléfono, y no desinstales la app: perderías los gastos.")

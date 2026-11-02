@@ -27,7 +27,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         case .leftover: "Lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
         case .wallet: "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+»."
         case .uncounted: "Un pago a tu tarjeta o un traspaso: ábrelo, toca «Más detalles» y en «Tipo» elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
-        case .categories: "Abajo ves tus categorías. Toca una para ver solo esos pagos."
+        case .categories: "Abajo ves tus categorías. Toca una para ver solo esos gastos."
         case .backup: "Elige una contraseña y una carpeta en Ajustes, y Al día guarda ahí una copia diaria cerrada con ella. Así no pierdes nada al cambiar de iPhone."
         }
     }
@@ -60,7 +60,12 @@ struct TutorialView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     @State private var index = 0
-    @State private var elapsed: Double = 0
+    /// When the current story started, and how long it has been held since: what has gone by is
+    /// worked out from the clock (`elapsed(at:)`), so nothing here changes 20 times a second
+    /// (audit 2026-11-02: the whole screen and its drawing were redone on every tick).
+    @State private var storyStart = Date.now
+    @State private var heldBefore: Double = 0
+    @State private var heldSince: Date?
     /// Reset by the system when a press is cancelled (Control Center, a call), so the story
     /// can't stay held or pulled down.
     @GestureState private var holding = false
@@ -102,7 +107,15 @@ struct TutorialView: View {
         .background(Theme.background.ignoresSafeArea())
         .offset(y: max(drag, Theme.Space.none))
         .task(id: index) { await run() }
-        .onChange(of: holding) { _, pressed in if pressed { pressStart = .now } }
+        .onChange(of: holding) { _, pressed in
+            if pressed {
+                pressStart = .now
+                heldSince = .now
+            } else if let since = heldSince {
+                heldBefore += Date.now.timeIntervalSince(since)
+                heldSince = nil
+            }
+        }
         .onChange(of: index) {
             if voiceOver { AccessibilityNotification.Announcement("\(story.title). \(story.text)").post() }
         }
@@ -115,15 +128,16 @@ struct TutorialView: View {
         VStack(spacing: Theme.Space.m) {
             HStack(spacing: Theme.Space.xxs) {
                 ForEach(stories) { item in
-                    GeometryReader { proxy in
-                        Capsule().fill(Theme.raised)
-                            .overlay(alignment: .leading) {
-                                Capsule().fill(Theme.brass)
-                                    .frame(width: proxy.size.width * fill(of: item))
-                            }
+                    if item.rawValue == index && advancesByItself {
+                        // Only the current bar follows the clock, and only it redraws.
+                        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval,
+                                                paused: heldSince != nil)) { context in
+                            StoryBar(fill: StoryTiming.progress(elapsed: elapsed(at: context.date),
+                                                                duration: story.duration))
+                        }
+                    } else {
+                        StoryBar(fill: item.rawValue <= index ? 1 : 0)
                     }
-                    .frame(height: Theme.Size.tutorialProgress)
-                    .animation(still ? nil : .linear(duration: Theme.Motion.Tutorial.tick), value: elapsed)
                 }
             }
             .accessibilityElement(children: .ignore)
@@ -198,11 +212,17 @@ struct TutorialView: View {
 
     // MARK: Moving
 
-    /// The bar of each story: full behind, empty ahead, filling for the current one.
-    private func fill(of item: TutorialStory) -> CGFloat {
-        if item.rawValue < index { return 1 }
-        if item.rawValue > index { return 0 }
-        return advancesByItself ? StoryTiming.progress(elapsed: elapsed, duration: story.duration) : 1
+    /// How long the current story has been on screen, not counting while it was held.
+    private func elapsed(at date: Date) -> Double {
+        let holdingNow = heldSince.map { max(date.timeIntervalSince($0), 0) } ?? 0
+        return date.timeIntervalSince(storyStart) - heldBefore - holdingNow
+    }
+
+    /// The new story's clock starts now, already held if a finger is down.
+    private func restartClock() {
+        storyStart = .now
+        heldBefore = 0
+        heldSince = holding ? .now : nil
     }
 
     private func tap(_ target: Int) {
@@ -215,22 +235,23 @@ struct TutorialView: View {
         // The new story's bar starts empty, without animating down from the last one's.
         var reset = Transaction(animation: nil)
         reset.disablesAnimations = true
-        withTransaction(reset) { elapsed = 0 }
+        withTransaction(reset) { restartClock() }
         withAnimation(still ? nil : Theme.Motion.Tutorial.change) { index = target }
     }
 
     /// Fills the current story's bar, held while pressed, and moves on when it is full; the last
     /// one waits for «Listo».
     private func run() async {
-        elapsed = 0
         guard advancesByItself else { return }
         while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(Theme.Motion.Tutorial.tick))
-            if !holding { elapsed += Theme.Motion.Tutorial.tick }
-            if elapsed >= story.duration {
+            let left = story.duration - elapsed(at: .now)
+            if heldSince == nil && left <= 0 {
                 if index < stories.count - 1 { go(index + 1) }
                 return
             }
+            // Asleep until the story is due; a hold in between pushes it back, and is checked
+            // again after it.
+            try? await Task.sleep(for: .seconds(heldSince == nil ? left : Theme.Motion.Tutorial.tick))
         }
     }
 
@@ -250,5 +271,21 @@ struct TutorialView: View {
                     tap(value.location.x < width * Theme.Size.tutorialBackShare ? index - 1 : index + 1)
                 }
             }
+    }
+}
+
+/// One story's part of the bar on top: brass up to `fill`.
+private struct StoryBar: View {
+    let fill: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            Capsule().fill(Theme.raised)
+                .overlay(alignment: .leading) {
+                    Capsule().fill(Theme.brass)
+                        .frame(width: proxy.size.width * fill)
+                }
+        }
+        .frame(height: Theme.Size.tutorialProgress)
     }
 }

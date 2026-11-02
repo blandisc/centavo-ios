@@ -40,6 +40,15 @@
   - Restaurar es honesto: si los gastos no se pueden restaurar, «Mi dinero» vuelve a como estaba.
   - Un ajuste ilegible en tus categorías, tarjetas o gastos fijos por empezar ya no vacía la lista entera.
 ### Changed
+- **Animaciones sin rebote y que descansan:** la celda de hoy respira tres veces y se queda quieta (antes respiraba sin fin en la pantalla principal y a veces se quedaba atenuada); los dibujos de «Mi dinero» dan unas vueltas y se detienen; la cadena de Wallet de la bienvenida se enciende una vez y se queda encendida. En la bienvenida, la barra de pasos se queda fija y las páginas ya no se cruzan al regresar. Si activas el modo de bajo consumo con la app abierta, todo se detiene en ese momento.
+- **Textos más claros:** las rutas dicen «Más › Presupuesto del mes»; «por defecto» en vez de «predeterminada»; «Te deben» en «Mi dinero»; «Por día:» y «Cada día tienes» en vez de «Al día:» y «Te quedan al día»; sin «1 gastos»; los avisos de error dicen qué no se pudo hacer; la guía del atajo ya no promete que te dirá cuánto te queda.
+- **«Nueva cuenta» ofrece las mismas siete monedas** que la primera vez.
+- **Letra grande:** las cuentas de «Mi dinero», el total de cada día, el aviso de moneda y los tipos de «Nueva cuenta» ya no se cortan.
+- **La búsqueda y la pantalla principal piden menos al almacén:** la búsqueda filtra en el almacén en vez de traer todos los gastos en cada letra, y la pantalla ya no carga todos los gastos para contarlos.
+### Fixed
+- **«Quitar ubicación» espera a «Guardar»:** si cancelas, el gasto conserva su lugar.
+- **Las hojas no pierden lo escrito al deslizar hacia abajo:** «Nuevo gasto fijo», «Nueva cuenta» y la de categoría o forma de pago.
+- **«Quitar presupuesto» pregunta antes.**
 - **«Hoy» sin datos invita a empezar:** «Tu mes empieza aquí» con el boleto del mes, un renglón de ejemplo que se imprime, «Anotar un gasto» y dos tarjetas con dibujo: «Fijar presupuesto» y «Conectar Wallet». Lo que ya hiciste desaparece; la animación corre una vez y se queda quieta.
 - **Una bienvenida más clara:** una barra de pasos con su nombre, una pregunta por paso y dibujos que explican sin palabras. En «Tu mes», el boleto se reparte en los días mientras escribes; en «Gastos fijos», cada uno se sella en su día de un calendario; al final, «Listo» y cuánto tienes cada día. Las animaciones corren pocas veces y se quedan quietas, sin rebotes; con «Reducir movimiento» o el modo de bajo consumo, todo queda quieto.
 ### Added

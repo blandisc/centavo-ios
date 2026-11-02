@@ -315,7 +315,7 @@ private struct ConnectAnimation: View {
     }
 
     var body: some View {
-        if reduceMotion {
+        if MotionPolicy.isStill(reduceMotion: reduceMotion) {
             frame(.pickProperty)
         } else {
             PhaseAnimator(Phase.allCases) { phase in

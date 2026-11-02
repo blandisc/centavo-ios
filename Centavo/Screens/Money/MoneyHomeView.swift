@@ -77,9 +77,9 @@ struct MoneyHomeView: View {
                 MoneyIncomeSheet(income: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover()
             }
 
-            .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
-            } message: { Text(problem ?? "") }
+            } message: { Text("Intenta de nuevo.") }
             .onMoneyCovered { problem = nil; choosingMonth = false }
         }
     }
@@ -133,7 +133,7 @@ struct MoneyHomeView: View {
             .listRowSeparator(.hidden)
 
             group("Cuentas", kinds: [.account, .investment])
-            group("Por cobrar", kinds: [.receivable])
+            group("Te deben", kinds: [.receivable])
             group("Debes", kinds: [.debt])
             incomeSection
             if !archived.isEmpty {
@@ -265,7 +265,7 @@ struct MoneyHomeView: View {
         account.archived = false
         do { try context.save() } catch {
             context.rollback()
-            problem = "No se pudo regresar la cuenta. Intenta otra vez."
+            problem = "No se pudo regresar la cuenta"
         }
     }
 
@@ -279,7 +279,7 @@ struct MoneyHomeView: View {
                 choosingMonth = true
             }
         } catch {
-            problem = "No se pudo empezar el corte."
+            problem = "No se pudo empezar el corte"
         }
     }
 
@@ -287,7 +287,7 @@ struct MoneyHomeView: View {
         do {
             cutting = try MoneyStore.draft(for: month, in: context, mainCurrency: latest?.mainCurrency ?? main)
         } catch {
-            problem = "No se pudo empezar el corte."
+            problem = "No se pudo empezar el corte"
         }
     }
 }
@@ -327,7 +327,8 @@ struct MoneyAccountRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+        // With large text the balance goes under the name, whole (audit 2026-11-02).
+        AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.xxs, alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                 Text(account.name)
                     .font(.ticket(.bodyMedium))
@@ -341,11 +342,12 @@ struct MoneyAccountRow: View {
                         .foregroundStyle(Theme.muted)
                 }
             }
-            Spacer(minLength: Theme.Space.s)
+            .frame(maxWidth: .infinity, alignment: .leading)
             Text(shown)
                 .font(.ticket(.headline))
                 .foregroundStyle(Theme.ink)
                 .monospacedDigit()
+                .fixedSize()
         }
         .padding(.vertical, Theme.Space.xxs)
         .accessibilityElement(children: .combine)

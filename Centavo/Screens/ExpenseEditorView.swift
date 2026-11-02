@@ -74,6 +74,8 @@ struct ExpenseEditorView: View {
     @State private var pinnedCategories: [String] = []
     /// The fixed expense a copy came from, found once.
     @State private var original: Expense?
+    /// «Quitar ubicación» was tapped: the place goes on «Guardar», and «Cancelar» keeps it.
+    @State private var removesPlace = false
 
     private enum Creating: String, Identifiable { case category, source; var id: String { rawValue } }
 
@@ -128,6 +130,7 @@ struct ExpenseEditorView: View {
             || category != (expense.category ?? "") || date != expense.date
             || repeatsMonthly != (expense.repeatsMonthly == true)
             || (repeatsMonthly && rule != expense.rule)
+            || removesPlace
     }
 
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
@@ -179,10 +182,11 @@ struct ExpenseEditorView: View {
                 sourceSection
                 detailsSection
 
-                if showsDetails, let expense, let latitude = expense.latitude, let longitude = expense.longitude {
+                if showsDetails, !removesPlace, let expense, let latitude = expense.latitude, let longitude = expense.longitude {
                     Section {
                         PlaceMap(expense: expense,
-                                 coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+                                 coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+                                 onRemove: { removesPlace = true })
                     } header: {
                         Text("Dónde").ticketCaption()
                     } footer: {
@@ -257,7 +261,7 @@ struct ExpenseEditorView: View {
                 Button("Llenar") { Task { await fillFromSentence() } }
                 Button("Cancelar", role: .cancel) { sentence = "" }
             } message: {
-                Text("Cuánto, dónde, qué día y cómo pagaste: «230 de tacos ayer, en efectivo». Revisa lo que llené antes de guardar.")
+                Text("Cuánto, dónde, qué día y cómo pagaste: «230 de tacos ayer, en efectivo». Revisa lo que se llenó antes de guardar.")
             }
             .confirmationDialog("¿Dejar de repetir «\(expense?.displayName ?? expense?.merchant ?? "")»?",
                                 isPresented: $confirmingStop, titleVisibility: .visible) {
@@ -292,7 +296,7 @@ struct ExpenseEditorView: View {
                     pinnedCategories.append(saved.name)
                 }
             case .source:
-                LabeledIconSheet(title: "Nueva forma de pago", prompt: "BBVA, Nu, Efectivo…",
+                LabeledIconSheet(title: "Forma de pago", prompt: "BBVA, Nu, Efectivo…",
                                  icons: UserCatalog.sourceIcons, taken: paymentSources.map(\.name),
                                  colorKind: .source,
                                  siblings: PaymentChoices.names(sources: paymentSources, known: knownCards,
@@ -445,7 +449,7 @@ struct ExpenseEditorView: View {
             Text("Forma de pago · opcional").ticketCaption()
         } footer: {
             if paymentSources.isEmpty {
-                HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que marques como predeterminada "
+                HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto "
                      + "en «Más › Pagos y categorías» ya vendrá elegida.")
             }
         }
@@ -863,6 +867,11 @@ struct ExpenseEditorView: View {
             expense.date = date
             setCounts(expense)
             if expense.isRepeat != true { setRepeats(expense) }
+            if removesPlace {
+                expense.latitude = nil
+                expense.longitude = nil
+                expense.placeName = nil
+            }
             guard persist() else { return }
         } else {
             let new = Expense(
@@ -939,6 +948,8 @@ enum PaymentChoices {
 private struct PlaceMap: View {
     let expense: Expense
     let coordinate: CLLocationCoordinate2D
+    /// Marks the place to go on «Guardar»; nothing changes until then.
+    let onRemove: () -> Void
     @Environment(\.modelContext) private var context
 
     var body: some View {
@@ -958,12 +969,7 @@ private struct PlaceMap: View {
                     .foregroundStyle(Theme.ink)
                     .accessibilityIdentifier("lugar")
             }
-            DestructiveRowButton("Quitar ubicación") {
-                expense.latitude = nil
-                expense.longitude = nil
-                expense.placeName = nil
-                try? context.save()
-            }
+            DestructiveRowButton("Quitar ubicación", action: onRemove)
         }
         .padding(.vertical, Theme.Space.xs)
         .task { await nameThePlace() }

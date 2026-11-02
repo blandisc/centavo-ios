@@ -66,7 +66,7 @@ struct MoneyCutSheet: View {
                     .listRowBackground(Theme.surface)
                 }
                 section("¿Cuánto hay hoy?", kinds: [.account, .investment])
-                section("Por cobrar", kinds: [.receivable])
+                section("Te deben", kinds: [.receivable])
                 section("¿Cuánto debes hoy?", kinds: [.debt])
                 Section {
                     DestructiveRowButton("Descartar corte", identifier: "corte-descartar") { confirmingDiscard = true }
@@ -78,7 +78,8 @@ struct MoneyCutSheet: View {
             .ticketForm()
             .foregroundStyle(Theme.ink)
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle("Corte de \(MoneyHead.monthName(draft.month))")
+            // Short, or iOS pushes it off center beside «Cerrar» (≤ ~18 characters).
+            .ticketBarTitle("Corte del mes")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cerrar") { dismiss() }.font(.ticket(.footnoteStrong))
@@ -111,9 +112,9 @@ struct MoneyCutSheet: View {
             } message: {
                 Text("Ese mes ya tiene un corte, hecho el \(replacing?.formatted(.dateTime.day().month(.wide).locale(MoneyHead.mexico)) ?? ""). Si lo reemplazas, cuenta este y el otro se quita.")
             }
-            .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
-            } message: { Text(problem ?? "") }
+            } message: { Text("Intenta otra vez.") }
             .sheet(isPresented: $addingIncome) { MoneyIncomeSheet(income: nil, mainCurrency: draft.mainCurrency).moneyPrivacyCover() }
             .onAppear(perform: load)
             .onChange(of: ratesReviewed) { _, now in draft.reviewedRates = MoneyWords.encodeCodes(now) }
@@ -288,7 +289,7 @@ struct MoneyCutSheet: View {
         } catch MoneyStore.CutProblem.monthHasCut(let date) {
             self.replacing = date
         } catch {
-            problem = "No se guardó el corte. Intenta otra vez."
+            problem = "No se guardó el corte"
         }
     }
 }

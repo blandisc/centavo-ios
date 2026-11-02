@@ -128,7 +128,9 @@ struct WelcomeDemo: View {
                 .foregroundStyle(Theme.muted)
                 .monospacedDigit()
         }
-        .transition(.move(edge: .top).combined(with: .opacity))
+        // A new row comes in from the top; the one pushed off the bottom just fades, instead of
+        // sliding up through the others.
+        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
     }
 
     private func money(_ amount: Decimal) -> String {
@@ -167,7 +169,8 @@ struct WelcomeDemo: View {
 }
 
 /// How a payment reaches Al día, lit one node after the other: you pay, Atajos tells
-/// Al día, Al día writes it down. Still and fully lit with «Reducir movimiento».
+/// Al día, Al día writes it down. It lights once and stays fully lit (audit 2026-11-02: it went
+/// dark and started over forever). Fully lit from the start with `MotionPolicy` still.
 struct WalletChain: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var node = Theme.Size.chainNode
@@ -209,12 +212,12 @@ struct WalletChain: View {
         .accessibilityLabel("Pagas con Wallet, Atajos le avisa a Al día y Al día lo anota.")
         .task {
             guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { lit = nodes.count - 1; return }
-            while !Task.isCancelled {
-                for index in 0...nodes.count {
-                    guard (try? await Task.sleep(for: .seconds(Theme.Motion.Onboarding.chainBeat))) != nil
-                    else { return }
-                    withAnimation(Theme.Motion.Onboarding.light) { lit = index == nodes.count ? -1 : index }
+            for index in lit.advanced(by: 1)..<nodes.count {
+                guard (try? await Task.sleep(for: .seconds(Theme.Motion.Onboarding.chainBeat))) != nil else {
+                    lit = nodes.count - 1
+                    return
                 }
+                withAnimation(Theme.Motion.Onboarding.light) { lit = index }
             }
         }
     }

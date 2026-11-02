@@ -294,7 +294,14 @@ struct FixedPlanSheet: View {
 
     /// `initialName`: a suggestion tapped on «Gastos fijos» («Renta»), already written.
     init(initialName: String = "") {
+        self.initialName = initialName
         _merchant = State(initialValue: initialName)
+    }
+    private let initialName: String
+
+    /// Something typed or picked: a stray swipe down must not throw it away.
+    private var hasChanges: Bool {
+        !amountText.isEmpty || merchant != initialName || !card.isEmpty || pickedCategory
     }
 
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
@@ -419,6 +426,7 @@ struct FixedPlanSheet: View {
                                                      hidden: UserCatalog.notAutoAssigned) ?? ""
             }
         }
+        .interactiveDismissDisabled(hasChanges)
     }
 
     private func load() {

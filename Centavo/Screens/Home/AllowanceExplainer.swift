@@ -66,7 +66,7 @@ struct AllowanceExplainer: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            guard !reduceMotion else { return }
+            guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { return }
             paused.toggle()
         }
         .accessibilityElement(children: .ignore)
@@ -147,7 +147,7 @@ struct AllowanceExplainer: View {
     private func play() async {
         paused = false
         reset()
-        if reduceMotion {
+        if MotionPolicy.isStill(reduceMotion: reduceMotion) {
             // Still and finished: every day spent and every move already made.
             for move in demo.moves { for target in move.to { shown[target] += move.each } }
             spent = Array(repeating: true, count: Self.count)

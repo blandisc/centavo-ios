@@ -25,7 +25,11 @@ struct MoneyAccountSheet: View {
     private var isForeign: Bool { currency != mainCurrency }
     /// The same rule as the first time: an investment keeps its rate (editing it used to drop it).
     private var takesRate: Bool { account.map { MoneySubtype.of($0).takesRate } ?? (kind != .receivable) }
-    private static let currencies = ["MXN", "USD", "EUR"]
+    /// The same seven as the first time (`MoneyCurrency.offered`), and the main one if it isn't.
+    private var currencies: [String] {
+        MoneyCurrency.offered.contains(mainCurrency) ? MoneyCurrency.offered : [mainCurrency] + MoneyCurrency.offered
+    }
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var parsedBalance: Decimal? { MoneyAmount.read(balance) }
     private var parsedRate: Decimal? { rate.isEmpty ? nil : MoneyMath.decimal(rate) }
@@ -47,16 +51,18 @@ struct MoneyAccountSheet: View {
             Form {
                 if isNew {
                     Section {
-                        Picker("Qué es", selection: $kind) {
-                            Text("Cuenta").tag(MoneyKind.account)
-                            Text("Inversión").tag(MoneyKind.investment)
-                            Text("Me deben").tag(MoneyKind.receivable)
-                            Text("Debo").tag(MoneyKind.debt)
+                        // Four segments cut their names with large text: there, one row each.
+                        if typeSize.isAccessibilitySize {
+                            kindPicker
+                                .pickerStyle(.inline)
+                                .labelsHidden()
+                                .listRowBackground(Theme.surface)
+                        } else {
+                            kindPicker
+                                .pickerStyle(.segmented)
+                                .listRowBackground(Theme.background)
+                                .listRowInsets(EdgeInsets())
                         }
-                        .pickerStyle(.segmented)
-                        .listRowBackground(Theme.background)
-                        .listRowInsets(EdgeInsets())
-                        .accessibilityIdentifier("cuenta-tipo")
                     } footer: {
                         HintText(kindHint)
                     }
@@ -68,7 +74,7 @@ struct MoneyAccountSheet: View {
                                     identifier: "cuenta-institucion")
                     if isNew {
                         Picker(selection: $currency) {
-                            ForEach(Self.currencies, id: \.self) { Text(CurrencyPreference.name($0)).tag($0) }
+                            ForEach(currencies, id: \.self) { Text(CurrencyPreference.name($0)).tag($0) }
                         } label: {
                             Text("Moneda").font(.ticket(.body)).foregroundStyle(Theme.ink)
                         }
@@ -103,7 +109,7 @@ struct MoneyAccountSheet: View {
                         Text("Rendimiento").ticketCaption()
                     } footer: {
                         HintText(kind == .debt ? "El interés que te cobran al año, en %. Solo para orientarte en el corte."
-                                               : "En %, por ejemplo 10.5. Con ella el corte te dice cuánto debió rendir.")
+                                               : "En %, por ejemplo 10.5. Con ella, cada corte te dice cuánto debió rendir.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -138,12 +144,33 @@ struct MoneyAccountSheet: View {
             } message: {
                 Text("Deja de sumar en tu patrimonio y de salir en los próximos cortes; los cortes pasados la conservan. La puedes regresar desde «Archivadas».")
             }
-            .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
-            } message: { Text(problem ?? "") }
+            } message: { Text("Intenta otra vez.") }
             .onAppear(perform: load)
             .onMoneyCovered { confirmingArchive = false; problem = nil }
         }
+        .interactiveDismissDisabled(hasChanges)
+    }
+
+    private var kindPicker: some View {
+        Picker("Qué es", selection: $kind) {
+            Text("Cuenta").tag(MoneyKind.account)
+            Text("Inversión").tag(MoneyKind.investment)
+            Text("Me deben").tag(MoneyKind.receivable)
+            Text("Debo").tag(MoneyKind.debt)
+        }
+        .accessibilityIdentifier("cuenta-tipo")
+    }
+
+    /// Something typed: a stray swipe down must not throw it away.
+    private var hasChanges: Bool {
+        guard let account else {
+            return !(name + institution + balance + rate + exchange).trimmingCharacters(in: .whitespaces).isEmpty
+                || kind != .account || (!currency.isEmpty && currency != mainCurrency)
+        }
+        return name != account.name || institution != (account.institution ?? "")
+            || rate != (account.yearlyRate.map { BackupNumber.text($0) } ?? "")
     }
 
     private var kindHint: String {
@@ -200,7 +227,7 @@ struct MoneyAccountSheet: View {
             }
             dismiss()
         } catch {
-            problem = "No se guardó. Intenta otra vez."
+            problem = "No se guardó la cuenta"
         }
     }
 
@@ -211,7 +238,7 @@ struct MoneyAccountSheet: View {
             dismiss()
         } catch {
             context.rollback()
-            problem = "No se archivó la cuenta. Intenta otra vez."
+            problem = "No se archivó la cuenta"
         }
     }
 }

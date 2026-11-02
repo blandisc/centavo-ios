@@ -24,6 +24,7 @@ struct BackupSettingsView: View {
     @State private var localFolder = false
     @State private var working = false
     @State private var problem: String?
+    @State private var problemTitle = ""
 
     @State private var choosingFile = false
     @State private var fileToOpen: URL?
@@ -60,7 +61,7 @@ struct BackupSettingsView: View {
                 folderName = DailyBackup.folderName
                 localFolder = !DailyBackup.isInCloud(url)
             } catch {
-                problem = "No se pudo usar esa carpeta. Elige otra."
+                fail("No se pudo usar esa carpeta", "Elige otra.")
             }
         }
         .fileImporter(isPresented: $choosingFile, allowedContentTypes: [.aldiaBackup, .data]) { result in
@@ -87,7 +88,10 @@ struct BackupSettingsView: View {
         .alert("Listo", isPresented: Binding(get: { restored != nil }, set: { if !$0 { restored = nil } })) {
             Button("Aceptar", role: .cancel) { restored = nil }
         } message: {
-            if let restored { Text("Se restauraron \(restored.expenseCount) gastos y tus ajustes.") }
+            if let restored {
+                Text(restored.expenseCount == 1 ? "Se restauró 1 gasto y tus ajustes."
+                     : "Se restauraron \(restored.expenseCount) gastos y tus ajustes.")
+            }
         }
         .alert("Esa carpeta está solo en este iPhone", isPresented: $localFolder) {
             Button("Elegir otra") { choosingFolder = true }
@@ -96,7 +100,7 @@ struct BackupSettingsView: View {
             Text("Si pierdes el iPhone, el respaldo se pierde con él. Elige una carpeta dentro de iCloud Drive.")
         }
         .onAppear { cloud = DailyBackup.cloudState() }
-        .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+        .alert(problemTitle, isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button("Aceptar", role: .cancel) { problem = nil }
         } message: {
             Text(problem ?? "")
@@ -286,7 +290,7 @@ struct BackupSettingsView: View {
             last = try DailyBackup.runNow(in: context)
             cloud = DailyBackup.cloudState()
         } catch {
-            problem = message(for: error)
+            fail("No se pudo respaldar", message(for: error))
         }
     }
 
@@ -306,7 +310,7 @@ struct BackupSettingsView: View {
                 wrongTry = typed
                 askingPassword = true
             } catch {
-                problem = message(for: error)
+                fail("No se pudo abrir el respaldo", message(for: error))
             }
         }
     }
@@ -322,8 +326,19 @@ struct BackupSettingsView: View {
             try DailyBackup.restore(payload, into: context.container)
             restored = payload.summary
         } catch {
-            problem = message(for: error)
+            fail("No se pudo restaurar", message(for: error))
         }
+    }
+
+    /// An alert that says what didn't work in its title, and why or what to do below.
+    private func fail(_ title: String, _ detail: String) {
+        problemTitle = title
+        problem = detail
+    }
+
+    /// «1 gasto», «3 gastos».
+    private static func count(_ number: Int, _ one: String, _ many: String) -> String {
+        number == 1 ? "1 \(one)" : "\(number) \(many)"
     }
 
     private func message(for error: Error) -> String {
@@ -334,13 +349,13 @@ struct BackupSettingsView: View {
     private static func describe(_ summary: BackupSummary) -> String {
         let mx = Locale(identifier: "es_MX")
         let made = summary.createdAt.formatted(.dateTime.day().month(.wide).year().hour().minute().locale(mx))
-        var text = "Del \(made): \(summary.expenseCount) gastos"
+        var text = "Del \(made): " + count(summary.expenseCount, "gasto", "gastos")
         if let first = summary.firstExpense, let lastOne = summary.lastExpense {
             let style = Date.FormatStyle.dateTime.month(.abbreviated).year().locale(mx)
             text += " (de \(first.formatted(style)) a \(lastOne.formatted(style)))"
         }
         if let accounts = summary.accountCount, let cuts = summary.cutCount {
-            text += ", y «Mi dinero» con \(accounts) cuentas y \(cuts) cortes"
+            text += ", y «Mi dinero» con " + count(accounts, "cuenta", "cuentas") + " y " + count(cuts, "corte", "cortes")
         } else {
             text += ". No trae «Mi dinero»: el tuyo se queda como está"
         }

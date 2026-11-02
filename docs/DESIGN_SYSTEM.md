@@ -133,7 +133,7 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `Theme.Opacity` | `hidden` 0 · `visible` 1 · `rule` 0.25 · `glow` 0.35 · `unselected` 0.4 · `paceBehind` 0.55 · `paceAhead` 0.8 · `onTileSecondary` 0.75. Solo marcas y rellenos; el texto usa `ink`/`muted`/`faint`. |
 | `Theme.Tracking` | `none` 0 · `hero` −2 · `amount` −1.5 · `figure` −0.5 · `name` 0.4 · `detail` 0.6 · `compactLabel` 0.8 · `tag` 1 · `label` 1.2 · `action` 1.4 · `caption` 1.6 · `title` 2 |
 | `Theme.MinimumScale` | `text` 0.75 (palabras) · `figure` 0.6 (una cifra en una línea). Último recurso: primero envuelve o apila. |
-| `Theme.Motion` | `quick` (toque) · `select` (aro o tinte al elegir, 0.12 s) · `instantly { }` (sin animación: un filtro que cambia una lista) · `page` · `settle` · `resize` · `restyle` · `countUp` · `pulse` · `toggle` · `Entrance.*` (la barra del mes). Siempre con `accessibilityReduceMotion`: `Theme.Motion.animation(.quick, reduceMotion: reduceMotion)`. |
+| `Theme.Motion` | `quick` (toque) · `select` (aro o tinte al elegir, 0.12 s) · `instantly { }` (sin animación: un filtro que cambia una lista) · `page` · `settle` · `resize` · `restyle` · `countUp` · `pulse` · `toggle` · `Entrance.*` (la barra del mes). Siempre con `accessibilityReduceMotion`: `Theme.Motion.animation(.quick, reduceMotion: reduceMotion)`. Sin rebote: nada usa `.snappy`, `.bouncy` ni `bounce` mayor que 0. Dibujos y bucles: `MotionPolicy.isStill(reduceMotion:)` (también bajo consumo, observado en vivo, y pruebas); nada corre sin fin: unas vueltas y descansa. |
 
 ---
 
@@ -171,6 +171,7 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `.choiceTile(selected:)` | Cuadro chico de elección (categoría, símbolo) | cuadrícula de íconos |
 | `Perforation()` | Toda línea divisoria dentro de un ticket (renglones, la resta del presupuesto); nunca `Divider()` ahí | `.overlay(alignment: .top) { Perforation() }` |
 | `.confirmsDelete(of:…)` | Preguntar antes de borrar un gasto | lista y hoja de gasto |
+| `.breathes(_:times:seconds:low:)` | Una marca que respira unas veces al aparecer y descansa a opacidad completa (la celda de hoy); quieta con `MotionPolicy` | `.breathes(isToday, times: Theme.Motion.todayBreaths, seconds: Theme.Motion.todayBreathSeconds, low: Theme.Opacity.tileBreath)` |
 | `.ticketPreview()` | Envoltura de todo `#Preview` | `#Preview { MiVista().ticketPreview() }` |
 
 ---

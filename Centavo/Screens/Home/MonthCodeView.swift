@@ -28,7 +28,6 @@ struct MonthCodeView: View {
     @State private var touched: Int?
     /// This touch held and read the days: its lift is not also a tap.
     @State private var didScrub = false
-    @State private var breathing = false
     @State private var width = Theme.Space.none
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var height = Theme.Size.monthCode
@@ -67,10 +66,6 @@ struct MonthCodeView: View {
             onSelectDay(next)
         }
         .accessibilityIdentifier("codigo-del-mes")
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(Theme.Motion.todayBreath) { breathing = true }
-        }
     }
 
     // MARK: The bars
@@ -84,6 +79,10 @@ struct MonthCodeView: View {
             ForEach(code.days, id: \.number) { day in
                 cell(day)
                     .opacity(opacity(day))
+                    // Today breathes a few times when the boleto appears, then rests at full
+                    // (audit 2026-11-02: it breathed forever on the screen of every day).
+                    .breathes(day.kind == .today && shownDay == nil, times: Theme.Motion.todayBreaths,
+                              seconds: Theme.Motion.todayBreathSeconds, low: Theme.Opacity.tileBreath)
             }
         }
         .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion), value: shownDay)
@@ -149,7 +148,7 @@ struct MonthCodeView: View {
     private func opacity(_ day: MonthCode.Day) -> Double {
         if day.kind == .future { return Theme.Opacity.visible }
         if let shownDay { return day.number == shownDay ? Theme.Opacity.visible : Theme.Opacity.codeBarAside }
-        return day.kind == .today && breathing ? Theme.Opacity.tileBreath : Theme.Opacity.visible
+        return Theme.Opacity.visible
     }
 
     // MARK: The finger

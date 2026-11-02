@@ -2,23 +2,44 @@ import SwiftUI
 
 // The drawings of «Mi dinero»'s first time (2026-11-01), in the app's own language: hairlines,
 // the ticket's dashes, the boleto's cells and one brass. Each is a Canvas driven by a clock,
-// drawn in a small design space (the numbers in `Geo`) and scaled to fit. They loop slowly and
-// never bounce; with «Reducir movimiento» each one stands still at its most telling moment.
+// drawn in a small design space (the numbers in `Geo`) and scaled to fit. They loop slowly a few
+// times, then rest, and never bounce; with «Reducir movimiento» each one stands still at its most telling moment.
 
-/// Where a loop is, 0…1, from the clock; `rest` when motion is reduced.
+/// Where a loop is, 0…1, from the clock; `rest` when motion is reduced. It turns `loops` times
+/// and stops on `rest` (audit 2026-11-02: nothing runs forever), so the last turn ends where the
+/// still drawing stands, with no jump.
 struct MoneyLoopClock<Content: View>: View {
     let cycle: Double
     let rest: Double
+    var loops = Theme.Motion.Money.loops
     @ViewBuilder let content: (Double) -> Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var start: Date?
+    @State private var done = false
 
     private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
+    /// Seconds until the last turn reaches `rest`.
+    private var runs: Double { (Double(max(loops, 1) - 1) + rest) * cycle }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still)) { context in
-            let seconds = context.date.timeIntervalSinceReferenceDate
-            content(still ? rest : seconds.truncatingRemainder(dividingBy: cycle) / cycle)
+        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still || done)) { context in
+            content(phase(at: context.date))
         }
+        .onAppear { if start == nil { start = .now } }
+        .task(id: start) {
+            guard let start else { return }
+            let left = runs - Date.now.timeIntervalSince(start)
+            if left > 0 { try? await Task.sleep(for: .seconds(left)) }
+            guard !Task.isCancelled else { return }
+            done = true
+        }
+    }
+
+    private func phase(at date: Date) -> Double {
+        guard !still, !done, let start else { return rest }
+        let elapsed = date.timeIntervalSince(start)
+        guard elapsed < runs else { return rest }
+        return elapsed.truncatingRemainder(dividingBy: cycle) / cycle
     }
 }
 

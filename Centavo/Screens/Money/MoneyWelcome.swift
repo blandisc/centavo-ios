@@ -16,14 +16,12 @@ struct MoneyGrowthHero: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Así crece tu patrimonio").ticketCaption(strong: true)
                 Spacer(minLength: Theme.Space.s)
-                MoneyLoopClock(cycle: Theme.Motion.Money.heroCycle, rest: Theme.Motion.Money.heroRest) { t in
-                    Text(amount(Self.example * Self.shown(t)))
-                        .font(.ticket(.display))
-                        .tracking(Theme.Tracking.figure)
-                        .foregroundStyle(Theme.brass)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(Theme.MinimumScale.figure)
+                // The final figure, invisible, holds the width: counting up never moves the title.
+                ZStack(alignment: .trailing) {
+                    figure(Self.example).hidden()
+                    MoneyLoopClock(cycle: Theme.Motion.Money.heroCycle, rest: Theme.Motion.Money.heroRest) { t in
+                        figure(Self.example * Self.shown(t))
+                    }
                 }
             }
             MoneyLoopClock(cycle: Theme.Motion.Money.heroCycle, rest: Theme.Motion.Money.heroRest) { t in
@@ -42,6 +40,16 @@ struct MoneyGrowthHero: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ejemplo: un patrimonio que crece mes a mes durante un año.")
+    }
+
+    private func figure(_ value: Double) -> some View {
+        Text(amount(value))
+            .font(.ticket(.display))
+            .tracking(Theme.Tracking.figure)
+            .foregroundStyle(Theme.brass)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
     }
 
     /// How far the figure has counted at `t`, in step with the bars.
