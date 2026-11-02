@@ -675,3 +675,11 @@ Pedido del dueño: «más bonito, más entendible, más sencillo», con el estil
 - **Final nuevo:** la animación de éxito y **«Cada día tienes $X»**, no «Hoy puedes gastar» (sigue la decisión del 2026-10-29: a mitad de mes acumularía días). Sin presupuesto, dónde fijarlo; con fijos de más, por cuánto. No dice «Wallet conectado»: el atajo llega apagado.
 - **Una sola regla de «quieto»** (`MotionPolicy`): «Reducir movimiento», modo de bajo consumo y las pruebas (`-centavo-sin-animaciones` o `-centavo-dibujos-quietos`). Las animaciones de la bienvenida ya no rebotan.
 - Se guarda una sola vez, salga por donde salga (antes, guardar dos veces habría duplicado los fijos).
+
+## 2026-11-01 · «Hoy» sin datos: dos tarjetas con dibujo (opción A)
+Pedido del dueño: la pantalla vacía más bonita y los botones de abajo con movimiento. Es el único cambio en «Hoy».
+- **Título «Tu mes empieza aquí»**, el mismo cuadro punteado y un renglón fantasma («Tu primer gasto · $0.00») que se imprime una vez. El boleto del mes vacío aparece solo sin presupuesto (con presupuesto ya lo muestra la cabecera); su celda de hoy respira tres veces y se queda.
+- **«Anotar un gasto»** sigue como acción principal. Debajo, «Fijar presupuesto» y «Conectar Wallet» como tarjetas con su dibujo (celdas que se llenan; iPhone → ticket). Una vez, en secuencia, y quietas: nada corre en bucle en la pantalla de todos los días.
+- Lo hecho desaparece en vez de quedarse con palomita: con presupuesto queda solo la tarjeta de Wallet, a lo ancho.
+- Con `MotionPolicy` quieto (Reducir movimiento, bajo consumo, pruebas) todo se dibuja en su estado final.
+

@@ -20,6 +20,10 @@ extension Theme.Size {
     static let moneyCurrencyTile: CGFloat = 66
     /// A color swatch beside an account's name.
     static let moneySwatch: CGFloat = 8
+    /// The empty «Hoy»'s step cards: their drawing.
+    static let emptyStepArt: CGFloat = 52
+    /// The empty «Hoy»'s month strip.
+    static let emptyStrip: CGFloat = 30
     /// The Excel button's little drawing.
     static let moneyExcelArt: CGFloat = 92
     /// How wide the step bar's sheen is, as a share of its part.
@@ -46,6 +50,17 @@ extension Theme.Motion {
         static let total: Animation = .smooth(duration: 0.7)
         /// Frames per second the drawings ask for: smooth enough, light on the battery.
         static let frameInterval: Double = 1.0 / 30
+        /// The empty «Hoy» plays once: the ghost row, then the budget card, then Wallet's.
+        enum Empty {
+            static let ghost: ClosedRange<Double> = 0...1
+            static let budget: ClosedRange<Double> = 1...2.5
+            static let wallet: ClosedRange<Double> = 2.5...4
+            static let end: Double = 4
+            /// Today's cell breathes this many times, then rests.
+            static let breaths = 3
+            static let breathSeconds: Double = 1.4
+            static let breath: Animation = .easeInOut(duration: breathSeconds)
+        }
         /// The final figure starts counting once the ring has mostly closed.
         static let countUpDelay: Double = 0.9
     }
