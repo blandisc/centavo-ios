@@ -735,3 +735,10 @@ Pedido del dueño: corregir todo lo que encontró la auditoría (secciones de te
 - **Textos:** las rutas son «Más › …» (el menú «···» se llama «Más»); «por defecto»; «Te deben»; «Por día:»; «Cada día tienes»; la app habla en tercera persona; los errores dicen qué no se pudo; «Corte del mes» y «Forma de pago» como títulos cortos.
 - **«Quitar presupuesto» pregunta antes; «Quitar ubicación» se aplica al guardar;** las hojas con algo escrito no se cierran al deslizar.
 - **Revisión independiente (mismo día), corregida antes de fusionar:** «Cómo funciona» se pausa mientras la app no está al frente y vuelve a medir su tiempo cuando cambia si avanza sola (bajo consumo, VoiceOver, letra); abrir la app justo después de un pago ya no vibra como si llegara uno; el conteo de «Hoy» también se rehace con lo que trae iCloud y al volver a la app; el dibujo de «Mi dinero» que apareció quieto se queda quieto.
+
+## 2026-11-02 · Lo que quedó por decidir de la auditoría
+Respuestas del dueño a lo que chocaba con decisiones aprobadas.
+- **El candado dice lo que tiene el iPhone:** el dibujo de la cara solo con Face ID; con Touch ID o código, su símbolo. Aprobado («de eso está súper bien»).
+- **«Corte del mes» se queda como título** de la hoja del corte (el mes va abajo, en el pie). Visto lado a lado con «Corte de oct»; aprobado.
+- **El aviso del respaldo en «Hoy» se queda:** una línea discreta solo cuando el respaldo falló o lleva más de 3 días sin hacerse. Reemplaza «sin aviso del respaldo» (2026-10-31).
+- **Bucles que quedaban, por recomendación aceptada:** el ejemplo de «Hoy puedes gastar» (hoja del presupuesto) recorre la semana una vez y descansa en su final; un toque lo repite. La guía animada del atajo (2026-10-17) sigue en bucle a propósito: es para seguirla paso a paso mientras se arma la automatización en Atajos, y con «Reducir movimiento» o bajo consumo queda quieta.
