@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **El ejemplo de «Hoy puedes gastar»** en la hoja del presupuesto recorre la semana una vez y se queda en el final; tócalo para verlo otra vez.
 ### Security
 - **«Mi dinero» ya no se queda abierto si sales antes de Face ID:** si tocas la pestaña y regresas a «Hoy» mientras Face ID pregunta, la respuesta ya no la abre. Al bloquearse, las hojas de «Mi dinero» guardan el teclado, cierran sus avisos («¿Archivar?», «¿Descartar el corte?») y VoiceOver no lee lo que quedó debajo.
 - **Restaurar un respaldo y «Cambiar contraseña» piden Face ID o el código** de tu iPhone. Cambiar la contraseña tiene «Cancelar» y te recuerda que los respaldos que ya tienes se abren con la anterior; si escribes una contraseña que no abre el respaldo, lo dice y puedes probar otra vez.

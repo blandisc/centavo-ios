@@ -5,8 +5,9 @@ import SwiftUI
 /// spending under both rules. Each column is a day (the outline is what it could spend, the
 /// fill what it spent, red past the outline); when a day ends, what it left over or overspent
 /// leaves it as a coin and goes to tomorrow («Se acumula») or splits over every day still to
-/// come («Se reparte»). It plays on a loop and a tap pauses it (to read a day before the next
-/// one); with «Reducir movimiento» it stands still, done.
+/// come («Se reparte»). It plays the week once and rests on its end (2026-11-02: nothing on a
+/// loop); a tap pauses it while it plays, and once it's done a tap plays it again. With
+/// «Reducir movimiento» it stands still, done.
 struct AllowanceExplainer: View {
     let mode: AllowanceMode
     let currency: String
@@ -18,6 +19,9 @@ struct AllowanceExplainer: View {
     @State private var coins: [Coin] = []
     @State private var caption = ""
     @State private var paused = false
+    /// The week is over and resting; a tap plays it again.
+    @State private var finished = false
+    @State private var replays = 0
 
     private static let count = AllowanceDemo.spending.count
     private static let start = Array(repeating: AllowanceDemo.perDay, count: count)
@@ -67,14 +71,16 @@ struct AllowanceExplainer: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { return }
-            paused.toggle()
+            if finished { replays += 1 } else { paused.toggle() }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(mode == .carry
             ? "Ejemplo: lo que sobra un día pasa completo al día siguiente; lo que te pasas se le quita."
             : "Ejemplo: lo que sobra o falta un día se reparte parejo entre todos los días que quedan.")
-        .accessibilityAction(named: paused ? "Seguir" : "Pausar") { paused.toggle() }
-        .task(id: mode) { await play() }
+        .accessibilityAction(named: finished ? "Ver otra vez" : paused ? "Seguir" : "Pausar") {
+            if finished { replays += 1 } else { paused.toggle() }
+        }
+        .task(id: Run(mode: mode, replays: replays)) { await play() }
     }
 
     // MARK: Pieces
@@ -144,8 +150,14 @@ struct AllowanceExplainer: View {
         caption = "Una semana de ejemplo con \(whole(AllowanceDemo.perDay)) por día."
     }
 
+    private struct Run: Hashable {
+        let mode: AllowanceMode
+        let replays: Int
+    }
+
     private func play() async {
         paused = false
+        finished = false
         reset()
         if MotionPolicy.isStill(reduceMotion: reduceMotion) {
             // Still and finished: every day spent and every move already made.
@@ -156,7 +168,7 @@ struct AllowanceExplainer: View {
                 : "Lo que sobra o falta se reparte entre los días que quedan."
             return
         }
-        while !Task.isCancelled {
+        do {
             guard await pause(Theme.Motion.Explainer.start) else { return }
             for index in 0..<Self.count {
                 let day = demo.days[index]
@@ -183,9 +195,8 @@ struct AllowanceExplainer: View {
                     : "Día \(index + 1): \(result) → \(move.each >= 0 ? "+" : "−")\(whole(move.each.magnitude)) a cada uno de los \(move.to.count) días que quedan."
                 guard await pause(Theme.Motion.Explainer.dayBeat) else { return }
             }
-            caption = "Fin: gastaste \(whole(demo.spent)) de \(whole(demo.budget)); sobraron \(whole(demo.budget - demo.spent)), igual con las dos reglas."
-            guard await pause(Theme.Motion.Explainer.end) else { return }
-            withAnimation(Theme.Motion.Explainer.fill) { reset() }
+            caption = "Fin: gastaste \(whole(demo.spent)) de \(whole(demo.budget)); sobraron \(whole(demo.budget - demo.spent)), igual con las dos reglas. Toca para verlo otra vez."
+            finished = true
         }
     }
 
