@@ -58,6 +58,7 @@ struct TutorialView: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var index = 0
     /// When the current story started, and how long it has been held since: what has gone by is
@@ -66,6 +67,8 @@ struct TutorialView: View {
     @State private var storyStart = Date.now
     @State private var heldBefore: Double = 0
     @State private var heldSince: Date?
+    /// Held because the app left the front (locked, another app): the clock doesn't run there.
+    @State private var heldByLeaving = false
     /// Reset by the system when a press is cancelled (Control Center, a call), so the story
     /// can't stay held or pulled down.
     @GestureState private var holding = false
@@ -106,7 +109,21 @@ struct TutorialView: View {
         .padding(.vertical, Theme.Space.m)
         .background(Theme.background.ignoresSafeArea())
         .offset(y: max(drag, Theme.Space.none))
-        .task(id: index) { await run() }
+        // Again when it starts or stops moving by itself (low power, VoiceOver, text size).
+        .task(id: RunKey(index: index, moves: advancesByItself)) { await run() }
+        .onChange(of: advancesByItself) { restartClock() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active, heldSince == nil {
+                heldSince = .now
+                heldByLeaving = true
+            } else if phase == .active, heldByLeaving {
+                heldByLeaving = false
+                if !holding, let since = heldSince {
+                    heldBefore += Date.now.timeIntervalSince(since)
+                    heldSince = nil
+                }
+            }
+        }
         .onChange(of: holding) { _, pressed in
             if pressed {
                 pressStart = .now
@@ -216,6 +233,11 @@ struct TutorialView: View {
     private func elapsed(at date: Date) -> Double {
         let holdingNow = heldSince.map { max(date.timeIntervalSince($0), 0) } ?? 0
         return date.timeIntervalSince(storyStart) - heldBefore - holdingNow
+    }
+
+    private struct RunKey: Hashable {
+        let index: Int
+        let moves: Bool
     }
 
     /// The new story's clock starts now, already held if a finger is down.

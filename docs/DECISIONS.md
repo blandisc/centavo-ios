@@ -734,4 +734,4 @@ Pedido del dueño: corregir todo lo que encontró la auditoría (secciones de te
 - **Rendimiento:** la búsqueda filtra en el almacén (`localizedStandardContains`, sin acentos ni mayúsculas) y luego aplica la regla exacta de siempre; «Hoy» cuenta los gastos con `fetchCount` y pide solo el más nuevo y el más viejo.
 - **Textos:** las rutas son «Más › …» (el menú «···» se llama «Más»); «por defecto»; «Te deben»; «Por día:»; «Cada día tienes»; la app habla en tercera persona; los errores dicen qué no se pudo; «Corte del mes» y «Forma de pago» como títulos cortos.
 - **«Quitar presupuesto» pregunta antes; «Quitar ubicación» se aplica al guardar;** las hojas con algo escrito no se cierran al deslizar.
-
+- **Revisión independiente (mismo día), corregida antes de fusionar:** «Cómo funciona» se pausa mientras la app no está al frente y vuelve a medir su tiempo cuando cambia si avanza sola (bajo consumo, VoiceOver, letra); abrir la app justo después de un pago ya no vibra como si llegara uno; el conteo de «Hoy» también se rehace con lo que trae iCloud y al volver a la app; el dibujo de «Mi dinero» que apareció quieto se queda quieto.

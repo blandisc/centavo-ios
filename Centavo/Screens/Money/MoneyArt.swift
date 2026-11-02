@@ -25,7 +25,9 @@ struct MoneyLoopClock<Content: View>: View {
         TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still || done)) { context in
             content(phase(at: context.date))
         }
-        .onAppear { if start == nil { start = .now } }
+        // Shown still, it stays on its last frame for good: turning low power off later never
+        // jumps into the middle of a turn.
+        .onAppear { if start == nil { if still { done = true } else { start = .now } } }
         .task(id: start) {
             guard let start else { return }
             let left = runs - Date.now.timeIntervalSince(start)

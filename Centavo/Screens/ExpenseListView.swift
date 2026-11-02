@@ -1,4 +1,5 @@
 import CentavoCore
+import CoreData
 import SwiftData
 import SwiftUI
 import UIKit
@@ -871,7 +872,8 @@ private struct Feedback: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sensoryFeedback(.success, trigger: expenseCount) { old, new in
-                new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
+                // From 0 is the first count at launch, not a payment landing now.
+                old > 0 && new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
             }
     }
 }
@@ -907,10 +909,14 @@ private struct CountsStore: ViewModifier {
     let newest: PersistentIdentifier?
     let oldest: PersistentIdentifier?
     let recount: () -> Void
+    @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
         content
             .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in recount() }
+            // What iCloud brought in the background (it doesn't post `didSave` here).
+            .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in recount() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { recount() } }
             .onChange(of: newest, initial: true) { recount() }
             .onChange(of: oldest) { recount() }
     }
