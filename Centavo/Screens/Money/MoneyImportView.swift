@@ -15,6 +15,7 @@ struct MoneyImportView: View {
     let finished: () -> Void
 
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // No @Query here: a pushed screen querying what the screen behind it queries kept SwiftUI
     // redrawing it without end. What it needs is read once, when an answer is loaded.
@@ -32,6 +33,9 @@ struct MoneyImportView: View {
     /// respuesta» asks before throwing it away (2026-11-02 audit).
     @State private var changed = false
     @State private var confirmingRestart = false
+    /// With corrections, «‹» and the edge swipe are hidden behind «Salir», which asks first
+    /// (second audit, 2026-11-02).
+    @State private var confirmingLeave = false
     /// The pasteboard's count right after pasting: if nothing else was copied since, what was
     /// pasted (the person's finances) is cleared from it on saving.
     @State private var pastedAt: Int?
@@ -49,7 +53,14 @@ struct MoneyImportView: View {
         .safeAreaInset(edge: .bottom) { if !rows.isEmpty { saveBar } }
         .navigationBarTitleDisplayMode(.inline)
         .ticketBarTitle("Desde tu Excel")
+        .navigationBarBackButtonHidden(changed)
         .toolbar {
+            if changed {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Salir") { confirmingLeave = true }
+                        .accessibilityIdentifier("importar-salir")
+                }
+            }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Ocultar teclado") {
@@ -73,7 +84,13 @@ struct MoneyImportView: View {
         } message: {
             Text("Se borran las correcciones que hiciste en esta revisión.")
         }
-        .onMoneyCovered { problem = nil; confirmingRestart = false; choosingFile = false }
+        .alert("¿Salir sin agregar?", isPresented: $confirmingLeave) {
+            Button("Seguir revisando", role: .cancel) {}
+            Button("Salir", role: .destructive) { dismiss() }
+        } message: {
+            Text("Se pierden las correcciones de esta revisión.")
+        }
+        .onMoneyCovered { problem = nil; confirmingRestart = false; confirmingLeave = false; choosingFile = false }
         .onDisappear { if pastedAt != nil { forgetPasted() } }
     }
 
