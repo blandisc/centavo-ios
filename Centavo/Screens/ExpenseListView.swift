@@ -22,6 +22,13 @@ struct ExpenseListView: View {
     @Query(Self.latestCapture) private var latestCaptures: [Expense]
     @AppStorage(WalletWatch.lastArrivalKey) private var walletArrival: Double = 0
 
+    /// Before the remembered arrival existed, only the store knew: carry it over once, so
+    /// deleting those payments later can't make Wallet look disconnected.
+    private func rememberWalletArrival() {
+        guard walletArrival <= 0, let newest = latestCaptures.first?.date else { return }
+        WalletWatch.noteArrival(newest)
+    }
+
     private static var latestCapture: FetchDescriptor<Expense> {
         var descriptor = FetchDescriptor<Expense>(
             predicate: #Predicate { $0.rawAmount != nil },
@@ -257,9 +264,7 @@ struct ExpenseListView: View {
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
                                           onReview: { showingBudget = true }))
             .task {
-                // Before the remembered arrival existed, only the store knew: carry it over once,
-                // so deleting those payments later can't make Wallet look disconnected.
-                if walletArrival == 0, let newest = latestCaptures.first?.date { WalletWatch.noteArrival(newest) }
+                rememberWalletArrival()
                 // Siri learns the categories it can be asked about («¿Cuánto llevo en Café?»).
                 CentavoShortcuts.updateAppShortcutParameters()
                 // Never chosen: settle it once, from what the payments are in (pesos if none),
