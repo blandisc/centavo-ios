@@ -19,6 +19,7 @@ extension MoneyStore {
         if MoneyIncomeRule.startsNewVersion(oldAmount: income.amount, oldCurrency: income.currency, since: income.since,
                                             newAmount: amount, newCurrency: currency, now: now) {
             income.archived = true
+            income.until = now
             context.insert(MoneyIncome(name: name, institution: institution, amount: amount, currency: currency, since: now))
         } else {
             income.name = name
@@ -30,8 +31,9 @@ extension MoneyStore {
     }
 
     /// «Quitar»: it stops counting from now on; it's archived, never deleted.
-    static func removeIncome(_ income: MoneyIncome, in context: ModelContext) throws {
+    static func removeIncome(_ income: MoneyIncome, in context: ModelContext, now: Date = .now) throws {
         income.archived = true
+        income.until = now
         do { try context.save() } catch { context.rollback(); throw error }
     }
 }

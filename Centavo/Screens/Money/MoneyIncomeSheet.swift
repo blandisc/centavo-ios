@@ -19,7 +19,7 @@ struct MoneyIncomeSheet: View {
     @State private var problem: String?
 
     private var isNew: Bool { income == nil }
-    private var parsedAmount: Decimal? { AmountParser.parse(amount)?.value }
+    private var parsedAmount: Decimal? { MoneyAmount.read(amount) }
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && (parsedAmount ?? 0) > 0
     }

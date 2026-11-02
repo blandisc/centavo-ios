@@ -90,7 +90,7 @@ struct MoneyOnboardingView: View {
                     removing = nil
                 }
             } message: {
-                Text((removing?.entries ?? []).count > 1
+                Text(removing.map(MoneyStore.hasHistory) ?? false
                      ? "Tiene cortes pasados: se archiva y esos cortes la conservan."
                      : "Se borra con su saldo.")
             }

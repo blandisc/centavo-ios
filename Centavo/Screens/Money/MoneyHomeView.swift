@@ -80,7 +80,7 @@ struct MoneyHomeView: View {
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
-            .onMoneyCovered { problem = nil }
+            .onMoneyCovered { problem = nil; choosingMonth = false }
         }
     }
 

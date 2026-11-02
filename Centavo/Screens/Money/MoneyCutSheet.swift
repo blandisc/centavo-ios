@@ -117,7 +117,7 @@ struct MoneyCutSheet: View {
             .sheet(isPresented: $addingIncome) { MoneyIncomeSheet(income: nil, mainCurrency: draft.mainCurrency).moneyPrivacyCover() }
             .onAppear(perform: load)
             .onChange(of: ratesReviewed) { _, now in draft.reviewedRates = MoneyWords.encodeCodes(now) }
-            .onMoneyCovered { confirmingDiscard = false; problem = nil }
+            .onMoneyCovered { confirmingDiscard = false; problem = nil; replacing = nil }
         }
     }
 

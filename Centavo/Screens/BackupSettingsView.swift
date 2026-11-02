@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 /// The nightly run itself is an automation in Atajos with «Respaldar Al día».
 struct BackupSettingsView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasPassword = BackupPassword.read() != nil
     @State private var newPassword = ""
@@ -49,6 +50,9 @@ struct BackupSettingsView: View {
         .foregroundStyle(Theme.ink)
         .navigationBarTitleDisplayMode(.inline)
         .ticketBarTitle("Respaldo")
+        // The check before «Cambiar contraseña» is for who's holding the phone now: leaving the
+        // app closes the form, so coming back asks again.
+        .onChange(of: scenePhase) { _, phase in if phase == .background, changingPassword { cancelChanging() } }
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
             guard case .success(let url) = result else { return }
             do {
