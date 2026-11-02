@@ -76,6 +76,11 @@ struct ExpenseListView: View {
     @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
     @State private var showingSettings = false
+    /// «Cómo funciona», and where its «Pruébalo» goes once it has closed.
+    @State private var showingTutorial = false
+    @State private var afterTutorial: TutorialDestination?
+    /// Where the welcome said to go, opened once it has gone (two covers can't overlap).
+    @State private var afterOnboarding: OnboardingExit?
     @AppStorage(WalletWatch.key) private var ignoresWallet = false
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHiddenCategories = ""
@@ -175,6 +180,7 @@ struct ExpenseListView: View {
                         }
                         Section {
                             Button("Configurar atajo", systemImage: "wallet.pass") { showingSetup = true }
+                            Button("Cómo funciona", systemImage: "play.rectangle") { showingTutorial = true }
                             Button("Ajustes", systemImage: "gearshape") { showingSettings = true }
                         }
                     } label: {
@@ -287,15 +293,16 @@ struct ExpenseListView: View {
                     onboarded = true
                 }
             }
-            .fullScreenCover(isPresented: $showingOnboarding) {
+            .fullScreenCover(isPresented: $showingOnboarding, onDismiss: openAfterOnboarding) {
                 OnboardingView { exit in
                     onboarded = true
                     if Store.syncsBudget { BudgetSync.markOnboarded() }
+                    afterOnboarding = exit
                     showingOnboarding = false
-                    if exit == .guide {
-                        Task { try? await Task.sleep(for: .milliseconds(500)); showingSetup = true }
-                    }
                 }
+            }
+            .fullScreenCover(isPresented: $showingTutorial, onDismiss: openAfterTutorial) {
+                TutorialView { afterTutorial = $0 }
             }
         }
         // Measured on the whole screen, not on the scroll view: the scroll view takes its
@@ -870,7 +877,7 @@ private extension ExpenseListView {
         return lastCapture.map { date > $0 } ?? true ? unreadText : nil
     }
 
-    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes|anotar`.
+    /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes|anotar|tutorial`.
     private func openRequestedSheet() {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -881,9 +888,31 @@ private extension ExpenseListView {
         case "ajustes": showingSettings = true
         case "anotar": adding = true
         case "presupuesto": showingBudget = true
+        case "tutorial": showingTutorial = true
         default: break
         }
         #endif
+    }
+
+    private func openAfterOnboarding() {
+        let exit = afterOnboarding
+        afterOnboarding = nil
+        switch exit {
+        case .guide: showingSetup = true
+        case .tutorial: showingTutorial = true
+        case .home, nil: break
+        }
+    }
+
+    /// «Pruébalo» in «Cómo funciona»: what it asked for, once the stories are gone.
+    private func openAfterTutorial() {
+        guard let destination = afterTutorial else { return }
+        afterTutorial = nil
+        switch destination {
+        case .budget: showingBudget = true
+        case .guide: showingSetup = true
+        case .settings: showingSettings = true
+        }
     }
 
     /// Closes «Ajustes», then does what was asked from it: two sheets can't be up at once.

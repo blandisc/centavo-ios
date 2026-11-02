@@ -1236,6 +1236,54 @@ final class FlowTests: XCTestCase {
             predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
     }
+
+    /// «Configurar ahora» in the welcome opens the Wallet guide once the welcome is gone.
+    func testLaBienvenidaLlevaALaGuia() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
+                               "-centavo-empty", "-centavo-onboarding", "-centavo-bienvenida-pagina", "3"]
+        app.launch()
+        require(app.buttons["bienvenida-configurar"], "No está «Configurar ahora» en la bienvenida", timeout: 20).tap()
+        let guide = app.buttons.matching(NSPredicate(format: "identifier IN %@", ["guia-siguiente", "atajo-agregar"])).firstMatch
+        require(guide, "No abrió la guía desde la bienvenida")
+    }
+
+    /// The welcome's last page offers «Cómo funciona», and it opens once the welcome is gone.
+    func testTutorialDesdeLaBienvenida() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
+                               "-centavo-empty", "-centavo-onboarding", "-centavo-bienvenida-pagina", "4"]
+        app.launch()
+        require(app.buttons["bienvenida-tutorial"], "No está «Cómo funciona» al final de la bienvenida", timeout: 20).tap()
+        require(app.staticTexts["tutorial-titulo"], "No abrió el tutorial desde la bienvenida")
+        app.buttons["tutorial-cerrar"].tap()
+        require(app.buttons["Anotar gasto"], "Al cerrar no quedó «Hoy»")
+    }
+
+    /// «Cómo funciona» from «···»: it moves with «Siguiente» and «Anterior», and «Pruébalo»
+    /// closes the stories and opens what it names (the first story: the budget).
+    func testTutorial() {
+        let app = launch()
+        app.buttons["Más"].tap()
+        require(app.buttons["Cómo funciona"], "No está «Cómo funciona» en «Más»").tap()
+        let title = app.staticTexts["tutorial-titulo"]
+        require(title, "No abrió el tutorial")
+        XCTAssertEqual(title.label, "Cuánto puedes gastar hoy")
+        snap("tutorial-1")
+        app.buttons["tutorial-siguiente"].tap()
+        XCTAssertTrue(app.staticTexts["Tu mes en una barra"].waitForExistence(timeout: 3), "«Siguiente» no avanzó")
+        XCTAssertFalse(app.buttons["tutorial-pruebalo"].exists, "La barra no tiene dónde probarse")
+        snap("tutorial-2")
+        for story in 3...7 {
+            app.buttons["tutorial-siguiente"].tap()
+            snap("tutorial-\(story)")
+        }
+        XCTAssertEqual(app.buttons["tutorial-siguiente"].label, "Listo", "La última no dice «Listo»")
+        for _ in 1...6 { app.buttons["tutorial-anterior"].tap() }
+        require(app.staticTexts["Cuánto puedes gastar hoy"], "«Anterior» no regresó")
+        app.buttons["tutorial-pruebalo"].tap()
+        require(app.textFields["presupuesto-monto"], "«Pruébalo» no abrió el presupuesto")
+    }
 }
 
 private extension XCUIElement {

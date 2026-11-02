@@ -33,6 +33,7 @@ DRAWINGS = {
     APP / "Screens" / "GuideFrames.swift",
     # «Mi dinero»'s drawings (2026-11-01): Canvas paths in their own design space, scaled to fit.
     APP / "Screens" / "Money" / "MoneyArt.swift",
+    APP / "Screens" / "Tutorial" / "TutorialArt.swift",
 }
 
 NUM = r"(?<![\w.])-?\d+(?:\.\d+)?(?![\w])"
