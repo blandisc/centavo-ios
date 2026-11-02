@@ -38,7 +38,9 @@ struct MoneyHomeView: View {
     private var home: some View {
         NavigationStack {
             Group {
-                if accounts.isEmpty { empty } else { filled }
+                // Only with nothing at all: with every account archived, «Archivadas» and the
+                // incomes stay reachable (second audit, 2026-11-02).
+                if accounts.isEmpty && archived.isEmpty { empty } else { filled }
             }
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
@@ -63,7 +65,7 @@ struct MoneyHomeView: View {
             .sheet(item: $editing) { MoneyAccountSheet(account: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover() }
             .sheet(item: $cutting) { MoneyCutSheet(draft: $0).moneyPrivacyCover() }
             .confirmationDialog("¿De qué mes es el corte?", isPresented: $choosingMonth, titleVisibility: .visible) {
-                ForEach(MoneyStore.suggestedMonths(), id: \.self) { month in
+                ForEach(MoneyStore.suggestedMonths(latest: latest?.month), id: \.self) { month in
                     Button("Corte de \(MoneyHead.fullMonthName(month))") { startCut(for: month) }
                 }
                 Button("Cancelar", role: .cancel) {}
@@ -193,7 +195,8 @@ struct MoneyHomeView: View {
     private func heroLine(worth: NetWorth, currency: String) -> some View {
         var parts: [Text] = []
         if let previous {
-            let delta = worth.total - previous.netWorth.total
+            // The same accounts on both sides: archiving one isn't a loss, a new one isn't saved.
+            let delta = latest.map { $0.change(since: previous) } ?? 0
             let since = MoneyHead.monthName(previous.month)
             parts.append(Text("\(delta >= 0 ? "+" : "−")\(formatMoney(delta.magnitude, isoCode: currency, label: currency))")
                 .foregroundStyle(delta >= 0 ? Theme.good : Theme.danger) + Text(" desde \(since)"))

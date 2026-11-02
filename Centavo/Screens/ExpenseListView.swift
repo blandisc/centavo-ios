@@ -470,7 +470,8 @@ private struct HomeContent: View, Equatable {
         // where the month closes.
         let showsCarousel = !searching && !storeIsEmpty
         let note = showsCarousel && isCurrent && (month.pace?.remaining ?? 0) >= 0
-            ? model.note(rows: recentRows, now: now, primary: primary, budget: settings.budget)
+            ? model.note(rows: recentRows, now: now, primary: primary, budget: settings.budget,
+                         reserved: month.pace?.reserved ?? 0)
             : nil
 
         // Not a `List`: a list snaps a row to its new height, and the carousel's height has

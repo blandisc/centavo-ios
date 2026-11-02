@@ -35,7 +35,8 @@ struct MoneyOnboardingView: View {
 
     private var page: MoneyStep { MoneyStep(rawValue: step) ?? .have }
     private var rows: [MoneyAccount] { accounts.filter { page.subtypes.contains(MoneySubtype.of($0)) } }
-    private var worth: NetWorth { cuts.last?.netWorth ?? NetWorth() }
+    /// Without archived accounts, like «Mi dinero» (second audit, 2026-11-02).
+    private var worth: NetWorth { cuts.last?.activeNetWorth ?? NetWorth() }
 
     var body: some View {
         NavigationStack {
@@ -70,7 +71,7 @@ struct MoneyOnboardingView: View {
                     .font(.ticket(.footnoteStrong))
                 }
             }
-            .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert("No se guardó la cuenta", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
             .navigationDestination(isPresented: $importing) {
@@ -227,7 +228,7 @@ struct MoneyOnboardingView: View {
         .padding(Theme.Space.l)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.ticket))
         if !incomes.isEmpty { incomeLine }
-        Text("Tu próximo corte es a fin de mes. Ese día sabrás cuánto ahorraste.")
+        Text("Al terminar el mes, toca «Hacer corte» en «Mi dinero» y verás cuánto ahorraste.")
             .font(.ticket(.callout))
             .foregroundStyle(Theme.muted)
             .multilineTextAlignment(.center)
@@ -368,7 +369,7 @@ struct MoneyOnboardingView: View {
             }
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
         } catch {
-            problem = "No se guardó. Intenta otra vez."
+            problem = "Intenta otra vez."
         }
     }
 
@@ -661,7 +662,9 @@ struct MoneyRow<Editor: View>: View {
                 editor()
                     .padding(.horizontal, Theme.Space.m)
                     .padding(.bottom, Theme.Space.m)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    // The app's one fold (`Theme.Motion.fold`, 2026-10-29): it shows once there
+                    // is room and goes before the room closes.
+                    .transition(.unfold)
             }
         }
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))

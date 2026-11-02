@@ -10,7 +10,10 @@ enum MonthNote {
     }
 
     /// The facts for this month, most useful first. Only the last few months matter to them.
-    static func facts(_ expenses: [Expense], now: Date, primary: String, budget: Decimal?) -> [SpendingFact] {
+    /// `reserved`: the fixed expenses still to come (`FixedOutlook.reserved`); the projection
+    /// adds them, since they'll be charged whatever the pace (second audit, 2026-11-02).
+    static func facts(_ expenses: [Expense], now: Date, primary: String, budget: Decimal?,
+                      reserved: Decimal = 0) -> [SpendingFact] {
         let since = Self.since(now)
         let records = expenses.lazy.filter { $0.date >= since }.map {
             // By Wallet's name, so two branches stay two; said by the readable one.
@@ -19,6 +22,6 @@ enum MonthNote {
                            isFixed: $0.isFixed, counted: $0.counted)
         }
         return SpendingFacts.detect(Array(records), now: now, primary: primary, budget: budget,
-                                    money: { formatMoney($0, isoCode: primary, label: primary) })
+                                    reserved: reserved, money: { formatMoney($0, isoCode: primary, label: primary) })
     }
 }

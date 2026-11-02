@@ -211,6 +211,8 @@ final class MoneyOnboardingTests: XCTestCase {
 
     func testARateWrittenTodayNeverRewritesAPastCut() throws {
         let context = ModelContext(try MoneyStore.inMemory())
+        // The rate that can't go into the past cut waits for the next one (second audit).
+        defer { UserDefaults.standard.removeObject(forKey: MoneyStore.pendingRatesKey) }
         let past = monthAgo(-2)
         let dollars = MoneyAccount(name: "Dólares", kind: .account, currency: "USD")
         try MoneyStore.add(dollars, balance: 100, rate: 17, in: context, mainCurrency: "MXN", now: past)
