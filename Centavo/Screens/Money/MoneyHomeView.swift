@@ -9,6 +9,7 @@ struct MoneyHomeView: View {
     @Query(MoneyStore.activeAccounts) private var accounts: [MoneyAccount]
     @Query(MoneyCut.finished) private var cuts: [MoneyCut]
     @Query(filter: #Predicate<MoneyAccount> { $0.archived }, sort: \MoneyAccount.name) private var archived: [MoneyAccount]
+    @Query(MoneyStore.activeIncomes) private var incomes: [MoneyIncome]
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// Where «Primera cuenta» is: 0 not started, 1…4 a step, 5 done (`MoneyStep`).
     @AppStorage(MoneyHomeView.stepKey) private var step = 0
@@ -18,6 +19,8 @@ struct MoneyHomeView: View {
     @State private var editing: MoneyAccount?
     @State private var cutting: MoneyCut?
     @State private var choosingMonth = false
+    @State private var addingIncome = false
+    @State private var editingIncome: MoneyIncome?
     @State private var problem: String?
 
     private var main: String { CurrencyPreference.resolve(storedCurrency) }
@@ -67,10 +70,17 @@ struct MoneyHomeView: View {
             } message: {
                 Text("Si ese mes ya tiene corte, Al día pregunta antes de reemplazarlo.")
             }
+            .sheet(isPresented: $addingIncome) {
+                MoneyIncomeSheet(income: nil, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover()
+            }
+            .sheet(item: $editingIncome) {
+                MoneyIncomeSheet(income: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover()
+            }
 
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
+            .onMoneyCovered { problem = nil }
         }
     }
 
@@ -125,6 +135,7 @@ struct MoneyHomeView: View {
             group("Cuentas", kinds: [.account, .investment])
             group("Por cobrar", kinds: [.receivable])
             group("Debes", kinds: [.debt])
+            incomeSection
             if !archived.isEmpty {
                 Section {
                     ForEach(archived) { account in
@@ -222,6 +233,27 @@ struct MoneyHomeView: View {
         }
     }
 
+    /// What comes in each month (2026-11-02 audit): seen, edited and removed here. It's apart
+    /// from the net worth, so its total isn't added to anything above.
+    private var incomeSection: some View {
+        Section {
+            ForEach(incomes) { income in
+                Button { editingIncome = income } label: { MoneyIncomeRow(income: income) }
+                    .listRowBackground(Theme.background)
+                    .listRowSeparatorTint(Theme.hairline)
+            }
+            Button { addingIncome = true } label: {
+                LinkActionLabel(incomes.isEmpty ? "Agregar lo que te entra" : "Agregar otro ingreso",
+                                systemImage: "plus", alignment: .leading)
+            }
+            .listRowBackground(Theme.background)
+            .listRowSeparator(.hidden)
+            .accessibilityIdentifier("dinero-agregar-ingreso")
+        } header: {
+            Text("Te entra al mes").ticketCaption()
+        }
+    }
+
     private func sum(_ rows: [MoneyAccount], in cut: MoneyCut) -> Decimal {
         let lines = rows.compactMap { account in
             cut.entry(for: account).map { MoneyLine(kind: .account, currency: account.currency, balance: $0.balance) }
@@ -311,6 +343,34 @@ struct MoneyAccountRow: View {
             }
             Spacer(minLength: Theme.Space.s)
             Text(shown)
+                .font(.ticket(.headline))
+                .foregroundStyle(Theme.ink)
+                .monospacedDigit()
+        }
+        .padding(.vertical, Theme.Space.xxs)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// One income: its name, where it comes from, and how much each month in its currency.
+struct MoneyIncomeRow: View {
+    let income: MoneyIncome
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                Text(income.name)
+                    .font(.ticket(.bodyMedium))
+                    .tracking(Theme.Tracking.name)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                Text([income.institution, "al mes"].compactMap { $0 }.joined(separator: " · "))
+                    .font(.ticket(.hint))
+                    .foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: Theme.Space.s)
+            Text(formatMoney(income.amount, isoCode: income.currency, label: income.currency))
                 .font(.ticket(.headline))
                 .foregroundStyle(Theme.ink)
                 .monospacedDigit()

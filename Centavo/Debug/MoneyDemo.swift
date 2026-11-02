@@ -71,6 +71,8 @@ enum MoneyDemo {
                 entry.cut = cut
             }
         }
+        // An income, so «Te entra al mes» shows with a row (and the cut doesn't ask for one).
+        context.insert(MoneyIncome(name: "Sueldo", institution: "Empresa", amount: 45_000, currency: "MXN", since: lastMonth))
         try context.save()
         return container
     }

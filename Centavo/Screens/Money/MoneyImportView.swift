@@ -28,6 +28,10 @@ struct MoneyImportView: View {
     @State private var rateChoices: [String: [Decimal]] = [:]
     @State private var open: UUID?
     @State private var problem: String?
+    /// Something was corrected, added or removed since the answer was loaded: «Pegar otra
+    /// respuesta» asks before throwing it away (2026-11-02 audit).
+    @State private var changed = false
+    @State private var confirmingRestart = false
     /// The pasteboard's count right after pasting: if nothing else was copied since, what was
     /// pasted (the person's finances) is cleared from it on saving.
     @State private var pastedAt: Int?
@@ -63,6 +67,13 @@ struct MoneyImportView: View {
         .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button("Aceptar", role: .cancel) {}
         } message: { Text(problem ?? "") }
+        .alert("¿Pegar otra respuesta?", isPresented: $confirmingRestart) {
+            Button("Cancelar", role: .cancel) {}
+            Button("Borrar y pegar otra", role: .destructive, action: restart)
+        } message: {
+            Text("Se borran las correcciones que hiciste en esta revisión.")
+        }
+        .onMoneyCovered { problem = nil; confirmingRestart = false; choosingFile = false }
         .onDisappear { if pastedAt != nil { forgetPasted() } }
     }
 
@@ -186,7 +197,7 @@ struct MoneyImportView: View {
         }
         .accessibilityIdentifier("importar-agregar")
         Button("Pegar otra respuesta") {
-            withAnimation(motion) { rows = []; notes = []; rateTexts = [:]; rateChoices = [:] }
+            if changed { confirmingRestart = true } else { restart() }
         }
             .font(.ticket(.label))
             .foregroundStyle(Theme.muted)
@@ -201,7 +212,7 @@ struct MoneyImportView: View {
                     HStack {
                         Text("1 \(MoneyCurrency.symbol(code)) =").font(.ticket(.bodyMedium)).foregroundStyle(Theme.ink)
                         Spacer()
-                        TextField("Tipo de cambio", text: Binding(get: { rateTexts[code] ?? "" }, set: { rateTexts[code] = $0 }),
+                        TextField("Tipo de cambio", text: Binding(get: { rateTexts[code] ?? "" }, set: { rateTexts[code] = $0; changed = true }),
                                   prompt: Text("\(MoneyCurrency.symbol(mainCurrency))0.00").foregroundStyle(Theme.faint))
                             .font(.ticket(.field))
                             .keyboardType(.decimalPad)
@@ -216,6 +227,7 @@ struct MoneyImportView: View {
                             ForEach(choices, id: \.self) { value in
                                 TicketChip(BackupNumber.text(value), selected: rateTexts[code] == BackupNumber.text(value)) {
                                     rateTexts[code] = BackupNumber.text(value)
+                                    changed = true
                                 }
                             }
                         }
@@ -241,7 +253,7 @@ struct MoneyImportView: View {
 
     private func binding(_ id: UUID) -> Binding<MoneyImportRow> {
         Binding(get: { rows.first { $0.id == id } ?? MoneyImportRow(draft: MoneyRowDraft()) },
-                set: { new in if let at = rows.firstIndex(where: { $0.id == id }) { rows[at] = new } })
+                set: { new in if let at = rows.firstIndex(where: { $0.id == id }) { rows[at] = new; changed = true } })
     }
 
     private func line(_ id: UUID) -> some View {
@@ -290,8 +302,8 @@ struct MoneyImportView: View {
             if !missingRates.isEmpty {
                 Text("Falta el tipo de cambio de \(missingRates.joined(separator: ", ")).")
                     .font(.ticket(.detail)).foregroundStyle(Theme.brass)
-            } else if !waiting.isEmpty {
-                Text("\(waiting.count) por revisar se quedan fuera; puedes completarlas antes o después.")
+            } else if let left = MoneyWords.waitingLeftOut(waiting.count) {
+                Text(left)
                     .font(.ticket(.detail)).foregroundStyle(Theme.muted)
                     .multilineTextAlignment(.center)
             }
@@ -329,13 +341,21 @@ struct MoneyImportView: View {
                 rateTexts[code] = (result.rates[code]?.first ?? known[code]).map { BackupNumber.text($0) } ?? ""
             }
             open = nil
+            changed = false
         }
+    }
+
+    /// «Pegar otra respuesta»: back to the instructions, the review thrown away.
+    private func restart() {
+        withAnimation(motion) { rows = []; notes = []; rateTexts = [:]; rateChoices = [:]; open = nil }
+        changed = false
     }
 
     /// «Listo»: looked at, and placed again in the group it belongs to now.
     private func confirm(_ id: UUID) {
         guard let at = rows.firstIndex(where: { $0.id == id }) else { return }
         rows[at].reviewed = true
+        changed = true
         withAnimation(motion) {
             rows[at].place(main: mainCurrency)
             open = nil
@@ -348,6 +368,7 @@ struct MoneyImportView: View {
     }
 
     private func removeRow(_ id: UUID) {
+        changed = true
         withAnimation(motion) {
             rows.removeAll { $0.id == id }
             open = nil
@@ -358,6 +379,7 @@ struct MoneyImportView: View {
         var row = MoneyImportRow(draft: MoneyRowDraft(subtype: .account, currency: mainCurrency))
         row.reviewed = true
         row.placed = .review
+        changed = true
         withAnimation(motion) {
             rows.insert(row, at: 0)
             open = row.id

@@ -10,12 +10,14 @@ struct MoneyCutSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Query(MoneyStore.activeIncomes) private var incomes: [MoneyIncome]
 
     @State private var typed: [UUID: String] = [:]
     @State private var movements: [UUID: String] = [:]
     @State private var rateTexts: [String: String] = [:]
     @State private var ratesReviewed: Set<String> = []
     @State private var confirmingDiscard = false
+    @State private var addingIncome = false
     @State private var problem: String?
     /// The month already has a cut made on this date: «¿Reemplazar…?» before anything goes.
     @State private var replacing: Date?
@@ -41,6 +43,20 @@ struct MoneyCutSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                // No income yet (none imported): the cut asks for it (2026-11-01). Optional.
+                if incomes.isEmpty {
+                    Section {
+                        Button { addingIncome = true } label: {
+                            LinkActionLabel("Agregar lo que te entra", systemImage: "plus", alignment: .leading)
+                        }
+                        .accessibilityIdentifier("corte-agregar-ingreso")
+                    } header: {
+                        Text("¿Cuánto te entra al mes?").ticketCaption()
+                    } footer: {
+                        HintText("Tu sueldo o lo que cobras cada mes, ya sin impuestos. Es opcional y no suma a tu patrimonio.")
+                    }
+                    .listRowBackground(Theme.surface)
+                }
                 if !foreign.isEmpty {
                     Section {
                         ForEach(foreign, id: \.self) { code in rateRow(code) }
@@ -98,7 +114,10 @@ struct MoneyCutSheet: View {
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
+            .sheet(isPresented: $addingIncome) { MoneyIncomeSheet(income: nil, mainCurrency: draft.mainCurrency).moneyPrivacyCover() }
             .onAppear(perform: load)
+            .onChange(of: ratesReviewed) { _, now in draft.reviewedRates = MoneyWords.encodeCodes(now) }
+            .onMoneyCovered { confirmingDiscard = false; problem = nil }
         }
     }
 
@@ -233,8 +252,13 @@ struct MoneyCutSheet: View {
 
     // MARK: Actions
 
+    /// Reopening a draft: the rates already looked at stay looked at, with their value shown.
     private func load() {
-        for code in foreign where rateTexts[code] == nil { rateTexts[code] = "" }
+        let reviewed = MoneyWords.decodeCodes(draft.reviewedRates).intersection(foreign)
+        ratesReviewed.formUnion(reviewed)
+        for code in foreign where rateTexts[code] == nil {
+            rateTexts[code] = reviewed.contains(code) ? draft.rateTable[code].map { BackupNumber.text($0) } ?? "" : ""
+        }
     }
 
     /// «Sin cambio»: the last balance, looked at. With a rate it means no yield, on purpose.
@@ -258,6 +282,8 @@ struct MoneyCutSheet: View {
     private func save(replacing: Bool) {
         do {
             try MoneyStore.finish(draft, replacing: replacing, in: context)
+            draft.reviewedRates = ""
+            try? context.save()
             dismiss()
         } catch MoneyStore.CutProblem.monthHasCut(let date) {
             self.replacing = date

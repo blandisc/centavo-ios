@@ -57,6 +57,9 @@ final class MoneyCut {
     /// A cut being written (the sheet is open, or was left half-done). Never counts: every
     /// query that adds up goes through `MoneyCut.finished`.
     var isDraft: Bool = false
+    /// While a draft: the currencies whose rate was already looked at (`MoneyWords.encodeCodes`),
+    /// so reopening the cut doesn't ask them again (2026-11-02 audit). Empty once finished.
+    var reviewedRates: String = ""
     @Relationship(deleteRule: .cascade, inverse: \MoneyEntry.cut)
     var entries: [MoneyEntry]? = []
 

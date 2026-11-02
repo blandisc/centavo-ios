@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+### Security
+- **«Mi dinero» ya no se queda abierto si sales antes de Face ID:** si tocas la pestaña y regresas a «Hoy» mientras Face ID pregunta, la respuesta ya no la abre. Al bloquearse, las hojas de «Mi dinero» guardan el teclado, cierran sus avisos («¿Archivar?», «¿Descartar el corte?») y VoiceOver no lee lo que quedó debajo.
+- **Restaurar un respaldo y «Cambiar contraseña» piden Face ID o el código** de tu iPhone. Cambiar la contraseña tiene «Cancelar» y te recuerda que los respaldos que ya tienes se abren con la anterior; si escribes una contraseña que no abre el respaldo, lo dice y puedes probar otra vez.
+- **La explicación del candado dice lo que usa tu iPhone:** Face ID, Touch ID o el código, y avisa si tu iPhone no tiene código (entonces «Mi dinero» se abre sin pedir nada).
+### Added
+- **Tus ingresos en «Mi dinero»:** «Te entra al mes» bajo tus cuentas, para verlos, cambiarlos o quitarlos. Si no tienes ninguno, el corte te lo pregunta.
+### Fixed
+- **Si «Mi dinero» no abre,** ya no sugiere restaurar de entrada (eso también regresa tus gastos): primero cerrar y volver a abrir Al día.
+- **Importar desde tu Excel** dice claro que lo que está por revisar no se agrega, y «Pegar otra respuesta» pregunta antes de borrar tus correcciones.
+- **«Quitar» una cuenta en los primeros pasos** pregunta antes.
+- **Al volver a un corte a medias,** los tipos de cambio que ya revisaste siguen revisados.
 ### Fixed
 - **Tus números, revisados a fondo (auditoría del 2 de noviembre):**
   - Un tipo de cambio como «18.125» en el corte ya no se lee como 18,125, y un monto como «15000.125» ya no se vuelve 15 millones. Lo que trae más de dos decimales se pregunta.
