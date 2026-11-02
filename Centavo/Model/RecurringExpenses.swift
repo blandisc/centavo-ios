@@ -7,7 +7,7 @@ import SwiftData
 enum RecurringExpenses {
     /// Safe to call often (launch, coming back to the app): it only writes what is due.
     @discardableResult
-    static func logDue(in context: ModelContext, now: Date = .now,
+    static func logDue(in context: ModelContext, now: Date = AppClock.now,
                        calendar: Calendar = .current) throws -> Int {
         let (started, startedPlans) = try start(dueBy: now, in: context, calendar: calendar)
         var originals = try context.fetch(FetchDescriptor<Expense>(
@@ -187,7 +187,7 @@ enum RecurringExpenses {
     /// Already repeating: never before its own date, so moving the date doesn't log a copy on
     /// the same day as the original.
     static func repeatsThrough(for date: Date, rule: RepeatRule, day: Int?, wasRepeating: Bool,
-                               current: Date?, now: Date = .now, calendar: Calendar = .current) -> Date {
+                               current: Date?, now: Date = AppClock.now, calendar: Calendar = .current) -> Date {
         guard wasRepeating else {
             return RecurringSchedule.lastCharge(rule: rule, anchor: date, day: day, through: now, calendar: calendar)
         }

@@ -34,7 +34,7 @@ enum ExpenseRecorder {
         hidden: [String] = UserCatalog.notAutoAssigned,
         renames: MerchantRenames = UserCatalog.merchantRenames,
         cardRenames: MerchantRenames = UserCatalog.cardRenames,
-        now: Date = .now,
+        now: Date = AppClock.now,
         saved: ((Expense) -> Void)? = nil
     ) throws -> CaptureOutcome {
         // The amount a notice already read (`amount`) is used as is: reading its text a second
@@ -137,7 +137,7 @@ enum ExpenseRecorder {
     static func repairBankMerchants(in context: ModelContext,
                                     knownCards: [String] = UserCatalog.sourceNames,
                                     defaults: UserDefaults? = .standard,
-                                    now: Date = .now) throws -> Int {
+                                    now: Date = AppClock.now) throws -> Int {
         let cards = knownCards.joined(separator: "\n")
         let since: Date? = defaults?.string(forKey: repairedCardsKey) == cards
             ? defaults?.object(forKey: repairedUntilKey) as? Date : nil
@@ -184,7 +184,7 @@ enum ExpenseRecorder {
         primary: String = CurrencyPreference.current,
         rules: CategoryRules = UserCatalog.categoryRules,
         hidden: [String] = UserCatalog.notAutoAssigned,
-        now: Date = .now
+        now: Date = AppClock.now
     ) throws -> CaptureOutcome {
         guard let parsed = AmountParser.parse(amountText) else { return .unreadable }
         guard parsed.value != 0 else { return .empty }
@@ -213,7 +213,7 @@ enum ExpenseRecorder {
 
     /// «Borrar el último gasto»: the newest expense up to now. A fixed expense (rent, a
     /// subscription) is left out: deleting it by voice would quietly stop or skip it.
-    static func lastLogged(in context: ModelContext, now: Date = .now) throws -> Expense? {
+    static func lastLogged(in context: ModelContext, now: Date = AppClock.now) throws -> Expense? {
         var descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date <= now },
                                                   sortBy: [SortDescriptor(\.date, order: .reverse)])
         descriptor.fetchLimit = lastLoggedLookahead

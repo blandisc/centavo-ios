@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **Con la letra más grande,** la línea bajo el boleto («Llevas $X de $Y · $Z/día») pasa a dos renglones en vez de salirse de la pantalla.
 ### Changed
 - **«Ver más» de categorías** en la hoja del gasto se abre hacia abajo sin mover las que ya ves, y las demás aparecen en orden; al cerrar se desvanecen primero.
 - **Segunda auditoría de textos y animaciones:**

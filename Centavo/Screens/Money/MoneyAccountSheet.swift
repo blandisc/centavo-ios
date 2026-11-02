@@ -43,7 +43,7 @@ struct MoneyAccountSheet: View {
     /// Added after the latest cut's month: its money may have come out of another account,
     /// still shown with its balance at that cut (independent review).
     private var opensAfterLatest: Bool {
-        isNew && MoneyStore.latestCut(in: context).map { $0.month < MoneyMath.monthKey(of: .now) } == true
+        isNew && MoneyStore.latestCut(in: context).map { $0.month < MoneyMath.monthKey(of: AppClock.now) } == true
     }
     private var rateWaits: Bool { isNew && isForeign && MoneyStore.rateWaits(for: currency, in: context) }
     /// The same seven as the first time (`MoneyCurrency.offered`), and the main one if it isn't.

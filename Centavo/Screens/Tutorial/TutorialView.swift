@@ -64,7 +64,7 @@ struct TutorialView: View {
     /// When the current story started, and how long it has been held since: what has gone by is
     /// worked out from the clock (`elapsed(at:)`), so nothing here changes 20 times a second
     /// (audit 2026-11-02: the whole screen and its drawing were redone on every tick).
-    @State private var storyStart = Date.now
+    @State private var storyStart = AppClock.now
     @State private var heldBefore: Double = 0
     @State private var heldSince: Date?
     /// Held because the app left the front (locked, another app): the clock doesn't run there.
@@ -114,22 +114,22 @@ struct TutorialView: View {
         .onChange(of: advancesByItself) { restartClock() }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active, heldSince == nil {
-                heldSince = .now
+                heldSince = AppClock.now
                 heldByLeaving = true
             } else if phase == .active, heldByLeaving {
                 heldByLeaving = false
                 if !holding, let since = heldSince {
-                    heldBefore += Date.now.timeIntervalSince(since)
+                    heldBefore += AppClock.now.timeIntervalSince(since)
                     heldSince = nil
                 }
             }
         }
         .onChange(of: holding) { _, pressed in
             if pressed {
-                pressStart = .now
-                heldSince = .now
+                pressStart = AppClock.now
+                heldSince = AppClock.now
             } else if let since = heldSince {
-                heldBefore += Date.now.timeIntervalSince(since)
+                heldBefore += AppClock.now.timeIntervalSince(since)
                 heldSince = nil
             }
         }
@@ -149,7 +149,7 @@ struct TutorialView: View {
                         // One linear animation to the end, stopped where it is while held (audit
                         // 2026-11-02: a 30 fps clock redrew it the whole story). A new clock is a
                         // new bar.
-                        RunningStoryBar(now: StoryTiming.progress(elapsed: elapsed(at: .now),
+                        RunningStoryBar(now: StoryTiming.progress(elapsed: elapsed(at: AppClock.now),
                                                                   duration: story.duration),
                                         duration: story.duration, paused: heldSince != nil)
                             .id(storyStart)
@@ -244,9 +244,9 @@ struct TutorialView: View {
 
     /// The new story's clock starts now, already held if a finger is down.
     private func restartClock() {
-        storyStart = .now
+        storyStart = AppClock.now
         heldBefore = 0
-        heldSince = holding ? .now : nil
+        heldSince = holding ? AppClock.now : nil
     }
 
     private func tap(_ target: Int) {
@@ -268,7 +268,7 @@ struct TutorialView: View {
     private func run() async {
         guard advancesByItself else { return }
         while !Task.isCancelled {
-            let left = story.duration - elapsed(at: .now)
+            let left = story.duration - elapsed(at: AppClock.now)
             if heldSince == nil && left <= 0 {
                 if index < stories.count - 1 { go(index + 1) }
                 return
@@ -286,7 +286,7 @@ struct TutorialView: View {
             .updating($holding) { _, state, _ in state = true }
             .updating($drag) { value, state, _ in state = value.translation.height }
             .onEnded { value in
-                let held = pressStart.map { Date.now.timeIntervalSince($0) } ?? 0
+                let held = pressStart.map { AppClock.now.timeIntervalSince($0) } ?? 0
                 pressStart = nil
                 let moved = hypot(value.translation.width, value.translation.height)
                 if value.translation.height > Theme.Size.tutorialCloseDrag {

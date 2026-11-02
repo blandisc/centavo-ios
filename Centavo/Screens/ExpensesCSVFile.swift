@@ -13,7 +13,7 @@ struct ExpensesCSVFile: Transferable {
 
     var text: String { CSVExporter.csv(from: records) }
 
-    init(expenses: [Expense], primaryCurrency: String, now: Date = .now) {
+    init(expenses: [Expense], primaryCurrency: String, now: Date = AppClock.now) {
         records = expenses.map { expense in
             ExpenseRecord(
                 date: expense.date,

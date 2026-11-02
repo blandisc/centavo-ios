@@ -419,7 +419,7 @@ enum CompanionDiary {
         logger.notice("\(line, privacy: .public)")
         guard let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
             .appending(path: "guia-flotante.log") else { return }
-        let stamp = Date.now.formatted(.iso8601)
+        let stamp = AppClock.now.formatted(.iso8601)
         let old = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
         let lines = (old.split(separator: "\n").map(String.init) + ["\(stamp) \(line)"]).suffix(200)
         try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)

@@ -62,13 +62,13 @@ enum DailyBackup {
     static var lastFailure: Date? { UserDefaults.standard.object(forKey: failedKey) as? Date }
 
     /// Three days without a backup (or none yet, once it's set up) is worth a line.
-    static func isOverdue(now: Date = .now) -> Bool {
+    static func isOverdue(now: Date = AppClock.now) -> Bool {
         guard let lastBackup else { return true }
         return now.timeIntervalSince(lastBackup) > 3 * 24 * 60 * 60
     }
 
     /// What «Hoy» says, quietly, once the backup is set up: nothing while it's fine.
-    static func warning(now: Date = .now) -> String? {
+    static func warning(now: Date = AppClock.now) -> String? {
         guard isSetUp else { return nil }
         if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
             return "El último respaldo no se pudo hacer. Revísalo en Más › Ajustes › Respaldo diario."
@@ -147,7 +147,7 @@ enum DailyBackup {
     /// rounds of PBKDF2), writing it and reading it back run apart, so «Respaldar ahora» doesn't
     /// freeze the screen (2026-11-02, second audit).
     @MainActor @discardableResult
-    static func runNow(in context: ModelContext, now: Date = .now) async throws -> Date {
+    static func runNow(in context: ModelContext, now: Date = AppClock.now) async throws -> Date {
         do {
             let password = try BackupPassword.current()
             let payload: BackupPayload
@@ -251,7 +251,7 @@ enum DailyBackup {
     /// it: the restore would delete it with no copy (independent review). So once written, the
     /// expenses are counted again and, if any came, the copy is taken again.
     @MainActor
-    static func safetyCopy(in context: ModelContext, password: String, now: Date = .now) async throws {
+    static func safetyCopy(in context: ModelContext, password: String, now: Date = AppClock.now) async throws {
         for _ in 0..<safetyAttempts {
             let payload = try await writeSafetyCopy(in: context, password: password, now: now)
             if try expensesMark(in: context) == mark(of: payload) { return }
@@ -287,7 +287,7 @@ enum DailyBackup {
         // file is set aside, never deleted, if the restore needs a new one).
         let payload = try (try? snapshot(in: context, now: now, drafts: true))
             ?? snapshot(in: context, now: now, moneyContainer: nil)
-        let name = BackupRetention.safetyName(for: .now)
+        let name = BackupRetention.safetyName(for: AppClock.now)
         try await apart {
             let sealed = try BackupSeal.seal(payload, password: password)
             var saved = false
@@ -359,12 +359,12 @@ enum DailyBackup {
 
     /// `drafts`: a cut left half-done goes too (only the copy before a restore).
     @MainActor
-    static func snapshot(in context: ModelContext, now: Date = .now, drafts: Bool = false) throws -> BackupPayload {
+    static func snapshot(in context: ModelContext, now: Date = AppClock.now, drafts: Bool = false) throws -> BackupPayload {
         try snapshot(in: context, now: now, moneyContainer: moneyContainer(), drafts: drafts)
     }
 
     @MainActor
-    static func snapshot(in context: ModelContext, now: Date = .now,
+    static func snapshot(in context: ModelContext, now: Date = AppClock.now,
                          moneyContainer: ModelContainer?, drafts: Bool = false) throws -> BackupPayload {
         let expenses = try context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)]))
         return BackupPayload(createdAt: now, writtenBy: AppVersion.line,
@@ -553,7 +553,7 @@ enum DailyBackup {
     /// dinero» goes back to what it was, so «nothing changed» stays true. The safety copy taken
     /// before covers both anyway.
     @MainActor
-    static func restore(_ payload: BackupPayload, into container: ModelContainer, now: Date = .now) throws {
+    static func restore(_ payload: BackupPayload, into container: ModelContainer, now: Date = AppClock.now) throws {
         // A file without «Mi dinero» never needs it open.
         guard payload.money != nil else { return try restore(payload, into: container, money: nil) }
         // Before anything changes: a backup that can't be turned into expenses, or whose «Mi
@@ -639,7 +639,7 @@ enum DailyBackup {
     /// next to it: never deleted, and a new store can be made in its place. All or nothing: a
     /// journal left behind would be read into the new store.
     @discardableResult
-    static func setAsideMoneyFiles(at url: URL, now: Date = .now) throws -> [(from: URL, to: URL)] {
+    static func setAsideMoneyFiles(at url: URL, now: Date = AppClock.now) throws -> [(from: URL, to: URL)] {
         let manager = FileManager.default
         let folder = url.deletingLastPathComponent()
         var base = url.lastPathComponent + ".danado-" + BackupRetention.stamp(now, withTime: true)

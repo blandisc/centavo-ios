@@ -67,7 +67,7 @@ struct FixedItem: Identifiable {
 
 /// What the fixed expenses add up to, for the budget and for «Gastos fijos».
 enum FixedOutlook {
-    static func items(originals: [Expense], plans: [FixedPlan], now: Date = .now,
+    static func items(originals: [Expense], plans: [FixedPlan], now: Date = AppClock.now,
                       calendar: Calendar = .current) -> [FixedItem] {
         let running = originals.filter { $0.repeatsMonthly == true }.map { original in
             let rule = original.rule
@@ -108,7 +108,7 @@ enum FixedOutlook {
 
     /// What is set apart from «Hoy puedes gastar»: the main currency's charges still to come
     /// this month. Other currencies are not added to it, as everywhere else.
-    static func reserved(originals: [Expense], plans: [FixedPlan], primary: String, now: Date = .now,
+    static func reserved(originals: [Expense], plans: [FixedPlan], primary: String, now: Date = AppClock.now,
                          calendar: Calendar = .current) -> Decimal {
         items(originals: originals, plans: plans, now: now, calendar: calendar)
             .filter { CurrencyResolver.isoCode(for: $0.currency, primary: primary) == primary }

@@ -51,7 +51,7 @@ enum WidgetBridge {
     }
 
     /// Writes this month as it stands now and reloads the widgets.
-    @MainActor static func refresh(now: Date = .now) {
+    @MainActor static func refresh(now: Date = AppClock.now) {
         #if DEBUG
         // `-centavo-widget-estado …`: a fixed month to look at the widgets with.
         if let sample = DemoData.widgetSample {

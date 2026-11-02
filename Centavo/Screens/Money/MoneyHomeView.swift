@@ -172,7 +172,7 @@ struct MoneyHomeView: View {
         let worth = latest?.worthToday(accounts) ?? NetWorth()
         let currency = latest?.mainCurrency ?? main
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            MoneyHead(date: .now, cutNumber: cuts.count)
+            MoneyHead(date: AppClock.now, cutNumber: cuts.count)
                 .padding(.bottom, Theme.Space.l)
             Text("Patrimonio").ticketCaption(strong: true)
             // Whole pesos, like «Hoy puedes gastar»: the rows below keep the cents.

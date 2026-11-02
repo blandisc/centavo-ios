@@ -42,7 +42,7 @@ enum MoneyDemo {
         guard ProcessInfo.processInfo.arguments.contains("-centavo-dinero-demo") else { return container }
         let context = ModelContext(container)
         let calendar = Calendar.current
-        let lastMonth = calendar.date(byAdding: .month, value: -1, to: .now) ?? .now
+        let lastMonth = calendar.date(byAdding: .month, value: -1, to: AppClock.now) ?? AppClock.now
 
         let rows: [(String, MoneyKind, String, Decimal?, Decimal, Decimal)] = [
             ("Nu cajita", .account, "MXN", Decimal(string: "10.5"), 181_900, 185_000),
@@ -57,7 +57,7 @@ enum MoneyDemo {
         ]
         let before = MoneyCut(month: MoneyMath.monthKey(of: lastMonth), date: lastMonth, mainCurrency: "MXN", isDraft: false)
         before.rateTable = ["USD": 20]
-        let now = MoneyCut(month: MoneyMath.monthKey(of: .now), date: .now, mainCurrency: "MXN", isDraft: false)
+        let now = MoneyCut(month: MoneyMath.monthKey(of: AppClock.now), date: AppClock.now, mainCurrency: "MXN", isDraft: false)
         now.rateTable = ["USD": 19]
         context.insert(before)
         context.insert(now)

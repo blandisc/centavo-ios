@@ -25,7 +25,7 @@ struct BudgetPage: View {
     var entrance = Entrance()
     let onSetBudget: () -> Void
     var currency = CurrencyPreference.fallback
-    var now = Date.now
+    var now = AppClock.now
     /// Which half to draw. On the main screen the bar stays put over the carousel and only
     /// «En qué se va» swipes with the calendar (owner, 2026-10-29: «que lo que cambie sea la
     /// parte de abajo»); a budget with nothing spent yet draws it whole.

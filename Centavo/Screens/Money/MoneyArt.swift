@@ -28,11 +28,11 @@ struct MoneyLoopClock<Content: View>: View {
         // Shown still, it stays on its last frame for good: turning low power off later never
         // jumps into the middle of a turn. Gone still while turning (low power on, then off),
         // the same: once at rest it stays at rest (second audit, 2026-11-02).
-        .onAppear { if start == nil { if still { done = true } else { start = .now } } }
+        .onAppear { if start == nil { if still { done = true } else { start = AppClock.now } } }
         .onChange(of: still) { _, now in if now { done = true } }
         .task(id: start) {
             guard let start else { return }
-            let left = runs - Date.now.timeIntervalSince(start)
+            let left = runs - AppClock.now.timeIntervalSince(start)
             if left > 0 { try? await Task.sleep(for: .seconds(left)) }
             guard !Task.isCancelled else { return }
             done = true
@@ -393,7 +393,7 @@ struct MoneyFaceIDArt: View {
 /// The dashed ring turns a little and closes in brass, like a ticket completed; a faint glow,
 /// the check in one stroke, and eight short rays that show and go. Plays once and stays.
 struct MoneySuccessArt: View {
-    @State private var start = Date.now
+    @State private var start = AppClock.now
     @State private var played = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -433,7 +433,7 @@ struct MoneySuccessArt: View {
             }
         }
         .frame(width: Theme.Size.moneySuccessArt, height: Theme.Size.moneySuccessArt)
-        .onAppear { start = .now }
+        .onAppear { start = AppClock.now }
         .task {
             try? await Task.sleep(for: .seconds(Theme.Motion.Money.success))
             played = true
@@ -451,7 +451,7 @@ struct PlayOnceClock<Content: View>: View {
     @ViewBuilder let content: (Double) -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var start = Date.now
+    @State private var start = AppClock.now
     @State private var played = false
 
     private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) || played }
@@ -460,7 +460,7 @@ struct PlayOnceClock<Content: View>: View {
         TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still)) { context in
             content(still ? until : min(context.date.timeIntervalSince(start), until))
         }
-        .onAppear { start = .now }
+        .onAppear { start = AppClock.now }
         // Gone still halfway (low power on), it stays at its end: turning it off again never
         // jumps back into the middle (second audit, 2026-11-02).
         .onChange(of: MotionPolicy.isStill(reduceMotion: reduceMotion)) { _, now in if now { played = true } }

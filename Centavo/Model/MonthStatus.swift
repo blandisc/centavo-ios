@@ -17,7 +17,7 @@ enum MonthStatus {
     /// or "Te pasaste del presupuesto por $230.00." The same figures as the screen: what is
     /// left once the fixed expenses still to come are set apart, and today's «Hoy puedes gastar».
     /// `nil` with no budget: nothing to measure against.
-    static func budgetSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
+    static func budgetSentence(in context: ModelContext, budget: Decimal?, now: Date = AppClock.now,
                                primary: String = primaryCurrency) throws -> String? {
         let rows = try monthRows(in: context, now: now)
         let summary = MonthSummarizer.summarize(rows.map(\.asAmount), inMonthOf: now, primary: primary)
@@ -67,7 +67,7 @@ enum MonthStatus {
     /// «¿Cuánto puedo gastar hoy?»: "Hoy puedes gastar $290." The screen's big figure, out loud,
     /// with nothing else; "Hoy ya te pasaste por $120." or "Te pasaste del presupuesto por
     /// $230.00." past it, and how to get there with no budget.
-    static func todaySentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
+    static func todaySentence(in context: ModelContext, budget: Decimal?, now: Date = AppClock.now,
                               primary: String = primaryCurrency) throws -> String {
         let rows = try monthRows(in: context, now: now)
         let summary = MonthSummarizer.summarize(rows.map(\.asAmount), inMonthOf: now, primary: primary)
@@ -84,7 +84,7 @@ enum MonthStatus {
     }
 
     /// "Llevas $2,366.00 este mes, más USD 24.99 en otra moneda. Te quedan $5,634.00 del presupuesto. Hoy…"
-    static func totalSentence(in context: ModelContext, budget: Decimal?, now: Date = .now,
+    static func totalSentence(in context: ModelContext, budget: Decimal?, now: Date = AppClock.now,
                               primary: String = primaryCurrency) throws -> String {
         let summary = try summarize(in: context, now: now, primary: primary)
         var sentence = "Llevas \(money(summary.primary.amount, summary.primary)) este mes"
@@ -103,7 +103,7 @@ enum MonthStatus {
 
     /// "Llevas $1,240.00 en Café este mes." The category's share of the month's total, in the
     /// main currency like everything else on the screen.
-    static func categorySentence(_ category: String, in context: ModelContext, now: Date = .now,
+    static func categorySentence(_ category: String, in context: ModelContext, now: Date = AppClock.now,
                                  primary: String = primaryCurrency) throws -> String {
         let summary = try summarize(in: context, now: now, primary: primary)
         let wanted = UserCatalog.fold(category)

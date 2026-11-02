@@ -12,7 +12,7 @@ struct BackupIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard case .success(let container) = Store.opened else {
             // A night without a backup is said in «Hoy», whatever the reason.
-            UserDefaults.standard.set(Date.now, forKey: DailyBackup.failedKey)
+            UserDefaults.standard.set(AppClock.now, forKey: DailyBackup.failedKey)
             throw CaptureError.storeUnavailable
         }
         try await DailyBackup.runNow(in: container.mainContext)

@@ -15,7 +15,7 @@ struct BudgetSheet: View {
     let currency: String
     /// This month measured against a budget with a rule (`TodayBudget`), so the preview
     /// matches the main screen.
-    var pace: (Decimal, AllowanceMode) -> BudgetPace? = { BudgetPace(budget: $0, spent: 0, mode: $1, on: .now) }
+    var pace: (Decimal, AllowanceMode) -> BudgetPace? = { BudgetPace(budget: $0, spent: 0, mode: $1, on: AppClock.now) }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

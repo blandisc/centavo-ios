@@ -28,7 +28,7 @@ struct MonthCarousel: View {
     var currency = CurrencyPreference.fallback
     /// At the top of the first page: the month's barcode.
     var budgetHeader: AnyView?
-    var now = Date.now
+    var now = AppClock.now
 
     /// Where the pages stand; the swipe over the whole top of the screen moves it.
     let motion: CarouselMotion

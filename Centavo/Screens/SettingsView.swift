@@ -140,8 +140,8 @@ struct SettingsView: View {
     private var backupText: String {
         guard DailyBackup.isSetUp else { return "Sin configurar" }
         guard let last = DailyBackup.lastBackup else { return "Sin respaldo" }
-        if Calendar.current.isDateInToday(last) { return "Hoy" }
-        return last.formatted(.relative(presentation: .named).locale(Locale(identifier: "es_MX"))).capitalized
+        if AppClock.isToday(last) { return "Hoy" }
+        return AppClock.relative(last, locale: Locale(identifier: "es_MX")).capitalized
     }
 
     private var healthText: String {
@@ -163,7 +163,7 @@ enum WalletWatch {
     /// (owner, 2026-11-01). The main screen takes the later of this and the newest capture.
     static let lastArrivalKey = "walletUltimaLlegada"
 
-    static func noteArrival(_ date: Date = .now) {
+    static func noteArrival(_ date: Date = AppClock.now) {
         let defaults = UserDefaults.standard
         let known = defaults.double(forKey: lastArrivalKey)
         if date.timeIntervalSinceReferenceDate > known {

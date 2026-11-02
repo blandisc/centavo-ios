@@ -55,7 +55,7 @@ struct ExpenseListView: View {
     @State private var showingOnboarding = false
     /// "Now" for the whole screen. Refreshed when the app comes back and when the clock
     /// jumps (midnight, a time-zone change), so the month and "today" never go stale.
-    @State private var now = Date.now
+    @State private var now = AppClock.now
     /// Months back from this one that are on screen: 0 is this month, -1 last month.
     @State private var monthOffset = 0
     @State private var pendingDelete: Expense?
@@ -874,7 +874,7 @@ private struct Feedback: ViewModifier {
         content
             .sensoryFeedback(.success, trigger: expenseCount) { old, new in
                 // From 0 is the first count at launch, not a payment landing now.
-                old > 0 && new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
+                old > 0 && new > old && (newest.map { AppClock.now.timeIntervalSince($0) < 120 } ?? false)
             }
     }
 }
@@ -949,7 +949,7 @@ private struct KeepsTime: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { now = .now }
+                if phase == .active { now = AppClock.now }
                 // A budget or a fixed expense changed in «Más» also changes the widgets.
                 if phase == .background { WidgetBridge.refresh() }
             }
@@ -962,7 +962,7 @@ private struct KeepsTime: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
-                now = .now
+                now = AppClock.now
             }
     }
 }
@@ -1051,7 +1051,7 @@ private extension ExpenseListView {
     /// The same expense again, now: the coffee of every morning without opening the sheet.
     private func logAgain(_ expense: Expense) {
         let copy = Expense(amount: expense.amount, currencyMarker: expense.currencyMarker,
-                           merchant: expense.merchant, card: expense.card, date: .now,
+                           merchant: expense.merchant, card: expense.card, date: AppClock.now,
                            category: expense.category)
         copy.displayName = expense.displayName
         context.insert(copy)
@@ -1482,8 +1482,8 @@ private struct EmptyTicket: View {
     /// The month's days, empty and dashed; today outlined, breathing a few times, then at rest.
     private var monthStrip: some View {
         let calendar = Calendar.current
-        let days = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
-        let today = calendar.component(.day, from: .now)
+        let days = calendar.range(of: .day, in: .month, for: AppClock.now)?.count ?? 30
+        let today = calendar.component(.day, from: AppClock.now)
         return HStack(spacing: Theme.Size.monthBarCellGap) {
             ForEach(1...days, id: \.self) { day in
                 RoundedRectangle(cornerRadius: Theme.Radius.bar)
@@ -1689,11 +1689,11 @@ private struct LedgerRow: View {
     let container = try! ModelContainer(for: Expense.self, configurations: .init(isStoredInMemoryOnly: true))
     let context = container.mainContext
     context.insert(Expense(amount: 89, currencyMarker: "$", merchant: "Oxxo",
-                           card: "BBVA", date: .now.addingTimeInterval(-86_400 * 4), category: "Despensa"))
+                           card: "BBVA", date: AppClock.now.addingTimeInterval(-86_400 * 4), category: "Despensa"))
     context.insert(Expense(amount: 1234.5, currencyMarker: "$", merchant: "Liverpool",
-                           card: "BBVA", date: .now.addingTimeInterval(-86_400 * 3), category: "Ropa"))
+                           card: "BBVA", date: AppClock.now.addingTimeInterval(-86_400 * 3), category: "Ropa"))
     context.insert(Expense(amount: -230, currencyMarker: "$", merchant: "Liverpool",
-                           date: .now.addingTimeInterval(-86_400), category: "Ropa"))
+                           date: AppClock.now.addingTimeInterval(-86_400), category: "Ropa"))
     context.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam", card: "BBVA"))
     return ExpenseListView().modelContainer(container).ticketPreview()
 }

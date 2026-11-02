@@ -66,8 +66,8 @@ struct WelcomeDemo: View {
     /// with each payment; the days to come, empty.
     private var monthStrip: some View {
         let calendar = Calendar.current
-        let days = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
-        let today = calendar.component(.day, from: .now)
+        let days = calendar.range(of: .day, in: .month, for: AppClock.now)?.count ?? 30
+        let today = calendar.component(.day, from: AppClock.now)
         return HStack(spacing: Theme.Size.monthBarCellGap) {
             ForEach(1...days, id: \.self) { day in
                 RoundedRectangle(cornerRadius: Theme.Radius.bar)
@@ -290,7 +290,7 @@ struct WelcomeFixedCalendar: View {
     @Binding var chosen: Int
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let days = Calendar.current.range(of: .day, in: .month, for: .now)?.count ?? 30
+    private let days = Calendar.current.range(of: .day, in: .month, for: AppClock.now)?.count ?? 30
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.xxs), count: 7)
 
     var body: some View {
