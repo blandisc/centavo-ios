@@ -1212,34 +1212,43 @@ private struct HeroTotal: View {
     }
 }
 
-/// The first screen with nothing in it: one clear first step (write an expense down), and
-/// the two that make the app work by itself (a budget, the Wallet automation).
+/// The first screen with nothing in it (redone 2026-11-01): one clear first step (write an
+/// expense down), and the two that make the app work by itself, each with its drawing. It plays
+/// once when it appears — the ghost row prints, then the budget card, then Wallet's — and stays
+/// still, so it never outshines «Anotar un gasto». With a budget set, the boleto is already above
+/// and only Wallet's card stays.
 private struct EmptyTicket: View {
     let hasBudget: Bool
     let onAdd: () -> Void
     let onBudget: () -> Void
     let onSetup: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var breathe = false
+
+    private typealias Empty = Theme.Motion.Money.Empty
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.ml) {
-            Text("Sin gastos todavía")
-                .font(.ticket(.bodyStrong))
-                .tracking(Theme.Tracking.caption)
-                .textCase(.uppercase)
-            Text("Conecta Wallet y cada compra se anotará sola. Lo demás, anótalo tú.")
-                .font(.ticket(.callout))
-                .lineSpacing(Theme.Space.xxs)
-                .foregroundStyle(Theme.muted)
-            Button(action: onAdd) {
-                PrimaryButtonLabel("Anotar un gasto", systemImage: "plus")
-            }
-            .ticketProminent()
-            .accessibilityIdentifier("vacio-anotar")
-            .padding(.top, Theme.Space.xs)
-            // Side by side when they fit; one under the other on a narrow phone or large text.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Space.s) { emptyChips }
-                VStack(alignment: .leading, spacing: Theme.Space.s) { emptyChips }
+        PlayOnceClock(until: Empty.end) { t in
+            VStack(alignment: .leading, spacing: Theme.Space.ml) {
+                Text("Tu mes empieza aquí")
+                    .font(.ticket(.bodyStrong))
+                    .tracking(Theme.Tracking.caption)
+                    .textCase(.uppercase)
+                if !hasBudget { monthStrip }
+                ghostRow(moneySpan(t, Empty.ghost.lowerBound, Empty.ghost.upperBound))
+                Text("Anota uno o conecta Wallet y cada compra se anotará sola.")
+                    .font(.ticket(.callout))
+                    .lineSpacing(Theme.Space.xxs)
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(action: onAdd) {
+                    PrimaryButtonLabel("Anotar un gasto", systemImage: "plus")
+                }
+                .ticketProminent()
+                .accessibilityIdentifier("vacio-anotar")
+                .padding(.top, Theme.Space.xs)
+                steps(t)
             }
         }
         .padding(Theme.Space.xlx)
@@ -1247,11 +1256,123 @@ private struct EmptyTicket: View {
         .ticketOutline(.emphasis)
     }
 
-    @ViewBuilder private var emptyChips: some View {
-        if !hasBudget {
-            TicketChip("Fijar presupuesto", identifier: "vacio-presupuesto", action: onBudget)
+    /// The month's days, empty and dashed; today outlined, breathing a few times, then at rest.
+    private var monthStrip: some View {
+        let calendar = Calendar.current
+        let days = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
+        let today = calendar.component(.day, from: .now)
+        return HStack(spacing: Theme.Size.monthBarCellGap) {
+            ForEach(1...days, id: \.self) { day in
+                RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                    .strokeBorder(day == today ? Theme.ink : Theme.hairline,
+                                  style: StrokeStyle(lineWidth: day == today ? Theme.Stroke.emphasis : Theme.Stroke.hairline,
+                                                     dash: day == today ? [] : Theme.Dash.dotted))
+                    .opacity(day == today && breathe ? Theme.Opacity.unselected : Theme.Opacity.visible)
+            }
         }
-        TicketChip("Conectar Wallet", identifier: "vacio-wallet", action: onSetup)
+        .frame(height: Theme.Size.emptyStrip)
+        .accessibilityHidden(true)
+        .onAppear {
+            guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { return }
+            withAnimation(Empty.breath.repeatCount(Empty.breaths * 2, autoreverses: true)) { breathe = true }
+            Task {
+                try? await Task.sleep(for: .seconds(Double(Empty.breaths * 2) * Empty.breathSeconds))
+                breathe = false
+            }
+        }
+    }
+
+    /// Where the first expense will land: printed once, then faint.
+    private func ghostRow(_ shown: Double) -> some View {
+        let lift = Theme.Size.entranceRise * CGFloat(1 - shown)
+        return HStack(spacing: Theme.Space.m) {
+            RoundedRectangle(cornerRadius: Theme.Radius.control)
+                .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.dotted))
+                .frame(width: Theme.Size.rowTile, height: Theme.Size.rowTile)
+            Text("Tu primer gasto")
+                .font(.ticket(.bodyMedium))
+                .tracking(Theme.Tracking.name)
+                .textCase(.uppercase)
+            Spacer(minLength: Theme.Space.s)
+            Text("$0.00").font(.ticket(.body)).monospacedDigit()
+        }
+        .foregroundStyle(Theme.faint)
+        .padding(.top, Theme.Space.s)
+        .overlay(alignment: .top) { Perforation() }
+        .opacity(Theme.Opacity.paceBehind * shown)
+        .offset(y: -lift)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private func steps(_ t: Double) -> some View {
+        let wallet = moneySpan(t, Empty.wallet.lowerBound, Empty.wallet.upperBound)
+        if hasBudget {
+            EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay, solo.",
+                          progress: wallet, wide: true, identifier: "vacio-wallet", action: onSetup)
+        } else {
+            let budget = moneySpan(t, Empty.budget.lowerBound, Empty.budget.upperBound)
+            // Side by side when they fit; one under the other on a narrow phone or large text.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: Theme.Space.s) {
+                    budgetCard(budget, wide: false)
+                    walletCard(wallet, wide: false)
+                }
+                VStack(spacing: Theme.Space.s) {
+                    budgetCard(budget, wide: true)
+                    walletCard(wallet, wide: true)
+                }
+            }
+        }
+    }
+
+    private func budgetCard(_ progress: Double, wide: Bool) -> some View {
+        EmptyStepCard(kind: .budget, title: "Fijar presupuesto", detail: "Para saber cuánto puedes gastar al día.",
+                      progress: progress, wide: wide, identifier: "vacio-presupuesto", action: onBudget)
+    }
+
+    private func walletCard(_ progress: Double, wide: Bool) -> some View {
+        EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay, solo.",
+                      progress: progress, wide: wide, identifier: "vacio-wallet", action: onSetup)
+    }
+}
+
+/// One of the empty screen's two steps: its drawing, its name and what it's for.
+private struct EmptyStepCard: View {
+    let kind: EmptyStepArt.Kind
+    let title: String
+    let detail: String
+    let progress: Double
+    let wide: Bool
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            let layout = wide ? AnyLayout(HStackLayout(spacing: Theme.Space.m))
+                              : AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.xs))
+            layout {
+                EmptyStepArt(kind: kind, progress: progress)
+                    .frame(width: wide ? Theme.Size.moneyExcelArt : nil, height: Theme.Size.emptyStepArt)
+                    .frame(maxWidth: wide ? nil : .infinity)
+                    .background(Theme.ink.opacity(Theme.Opacity.moneyArtWash), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    Text(title).font(.ticket(.bodyStrong)).foregroundStyle(Theme.brass)
+                    Text(detail).font(.ticket(.hint)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if wide { Spacer(minLength: Theme.Space.none) }
+            }
+            .padding(Theme.Space.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .strokeBorder(Theme.hairline, lineWidth: Theme.Stroke.hairline)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
     }
 }
 

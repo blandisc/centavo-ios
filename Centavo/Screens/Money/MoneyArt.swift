@@ -407,3 +407,89 @@ struct MoneySuccessArt: View {
         .accessibilityLabel("Listo")
     }
 }
+
+// MARK: - The empty «Hoy» (2026-11-01)
+
+/// A clock that plays once from when the view appears: `seconds` since, then still at `until`.
+/// Still from the start (at `until`) with reduced motion, Low Power Mode or in the UI tests.
+struct PlayOnceClock<Content: View>: View {
+    let until: Double
+    @ViewBuilder let content: (Double) -> Content
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var start = Date.now
+    @State private var played = false
+
+    private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) || played }
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still)) { context in
+            content(still ? until : min(context.date.timeIntervalSince(start), until))
+        }
+        .onAppear { start = .now }
+        .task {
+            try? await Task.sleep(for: .seconds(until))
+            played = true
+        }
+    }
+}
+
+/// The two first steps of an empty «Hoy», drawn: `progress` 0…1 plays them; 1 is their resting
+/// look (and what reduced motion shows).
+struct EmptyStepArt: View {
+    enum Kind { case budget, wallet }
+    let kind: Kind
+    let progress: Double
+
+    var body: some View {
+        Canvas { context, size in
+            var c = context
+            fit(&c, size, design: CGSize(width: 120, height: 52))
+            switch kind {
+            case .budget: budget(&c)
+            case .wallet: wallet(&c)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// The boleto's cells fill, then a dashed line splits them evenly: a budget per day.
+    private func budget(_ c: inout GraphicsContext) {
+        for i in 0..<7 {
+            let x = 14 + CGFloat(i) * 13
+            c.stroke(cell(x, 10, 9, 32), with: .color(Theme.outline), style: stroke(Theme.outline))
+            let fill = moneySpan(progress, 0.05 + Double(i) * 0.06, 0.45 + Double(i) * 0.06)
+            let h = 20 * fill
+            c.fill(cell(x, 42 - h, 9, h), with: .color(Theme.brass))
+        }
+        var line = Path(); line.move(to: CGPoint(x: 10, y: 22)); line.addLine(to: CGPoint(x: 110, y: 22))
+        c.stroke(line.trimmedPath(from: 0, to: moneySpan(progress, 0.7, 1)), with: .color(Theme.brass),
+                 style: stroke(Theme.brass, dash: Geo.dash))
+    }
+
+    /// The phone pays (two rings that go), a line of light runs, the payment prints on the ticket.
+    private func wallet(_ c: inout GraphicsContext) {
+        c.stroke(Path(roundedRect: CGRect(x: 14, y: 10, width: 20, height: 32), cornerRadius: 4),
+                 with: .color(Theme.outline), style: stroke(Theme.outline))
+        for (i, delay) in [0.0, 0.12].enumerated() {
+            let ring = moneySpan(progress, delay, delay + 0.4)
+            if ring > 0 && ring < 1 {
+                let r = 6 + CGFloat(i) * 5 + 8 * CGFloat(ring)
+                c.stroke(Path(ellipseIn: CGRect(x: 24 - r, y: 26 - r, width: r * 2, height: r * 2)),
+                         with: .color(Theme.brass.opacity(1 - ring)), style: stroke(Theme.brass))
+            }
+        }
+        var link = Path(); link.move(to: CGPoint(x: 38, y: 26)); link.addLine(to: CGPoint(x: 76, y: 26))
+        c.stroke(link, with: .color(Theme.outline), style: stroke(Theme.outline, dash: Geo.dash))
+        c.stroke(link.trimmedPath(from: 0, to: moneySpan(progress, 0.35, 0.7)), with: .color(Theme.brass),
+                 style: stroke(Theme.brass, Geo.line))
+        c.stroke(Path(roundedRect: CGRect(x: 80, y: 10, width: 28, height: 32), cornerRadius: 3),
+                 with: .color(Theme.outline), style: stroke(Theme.outline, dash: Geo.dash))
+        let printed = moneySpan(progress, 0.7, 1)
+        var row = c
+        row.opacity = printed
+        row.translateBy(x: 0, y: -4 * (1 - printed))
+        row.fill(Path(roundedRect: CGRect(x: 85, y: 20, width: 18, height: 4), cornerRadius: 1.5), with: .color(Theme.brass))
+        row.fill(Path(roundedRect: CGRect(x: 85, y: 28, width: 12, height: 3), cornerRadius: 1.5), with: .color(Theme.outline))
+    }
+}
