@@ -165,7 +165,8 @@ final class RecurringExpensesTests: XCTestCase {
         XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(11, 3)), 1)
         let original = try XCTUnwrap(all().first)
         XCTAssertEqual(original.repeatsMonthly, true)
-        XCTAssertEqual(original.date, at(11, 3))
+        // Its own fraction of a millisecond (the tie-break between devices), never more.
+        XCTAssertEqual(original.date.timeIntervalSince1970, at(11, 3).timeIntervalSince1970, accuracy: 0.001)
         XCTAssertTrue(FixedPlan.saved.isEmpty, "El plan ya empezó")
     }
 
