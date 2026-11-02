@@ -34,6 +34,17 @@ public enum RecurringSchedule {
         return dates
     }
 
+    /// The last charge of `rule` that already came by `through`: the anchor itself if none
+    /// since. An expense marked as fixed after the fact repeats from here, so a charge already
+    /// lived isn't logged again, and this month's still to come is (2026-11-02, second audit:
+    /// Netflix of Oct 25 marked on Nov 10 skipped Nov 25 when it started from Nov 10).
+    public static func lastCharge(rule: RepeatRule, anchor: Date, day: Int? = nil, through: Date,
+                                  calendar: Calendar = .current) -> Date {
+        guard through > anchor else { return anchor }
+        return dates(rule: rule, anchor: anchor, day: day, after: anchor, through: through, calendar: calendar).last
+            ?? anchor
+    }
+
     /// Where a fixed expense set up today on `day` of the month starts: this month if that
     /// day already came, last month otherwise, so this month's copy logs itself when the day
     /// arrives and nothing is ever dated in the future.

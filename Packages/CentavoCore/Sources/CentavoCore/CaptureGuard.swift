@@ -6,12 +6,19 @@ public struct RecentCapture: Equatable, Sendable {
     public var merchant: String
     public var card: String?
     public var date: Date
+    /// The currency it was saved in («MXN»), when known.
+    public var currency: String?
+    /// It came from a Wallet notification («Notificación», iOS 27), not from «Transacción».
+    public var fromNotice: Bool
 
-    public init(amount: Decimal, merchant: String, card: String?, date: Date) {
+    public init(amount: Decimal, merchant: String, card: String?, date: Date,
+                currency: String? = nil, fromNotice: Bool = false) {
         self.amount = amount
         self.merchant = merchant
         self.card = card
         self.date = date
+        self.currency = currency
+        self.fromNotice = fromNotice
     }
 }
 
@@ -32,14 +39,24 @@ public enum CaptureGuard {
     /// How close two identical payments must be to count as one.
     public static let duplicateWindow: TimeInterval = 5 * 60
 
+    /// How close the same payment arrives through both automations («Transacción» and
+    /// «Notificación»), each with its own text («OXXO ROBLE MTY» and «Oxxo», «Amex» and
+    /// «American Express México»): only the amount and currency are compared (2026-11-02).
+    public static let otherSourceWindow: TimeInterval = 2 * 60
+
     public static func check(amount: Decimal, merchant: String, card: String?,
-                             at date: Date, recent: [RecentCapture]) -> Verdict {
+                             at date: Date, recent: [RecentCapture],
+                             currency: String? = nil, fromNotice: Bool = false) -> Verdict {
         if amount == 0 { return .empty }
         let isRepeat = recent.contains { previous in
-            previous.amount == amount
-                && key(previous.merchant) == key(merchant)
+            guard previous.amount == amount else { return false }
+            let apart = abs(previous.date.timeIntervalSince(date))
+            if previous.fromNotice != fromNotice {
+                return apart <= otherSourceWindow && key(previous.currency ?? "") == key(currency ?? "")
+            }
+            return key(previous.merchant) == key(merchant)
                 && key(previous.card ?? "") == key(card ?? "")
-                && abs(previous.date.timeIntervalSince(date)) <= duplicateWindow
+                && apart <= duplicateWindow
         }
         return isRepeat ? .duplicate : .save
     }

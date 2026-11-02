@@ -83,7 +83,9 @@ public enum AmountParser {
         // Everything that isn't a digit, separator, sign or space is the currency marker.
         let marker = text.filter(isMarker)
         let numeric = text.filter { $0.isNumber || $0 == "." || $0 == "," }
-        guard let (integerPart, fractionPart) = pointDecimal ? splitPointDecimal(numeric) : split(numeric) else {
+        let threeDecimals = threeDecimalCurrencies.contains(marker.uppercased())
+        guard let (integerPart, fractionPart) = pointDecimal
+                ? splitPointDecimal(numeric) : split(numeric, threeDecimals: threeDecimals) else {
             return nil
         }
         // Grouping is a first run of one to three digits and then runs of two or three
@@ -112,13 +114,21 @@ public enum AmountParser {
     /// languages, and the en dash some notices put before a refund (`–$50.00`).
     static let minusSigns: Set<Character> = ["-", "−", "–"]
 
-    /// `parse`'s rule: the last separator is decimal before one or two digits, a group before three.
-    private static func split(_ numeric: String) -> (integer: String, fraction: String)? {
+    /// Currencies whose cents come in thousandths (Kuwaiti, Bahraini, Omani, Jordanian,
+    /// Tunisian, Libyan dinars and the Iraqi dinar): «JOD 1.250» is one and a quarter, never
+    /// 1,250, and «BHD 0.750» is three quarters (2026-11-02, second audit).
+    public static let threeDecimalCurrencies: Set<String> = ["KWD", "BHD", "OMR", "JOD", "TND", "LYD", "IQD"]
+
+    /// `parse`'s rule: the last separator is decimal before one or two digits, a group before
+    /// three. With a currency that has three decimals, three digits after it are decimals too.
+    private static func split(_ numeric: String, threeDecimals: Bool = false) -> (integer: String, fraction: String)? {
         guard let lastSep = numeric.lastIndex(where: { $0 == "." || $0 == "," }) else { return (numeric, "") }
         let head = numeric[..<lastSep]
         let tail = numeric[numeric.index(after: lastSep)...]
         switch tail.count {
         case 1...2:
+            return (String(head), String(tail))
+        case 3 where threeDecimals:
             return (String(head), String(tail))
         case 3:
             // A group of three: `1,000` is a thousand. Not after another kind of

@@ -216,10 +216,9 @@ struct BackupRetentionTests {
 
     @Test("El nombre del archivo es el día")
     func fileName() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
-        let day = calendar.date(from: DateComponents(year: 2026, month: 3, day: 7, hour: 21))!
-        #expect(BackupRetention.fileName(for: day, calendar: calendar) == "al-dia-2026-03-07.aldia")
+        let mexico = TimeZone(identifier: "America/Mexico_City")!
+        let day = BackupRetention.calendar(in: mexico).date(from: DateComponents(year: 2026, month: 3, day: 7, hour: 21))!
+        #expect(BackupRetention.fileName(for: day, timeZone: mexico) == "al-dia-2026-03-07.aldia")
     }
 
     @Test("Con 30 o menos no se borra nada")

@@ -256,10 +256,46 @@ public enum BackupRetention {
     public static let fileExtension = "aldia"
     public static let dailyKept = 30
 
-    public static func fileName(for day: Date, calendar: Calendar = .current) -> String {
-        let parts = calendar.dateComponents([.year, .month, .day], from: day)
-        let name = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
-        return "\(prefix)\(name).\(fileExtension)"
+    /// The calendar every name is written with: always Gregorian, on this phone's clock. A phone
+    /// set to the Japanese or Buddhist calendar wrote «0008-…» or «2569-…» and broke the cleanup;
+    /// UTC wrote tomorrow's date at 21:00 in Mexico (2026-11-02, second audit).
+    public static func calendar(in timeZone: TimeZone = .current) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = timeZone
+        return calendar
+    }
+
+    /// «2026-03-07», or «2026-03-07T210500» with the time.
+    public static func stamp(_ date: Date, timeZone: TimeZone = .current, withTime: Bool = false) -> String {
+        let parts = calendar(in: timeZone).dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        let day = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        guard withTime else { return day }
+        return day + String(format: "T%02d%02d%02d", parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0)
+    }
+
+    public static func fileName(for day: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)\(stamp(day, timeZone: timeZone)).\(fileExtension)"
+    }
+
+    /// A day's expenses alone, when «Mi dinero» didn't open. Not a daily name: never trimmed.
+    public static func partialName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)solo-gastos-\(stamp(date, timeZone: timeZone)).\(fileExtension)"
+    }
+
+    /// What there was before a restore. Never trimmed.
+    public static func safetyName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)antes-de-restaurar-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
+    }
+
+    /// A backup that would have replaced today's file with less (`BackupPlan.aside`). Never trimmed.
+    public static func asideName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)aparte-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
+    }
+
+    /// Any file Al día wrote: daily, apart, or before a restore.
+    public static func isBackupFile(_ name: String) -> Bool {
+        name.hasPrefix(prefix) && name.hasSuffix(".\(fileExtension)")
     }
 
     /// The day in a backup's name, or `nil` for any other file.
