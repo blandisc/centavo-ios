@@ -618,25 +618,38 @@ struct ExpenseEditorView: View {
                                             hidden: UserCatalog.decodeNames(storedHidden))
         let split = CategoryShortlist.split(offered: offered, mostUsed: knownCategories,
                                             pinned: [suggestedCategory ?? ""] + pinnedCategories + [category])
-        // Opening keeps the ones in view where they are and adds the rest under them: the
-        // whole grid used to reshuffle, and the button jumped to the end.
-        let names = showsAllCategories ? split.shown + split.rest : split.shown
+        // Every one is laid out, the rest hidden: «Ver más» opens the room under the ones in
+        // view, which never move, and the rest show row by row as the room reaches them; «Ver
+        // menos» fades them first and closes after (owner, 2026-11-02: it used to jump and zoom).
+        let names = split.shown + split.rest
         return VStack(spacing: Theme.Space.s) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)],
-                      spacing: Theme.Space.s) {
+            RevealGrid(minimum: Theme.Size.categoryGridMinimum, spacing: Theme.Space.s,
+                       firstCount: split.shown.count, open: showsAllCategories ? 1 : 0) {
                 ForEach(Array(names.enumerated()), id: \.element) { index, name in
-                    categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
-                                 selected: category == name, tint: colors.category(name)) {
-                        category = category == name ? "" : name
-                        if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
+                    let extra = index - split.shown.count
+                    let hidden = !showsAllCategories && extra >= 0
+                    // Hidden, only its room is kept (no button, nothing VoiceOver or a tap can
+                    // reach); shown, it fades in once the room opening downward reaches it.
+                    ZStack {
+                        CategoryTile(name: name, icon: CategoryStyle.icon(for: name, custom: customCategories),
+                                     color: colors.category(name), selected: false, isAction: false)
+                            .hidden()
+                        if !hidden {
+                            categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
+                                         selected: category == name, tint: colors.category(name)) {
+                                category = category == name ? "" : name
+                                if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
+                            }
+                            .transition(.asymmetric(
+                                insertion: .opacity.animation(Theme.Motion.animation(
+                                    Theme.Motion.tileIn(max(extra, 0), of: split.rest.count), reduceMotion: reduceMotion)),
+                                removal: .opacity.animation(Theme.Motion.animation(Theme.Motion.revealOut,
+                                                                                  reduceMotion: reduceMotion))))
+                        }
                     }
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: Theme.Size.tileAppear))
-                            .animation(Theme.Motion.animation(Theme.Motion.tileIn(index - split.shown.count),
-                                                              reduceMotion: reduceMotion)),
-                        removal: .opacity))
                 }
             }
+            .clipShape(Rectangle().inset(by: -Theme.Space.xs))
             HStack(spacing: Theme.Space.s) {
                 Button { creating = .category } label: {
                     LinkActionLabel("Nueva", systemImage: "plus", fillsWidth: false)
@@ -647,13 +660,16 @@ struct ExpenseEditorView: View {
                 Spacer(minLength: Theme.Space.s)
                 if !split.rest.isEmpty {
                     Button {
-                        withAnimation(Theme.Motion.animation(Theme.Motion.fold, reduceMotion: reduceMotion)) {
+                        // Opening, the room grows at once; closing, the rest fades first.
+                        let fold = showsAllCategories ? Theme.Motion.foldClosed : Theme.Motion.fold
+                        withAnimation(Theme.Motion.animation(fold, reduceMotion: reduceMotion)) {
                             showsAllCategories.toggle()
                         }
                     } label: {
                         HStack(spacing: Theme.Space.xs) {
+                            // Swapped at once: blended while the button moves, both read as one blur.
                             Text(showsAllCategories ? "Ver menos" : "Ver \(split.rest.count) más")
-                                .contentTransition(.opacity)
+                                .contentTransition(.identity)
                             Image(systemName: "chevron.down")
                                 .rotationEffect(.degrees(showsAllCategories ? 180 : 0))
                                 .accessibilityHidden(true)
