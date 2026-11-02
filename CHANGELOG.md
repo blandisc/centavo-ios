@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Fixed
+<<<<<<< HEAD
 - **Respaldo, captura y gastos fijos, revisados otra vez (segunda auditoría del 2 de noviembre):**
   - Restaurar un respaldo ahora sí arregla un «Mi dinero» que no abre: el dañado se guarda aparte en el iPhone, sin borrarse, y se pone el del respaldo.
   - Un iPhone nuevo o recién instalado ya no puede pisar el respaldo bueno del día con uno vacío ni hacer que la limpieza borre los del mes: dice «Parece un iPhone nuevo: restaura tu respaldo antes de respaldar.» Un respaldo con menos gastos que el del día se guarda aparte.
@@ -17,6 +18,26 @@
   - Cambiar solo la categoría ya no redondea el monto; un gasto por Siri que falló al guardarse ya no aparece después; un comercio que escribiste no se cambia solo; «No es repetida», «Sí cuenta» y «No cuenta» avisan si no se pudieron guardar.
 ### Changed
 - **El ejemplo de «Hoy puedes gastar»** en la hoja del presupuesto recorre la semana una vez y se queda en el final; tócalo para verlo otra vez.
+=======
+- **«Mi dinero» y los cálculos de «Hoy», revisados otra vez (segunda auditoría del 2 de noviembre):**
+  - Importar ya no guarda $12 cuando tu Excel decía «12,000» sin comillas: un renglón con columnas de más o de menos, o con tres cifras sueltas después del monto, va a revisión con «¿un monto con comas?». Una moneda que no existe («ABC») también va a revisión.
+  - Si ya corregiste algo en la revisión, salir pregunta antes («¿Salir sin agregar?»).
+  - «+$X desde sep» compara las mismas cuentas en los dos cortes: archivar una ya no sale como pérdida, y una cuenta nueva (su saldo inicial) ya no sale como ahorro.
+  - El tipo de cambio que escribes en «Nueva cuenta» ya no se pierde cuando tu último corte es de otro mes: se usa en tu próximo corte, y la hoja te lo dice.
+  - Con todas tus cuentas archivadas sigues viendo «Archivadas» y tus ingresos.
+  - Un corte a medias se abre con lo que ya escribiste; un monto que no se lee se marca en vez de quedarse con el último que sí se leía.
+  - «Hacer corte» ya no ofrece un mes anterior a tu último corte, y un corte de un mes pasado no pide cuentas que creaste después.
+  - Las deudas y lo que te deben agregados con «+» guardan si son tarjeta, préstamo u otros; me deben o por caer.
+  - Si algo falla al guardar una cuenta o al descartar un corte, te lo dice y no se queda a medias.
+  - El ingreso en otra moneda muestra su moneda, y la hoja del ingreso ya no se cierra al deslizar con algo escrito.
+  - Textos: «Te deben» y «Debes»; «¿Cuánto te deben hoy?»; «El saldo se actualiza en el corte.»; «No se guardó la cuenta» y «No se guardó el ingreso»; al terminar los pasos: «Al terminar el mes, toca «Hacer corte» en «Mi dinero» y verás cuánto ahorraste.»
+  - Los dibujos de «Mi dinero» descansan completos (nada a medias) y, quietos, se quedan quietos aunque cambie el bajo consumo; el renglón que se abre en los pasos se despliega igual que el resto de la app.
+  - Si tus gastos fijos pasan tu presupuesto, «Hoy», los widgets y Siri dicen «Tus fijos pasan el presupuesto por $3,000» en vez de «Hoy te pasaste» sin haber gastado; con «Se acumula» y «Se reparte» da lo mismo.
+  - Siri ya no promete más de lo que queda: «Te quedan $4,000 y faltan $5,000 de fijos».
+  - La nota del mes («A este ritmo cierras en…») suma los fijos que faltan.
+  - Pasarte del presupuesto por centavos ya no dice «Te pasaste $0»: se redondea hacia arriba.
+  - Con lo gastado igual al presupuesto, la hoja dice «Este mes ya gastaste justo eso.».
+>>>>>>> 5263d13 (Segunda auditoría de «Mi dinero» y cálculos: CHANGELOG y decisiones)
 ### Security
 - **«Mi dinero» ya no se queda abierto si sales antes de Face ID:** si tocas la pestaña y regresas a «Hoy» mientras Face ID pregunta, la respuesta ya no la abre. Al bloquearse, las hojas de «Mi dinero» guardan el teclado, cierran sus avisos («¿Archivar?», «¿Descartar el corte?») y VoiceOver no lee lo que quedó debajo.
 - **Restaurar un respaldo y «Cambiar contraseña» piden Face ID o el código** de tu iPhone. Cambiar la contraseña tiene «Cancelar» y te recuerda que los respaldos que ya tienes se abren con la anterior; si escribes una contraseña que no abre el respaldo, lo dice y puedes probar otra vez.
