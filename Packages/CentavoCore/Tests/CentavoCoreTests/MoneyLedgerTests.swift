@@ -92,4 +92,18 @@ struct MoneyLedgerTests {
         #expect(MoneyMath.expectedYield(previous: 150_000, yearlyRate: 0, days: 30) == 0)
         #expect(MoneyMath.expectedYield(previous: 150_000, yearlyRate: 10, days: 0) == 0)
     }
+
+    @Test("Una tasa o un tipo de cambio se lee como decimal, nunca como miles")
+    func decimals() {
+        #expect(MoneyMath.decimal("18.125") == d("18.125"))
+        #expect(MoneyMath.decimal("17.2534") == d("17.2534"))
+        #expect(MoneyMath.decimal("10,5") == d("10.5"))
+        #expect(MoneyMath.decimal(" 9.8 ") == d("9.8"))
+        #expect(MoneyMath.decimal(".5") == d("0.5"))
+        #expect(MoneyMath.decimal("20") == 20)
+        #expect(MoneyMath.decimal("1,234.5") == nil)
+        #expect(MoneyMath.decimal("10%") == nil)
+        #expect(MoneyMath.decimal("") == nil)
+        #expect(MoneyMath.decimal(".") == nil)
+    }
 }

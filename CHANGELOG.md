@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **«Mi dinero» te guía la primera vez.** Una presentación con tu patrimonio creciendo mes a mes en un boleto; antes de pedir Face ID, el símbolo dibujado con líneas y por qué se pide; y «Primera cuenta» en cuatro pasos (lo que tienes, lo que debes, lo que te deben y el resultado), con dibujos de cada tipo, renglones que se abren en su lugar, la moneda por su símbolo y una animación de éxito al final.
 ### Fixed
 - **Borrar pagos ya no hace que Wallet se vea desconectado.** La app recuerda cuándo llegó el último pago de Wallet aparte de los gastos, así que borrarlos no cambia el aviso.
 ### Changed

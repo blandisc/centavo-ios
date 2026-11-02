@@ -22,6 +22,9 @@ final class MoneyAccount {
     /// Accounts are archived, never deleted: past cuts keep their lines.
     var archived: Bool = false
     var createdAt: Date = Date.now
+    /// What it is within its kind (`MoneySubtype.rawValue`): a card or a loan among debts, money
+    /// lent or a bonus to come among receivables. Optional: a lightweight addition (2026-11-01).
+    var subtype: String?
     @Relationship(deleteRule: .nullify, inverse: \MoneyEntry.account)
     var entries: [MoneyEntry]? = []
 
@@ -102,6 +105,58 @@ final class MoneyEntry {
         self.balance = balance
         self.account = account
         self.reviewed = reviewed
+    }
+}
+
+/// What a line is within its kind, for the words and the drawing that go with it.
+enum MoneySubtype: String, CaseIterable {
+    case account = "cuenta", investment = "inversion"
+    case card = "tarjeta", loan = "prestamo", other = "otros"
+    case lent = "me_deben", coming = "por_caer"
+
+    var kind: MoneyKind {
+        switch self {
+        case .account: .account
+        case .investment: .investment
+        case .card, .loan, .other: .debt
+        case .lent, .coming: .receivable
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .account: "Cuenta"
+        case .investment: "Inversión"
+        case .card: "Tarjeta"
+        case .loan: "Préstamo"
+        case .other: "Otros"
+        case .lent: "Me deben"
+        case .coming: "Por caer"
+        }
+    }
+
+    /// The quiet line under the name in a list.
+    var short: String {
+        switch self {
+        case .account: "cuenta"
+        case .investment: "inversión · varía"
+        case .card: "tarjeta"
+        case .loan: "préstamo"
+        case .other: "debes"
+        case .lent: "me deben"
+        case .coming: "por caer"
+        }
+    }
+
+    /// The account's subtype, or the plain one of its kind for lines from before subtypes.
+    static func of(_ account: MoneyAccount) -> MoneySubtype {
+        if let raw = account.subtype, let known = MoneySubtype(rawValue: raw) { return known }
+        switch account.kind {
+        case .account: return .account
+        case .investment: return .investment
+        case .debt: return .card
+        case .receivable: return .lent
+        }
     }
 }
 
@@ -192,6 +247,38 @@ enum MoneyStore {
         for old in others where old.id != draft.id { context.delete(old) }
         draft.isDraft = false
         draft.date = now
+        try context.save()
+    }
+
+    /// Changes today's balance (and the exchange rate) of an account in the latest cut.
+    static func update(_ account: MoneyAccount, balance: Decimal, rate: Decimal?, in context: ModelContext) throws {
+        guard let cut = latestCut(in: context) else { try context.save(); return }
+        if let entry = cut.entry(for: account) {
+            entry.balance = balance
+        } else {
+            let entry = MoneyEntry(balance: balance, account: account, reviewed: true)
+            context.insert(entry)
+            entry.cut = cut
+        }
+        if let rate, account.currency != cut.mainCurrency {
+            var table = cut.rateTable
+            table[account.currency] = rate
+            cut.rateTable = table
+        }
+        try context.save()
+    }
+
+    /// Removes an account written by mistake during the first time, with its lines: it has no
+    /// history yet. Later, accounts are only archived.
+    static func remove(_ account: MoneyAccount, in context: ModelContext) throws {
+        // In more than one cut it has a history: it's archived instead, and past cuts keep it.
+        if (account.entries ?? []).count > 1 {
+            account.archived = true
+            try context.save()
+            return
+        }
+        for entry in account.entries ?? [] { context.delete(entry) }
+        context.delete(account)
         try context.save()
     }
 

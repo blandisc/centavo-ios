@@ -9,6 +9,9 @@ struct MoneyHomeView: View {
     @Query(MoneyStore.activeAccounts) private var accounts: [MoneyAccount]
     @Query(MoneyCut.finished) private var cuts: [MoneyCut]
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
+    /// Where «Primera cuenta» is: 0 not started, 1…4 a step, 5 done (`MoneyStep`).
+    @AppStorage(MoneyHomeView.stepKey) private var step = 0
+    static let stepKey = "dinero.recorrido"
 
     @State private var adding = false
     @State private var editing: MoneyAccount?
@@ -20,6 +23,14 @@ struct MoneyHomeView: View {
     private var previous: MoneyCut? { cuts.count > 1 ? cuts[cuts.count - 2] : nil }
 
     var body: some View {
+        if MoneyStep(rawValue: step) != nil {
+            MoneyOnboardingView(step: $step, mainCurrency: main)
+        } else {
+            home
+        }
+    }
+
+    private var home: some View {
         NavigationStack {
             Group {
                 if accounts.isEmpty { empty } else { filled }
@@ -50,32 +61,38 @@ struct MoneyHomeView: View {
 
     // MARK: Empty
 
+    /// The welcome (2026-11-01): the same dashed ticket as before, with a boleto over it that
+    /// shows a net worth growing month by month. «Agregar tu primera cuenta» starts the steps.
     private var empty: some View {
-        VStack(spacing: Theme.Space.xl) {
-            Spacer()
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Patrimonio").ticketCaption()
-                Text("Todo tu dinero en un número")
-                    .font(.ticket(.heading))
-                    .foregroundStyle(Theme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("Agrega tus cuentas, lo que debes y lo que te deben. Cada mes haces un corte y ves si ahorraste lo que debías.")
-                    .font(.ticket(.callout))
-                    .foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(Theme.Space.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.ticket)
-                    .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
-            }
-            Button { adding = true } label: { PrimaryButtonLabel("Agregar tu primera cuenta", systemImage: "plus") }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                MoneyGrowthHero(currency: main)
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    Text("Patrimonio").ticketCaption()
+                    Text("Todo tu dinero en un número")
+                        .font(.ticket(.heading))
+                        .foregroundStyle(Theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Agrega tus cuentas, lo que debes y lo que te deben. Cada mes haces un corte y ves si ahorraste lo que debías.")
+                        .font(.ticket(.callout))
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(Theme.Space.xl)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.ticket)
+                        .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
+                }
+                Button { step = MoneyStep.have.rawValue } label: {
+                    PrimaryButtonLabel("Agregar tu primera cuenta", systemImage: "plus")
+                }
                 .ticketProminent()
                 .accessibilityIdentifier("dinero-primera-cuenta")
-            Spacer()
+            }
+            .padding(.horizontal, Theme.Space.screen)
+            .padding(.vertical, Theme.Space.xxl)
         }
-        .padding(.horizontal, Theme.Space.screen)
     }
 
     // MARK: Filled
@@ -195,11 +212,10 @@ struct MoneyAccountRow: View {
         if account.currency != cut.mainCurrency, let balance {
             bits.append(formatMoney(balance, isoCode: account.currency, label: account.currency))
         }
-        switch account.kind {
-        case .investment: bits.append("varía")
-        case .receivable: bits.append("por caer")
-        case .debt: bits.append("debes")
+        switch MoneySubtype.of(account) {
         case .account: break
+        case .investment: bits.append("varía")
+        case let other: bits.append(other.short)
         }
         if balance == nil { bits.append("en tu próximo corte") }
         return bits.joined(separator: " · ")

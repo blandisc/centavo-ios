@@ -31,6 +31,8 @@ TOKEN_DIRS = [APP / "Theme"]
 DRAWINGS = {
     APP / "Screens" / "ShortcutsDrawing.swift",
     APP / "Screens" / "GuideFrames.swift",
+    # «Mi dinero»'s drawings (2026-11-01): Canvas paths in their own design space, scaled to fit.
+    APP / "Screens" / "Money" / "MoneyArt.swift",
 }
 
 NUM = r"(?<![\w.])-?\d+(?:\.\d+)?(?![\w])"
