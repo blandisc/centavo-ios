@@ -115,9 +115,38 @@ final class MoneyCut {
     /// «+$1,000 desde sep» (second audit, 2026-11-02): what changed since `previous`, over the
     /// accounts both cuts have. Archiving one later doesn't turn it into a loss, and one added
     /// after `previous` (its first balance) doesn't count as saved.
+    ///
+    /// Independent review: an account counts only if it existed in `previous`'s month (one
+    /// created later and added to it, as the latest cut then, holds only its opening balance
+    /// there), and one archived before this cut, so missing from it, counts here as zero.
     func change(since previous: MoneyCut) -> Decimal {
         let latest = linesByAccount
-        return MoneyChange.since(previous: previous.linesByAccount, latest: latest, counting: Set(latest.lines.keys))
+        var counting = Set<UUID>(), closed = Set<UUID>()
+        for entry in previous.entries ?? [] {
+            guard let account = entry.account, MoneyMath.belongs(createdAt: account.createdAt, to: previous.month) else { continue }
+            counting.insert(account.id)
+            if account.archived, latest.lines[account.id] == nil { closed.insert(account.id) }
+        }
+        return MoneyChange.since(previous: previous.linesByAccount, latest: latest, counting: counting, closed: closed)
+    }
+
+    /// The balance an account shows under this cut: its line, or — for an account created after
+    /// this cut's month, whose opening balance lives in the cut that was the latest when it was
+    /// added — that newest balance. It is never copied into a cut of a month before it existed.
+    func shownEntry(for account: MoneyAccount) -> MoneyEntry? {
+        if let mine = entry(for: account) { return mine }
+        guard !MoneyMath.belongs(createdAt: account.createdAt, to: month) else { return nil }
+        return (account.entries ?? []).filter { $0.cut?.isDraft == false }
+            .max { ($0.cut?.month ?? "") < ($1.cut?.month ?? "") }
+    }
+
+    /// Today's net worth under this cut, for `accounts` (the active ones): their lines, and the
+    /// opening balance of one created after it (`shownEntry`).
+    func worthToday(_ accounts: [MoneyAccount]) -> NetWorth {
+        let lines = accounts.filter { !$0.archived }.compactMap { account in
+            shownEntry(for: account).map { MoneyLine(kind: account.kind, currency: account.currency, balance: $0.balance) }
+        }
+        return NetWorth(lines: lines, main: mainCurrency, rates: rateTable)
     }
 }
 
@@ -369,8 +398,8 @@ enum MoneyStore {
         context.insert(entry)
         entry.cut = cut
         var kept = false
-        // Not into a draft of a month before it existed (second audit): finishing that cut
-        // carries it over instead.
+        // Not into a draft of a month before it existed (second audit): it shows under that cut
+        // with its opening balance (`MoneyCut.shownEntry`).
         for draft in try drafts(in: context) where MoneyMath.belongs(createdAt: account.createdAt, to: draft.month) {
             let line = MoneyEntry(balance: balance, account: account, reviewed: true)
             context.insert(line)
@@ -379,7 +408,7 @@ enum MoneyStore {
         }
         kept = setRate(rate, for: account.currency, in: cut, now: now) || kept
         do { try context.save() } catch { context.rollback(); throw error }
-        if !kept { keepForNextCut(rate, for: account.currency, mainCurrency: cut.mainCurrency, defaults: defaults) }
+        if !kept { keepForNextCut(rate, for: account.currency, mainCurrency: cut.mainCurrency, now: now, defaults: defaults) }
         return cut
     }
 
@@ -391,23 +420,40 @@ enum MoneyStore {
     /// person's money, so it can live outside the store.
     static let pendingRatesKey = "dinero.cambiosPendientes"
 
+    /// Each with the month it was typed in (independent review): it only starts a cut of that
+    /// month or later, and it's cleared when such a cut is finished, not when one is opened (a
+    /// discarded cut would have lost it).
+    static func pending(_ defaults: UserDefaults = .standard) -> [String: (rate: Decimal, month: String)] {
+        MoneyMath.decodePending(defaults.string(forKey: pendingRatesKey))
+    }
+
     static func pendingRates(_ defaults: UserDefaults = .standard) -> [String: Decimal] {
-        MoneyMath.decodeRates(defaults.string(forKey: pendingRatesKey))
+        pending(defaults).mapValues(\.rate)
     }
 
-    private static func keepForNextCut(_ rate: Decimal?, for currency: String, mainCurrency: String, defaults: UserDefaults) {
+    private static func keepForNextCut(_ rate: Decimal?, for currency: String, mainCurrency: String, now: Date,
+                                       defaults: UserDefaults) {
         guard let rate, rate > 0, currency != mainCurrency else { return }
-        var table = pendingRates(defaults)
-        table[currency] = rate
-        defaults.set(MoneyMath.encodeRates(table), forKey: pendingRatesKey)
+        var table = pending(defaults)
+        table[currency] = (rate, MoneyMath.monthKey(of: now))
+        defaults.set(MoneyMath.encodePending(table), forKey: pendingRatesKey)
     }
 
-    /// Whether a rate typed now for `currency` would wait for the next cut instead of changing
-    /// the latest one: the sheet says so.
+    /// A finished cut of `month` took the pending rates typed in that month or before.
+    private static func clearPending(through month: String, defaults: UserDefaults) {
+        let table = pending(defaults)
+        let left = table.filter { $0.value.month > month }
+        guard left.count != table.count else { return }
+        if left.isEmpty { defaults.removeObject(forKey: pendingRatesKey) } else { defaults.set(MoneyMath.encodePending(left), forKey: pendingRatesKey) }
+    }
+
+    /// Whether a rate typed now for `currency`, for an account created now, would wait for the
+    /// next cut instead of changing the latest one: the sheet says so. The same rule as `add`:
+    /// a cut being written of this month takes it; one of a past month doesn't.
     static func rateWaits(for currency: String, in context: ModelContext, now: Date = .now) -> Bool {
-        guard let latest = latestCut(in: context), currency != latest.mainCurrency,
-              ((try? drafts(in: context)) ?? []).isEmpty else { return false }
-        return latest.month != MoneyMath.monthKey(of: now) && latest.rateTable[currency] != nil
+        guard let latest = latestCut(in: context), currency != latest.mainCurrency else { return false }
+        let open = ((try? drafts(in: context)) ?? []).contains { MoneyMath.belongs(createdAt: now, to: $0.month) }
+        return !open && latest.month != MoneyMath.monthKey(of: now) && latest.rateTable[currency] != nil
     }
 
     /// An exchange rate written today goes into a cut of this month (or a draft, which is
@@ -464,18 +510,16 @@ enum MoneyStore {
         let draft = MoneyCut(month: month, date: now, mainCurrency: previous?.mainCurrency ?? mainCurrency, isDraft: true)
         // A rate typed since the last cut (`pendingRates`) is where this one starts.
         var rates = previous?.rateTable ?? [:]
-        let pending = pendingRates(defaults)
-        for (code, rate) in pending where code != draft.mainCurrency { rates[code] = rate }
+        for (code, rate) in MoneyMath.pendingRates(pending(defaults), for: month) where code != draft.mainCurrency { rates[code] = rate }
         draft.rateTable = rates
         context.insert(draft)
         // An account created after the month isn't asked for in it (second audit).
         for account in try context.fetch(activeAccounts) where MoneyMath.belongs(createdAt: account.createdAt, to: month) {
-            let entry = MoneyEntry(balance: previous?.entry(for: account)?.balance ?? 0, account: account, reviewed: false)
+            let entry = MoneyEntry(balance: previous?.shownEntry(for: account)?.balance ?? 0, account: account, reviewed: false)
             context.insert(entry)
             entry.cut = draft
         }
         do { try context.save() } catch { context.rollback(); throw error }
-        if !pending.isEmpty { defaults.removeObject(forKey: pendingRatesKey) }
         return draft
     }
 
@@ -501,7 +545,7 @@ enum MoneyStore {
         var changed = false
         for account in active where !have.contains(account.id)
             && MoneyMath.belongs(createdAt: account.createdAt, to: draft.month) {
-            let entry = MoneyEntry(balance: previous?.entry(for: account)?.balance ?? 0, account: account, reviewed: false)
+            let entry = MoneyEntry(balance: previous?.shownEntry(for: account)?.balance ?? 0, account: account, reviewed: false)
             context.insert(entry)
             entry.cut = draft
             changed = true
@@ -525,7 +569,8 @@ enum MoneyStore {
     /// `CutProblem.monthHasCut` and nothing changes. Lines the old cut had and the draft
     /// doesn't (an account added while it was being written) move to the draft first, so
     /// replacing never deletes a balance with it.
-    static func finish(_ draft: MoneyCut, replacing: Bool = false, in context: ModelContext, now: Date = .now) throws {
+    static func finish(_ draft: MoneyCut, replacing: Bool = false, in context: ModelContext, now: Date = .now,
+                       defaults: UserDefaults = .standard) throws {
         let month = draft.month
         let others = try context.fetch(FetchDescriptor<MoneyCut>(predicate: #Predicate { $0.month == month && !$0.isDraft }))
             .filter { $0.id != draft.id }
@@ -547,29 +592,10 @@ enum MoneyStore {
             draft.rateTable = table
             context.delete(old)
         }
-        // An account created after this month isn't in its cut, but lives in the cut before
-        // (where it was added): it goes on with that balance, already looked at, so becoming
-        // the latest cut never drops it from the net worth (second audit, 2026-11-02).
-        if let before = cut(before: month, in: context), before.id != draft.id, before.month < month {
-            for entry in before.entries ?? [] {
-                guard let account = entry.account, !account.archived, !moved.contains(account.id),
-                      !MoneyMath.belongs(createdAt: account.createdAt, to: month) else { continue }
-                let line = MoneyEntry(balance: entry.balance, account: account, reviewed: true)
-                line.yieldOverride = entry.yieldOverride
-                context.insert(line)
-                line.cut = draft
-                moved.insert(account.id)
-                if account.currency != draft.mainCurrency, draft.rateTable[account.currency] == nil,
-                   let rate = before.rateTable[account.currency] {
-                    var table = draft.rateTable
-                    table[account.currency] = rate
-                    draft.rateTable = table
-                }
-            }
-        }
         draft.isDraft = false
         draft.date = now
         do { try context.save() } catch { context.rollback(); throw error }
+        clearPending(through: month, defaults: defaults)
     }
 
     /// Changes today's balance (and the exchange rate) of an account in the latest cut, and in a
@@ -577,21 +603,24 @@ enum MoneyStore {
     static func update(_ account: MoneyAccount, balance: Decimal, rate: Decimal?, in context: ModelContext,
                        now: Date = .now, defaults: UserDefaults = .standard) throws {
         let cuts = [latestCut(in: context)].compactMap { $0 } + (try drafts(in: context))
-        var kept = cuts.isEmpty
+        var kept = cuts.isEmpty || rate == nil
         for cut in cuts {
             if let entry = cut.entry(for: account) {
                 entry.balance = balance
                 if cut.isDraft { entry.reviewed = true }
+                kept = setRate(rate, for: account.currency, in: cut, now: now) || kept
             } else if !cut.isDraft || MoneyMath.belongs(createdAt: account.createdAt, to: cut.month) {
+                // A draft of a month before the account existed gets neither its line nor its
+                // rate (independent review), as in `add`.
                 let entry = MoneyEntry(balance: balance, account: account, reviewed: true)
                 context.insert(entry)
                 entry.cut = cut
+                kept = setRate(rate, for: account.currency, in: cut, now: now) || kept
             }
-            kept = setRate(rate, for: account.currency, in: cut, now: now) || kept
         }
         do { try context.save() } catch { context.rollback(); throw error }
         if !kept, let main = cuts.first?.mainCurrency {
-            keepForNextCut(rate, for: account.currency, mainCurrency: main, defaults: defaults)
+            keepForNextCut(rate, for: account.currency, mainCurrency: main, now: now, defaults: defaults)
         }
     }
 

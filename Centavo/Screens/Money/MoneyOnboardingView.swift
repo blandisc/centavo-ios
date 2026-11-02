@@ -36,7 +36,7 @@ struct MoneyOnboardingView: View {
     private var page: MoneyStep { MoneyStep(rawValue: step) ?? .have }
     private var rows: [MoneyAccount] { accounts.filter { page.subtypes.contains(MoneySubtype.of($0)) } }
     /// Without archived accounts, like «Mi dinero» (second audit, 2026-11-02).
-    private var worth: NetWorth { cuts.last?.activeNetWorth ?? NetWorth() }
+    private var worth: NetWorth { cuts.last?.worthToday(accounts) ?? NetWorth() }
 
     var body: some View {
         NavigationStack {
@@ -346,7 +346,7 @@ struct MoneyOnboardingView: View {
     private func toggle(_ account: MoneyAccount) {
         withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) {
             if open == account.id { open = nil; return }
-            draft = MoneyRowDraft(account: account, balance: cuts.last?.entry(for: account)?.balance,
+            draft = MoneyRowDraft(account: account, balance: cuts.last?.shownEntry(for: account)?.balance,
                                   rate: cuts.last?.rateTable[account.currency])
             open = account.id
         }
@@ -392,7 +392,7 @@ struct MoneyOnboardingView: View {
     }
 
     private func figure(for account: MoneyAccount) -> String? {
-        guard let balance = cuts.last?.entry(for: account)?.balance else { return nil }
+        guard let balance = cuts.last?.shownEntry(for: account)?.balance else { return nil }
         let text = formatMoney(balance, isoCode: account.currency, label: account.currency, main: mainCurrency)
         return account.kind == .debt ? "−" + text : text
     }

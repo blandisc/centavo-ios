@@ -99,6 +99,19 @@ public struct BudgetPace: Equatable, Sendable {
     /// cut into days: «Tus fijos pasan el presupuesto por $3,000», never «Hoy te pasaste».
     public var fixedOverBudget: Decimal? { fixedMonth >= budget ? fixedMonth - budget : nil }
     public var isFixedOverBudget: Bool { fixedOverBudget != nil }
+    /// What was spent outside the fixed expenses this month.
+    public var variableSpent: Decimal { spent - fixedSpent }
+    /// «Te pasaste»: with the fixed expenses within the budget, the month went past it; with
+    /// them past it (`isFixedOverBudget`), only once something outside them was spent, since
+    /// nothing was left for it (independent review, 2026-11-02). Charging the fixed expenses
+    /// alone is never overspending: it's `fixedOverBudget`. The same rule on the screen, the
+    /// widgets and Siri.
+    public var isOverspent: Bool { isFixedOverBudget ? variableSpent > 0 : isOverBudget }
+    /// By how much, in whole units rounded up.
+    public var overspentShown: Decimal {
+        guard isOverspent else { return 0 }
+        return isFixedOverBudget ? Self.whole(variableSpent - max(0, budget - fixedMonth), .up) : overBudgetShown
+    }
     /// `fixedOverBudget` in whole units, rounded up like any excess.
     public var fixedOverBudgetShown: Decimal? { fixedOverBudget.map { Self.whole($0, .up) } }
     /// What is set aside for the fixed expenses still to come, out of what is left: never more

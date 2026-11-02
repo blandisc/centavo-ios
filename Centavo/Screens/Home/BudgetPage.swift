@@ -145,7 +145,7 @@ struct BudgetPage: View {
     // MARK: With a budget
 
     private func ticket(_ pace: BudgetPace) -> some View {
-        let isOver = pace.remaining < 0
+        let isOver = pace.isOverspent
         // A month where more came back than went out is 0 %, not "-5 %".
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         return MonthBar(pace: pace, isCurrentMonth: isCurrentMonth, money: money, wholeMoney: wholeMoney,
@@ -163,8 +163,10 @@ struct BudgetPage: View {
         var parts = ["Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)), "
                      + "el \(share.formatted(.percent.precision(.fractionLength(0))))."]
         if isOver {
-            parts.append("Te pasaste por \(wholeMoney(pace.overBudgetShown)).")
-        } else {
+            parts.append("Te pasaste por \(wholeMoney(pace.overspentShown)).")
+        } else if pace.remaining >= 0 {
+            // Fixed expenses past the budget, charged: below zero without overspending; the
+            // fixed sentence below says it.
             parts.append((isCurrentMonth ? "Te quedan " : "Te quedaron ") + "\(remainingText).")
         }
         if isCurrentMonth {

@@ -23,7 +23,8 @@ enum DayState {
         if entry.snapshot == nil {
             self = .neverOpened
         } else if let pace = entry.pace {
-            self = pace.isOverBudget ? .overBudget(pace) : pace.isFixedOverBudget ? .fixedOverBudget(pace)
+            // The same rule as the screen and Siri (`BudgetPace.isOverspent`).
+            self = pace.isOverspent ? .overBudget(pace) : pace.isFixedOverBudget ? .fixedOverBudget(pace)
                 : pace.isOverToday ? .overToday(pace) : .normal(pace)
         } else {
             self = .noBudget(spent: month?.spent ?? 0, today: month?.spentToday ?? 0)
@@ -79,7 +80,7 @@ enum DayState {
         case .neverOpened: 0
         case .noBudget(let spent, _): spent
         // Rounded up: «Te pasaste $0» over a few centavos said nothing (second audit).
-        case .overBudget(let pace): pace.overBudgetShown
+        case .overBudget(let pace): pace.overspentShown
         case .fixedOverBudget(let pace): pace.fixedOverBudgetShown ?? 0
         case .overToday(let pace), .normal(let pace): pace.dailyAllowance.magnitude
         }
@@ -219,7 +220,7 @@ struct MonthStrip: View {
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
-            let over = pace.isOverBudget
+            let over = pace.isOverspent
             let spentW = width * (over ? 1 : fraction(pace.spent))
             let reservedW = over ? 0 : width * fraction(pace.reserved)
             let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))

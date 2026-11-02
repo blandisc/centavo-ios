@@ -97,7 +97,8 @@ final class MonthStatusTests: XCTestCase {
         add(730)
         let line = try XCTUnwrap(budgetLine(500))
         XCTAssertTrue(line.hasPrefix("Te pasaste"), line)
-        XCTAssertTrue(line.contains("230.00"), line)
+        // Whole and rounded up, like the screen and the widgets (independent review, 2026-11-02).
+        XCTAssertTrue(line.contains("$230."), line)
     }
 
     func testOnlyThisMonthCounts() throws {

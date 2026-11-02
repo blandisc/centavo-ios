@@ -195,7 +195,7 @@ struct MoneyCutSheet: View {
 
     private func row(_ entry: MoneyEntry) -> some View {
         let account = entry.account!
-        let before = previous?.entry(for: account)?.balance
+        let before = previous?.shownEntry(for: account)?.balance
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
@@ -302,7 +302,7 @@ struct MoneyCutSheet: View {
     /// «Sin cambio»: the last balance, looked at. With a rate it means no yield, on purpose.
     private func keep(_ entry: MoneyEntry) {
         guard let account = entry.account else { return }
-        entry.balance = previous?.entry(for: account)?.balance ?? entry.balance
+        entry.balance = previous?.shownEntry(for: account)?.balance ?? entry.balance
         entry.reviewed = true
         typed[account.id] = ""
         focus = nextPending(after: account.id)

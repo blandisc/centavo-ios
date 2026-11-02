@@ -1207,14 +1207,15 @@ private struct HeroTotal: View {
     /// This month, with a budget not yet blown, the figure to decide by is what can still go
     /// today; the month's total becomes the line under it.
     private var allowance: Decimal? {
-        guard isCurrentMonth, let pace, pace.remaining >= 0, !pace.isFixedOverBudget else { return nil }
+        guard isCurrentMonth, let pace, !pace.isOverspent, !pace.isFixedOverBudget else { return nil }
         return pace.dailyAllowance
     }
 
     /// This month, within the budget, with fixed expenses that take all of it (second audit,
-    /// 2026-11-02): by how much they pass it. Not «te pasaste»: nothing was overspent.
+    /// 2026-11-02): by how much they pass it. Not «te pasaste»: nothing was overspent, even once
+    /// the fixed ones are charged (independent review; `BudgetPace.isOverspent`).
     private var fixedExcess: Decimal? {
-        guard isCurrentMonth, let pace, pace.remaining >= 0 else { return nil }
+        guard isCurrentMonth, let pace, !pace.isOverspent else { return nil }
         return pace.fixedOverBudgetShown
     }
 
@@ -1222,9 +1223,9 @@ private struct HeroTotal: View {
 
     /// This month, past the budget: how far past it (the hero's figure then).
     private var overage: Decimal? {
-        guard isCurrentMonth, let pace, pace.remaining < 0 else { return nil }
+        guard isCurrentMonth, let pace, pace.isOverspent else { return nil }
         // Rounded up, like «Para cerrar el mes»: never «$0» over a few centavos.
-        return pace.overBudgetShown
+        return pace.overspentShown
     }
 
     private func wholeText(_ amount: Decimal) -> String {

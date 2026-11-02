@@ -30,7 +30,7 @@ struct LockView: View {
     /// What today spent against what today could spend: the ring fills as the day spends.
     private var todayUsed: Double {
         guard let pace = state.pace else { return 0 }
-        if pace.isOverToday || pace.isOverBudget { return 1 }
+        if pace.isOverToday || pace.isOverspent { return 1 }
         guard pace.todayShare > 0 else { return 1 }
         return min(max(NSDecimalNumber(decimal: pace.variableToday / pace.todayShare).doubleValue, 0), 1)
     }
@@ -101,7 +101,8 @@ struct LockView: View {
             case .neverOpened: Text("Al día · ábrela una vez")
             case .noBudget(let spent, _): Text("Al día · llevas \(money.whole(spent))")
             case .overBudget: Text("Al día · te pasaste \(money.whole(state.figure))")
-            case .fixedOverBudget: Text("Al día · fijos pasan por \(money.whole(state.figure))")
+            case .fixedOverBudget: Text(state.figure > 0 ? "Al día · fijos pasan por \(money.whole(state.figure))"
+                                        : "Al día · fijos: todo el presupuesto")
             case .overToday, .normal: Text("Al día \(signed) hoy")
             }
         }

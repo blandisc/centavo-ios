@@ -169,7 +169,7 @@ struct MoneyHomeView: View {
     }
 
     private var hero: some View {
-        let worth = latest?.activeNetWorth ?? NetWorth()
+        let worth = latest?.worthToday(accounts) ?? NetWorth()
         let currency = latest?.mainCurrency ?? main
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             MoneyHead(date: .now, cutNumber: cuts.count)
@@ -259,7 +259,7 @@ struct MoneyHomeView: View {
 
     private func sum(_ rows: [MoneyAccount], in cut: MoneyCut) -> Decimal {
         let lines = rows.compactMap { account in
-            cut.entry(for: account).map { MoneyLine(kind: .account, currency: account.currency, balance: $0.balance) }
+            cut.shownEntry(for: account).map { MoneyLine(kind: .account, currency: account.currency, balance: $0.balance) }
         }
         return NetWorth(lines: lines, main: cut.mainCurrency, rates: cut.rateTable).owned
     }
@@ -301,7 +301,7 @@ struct MoneyAccountRow: View {
     let cut: MoneyCut
     let previous: MoneyCut?
 
-    private var balance: Decimal? { cut.entry(for: account)?.balance }
+    private var balance: Decimal? { cut.shownEntry(for: account)?.balance }
 
     private var detail: String {
         var bits: [String] = account.institution.map { [$0] } ?? []
