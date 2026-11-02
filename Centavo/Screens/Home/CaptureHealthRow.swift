@@ -21,7 +21,7 @@ struct CaptureHealthRow: View {
         case .never:
             return "Wallet sin conectar · Configurar"
         case .recent(let date):
-            return "Wallet · último pago " + date.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
+            return "Wallet · último pago " + AppClock.relative(date, abbreviated: true)
         case .quiet(let days):
             return "Wallet · sin pagos desde hace \(days) días · Revisar"
         }

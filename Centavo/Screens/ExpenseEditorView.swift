@@ -33,7 +33,7 @@ struct ExpenseEditorView: View {
     @State private var merchant = ""
     @State private var card = ""
     @State private var category = ""
-    @State private var date = Date.now
+    @State private var date = AppClock.now
     @State private var repeatsMonthly = false
     /// How often it comes back, once «Se repite» is on.
     @State private var rule = RepeatRule.monthly
@@ -170,7 +170,7 @@ struct ExpenseEditorView: View {
 
     /// What «Más detalles» holds, said on its row while it is closed: «Hoy · Gasto».
     private var detailsSummary: String {
-        var parts = [Calendar.current.isDateInToday(date) ? "Hoy"
+        var parts = [AppClock.isToday(date) ? "Hoy"
                      : date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))]
         parts.append(kind.wrappedValue.title)
         if repeatsMonthly || expense?.isRepeat == true { parts.append("Fijo") }
@@ -524,7 +524,7 @@ struct ExpenseEditorView: View {
                     .tint(Theme.brass)
                     .accessibilityIdentifier("motivo")
                 }
-                DatePicker(selection: $date, in: ...Date.now) {
+                DatePicker(selection: $date, in: ...AppClock.now) {
                     SectionLabel("Fecha")
                 }
                 .accessibilityIdentifier("fecha")
@@ -819,7 +819,7 @@ struct ExpenseEditorView: View {
         // After the amount: changing it clears the problem line.
         sentenceProblem = nil
         if let name = entry.merchant { merchant = name }
-        date = min(entry.date, .now)
+        date = min(entry.date, AppClock.now)
         if let source = entry.source { card = source }
         sentence = ""
     }

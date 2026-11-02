@@ -249,8 +249,10 @@ struct MonthBar: View {
 
     // MARK: Words
 
+    /// Its pieces wrap to a second line when they don't fit (the largest text sizes): kept on
+    /// one line, it pushed the whole page past the screen's edge.
     private var spentKey: some View {
-        HStack(spacing: Theme.Space.xs) {
+        WrapLayout(spacing: Theme.Space.xs) {
             if showsTrack { swatch(isOver ? Theme.danger : Theme.brass) }
             Text("Llevas").foregroundStyle(Theme.muted)
             totalText
@@ -265,7 +267,7 @@ struct MonthBar: View {
                 Text("\(Text(wholeMoney(averagePerDay)).foregroundStyle(Theme.ink))/día").foregroundStyle(Theme.muted)
             }
         }
-        .fixedSize()
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// «Presupuesto $8,000», at the end of the bar it measures; past it, «· de más $366».

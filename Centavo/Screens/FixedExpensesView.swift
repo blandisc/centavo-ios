@@ -34,7 +34,7 @@ struct FixedExpensesView: View {
     /// What already arrived this month, in the main currency.
     private var arrived: Decimal {
         (originals + copies)
-            .filter { MonthNavigator.isSameMonth($0.date, as: .now) && $0.date <= .now }
+            .filter { MonthNavigator.isSameMonth($0.date, as: AppClock.now) && $0.date <= AppClock.now }
             .filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == primary }
             .reduce(Decimal(0)) { $0 + $1.counted }
     }
@@ -290,7 +290,7 @@ struct FixedPlanSheet: View {
     @State private var problem: String?
     @State private var merchant = ""
     @State private var rule = RepeatRule.monthly
-    @State private var firstDay = Date.now
+    @State private var firstDay = AppClock.now
     @State private var category = ""
     /// Once a category is picked by hand, the name no longer changes it.
     @State private var pickedCategory = false
@@ -361,7 +361,7 @@ struct FixedPlanSheet: View {
         Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: firstDay) ?? firstDay
     }
 
-    private var latest: Date { Calendar.current.date(byAdding: .year, value: 1, to: .now) ?? .now }
+    private var latest: Date { Calendar.current.date(byAdding: .year, value: 1, to: AppClock.now) ?? AppClock.now }
 
     var body: some View {
         NavigationStack {
@@ -427,7 +427,7 @@ struct FixedPlanSheet: View {
                     Text("Cada cuándo").ticketCaption()
                 } footer: {
                     HintText(FixedWording.howItRepeats(rule, from: firstDate) + " "
-                             + (firstDate > .now
+                             + (firstDate > AppClock.now
                                 ? "Hasta su primer cobro no se anota nada."
                                 : "El primer cobro ya llegó: se anota con su fecha, y los que hayan llegado después."))
                 }
@@ -498,7 +498,7 @@ struct FixedPlanSheet: View {
         // it was changed (it opens already picked).
         let chosen = editing.map { !UserCatalog.same(categoryName, $0.category ?? "") } ?? pickedCategory
         if chosen, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
-        if plan.firstDate <= .now {
+        if plan.firstDate <= AppClock.now {
             context.insert(RecurringExpenses.original(from: plan))
             do {
                 try context.save()

@@ -32,7 +32,7 @@ struct MoneyCutSheet: View {
 
     private var entries: [MoneyEntry] {
         (draft.entries ?? []).filter { $0.account != nil }
-            .sorted { ($0.account?.order ?? 0, $0.account?.createdAt ?? .now) < ($1.account?.order ?? 0, $1.account?.createdAt ?? .now) }
+            .sorted { ($0.account?.order ?? 0, $0.account?.createdAt ?? AppClock.now) < ($1.account?.order ?? 0, $1.account?.createdAt ?? AppClock.now) }
     }
 
     private var foreign: [String] {
@@ -273,7 +273,7 @@ struct MoneyCutSheet: View {
         guard let before else { return "nueva" }
         var text = "antes \(formatMoney(before, isoCode: account.currency, label: account.currency, main: draft.mainCurrency))"
         if let rate = account.yearlyRate, let since = previous?.date {
-            let days = Calendar.current.dateComponents([.day], from: since, to: .now).day ?? 0
+            let days = Calendar.current.dateComponents([.day], from: since, to: AppClock.now).day ?? 0
             let yield = MoneyMath.expectedYield(previous: before, yearlyRate: rate, days: days)
             if yield > 0 { text += " · rendiría ~\(formatMoney(yield, isoCode: account.currency, label: account.currency, main: draft.mainCurrency))" }
         }

@@ -58,7 +58,7 @@ private final class OneShotLocation: NSObject, CLLocationManagerDelegate {
     private var continuation: CheckedContinuation<CLLocation?, Never>?
 
     func fetch(timeout: Duration) async -> CLLocation? {
-        if let last = manager.location, Date.now.timeIntervalSince(last.timestamp) < 120 { return last }
+        if let last = manager.location, AppClock.now.timeIntervalSince(last.timestamp) < 120 { return last }
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         return await withCheckedContinuation { continuation in

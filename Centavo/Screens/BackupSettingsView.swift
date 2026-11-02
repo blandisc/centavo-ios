@@ -247,7 +247,7 @@ struct BackupSettingsView: View {
 
     private var lastText: String {
         guard let last else { return hasPassword && folderName != nil ? "Todavía no hay respaldo." : "Primero la contraseña y la carpeta." }
-        var text = "Último respaldo: " + last.formatted(.relative(presentation: .named).locale(Locale(identifier: "es_MX")))
+        var text = "Último respaldo: " + AppClock.relative(last, locale: Locale(identifier: "es_MX"))
         switch cloud {
         case .uploading: text += ". Guardado, aún no sube a iCloud."
         case .failed: text += ". Guardado en el iPhone, pero no pudo subir a iCloud: revisa que tengas espacio."

@@ -479,7 +479,10 @@ final class FlowTests: XCTestCase {
         let app = launch()
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
-        require(app.buttons["en-una-frase"], "No está «Dilo en una frase»").tap()
+        // The button sits where «Siguiente» goes while the number pad is up: out of the way first.
+        let button = app.buttons["en-una-frase"]
+        for _ in 0..<4 where !isClear(button, app) { scrollForm(app) }
+        require(button, "No está «Dilo en una frase»").tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
         sentence.typeText("tacos ayer")
@@ -985,7 +988,12 @@ final class FlowTests: XCTestCase {
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
         ])
         let divider = app.descendants(matching: .any)["divisor-dia"].firstMatch
-        for _ in 0..<12 where !divider.isHittable { app.swipeUp() }
+        // With the largest text the month's code sits mid-screen, and a swipe that starts on it
+        // doesn't scroll (noted for the owner, 2026-11-02): from the lower part, as a thumb would.
+        for _ in 0..<12 where !divider.isHittable {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
+                .press(forDuration: 0.01, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
+        }
         require(divider, "No aparece el divisor del día con letra grande")
         let window = app.windows.firstMatch.frame
         let dividers = app.descendants(matching: .any).matching(identifier: "divisor-dia")

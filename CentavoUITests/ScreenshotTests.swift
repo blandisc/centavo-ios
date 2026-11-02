@@ -239,10 +239,14 @@ final class ScreenshotTests: XCTestCase {
         snap("08-fijar-presupuesto")
     }
 
-    func testGuia() {
+    func testGuia() throws {
         let app = launch()
         app.buttons["Más"].tap()
         app.buttons["Configurar atajo"].tap()
+        // On iOS 27 «Configurar atajo» adds the ready-made shortcut instead (2026-10-29): the
+        // step-by-step guide is the iOS 26 path.
+        try XCTSkipUnless(app.buttons["guia-siguiente"].waitForExistence(timeout: 5),
+                          "Sin guía paso a paso en esta versión de iOS")
         sleep(1)
         snap("09-guia")
         app.buttons["guia-siguiente"].tap(); sleep(1); snap("09b-guia-paso-2")
@@ -305,7 +309,10 @@ final class ScreenshotTests: XCTestCase {
     func testNoCuentaHoja() {
         let app = launch()
         uncountedRow(app).tap()
-        // «Tipo: No cuenta» opens «Más detalles» by itself.
+        // «Tipo: No cuenta» opens «Más detalles» by itself; its rows are below the fold, and the
+        // form only makes them once scrolled to.
+        XCTAssertTrue(app.buttons["mas-detalles"].waitForExistence(timeout: 5), "No abrió el gasto")
+        for _ in 0..<4 where !app.buttons["tipo"].exists { app.swipeUp() }
         XCTAssertTrue(app.buttons["tipo"].waitForExistence(timeout: 5), "No está «Tipo»")
         for _ in 0..<4 where !app.buttons["motivo"].isHittable { app.swipeUp() }
         snap("nc-01-hoja-no-cuenta")

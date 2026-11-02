@@ -4,12 +4,12 @@ import Foundation
 /// One sentence into an expense, for Siri and for the expense sheet, by plain rules
 /// (`QuickEntryParser`) that work the same on every iPhone.
 enum QuickExpense {
-    static func read(_ sentence: String, sources: [String], now: Date = .now) async -> QuickEntry? {
+    static func read(_ sentence: String, sources: [String], now: Date = AppClock.now) async -> QuickEntry? {
         QuickEntryParser.parse(sentence, sources: sources, now: now)
     }
 
     /// «ayer», «el viernes 16 de oct.»; nothing for today.
-    static func spokenDay(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String? {
+    static func spokenDay(_ date: Date, now: Date = AppClock.now, calendar: Calendar = .current) -> String? {
         if calendar.isDate(date, inSameDayAs: now) { return nil }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(date, inSameDayAs: yesterday) { return "ayer" }

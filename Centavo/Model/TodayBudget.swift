@@ -9,7 +9,7 @@ enum TodayBudget {
     /// their month, to know what is still to come. A month that is over is taken at its last
     /// second: all of the budget was due. `mode` is the rule chosen in the budget sheet.
     static func snapshot(budget: Decimal?, rows: [Expense], originals: [Expense], plans: [FixedPlan],
-                         primary: String, month: Date, now: Date = .now,
+                         primary: String, month: Date, now: Date = AppClock.now,
                          mode: AllowanceMode = .saved) -> WidgetSnapshot {
         let isCurrent = MonthNavigator.isSameMonth(month, as: now)
         let colors = CatalogColors.current
@@ -48,7 +48,7 @@ enum TodayBudget {
     }
 
     static func pace(budget: Decimal?, rows: [Expense], originals: [Expense], plans: [FixedPlan],
-                     primary: String, month: Date, now: Date = .now,
+                     primary: String, month: Date, now: Date = AppClock.now,
                      mode: AllowanceMode = .saved) -> BudgetPace? {
         guard budget != nil else { return nil }
         let snapshot = snapshot(budget: budget, rows: rows, originals: originals, plans: plans,

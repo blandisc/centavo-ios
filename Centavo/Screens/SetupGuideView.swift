@@ -530,7 +530,7 @@ struct CaptureCheck: View {
     /// Proof only if it is recent: a capture from days ago says nothing about the automation
     /// someone came here to fix.
     private var recent: Expense? {
-        guard let latest, Date.now.timeIntervalSince(latest.date) < 3 * 24 * 3600 else { return nil }
+        guard let latest, AppClock.now.timeIntervalSince(latest.date) < 3 * 24 * 3600 else { return nil }
         return latest
     }
 
@@ -547,7 +547,7 @@ struct CaptureCheck: View {
                         .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
                     Text("Llegó \(latest.rawAmount ?? "") en \(latest.merchant), "
-                         + latest.date.formatted(.relative(presentation: .named)) + ".")
+                         + AppClock.relative(latest.date) + ".")
                         .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }

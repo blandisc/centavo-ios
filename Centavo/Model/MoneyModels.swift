@@ -21,7 +21,7 @@ final class MoneyAccount {
     var order: Int = 0
     /// Accounts are archived, never deleted: past cuts keep their lines.
     var archived: Bool = false
-    var createdAt: Date = Date.now
+    var createdAt: Date = AppClock.now
     /// The bank, card or place it's at («Nu», «Amex»). Optional (2026-11-01).
     var institution: String?
     /// What it is within its kind (`MoneySubtype.rawValue`): a card or a loan among debts, money
@@ -49,7 +49,7 @@ final class MoneyCut {
     var id: UUID = UUID()
     /// «2026-10»: one cut per calendar month.
     var month: String = ""
-    var date: Date = Date.now
+    var date: Date = AppClock.now
     /// The main currency the cut adds up in, kept with it so a later change can't rewrite it.
     var mainCurrency: String = "MXN"
     /// `MoneyMath.encodeRates`: «USD=18.5».
@@ -236,13 +236,13 @@ final class MoneyIncome {
     var institution: String?
     var amount: Decimal = 0
     var currency: String = "MXN"
-    var since: Date = Date.now
+    var since: Date = AppClock.now
     var archived: Bool = false
-    var createdAt: Date = Date.now
+    var createdAt: Date = AppClock.now
     /// When it stopped counting (archived, or replaced by a new amount). Optional (2026-11-02).
     var until: Date?
 
-    init(name: String, institution: String?, amount: Decimal, currency: String, since: Date = .now) {
+    init(name: String, institution: String?, amount: Decimal, currency: String, since: Date = AppClock.now) {
         self.name = name
         self.institution = institution
         self.amount = amount
@@ -279,7 +279,7 @@ enum MoneyStore {
     /// Everything an import brought, in one save: the lines into the latest cut (the first
     /// makes it), the exchange rates into that cut, the incomes apart. All or nothing.
     static func addAll(_ lines: [MoneyLineToSave], rates: [String: Decimal], in context: ModelContext,
-                       mainCurrency: String, now: Date = .now) throws {
+                       mainCurrency: String, now: Date = AppClock.now) throws {
         var order = ((try? context.fetch(activeAccounts))?.map(\.order).max() ?? -1) + 1
         let accounts = lines.filter { $0.subtype != .income }
         var cut: MoneyCut?
@@ -383,7 +383,7 @@ enum MoneyStore {
     /// the only line it has).
     @discardableResult
     static func add(_ account: MoneyAccount, balance: Decimal, rate: Decimal?, in context: ModelContext,
-                    mainCurrency: String, now: Date = .now, defaults: UserDefaults = .standard) throws -> MoneyCut {
+                    mainCurrency: String, now: Date = AppClock.now, defaults: UserDefaults = .standard) throws -> MoneyCut {
         let order = ((try? context.fetch(activeAccounts))?.map(\.order).max() ?? -1) + 1
         account.order = order
         context.insert(account)
@@ -450,7 +450,7 @@ enum MoneyStore {
     /// Whether a rate typed now for `currency`, for an account created now, would wait for the
     /// next cut instead of changing the latest one: the sheet says so. The same rule as `add`:
     /// a cut being written of this month takes it; one of a past month doesn't.
-    static func rateWaits(for currency: String, in context: ModelContext, now: Date = .now) -> Bool {
+    static func rateWaits(for currency: String, in context: ModelContext, now: Date = AppClock.now) -> Bool {
         guard let latest = latestCut(in: context), currency != latest.mainCurrency else { return false }
         let open = ((try? drafts(in: context)) ?? []).contains { MoneyMath.belongs(createdAt: now, to: $0.month) }
         return !open && latest.month != MoneyMath.monthKey(of: now) && latest.rateTable[currency] != nil
@@ -480,7 +480,7 @@ enum MoneyStore {
 
     /// Never a month before the latest finished cut (`latest`, «2026-10»): a cut there would
     /// go behind it (second audit, 2026-11-02).
-    static func suggestedMonths(now: Date = .now, latest: String? = nil, calendar: Calendar = .current) -> [String] {
+    static func suggestedMonths(now: Date = AppClock.now, latest: String? = nil, calendar: Calendar = .current) -> [String] {
         MoneyMath.cutMonths(now: now, latest: latest, lateDays: lateCutDays, calendar: calendar)
     }
 
@@ -499,7 +499,7 @@ enum MoneyStore {
 
     /// A month's cut being written: that month's draft, or a new one with every active account
     /// waiting to be reviewed (the last balance kept as the starting value, never as an answer).
-    static func draft(for month: String, in context: ModelContext, now: Date = .now, mainCurrency: String,
+    static func draft(for month: String, in context: ModelContext, now: Date = AppClock.now, mainCurrency: String,
                       defaults: UserDefaults = .standard) throws -> MoneyCut {
         let mine = try context.fetch(FetchDescriptor<MoneyCut>(predicate: #Predicate { $0.month == month }))
         if let draft = mine.first(where: \.isDraft) {
@@ -523,7 +523,7 @@ enum MoneyStore {
         return draft
     }
 
-    static func draftForThisMonth(in context: ModelContext, now: Date = .now, mainCurrency: String) throws -> MoneyCut {
+    static func draftForThisMonth(in context: ModelContext, now: Date = AppClock.now, mainCurrency: String) throws -> MoneyCut {
         try draft(for: MoneyMath.monthKey(of: now), in: context, now: now, mainCurrency: mainCurrency)
     }
 
@@ -569,7 +569,7 @@ enum MoneyStore {
     /// `CutProblem.monthHasCut` and nothing changes. Lines the old cut had and the draft
     /// doesn't (an account added while it was being written) move to the draft first, so
     /// replacing never deletes a balance with it.
-    static func finish(_ draft: MoneyCut, replacing: Bool = false, in context: ModelContext, now: Date = .now,
+    static func finish(_ draft: MoneyCut, replacing: Bool = false, in context: ModelContext, now: Date = AppClock.now,
                        defaults: UserDefaults = .standard) throws {
         let month = draft.month
         let others = try context.fetch(FetchDescriptor<MoneyCut>(predicate: #Predicate { $0.month == month && !$0.isDraft }))
@@ -601,7 +601,7 @@ enum MoneyStore {
     /// Changes today's balance (and the exchange rate) of an account in the latest cut, and in a
     /// cut being written, where it counts as looked at.
     static func update(_ account: MoneyAccount, balance: Decimal, rate: Decimal?, in context: ModelContext,
-                       now: Date = .now, defaults: UserDefaults = .standard) throws {
+                       now: Date = AppClock.now, defaults: UserDefaults = .standard) throws {
         let cuts = [latestCut(in: context)].compactMap { $0 } + (try drafts(in: context))
         var kept = cuts.isEmpty || rate == nil
         for cut in cuts {

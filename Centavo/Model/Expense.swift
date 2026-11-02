@@ -12,7 +12,7 @@ final class Expense {
     var currencyMarker: String?
     var merchant: String = ""
     var card: String?
-    var date: Date = Date.now
+    var date: Date = AppClock.now
     /// Free text, remembered per merchant by `CategoryMemory`. Optional on purpose:
     /// a payment Wallet just captured hasn't been filed anywhere yet.
     var category: String?
@@ -118,7 +118,7 @@ final class Expense {
     }
 
     init(amount: Decimal, currencyMarker: String? = nil, merchant: String,
-         card: String? = nil, date: Date = .now, category: String? = nil,
+         card: String? = nil, date: Date = AppClock.now, category: String? = nil,
          rawAmount: String? = nil) {
         self.amount = amount
         self.currencyMarker = currencyMarker

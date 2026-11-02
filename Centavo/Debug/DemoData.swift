@@ -48,7 +48,7 @@ enum DemoData {
 
         let context = ModelContext(container)
         let calendar = Calendar.current
-        let now = Date.now
+        let now = AppClock.now
         let today = calendar.component(.day, from: now)
 
         func at(day: Int, hour: Int = 13, monthsAgo: Int = 0) -> Date? {
@@ -111,7 +111,7 @@ enum DemoData {
         let merchants = ["Oxxo", "Soriana", "Liverpool", "Uber", "Starbucks", "CFE", "Netflix",
                          "Cinépolis", "Farmacia del Ahorro", "Walmart", "Rappi", "Spotify"]
         let categories: [String?] = ["Despensa", "Ropa", "Transporte", "Café", "Servicios", nil]
-        let now = Date.now
+        let now = AppClock.now
         for i in 0..<5_000 {
             let daysAgo = (i * 7919) % 730            // spread over ~2 years, deterministic
             let date = now.addingTimeInterval(-Double(daysAgo) * 86_400 - Double(i % 86_400) / 4)

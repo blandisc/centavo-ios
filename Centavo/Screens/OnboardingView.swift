@@ -244,7 +244,7 @@ struct OnboardingView: View {
 
     /// What each day gets, as «Hoy» counts it: (budget − fixed) ÷ the month's days, rounded down.
     /// Not today's carried figure, which mid-month would add up the days already gone.
-    private var pace: BudgetPace? { BudgetPace(budget: budget, spent: 0, reserved: fixedTotal, on: .now) }
+    private var pace: BudgetPace? { BudgetPace(budget: budget, spent: 0, reserved: fixedTotal, on: AppClock.now) }
 
     private func whole(_ value: Decimal) -> String {
         var input = value, output = Decimal()
@@ -277,7 +277,7 @@ struct OnboardingView: View {
                 Text("Escribe un monto o elige uno abajo.")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.faint)
-                WelcomeDaysStrip(days: Calendar.current.range(of: .day, in: .month, for: .now)?.count ?? 30, filled: false)
+                WelcomeDaysStrip(days: Calendar.current.range(of: .day, in: .month, for: AppClock.now)?.count ?? 30, filled: false)
             }
         }
     }
@@ -559,7 +559,7 @@ struct OnboardingView: View {
             let plan = FixedPlan(merchant: item.name, amount: "\(item.amount)", currency: currency,
                                  category: MerchantCatalog.category(for: item.name), rule: nil, firstDate: first,
                                  day: item.day)
-            if first <= .now {
+            if first <= AppClock.now {
                 let expense = RecurringExpenses.original(from: plan)
                 expense.repeatDay = item.day
                 context.insert(expense)
@@ -578,7 +578,7 @@ struct OnboardingView: View {
     }
 
     /// This month's day (the last one in a shorter month), at 9:00.
-    static func firstCharge(day: Int, now: Date = .now, calendar: Calendar = .current) -> Date {
+    static func firstCharge(day: Int, now: Date = AppClock.now, calendar: Calendar = .current) -> Date {
         let length = calendar.range(of: .day, in: .month, for: now)?.count ?? 28
         var parts = calendar.dateComponents([.year, .month], from: now)
         parts.day = min(max(day, 1), length)

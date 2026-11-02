@@ -11,7 +11,7 @@ enum UnreadNotice {
 
     /// `always`: a notice read as a charge whose amount still didn't make it is kept whatever
     /// it looks like, so it never vanishes in silence.
-    static func note(_ text: String, always: Bool = false, now: Date = .now, defaults: UserDefaults = .standard) {
+    static func note(_ text: String, always: Bool = false, now: Date = AppClock.now, defaults: UserDefaults = .standard) {
         let lines = text.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }

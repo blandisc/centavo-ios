@@ -801,3 +801,10 @@ Pedido del dueño: que se abra «de manera más pulida hacia abajo» en la hoja 
 - **Al cerrar, primero se desvanecen y luego se cierra el espacio** (`foldClosed`), como el resto de los pliegues (2026-10-29).
 - **El texto del botón cambia de golpe** («Ver 7 más» ↔ «Ver menos»): mezclado mientras el botón se mueve se leía como una mancha.
 - Las ocultas no son botones ni las ve VoiceOver: solo guardan su lugar. Las formas de pago no tienen «Ver más»: se ven todas.
+
+## 2026-11-02 · Las pruebas de interfaz otra vez en verde
+Pedido del dueño: «arregla las pruebas que están fallando en GitHub». Las pruebas del simulador (que corren al entrar a `main`) fallaban desde el 2026-10-31: 23 de 89.
+- **Un «hoy» fijo para la demostración** (`AppClock`, solo en DEBUG y solo con `-centavo-demo`): los gastos de ejemplo van del día 1 al 12 y solo se mostraban los que ya habían pasado; en los primeros días del mes faltaban casi todos y 18 pruebas fallaban por la fecha. La demostración vive el día 20 del mes en curso, con el reloj corriendo. Toda la app lee la hora de `AppClock.now` (fuera de la demostración es la del sistema), también «hace 1 h» y «hoy».
+- **Un error real que encontraron:** con la letra más grande, «Llevas $X de $Y · $Z/día» no se partía y empujaba la página fuera de la pantalla; ahora pasa a dos renglones.
+- **Pendiente para el dueño:** un deslizamiento hacia arriba que empieza sobre el código del mes («Cada día del mes») no mueve la pantalla; desde la cifra o la lista sí. Viene de cómo conviven los gestos del código (tocar un día, mantener y deslizar) con el del carrusel, que el dueño ajustó tres veces: no se tocó sin preguntar. La prueba con letra grande desliza desde la parte de abajo, como un pulgar.
+- **Pruebas al día con la app:** «Dilo en una frase» se espera a que se guarde el teclado (el botón está donde va «Siguiente»); la hoja de «No cuenta» se desplaza antes de buscar «Tipo»; la guía paso a paso se salta en iOS 27, donde «Configurar atajo» agrega el atajo armado.
