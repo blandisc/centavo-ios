@@ -457,35 +457,8 @@ enum MoneyStep: Int {
 /// Four parts; the current one carries a slow sheen. «Paso N de 4» and its name under it.
 struct MoneyStepBar: View {
     let step: MoneyStep
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(spacing: Theme.Space.xxs) {
-                ForEach(1...4, id: \.self) { part in
-                    Capsule()
-                        .fill(part <= step.rawValue ? Theme.brass : Theme.raised)
-                        .frame(height: Theme.Size.moneyStepBar)
-                        .overlay {
-                            if part == step.rawValue && !reduceMotion { MoneyStepSheen() }
-                        }
-                        .clipShape(Capsule())
-                }
-            }
-            HStack {
-                Text("Paso \(Text("\(step.rawValue) de 4").foregroundStyle(Theme.ink))")
-                Spacer()
-                Text(step.label)
-            }
-            .font(.ticket(.microStrong))
-            .tracking(Theme.Tracking.action)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.muted)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Paso \(step.rawValue) de 4, \(step.label)")
-    }
-
+    var body: some View { StepBar(step: step.rawValue, of: 4, label: step.label) }
 }
 
 // MARK: - A kind's card
@@ -907,7 +880,7 @@ struct MoneyCountUp: View {
             .monospacedDigit()
             .contentTransition(.numericText(value: NSDecimalNumber(decimal: shown).doubleValue))
             .onAppear {
-                if reduceMotion { shown = value; return }
+                if MotionPolicy.isStill(reduceMotion: reduceMotion) { shown = value; return }
                 withAnimation(Theme.Motion.countUp.delay(Theme.Motion.Money.countUpDelay)) { shown = value }
             }
             .accessibilityLabel(money(value, currency))

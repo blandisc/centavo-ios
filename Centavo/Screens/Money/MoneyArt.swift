@@ -12,7 +12,7 @@ struct MoneyLoopClock<Content: View>: View {
     @ViewBuilder let content: (Double) -> Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var still: Bool { reduceMotion || MoneyMotion.stillForTests }
+    private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still)) { context in
@@ -24,13 +24,7 @@ struct MoneyLoopClock<Content: View>: View {
 
 enum MoneyMotion {
     /// The UI tests wait for the app to be idle; a drawing at 30 fps never is.
-    static var stillForTests: Bool {
-        #if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-centavo-dibujos-quietos")
-        #else
-        false
-        #endif
-    }
+    static var stillForTests: Bool { MotionPolicy.testsWantStill }
 }
 
 /// Smooth in and out, no overshoot.
@@ -371,9 +365,9 @@ struct MoneySuccessArt: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval,
-                                paused: reduceMotion || played || MoneyMotion.stillForTests)) { context in
+                                paused: MotionPolicy.isStill(reduceMotion: reduceMotion) || played)) { context in
             let elapsed = context.date.timeIntervalSince(start)
-            let t = reduceMotion || played || MoneyMotion.stillForTests ? 1 : min(elapsed / Theme.Motion.Money.success, 1)
+            let t = MotionPolicy.isStill(reduceMotion: reduceMotion) || played ? 1 : min(elapsed / Theme.Motion.Money.success, 1)
             Canvas { context, size in
                 var c = context
                 fit(&c, size, design: CGSize(width: 132, height: 132))

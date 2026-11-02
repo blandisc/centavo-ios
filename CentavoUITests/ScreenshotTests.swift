@@ -172,11 +172,12 @@ final class ScreenshotTests: XCTestCase {
 
     /// The four pages of the welcome, one launch each (the app opens on the page asked for).
     func testBienvenida() {
-        for page in 0...3 {
+        for page in 0...4 {
             let app = XCUIApplication()
             XCUIDevice.shared.appearance = .dark
             app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-empty",
-                                   "-centavo-onboarding", "-centavo-bienvenida-pagina", "\(page)"]
+                                   "-centavo-onboarding", "-centavo-bienvenida-pagina", "\(page)",
+                                   "-centavo-dibujos-quietos"]
             app.launch()
             XCTAssertTrue(app.buttons["bienvenida-siguiente"].waitForExistence(timeout: 20)
                           || app.buttons["bienvenida-configurar"].waitForExistence(timeout: 5), "No abrió la bienvenida")

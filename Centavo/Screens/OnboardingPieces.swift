@@ -11,6 +11,8 @@ struct WelcomeDemo: View {
     @State private var rows: [Payment] = [Self.first]
     @State private var notice: Payment?
     @State private var landings = 0
+    /// How much of today's cell is spent, 0…1: each payment fills a bit more.
+    @State private var todayFill: CGFloat = 0
 
     private struct Payment: Identifiable, Equatable {
         let id = UUID()
@@ -49,6 +51,7 @@ struct WelcomeDemo: View {
             VStack(spacing: Theme.Space.s) {
                 ForEach(rows.prefix(3)) { row($0) }
             }
+            monthStrip
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,6 +60,31 @@ struct WelcomeDemo: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ejemplo: llega un pago de Wallet, se anota solo y baja lo que puedes gastar hoy.")
         .task { await play() }
+    }
+
+    /// The month as the main screen's boleto: the days gone, filled; today, outlined, filling
+    /// with each payment; the days to come, empty.
+    private var monthStrip: some View {
+        let calendar = Calendar.current
+        let days = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
+        let today = calendar.component(.day, from: .now)
+        return HStack(spacing: Theme.Size.monthBarCellGap) {
+            ForEach(1...days, id: \.self) { day in
+                RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                    .strokeBorder(day == today ? Theme.ink : Theme.hairline, lineWidth: Theme.Stroke.hairline)
+                    .background(alignment: .bottom) {
+                        GeometryReader { proxy in
+                            let fill: CGFloat = day < today ? Theme.Size.welcomeDayGone : day == today ? todayFill : 0
+                            Rectangle().fill(Theme.brass)
+                                .frame(height: proxy.size.height * fill)
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bar))
+            }
+        }
+        .frame(height: Theme.Size.welcomeStrip)
+        .accessibilityHidden(true)
     }
 
     /// Room for the notice is always kept, so the ticket does not jump when it comes and goes.
@@ -107,15 +135,16 @@ struct WelcomeDemo: View {
         amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))
     }
 
+    /// A few payments, one after the other, then still on the last: a loop forever would tire
+    /// (and keep the phone busy). Still from the start with reduced motion or Low Power Mode.
     private func play() async {
-        if reduceMotion {
+        if MotionPolicy.isStill(reduceMotion: reduceMotion) {
             rows.insert(Self.coming[0], at: 0)
             left -= Self.coming[0].amount
+            todayFill = Theme.Size.welcomeTodayStep
             return
         }
-        var index = 0
-        while !Task.isCancelled {
-            let payment = Self.coming[index % Self.coming.count]
+        for payment in Self.coming.prefix(Theme.Motion.Onboarding.loops) {
             guard await pause(Theme.Motion.Onboarding.beforeNotice) else { return }
             withAnimation(Theme.Motion.Onboarding.noticeIn) { notice = payment }
             guard await pause(Theme.Motion.Onboarding.noticeShown) else { return }
@@ -124,15 +153,11 @@ struct WelcomeDemo: View {
                 rows.insert(payment, at: 0)
                 left -= payment.amount
             }
+            withAnimation(Theme.Motion.Onboarding.land.delay(Theme.Motion.Onboarding.fillDelay)) {
+                todayFill = min(1, todayFill + Theme.Size.welcomeTodayStep)
+            }
             landings += 1
             guard await pause(Theme.Motion.Onboarding.afterLanding) else { return }
-            index += 1
-            if index % Self.coming.count == 0 {
-                withAnimation(Theme.Motion.restyle) {
-                    rows = [Self.first]
-                    left = Self.start
-                }
-            }
         }
     }
 
@@ -168,7 +193,6 @@ struct WalletChain: View {
                         .background(lit >= index ? Theme.brass.opacity(Theme.Opacity.wash) : Theme.raised,
                                     in: Circle())
                         .overlay { Circle().strokeBorder(lit >= index ? Theme.brass : Theme.hairline) }
-                        .symbolEffect(.bounce, value: lit == index)
                     Text(nodes[index].1)
                         .font(.ticket(.caption))
                         .foregroundStyle(lit >= index ? Theme.ink : Theme.muted)
@@ -184,7 +208,7 @@ struct WalletChain: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Pagas con Wallet, Atajos le avisa a Al día y Al día lo anota.")
         .task {
-            guard !reduceMotion else { lit = nodes.count - 1; return }
+            guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { lit = nodes.count - 1; return }
             while !Task.isCancelled {
                 for index in 0...nodes.count {
                     guard (try? await Task.sleep(for: .seconds(Theme.Motion.Onboarding.chainBeat))) != nil
@@ -193,6 +217,84 @@ struct WalletChain: View {
                 }
             }
         }
+    }
+}
+
+/// The month split into its days, as the main screen's boleto: equal cells that fill when there
+/// is a budget (once, as it's typed), empty dashed ones while there isn't.
+struct WelcomeDaysStrip: View {
+    let days: Int
+    let filled: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
+
+    var body: some View {
+        HStack(spacing: Theme.Size.monthBarCellGap) {
+            ForEach(0..<days, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: Theme.Radius.bar)
+                    .strokeBorder(Theme.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
+                                                                    dash: filled ? [] : Theme.Dash.dotted))
+                    .background(alignment: .bottom) {
+                        GeometryReader { proxy in
+                            Rectangle().fill(Theme.brass)
+                                .frame(height: filled && shown ? proxy.size.height * Theme.Size.welcomeDayGone : Theme.Space.none)
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bar))
+            }
+        }
+        .frame(height: Theme.Size.welcomeStrip)
+        .accessibilityHidden(true)
+        .onAppear { fill() }
+        .onChange(of: filled) { fill() }
+    }
+
+    private func fill() {
+        withAnimation(Theme.Motion.animation(Theme.Motion.Money.total, reduceMotion: MotionPolicy.isStill(reduceMotion: reduceMotion))) {
+            shown = filled
+        }
+    }
+}
+
+/// The month as a calendar for the fixed expenses: tap a day to choose it, and each one added is
+/// stamped on its day in brass, once (not in a loop). A day 31 in a shorter month lands on the last.
+struct WelcomeFixedCalendar: View {
+    let stamped: Set<Int>
+    @Binding var chosen: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let days = Calendar.current.range(of: .day, in: .month, for: .now)?.count ?? 30
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.xxs), count: 7)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: Theme.Space.xxs) {
+            ForEach(1...days, id: \.self) { day in
+                let isStamped = stamped.contains(where: { min($0, days) == day })
+                Button { chosen = day } label: {
+                    Text("\(day)")
+                        .font(.ticket(.micro))
+                        .foregroundStyle(isStamped ? Theme.onBrass : day == chosen ? Theme.brass : Theme.muted)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.compactRow)
+                        .background {
+                            RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                                .fill(isStamped ? Theme.brass : .clear)
+                                .scaleEffect(isStamped ? Theme.Size.barFullScale : Theme.Size.stampFrom)
+                                .opacity(isStamped ? Theme.Opacity.visible : Theme.Opacity.hidden)
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                                .strokeBorder(day == chosen ? Theme.brass : Theme.hairline, lineWidth: Theme.Stroke.hairline)
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .animation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion), value: isStamped)
+                .accessibilityLabel(isStamped ? "Día \(day), con un fijo" : "Día \(day)")
+                .accessibilityAddTraits(day == chosen ? .isSelected : [])
+            }
+        }
+        .sensoryFeedback(.selection, trigger: chosen)
     }
 }
 
@@ -205,8 +307,8 @@ struct OnboardingRise: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .opacity(shown || reduceMotion ? Theme.Opacity.visible : Theme.Opacity.hidden)
-            .offset(y: shown || reduceMotion ? Theme.Space.none : Theme.Size.entranceRise)
+            .opacity(shown || MotionPolicy.isStill(reduceMotion: reduceMotion) ? Theme.Opacity.visible : Theme.Opacity.hidden)
+            .offset(y: shown || MotionPolicy.isStill(reduceMotion: reduceMotion) ? Theme.Space.none : Theme.Size.entranceRise)
             .onAppear {
                 guard !shown else { return }
                 withAnimation(Theme.Motion.Onboarding.rise(index)) { shown = true }
