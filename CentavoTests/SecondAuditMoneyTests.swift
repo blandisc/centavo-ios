@@ -77,6 +77,9 @@ final class SecondAuditMoneyTests: XCTestCase {
         XCTAssertEqual(MoneyStore.pendingRates(defaults)["USD"], 20)
         let draft = try MoneyStore.draft(for: "2026-11", in: context, now: date(2026, 11, 30), mainCurrency: "MXN", defaults: defaults)
         XCTAssertEqual(draft.rateTable["USD"], 20, "El próximo corte empieza con el que se escribió")
+        // Kept until the cut is finished: a draft dropped halfway never loses it.
+        XCTAssertEqual(MoneyStore.pendingRates(defaults)["USD"], 20)
+        try MoneyStore.finish(draft, in: context, now: date(2026, 11, 30), defaults: defaults)
         XCTAssertTrue(MoneyStore.pendingRates(defaults).isEmpty)
     }
 
