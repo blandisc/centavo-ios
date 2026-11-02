@@ -2,23 +2,6 @@
 
 ## [Unreleased]
 ### Fixed
-<<<<<<< HEAD
-- **Respaldo, captura y gastos fijos, revisados otra vez (segunda auditoría del 2 de noviembre):**
-  - Restaurar un respaldo ahora sí arregla un «Mi dinero» que no abre: el dañado se guarda aparte en el iPhone, sin borrarse, y se pone el del respaldo.
-  - Un iPhone nuevo o recién instalado ya no puede pisar el respaldo bueno del día con uno vacío ni hacer que la limpieza borre los del mes: dice «Parece un iPhone nuevo: restaura tu respaldo antes de respaldar.» Un respaldo con menos gastos que el del día se guarda aparte.
-  - Si el respaldo no sube a iCloud (sin espacio) o lleva más de un día subiendo, «Hoy» lo avisa, y no se borran respaldos viejos hasta que suba.
-  - Restaurar guarda en la copia «antes de restaurar» el corte que tenías a medias.
-  - Los nombres de los respaldos usan la fecha de tu iPhone (a las 21:00 ya no sale la de mañana) y el calendario gregoriano.
-  - Si el iPhone no deja leer la contraseña del respaldo, lo dice en vez de pedirte crearla; si no se pudo guardar la contraseña, también lo dice. «No coinciden.» y «Mínimo 8 caracteres.» se ven al escribirla.
-  - «Respaldar ahora» ya no congela la pantalla.
-  - La pantalla de «no pudo abrir tus gastos» se desplaza con letra grande y dice qué hacer.
-  - Un mismo pago que llega por las dos automatizaciones de Wallet se marca «¿Repetida?», y la guía de iOS 27 pide borrar la de «Transacción».
-  - Montos en dinares («JOD 1.250», «BHD 0.750») se leen bien; un aviso con moneda que no se pudo leer ya no se pierde en silencio. «Flete Envío» ya no se toma por dinero recibido.
-  - Gastos fijos: empezado en dos dispositivos queda uno; marcar un gasto viejo como «Cada mes» ya no se salta el cobro de este mes; cambiar su fecha no crea una copia el mismo día; «Dejar de repetir» ya no baja de golpe «Hoy puedes gastar» y encuentra su original aunque haya dos con el mismo nombre.
-  - Cambiar solo la categoría ya no redondea el monto; un gasto por Siri que falló al guardarse ya no aparece después; un comercio que escribiste no se cambia solo; «No es repetida», «Sí cuenta» y «No cuenta» avisan si no se pudieron guardar.
-### Changed
-- **El ejemplo de «Hoy puedes gastar»** en la hoja del presupuesto recorre la semana una vez y se queda en el final; tócalo para verlo otra vez.
-=======
 - **«Mi dinero» y los cálculos de «Hoy», revisados otra vez (segunda auditoría del 2 de noviembre):**
   - Importar ya no guarda $12 cuando tu Excel decía «12,000» sin comillas: un renglón con columnas de más o de menos, o con tres cifras sueltas después del monto, va a revisión con «¿un monto con comas?». Una moneda que no existe («ABC») también va a revisión.
   - Si ya corregiste algo en la revisión, salir pregunta antes («¿Salir sin agregar?»).
@@ -37,7 +20,21 @@
   - La nota del mes («A este ritmo cierras en…») suma los fijos que faltan.
   - Pasarte del presupuesto por centavos ya no dice «Te pasaste $0»: se redondea hacia arriba.
   - Con lo gastado igual al presupuesto, la hoja dice «Este mes ya gastaste justo eso.».
->>>>>>> 5263d13 (Segunda auditoría de «Mi dinero» y cálculos: CHANGELOG y decisiones)
+- **Respaldo, captura y gastos fijos, revisados otra vez (segunda auditoría del 2 de noviembre):**
+  - Restaurar un respaldo ahora sí arregla un «Mi dinero» que no abre: el dañado se guarda aparte en el iPhone, sin borrarse, y se pone el del respaldo.
+  - Un iPhone nuevo o recién instalado ya no puede pisar el respaldo bueno del día con uno vacío ni hacer que la limpieza borre los del mes: dice «Parece un iPhone nuevo: restaura tu respaldo antes de respaldar.» Un respaldo con menos gastos que el del día se guarda aparte.
+  - Si el respaldo no sube a iCloud (sin espacio) o lleva más de un día subiendo, «Hoy» lo avisa, y no se borran respaldos viejos hasta que suba.
+  - Restaurar guarda en la copia «antes de restaurar» el corte que tenías a medias.
+  - Los nombres de los respaldos usan la fecha de tu iPhone (a las 21:00 ya no sale la de mañana) y el calendario gregoriano.
+  - Si el iPhone no deja leer la contraseña del respaldo, lo dice en vez de pedirte crearla; si no se pudo guardar la contraseña, también lo dice. «No coinciden.» y «Mínimo 8 caracteres.» se ven al escribirla.
+  - «Respaldar ahora» ya no congela la pantalla.
+  - La pantalla de «no pudo abrir tus gastos» se desplaza con letra grande y dice qué hacer.
+  - Un mismo pago que llega por las dos automatizaciones de Wallet se marca «¿Repetida?», y la guía de iOS 27 pide borrar la de «Transacción».
+  - Montos en dinares («JOD 1.250», «BHD 0.750») se leen bien; un aviso con moneda que no se pudo leer ya no se pierde en silencio. «Flete Envío» ya no se toma por dinero recibido.
+  - Gastos fijos: empezado en dos dispositivos queda uno; marcar un gasto viejo como «Cada mes» ya no se salta el cobro de este mes; cambiar su fecha no crea una copia el mismo día; «Dejar de repetir» ya no baja de golpe «Hoy puedes gastar» y encuentra su original aunque haya dos con el mismo nombre.
+  - Cambiar solo la categoría ya no redondea el monto; un gasto por Siri que falló al guardarse ya no aparece después; un comercio que escribiste no se cambia solo; «No es repetida», «Sí cuenta» y «No cuenta» avisan si no se pudieron guardar.
+### Changed
+- **El ejemplo de «Hoy puedes gastar»** en la hoja del presupuesto recorre la semana una vez y se queda en el final; tócalo para verlo otra vez.
 ### Security
 - **«Mi dinero» ya no se queda abierto si sales antes de Face ID:** si tocas la pestaña y regresas a «Hoy» mientras Face ID pregunta, la respuesta ya no la abre. Al bloquearse, las hojas de «Mi dinero» guardan el teclado, cierran sus avisos («¿Archivar?», «¿Descartar el corte?») y VoiceOver no lee lo que quedó debajo.
 - **Restaurar un respaldo y «Cambiar contraseña» piden Face ID o el código** de tu iPhone. Cambiar la contraseña tiene «Cancelar» y te recuerda que los respaldos que ya tienes se abren con la anterior; si escribes una contraseña que no abre el respaldo, lo dice y puedes probar otra vez.
