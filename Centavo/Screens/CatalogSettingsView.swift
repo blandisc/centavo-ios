@@ -58,7 +58,7 @@ struct CatalogSettingsView: View {
         Binding(get: { !hidden.contains { UserCatalog.same($0, name) } }, set: { show in
             var list = hidden.filter { !UserCatalog.same($0, name) }
             if !show { list.append(name) }
-            storedHidden = UserCatalog.encodeNames(list)
+            storedHidden = UserCatalog.encodeNames(list, keepingUnreadFrom: storedHidden)
         })
     }
 
@@ -217,7 +217,7 @@ struct CatalogSettingsView: View {
                             list[index] = saved
                             UserCatalog.renameCategory(category.name, to: saved.name)
                         } else { list.append(saved) }
-                        storedCategories = UserCatalog.encode(list)
+                        storedCategories = UserCatalog.encode(list, keepingUnreadFrom: storedCategories)
                         UserCatalog.markDeleted(saved.name, false)
                     }
                 }
@@ -269,20 +269,20 @@ struct CatalogSettingsView: View {
             // The first one is the default until another is chosen.
             if defaultSource.isEmpty { defaultSource = source.name }
         }
-        storedSources = UserCatalog.encode(list)
+        storedSources = UserCatalog.encode(list, keepingUnreadFrom: storedSources)
     }
 
     /// Expenses that have a deleted category keep it, and if any does it stays in the picker;
     /// it is just never filled in on its own again.
     private func removeCategory(_ category: LabeledIcon) {
-        storedCategories = UserCatalog.encode(categories.filter { $0 != category })
+        storedCategories = UserCatalog.encode(categories.filter { $0 != category }, keepingUnreadFrom: storedCategories)
         UserCatalog.markDeleted(category.name, true)
         UserCatalog.setColor(nil, for: category.name, key: UserCatalog.categoryColorsKey)
     }
 
     private func remove(_ source: LabeledIcon) {
         let list = sources.filter { $0 != source }
-        storedSources = UserCatalog.encode(list)
+        storedSources = UserCatalog.encode(list, keepingUnreadFrom: storedSources)
         UserCatalog.setColor(nil, for: source.name, key: UserCatalog.sourceColorsKey)
         if UserCatalog.same(defaultSource, source.name) { defaultSource = list.first?.name ?? "" }
     }

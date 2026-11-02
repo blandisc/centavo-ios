@@ -9,11 +9,13 @@ enum UnreadNotice {
     static let textKey = "unreadWalletNotice"
     static let dateKey = "unreadWalletNoticeDate"
 
-    static func note(_ text: String, now: Date = .now, defaults: UserDefaults = .standard) {
+    /// `always`: a notice read as a charge whose amount still didn't make it is kept whatever
+    /// it looks like, so it never vanishes in silence.
+    static func note(_ text: String, always: Bool = false, now: Date = .now, defaults: UserDefaults = .standard) {
         let lines = text.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        guard lines.count == 1, !lines[0].contains(where: \.isNumber) else { return }
+        guard !lines.isEmpty, always || (lines.count == 1 && !lines[0].contains(where: \.isNumber)) else { return }
         defaults.set(String(lines[0].prefix(80)), forKey: textKey)
         defaults.set(now.timeIntervalSinceReferenceDate, forKey: dateKey)
     }

@@ -1,6 +1,33 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **Tus números, revisados a fondo (auditoría del 2 de noviembre):**
+  - Un tipo de cambio como «18.125» en el corte ya no se lee como 18,125, y un monto como «15000.125» ya no se vuelve 15 millones. Lo que trae más de dos decimales se pregunta.
+  - Pagar dos veces lo mismo en menos de 5 minutos ya no borra la segunda compra: se anota marcada «¿Repetida?», para que la confirmes o la borres.
+  - Un pago de Wallet con «$» se guarda con tu moneda principal de ese momento; cambiarla después ya no mueve tus gastos de moneda.
+  - Montos de Wallet como «CHF 1'234.50» o «1 234,56 €» se guardan completos; los reembolsos y el dinero recibido en inglés ya no suman como gasto.
+  - Dos gastos fijos iguales (dos colegiaturas de $5,000) ya anotan cada uno su copia.
+  - «Deshacer» regresa el gasto completo, con su lugar y su aviso de Wallet.
+  - Importar un CSV con dos gastos iguales del mismo momento ya no descarta el segundo; el CSV guarda los montos sin redondear y lo que cuenta en parte.
+  - Pegar «12,50» en un monto ya no da 1,250. «2 mil pesos» en una frase son 2,000 y «Cena de 4 personas 1200» son 1,200.
+  - «Lo que tocaba por día» ya no sale en $0 con «Repartir».
+  - Un gasto fijo de la bienvenida cuyo día aún no llega ya no se anota en el mes pasado.
+  - Cada cambio (guardar, borrar, deshacer, categoría, fijos) se guarda en ese momento y, si falla, lo dice.
+  - El pago se guarda antes de buscar dónde estás: una ubicación lenta ya no puede costarte el pago.
+- **«Mi dinero»:**
+  - «Hacer corte» pregunta de qué mes es (en los primeros días, el que acaba de terminar) y, si ese mes ya tiene corte, pregunta antes de reemplazarlo. Un corte a medias de otro mes se ofrece para terminarlo.
+  - Una cuenta nueva mientras haces un corte entra también al corte; ya no se pierde al guardarlo ni cambia un corte pasado.
+  - Un tipo de cambio de hoy ya no reescribe un corte de otro mes.
+  - Una cuenta en otra moneda sin tipo de cambio dice «sin tipo de cambio» en vez de $0; editar una inversión ya no borra su tasa; las cuentas en dólares dicen «USD».
+  - Las cuentas archivadas tienen su sección para regresarlas y ya no suman en tu patrimonio.
+- **Respaldo:**
+  - Si «Mi dinero» no abre, el respaldo no se marca como hecho (y ya no puede borrar los buenos al limpiar).
+  - Dice «Guardado, aún no sube a iCloud» mientras sube, avisa si eliges una carpeta que está solo en el iPhone y trata una carpeta en la papelera como perdida.
+  - «Hoy» avisa, en una línea, si el respaldo falló o lleva más de 3 días sin hacerse.
+  - Un archivo cortado o dañado ya no se reporta como «contraseña equivocada»; abrir un respaldo no congela la pantalla.
+  - Restaurar es honesto: si los gastos no se pueden restaurar, «Mi dinero» vuelve a como estaba.
+  - Un ajuste ilegible en tus categorías, tarjetas o gastos fijos por empezar ya no vacía la lista entera.
 ### Changed
 - **«Hoy» sin datos invita a empezar:** «Tu mes empieza aquí» con el boleto del mes, un renglón de ejemplo que se imprime, «Anotar un gasto» y dos tarjetas con dibujo: «Fijar presupuesto» y «Conectar Wallet». Lo que ya hiciste desaparece; la animación corre una vez y se queda quieta.
 - **Una bienvenida más clara:** una barra de pasos con su nombre, una pregunta por paso y dibujos que explican sin palabras. En «Tu mes», el boleto se reparte en los días mientras escribes; en «Gastos fijos», cada uno se sella en su día de un calendario; al final, «Listo» y cuánto tienes cada día. Las animaciones corren pocas veces y se quedan quietas, sin rebotes; con «Reducir movimiento» o el modo de bajo consumo, todo queda quieto.

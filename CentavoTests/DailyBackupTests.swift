@@ -134,9 +134,69 @@ final class DailyBackupTests: XCTestCase {
         // The draft is still a draft: the net worth is the finished cut's.
         XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 1_000)
         XCTAssertEqual(try MoneyStore.draftForThisMonth(in: context, mainCurrency: "MXN").id, draft.id)
-        try MoneyStore.finish(draft, in: context)
+        // The month already has a cut: replacing it is asked first, never done in silence.
+        XCTAssertThrowsError(try MoneyStore.finish(draft, in: context)) { error in
+            guard case MoneyStore.CutProblem.monthHasCut = error else { return XCTFail("\(error)") }
+        }
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 1_000, "Nada cambió sin preguntar")
+        try MoneyStore.finish(draft, replacing: true, in: context)
         XCTAssertEqual(try context.fetch(MoneyCut.finished).count, 1)
         XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 9_999)
+    }
+
+    func testTheNewFieldsTravelToo() throws {
+        let source = try container()
+        let original = Expense(amount: 5_000, currencyMarker: "MXN", merchant: "Colegio")
+        original.fixedID = "colegio-1"
+        let copy = Expense(amount: 5_000, currencyMarker: "MXN", merchant: "Colegio")
+        copy.fixedOf = "colegio-1"
+        copy.maybeRepeated = true
+        source.mainContext.insert(original)
+        source.mainContext.insert(copy)
+        let payload = try DailyBackup.snapshot(in: source.mainContext, moneyContainer: nil)
+        let target = try container()
+        try DailyBackup.restore(payload, into: target, money: nil)
+        let back = try all(target)
+        XCTAssertEqual(Set(back.compactMap(\.fixedID)), ["colegio-1"])
+        XCTAssertEqual(Set(back.compactMap(\.fixedOf)), ["colegio-1"])
+        XCTAssertEqual(back.filter { $0.maybeRepeated == true }.count, 1)
+    }
+
+    /// A file with «Mi dinero» and no «Mi dinero» to put it in: nothing changes, it doesn't
+    /// quietly bring back only the expenses.
+    func testAFileWithMiDineroNeedsItsStore() throws {
+        let money = try MoneyStore.inMemory()
+        try MoneyStore.add(MoneyAccount(name: "Nu", kind: .account, currency: "MXN"), balance: 500, rate: nil,
+                           in: ModelContext(money), mainCurrency: "MXN")
+        let source = try container()
+        source.mainContext.insert(Expense(amount: 89, merchant: "Oxxo"))
+        let payload = try DailyBackup.snapshot(in: source.mainContext, moneyContainer: money)
+        let target = try container()
+        target.mainContext.insert(Expense(amount: 1, merchant: "Antes"))
+        try target.mainContext.save()
+        XCTAssertThrowsError(try DailyBackup.restore(payload, into: target, money: nil))
+        XCTAssertEqual(try all(target).map(\.merchant), ["Antes"])
+    }
+
+    func testAnOldFileRestoresWithoutMiDinero() throws {
+        let source = try container()
+        source.mainContext.insert(Expense(amount: 89, merchant: "Oxxo"))
+        let payload = try DailyBackup.snapshot(in: source.mainContext, moneyContainer: nil)
+        XCTAssertNil(payload.money)
+        let target = try container()
+        try DailyBackup.restore(payload, into: target)
+        XCTAssertEqual(try all(target).map(\.merchant), ["Oxxo"])
+    }
+
+    func testUndoBringsBackEveryField() throws {
+        let context = try container().mainContext
+        let expense = fullExpense()
+        expense.maybeRepeated = true
+        expense.fixedOf = "x"
+        let deleted = DeletedExpense(expense)
+        let back = try XCTUnwrap(deleted.make())
+        XCTAssertEqual(back.backedUp, expense.backedUp)
+        context.insert(back)
     }
 
     func testOnlyTheAppsOwnSettingsTravel() {

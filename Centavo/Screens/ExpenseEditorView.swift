@@ -36,6 +36,8 @@ struct ExpenseEditorView: View {
     @State private var rule = RepeatRule.monthly
     @State private var confirmingDelete: Expense?
     @State private var confirmingStop = false
+    /// A save that didn't go through: said, and the sheet stays open with what was typed.
+    @State private var saveProblem: String?
     /// «Más detalles»: open by itself when the expense has something set there.
     @State private var showsDetails = false
     /// «Ver todas»: the whole category list instead of the short one.
@@ -189,6 +191,22 @@ struct ExpenseEditorView: View {
                     .listRowBackground(Theme.surface)
                 }
 
+                if let expense, expense.maybeRepeated == true {
+                    Section {
+                        Button {
+                            expense.maybeRepeated = nil
+                            persist()
+                        } label: { LinkActionLabel("No es repetida, son dos") }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("no-es-repetida")
+                    } header: {
+                        Text("¿Repetida?").ticketCaption()
+                    } footer: {
+                        HintText("Llegó igual a otro pago de hace unos minutos. Si es el mismo, bórrala; si fueron dos compras, toca arriba.")
+                    }
+                    .listRowBackground(Theme.surface)
+                }
+
                 if expense?.isRepeat == true, original != nil {
                     Section {
                         Button { confirmingStop = true } label: { LinkActionLabel("Dejar de repetir") }
@@ -230,6 +248,9 @@ struct ExpenseEditorView: View {
                 }
             }
             .saveBar(saveSummary, enabled: canSave, action: save)
+            .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
+                Button("Aceptar", role: .cancel) {}
+            } message: { Text(saveProblem ?? "") }
             .alert("Dilo en una frase", isPresented: $askingSentence) {
                 TextField("230 de tacos ayer, en efectivo", text: $sentence)
                     .accessibilityIdentifier("frase")
@@ -247,8 +268,13 @@ struct ExpenseEditorView: View {
             }
             .confirmsDelete(of: $confirmingDelete, primaryCurrency: CurrencyPreference.current,
                             undoable: onDelete != nil) { expense in
-                if let onDelete { onDelete(expense) } else { context.delete(expense) }
-                dismiss()
+                if let onDelete {
+                    onDelete(expense)
+                    dismiss()
+                } else {
+                    context.delete(expense)
+                    if persist() { dismiss() }
+                }
             }
         }
         .onAppear(perform: load)
@@ -260,7 +286,7 @@ struct ExpenseEditorView: View {
                                  taken: customCategories.map(\.name) + CategoryStyle.common.map(\.name),
                                  colorKind: .category,
                                  siblings: customCategories.map(\.name) + CategoryStyle.common.map(\.name)) { saved in
-                    storedCategories = UserCatalog.encode(customCategories + [saved])
+                    storedCategories = UserCatalog.encode(customCategories + [saved], keepingUnreadFrom: storedCategories)
                     UserCatalog.markDeleted(saved.name, false)
                     category = saved.name
                     pinnedCategories.append(saved.name)
@@ -271,7 +297,7 @@ struct ExpenseEditorView: View {
                                  colorKind: .source,
                                  siblings: PaymentChoices.names(sources: paymentSources, known: knownCards,
                                                                 current: "")) { saved in
-                    storedSources = UserCatalog.encode(paymentSources + [saved])
+                    storedSources = UserCatalog.encode(paymentSources + [saved], keepingUnreadFrom: storedSources)
                     if defaultSource.isEmpty { defaultSource = saved.name }
                     card = saved.name
                 }
@@ -675,7 +701,21 @@ struct ExpenseEditorView: View {
         original.repeatsMonthly = nil
         original.repeatsThrough = nil
         original.repeatDay = nil
-        dismiss()
+        if persist() { dismiss() }
+    }
+
+    /// Every change someone makes is saved right then, not left to autosave: if it fails, it's
+    /// said and nothing half-done stays behind.
+    @discardableResult
+    private func persist() -> Bool {
+        do {
+            try context.save()
+            return true
+        } catch {
+            context.rollback()
+            saveProblem = "Al día no pudo guardar el cambio. Intenta otra vez; si sigue, cierra la app y vuelve a abrirla."
+            return false
+        }
     }
 
     /// The merchant's matches and remembered category, once per change of «Comercio».
@@ -823,6 +863,7 @@ struct ExpenseEditorView: View {
             expense.date = date
             setCounts(expense)
             if expense.isRepeat != true { setRepeats(expense) }
+            guard persist() else { return }
         } else {
             let new = Expense(
                 amount: value,
@@ -843,7 +884,9 @@ struct ExpenseEditorView: View {
             setCounts(new)
             setRepeats(new)
             context.insert(new)
+            guard persist() else { return }
             // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.
+            // After it's saved, so waiting for the place never holds the expense.
             if abs(date.timeIntervalSinceNow) < 15 * 60 {
                 Task { @MainActor in
                     guard let place = await PaymentPlace.current() else { return }

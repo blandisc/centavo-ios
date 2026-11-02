@@ -1,4 +1,4 @@
-import CentavoCore
+@testable import CentavoCore
 import Foundation
 import Testing
 
@@ -47,11 +47,41 @@ struct BackupTests {
         #expect(throws: BackupError.wrongPassword) { try BackupSeal.open(file, password: "") }
     }
 
-    @Test("Un byte cambiado se nota")
+    @Test("Un byte cambiado se nota, y con la contraseña buena dice que está dañado")
     func tampered() throws {
         var file = try BackupSeal.seal(sample(), password: "clave", rounds: rounds)
         file[file.count - 40] ^= 0x01
-        #expect(throws: BackupError.wrongPassword) { try BackupSeal.open(file, password: "clave") }
+        #expect(throws: BackupError.damaged) { try BackupSeal.open(file, password: "clave") }
+        #expect(throws: BackupError.wrongPassword) { try BackupSeal.open(file, password: "otra") }
+    }
+
+    @Test("Un archivo cortado dice que está dañado, no que la contraseña está mal")
+    func truncated() throws {
+        let file = try BackupSeal.seal(sample(), password: "clave", rounds: rounds)
+        for length in [6, 10, 30, 60, file.count / 2, file.count - 1] {
+            #expect(throws: BackupError.damaged, "\(length) bytes") {
+                try BackupSeal.open(file.prefix(length), password: "clave")
+            }
+        }
+    }
+
+    @Test("Un respaldo de antes del verificador (versión 1) sigue abriendo")
+    func legacyFile() throws {
+        let old = try BackupSeal.seal(sample(), password: "clave", rounds: rounds, version: 1)
+        #expect(old[5] == 1)
+        #expect(try BackupSeal.open(old, password: "clave") == sample())
+        #expect(throws: BackupError.wrongPassword) { try BackupSeal.open(old, password: "otra") }
+        #expect(throws: BackupError.damaged) { try BackupSeal.open(old.prefix(30), password: "clave") }
+    }
+
+    @Test("Vueltas absurdas en la cabecera son un archivo dañado, no media hora de espera")
+    func absurdRounds() throws {
+        var file = try BackupSeal.seal(sample(), password: "clave", rounds: rounds)
+        let huge = UInt32(10_000_001).bigEndian
+        withUnsafeBytes(of: huge) { file.replaceSubrange(6..<10, with: $0) }
+        #expect(throws: BackupError.damaged) { try BackupSeal.open(file, password: "clave") }
+        file.replaceSubrange(6..<10, with: [0, 0, 0, 0])
+        #expect(throws: BackupError.damaged) { try BackupSeal.open(file, password: "clave") }
     }
 
     @Test("Un archivo que no es respaldo lo dice")
@@ -111,6 +141,54 @@ struct BackupTests {
         #expect(back.money?.accounts[1].subtype == "prestamo")
         #expect(back.money?.incomes?.first?.amount == "60000")
         #expect(back.summary.cutCount == 1)
+    }
+
+    @Test("Lo nuevo viaja: fecha del ingreso, línea revisada, fijos y «¿repetida?»")
+    func newFieldsRoundTrip() throws {
+        var payload = sample()
+        payload.expenses[0].fixedID = "F-1"
+        payload.expenses[1].fixedOf = "F-1"
+        payload.expenses[2].maybeRepeated = true
+        payload.money = BackupMoney(
+            accounts: [], cuts: [.init(id: "C1", month: "2026-10", date: Date(timeIntervalSinceReferenceDate: 9),
+                                       mainCurrency: "MXN", rates: "",
+                                       entries: [.init(account: "A1", balance: "1", reviewed: false),
+                                                 .init(account: "A2", balance: "2", reviewed: true)])],
+            incomes: [.init(id: "I1", name: "Sueldo", institution: nil, amount: "60000", currency: "MXN",
+                            since: Date(timeIntervalSinceReferenceDate: 7), archived: false,
+                            createdAt: Date(timeIntervalSinceReferenceDate: 8))])
+        let back = try BackupSeal.open(BackupSeal.seal(payload, password: "clave", rounds: rounds), password: "clave")
+        #expect(back == payload)
+        #expect(back.expenses.map(\.fixedID) == ["F-1", nil, nil])
+        #expect(back.expenses.map(\.fixedOf) == [nil, "F-1", nil])
+        #expect(back.expenses.map(\.maybeRepeated) == [nil, nil, true])
+        #expect(back.money?.cuts[0].entries.map(\.reviewed) == [false, true])
+        #expect(back.money?.incomes?[0].createdAt == Date(timeIntervalSinceReferenceDate: 8))
+    }
+
+    @Test("Un archivo de antes de esos campos se lee con todos vacíos")
+    func oldFileWithoutNewFields() throws {
+        let old = #"{"createdAt":1,"expenses":[{"amount":"5","date":2,"merchant":"Oxxo"}],"format":3,"#
+            + #""money":{"accounts":[],"cuts":[{"date":3,"entries":[{"account":"A","balance":"1"}],"id":"C","mainCurrency":"MXN","month":"2026-10","rates":""}],"#
+            + #""incomes":[{"amount":"1","archived":false,"currency":"MXN","id":"I","name":"N","since":4}]},"settings":{},"writtenBy":"x"}"#
+        let back = try BackupPayload.decoded(from: Data(old.utf8))
+        #expect(back.expenses[0].fixedID == nil && back.expenses[0].fixedOf == nil && back.expenses[0].maybeRepeated == nil)
+        #expect(back.money?.cuts[0].entries[0].reviewed == nil)
+        #expect(back.money?.incomes?[0].createdAt == nil)
+    }
+
+    @Test("Un número que no es número (NaN, infinito) no tumba el respaldo: se queda fuera")
+    func nonFiniteNumbersAreLeftOut() throws {
+        var payload = sample()
+        payload.settings["roto"] = .number(.nan)
+        payload.settings["infinito"] = .number(-.infinity)
+        payload.expenses[0].latitude = .nan
+        payload.expenses[0].longitude = .infinity
+        let back = try BackupPayload.decoded(from: payload.encoded())
+        #expect(back.settings["roto"] == nil && back.settings["infinito"] == nil)
+        #expect(back.settings["ritmo"] == .number(0.55))
+        #expect(back.expenses[0].latitude == nil && back.expenses[0].longitude == nil)
+        #expect(back.expenses[1].latitude == sample().expenses[1].latitude)
     }
 
     @Test("Los montos se escriben con punto, sea cual sea la región")

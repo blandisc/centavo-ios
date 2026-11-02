@@ -36,6 +36,8 @@ struct OnboardingView: View {
     @State private var added = 0
     /// Saved once, whichever way it ends: saving twice would log the fixed expenses twice.
     @State private var saved = false
+    /// The save at the end didn't go through: said on the last page.
+    @State private var saveFailed = false
     @FocusState private var focused: Field?
 
     private enum Field { case budget, name, amount }
@@ -405,6 +407,9 @@ struct OnboardingView: View {
                     .foregroundStyle(Theme.ink)
                     .accessibilityAddTraits(.isHeader)
                 doneFigure
+                if saveFailed {
+                    HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «Gastos fijos» del menú «Más».")
+                }
             }
             .padding(.horizontal, Theme.Space.screen)
             .padding(.vertical, Theme.Space.xxl)
@@ -529,16 +534,40 @@ struct OnboardingView: View {
         if let budget {
             storedBudget = BudgetStore.stored(budget)
         }
+        // Like «Nuevo gasto fijo»: one whose day already came this month starts now, with its
+        // date; one whose day is still to come waits for it (a plan), and is never logged as a
+        // charge of the month before.
+        var plans: [FixedPlan] = []
         for item in fixed {
-            let date = RecurringSchedule.firstDate(day: item.day, now: .now)
-            let expense = Expense(amount: item.amount, currencyMarker: currency, merchant: item.name,
-                                  date: date, category: MerchantCatalog.category(for: item.name))
-            expense.repeatsMonthly = true
-            expense.repeatsThrough = date
-            expense.repeatDay = item.day
-            context.insert(expense)
+            let first = Self.firstCharge(day: item.day)
+            let plan = FixedPlan(merchant: item.name, amount: "\(item.amount)", currency: currency,
+                                 category: MerchantCatalog.category(for: item.name), rule: nil, firstDate: first,
+                                 day: item.day)
+            if first <= .now {
+                let expense = RecurringExpenses.original(from: plan)
+                expense.repeatDay = item.day
+                context.insert(expense)
+            } else {
+                plans.append(plan)
+            }
         }
-        try? context.save()
+        if !plans.isEmpty { FixedPlan.save(FixedPlan.saved + plans) }
+        do {
+            try context.save()
+        } catch {
+            // Left in the context: the next autosave tries again, and the welcome can't hold
+            // the person back for it. Nothing is rolled back, so nothing typed is lost.
+            saveFailed = true
+        }
+    }
+
+    /// This month's day (the last one in a shorter month), at 9:00.
+    static func firstCharge(day: Int, now: Date = .now, calendar: Calendar = .current) -> Date {
+        let length = calendar.range(of: .day, in: .month, for: now)?.count ?? 28
+        var parts = calendar.dateComponents([.year, .month], from: now)
+        parts.day = min(max(day, 1), length)
+        parts.hour = 9
+        return calendar.date(from: parts) ?? now
     }
 }
 

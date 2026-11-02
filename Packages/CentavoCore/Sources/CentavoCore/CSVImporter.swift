@@ -43,11 +43,17 @@ public enum CSVImporter {
                 result.skipped += 1
                 continue
             }
+            // «Cuenta» may hold the part that counts (`600.00`) instead of «Sí» or «No». Only as
+            // the exporter writes it, with its decimal point: a bare «1» or an account number
+            // from another spreadsheet is not a part.
+            let countsText = field(counts)
+            let part = countsText.flatMap { $0.contains(".") ? number($0) : nil }
+            let counted = !isNo(countsText)
             result.records.append(ExpenseRecord(
                 date: parsedDate, merchant: field(merchant) ?? "Sin comercio", amount: value,
                 currency: currencyText, card: field(card), category: field(category),
-                counts: !isNo(field(counts)),
-                uncountedReason: isNo(field(counts)) ? UncountedReason(text: field(reason)) : nil
+                counts: counted, countedAmount: part,
+                uncountedReason: !counted || part != nil ? UncountedReason(text: field(reason)) : nil
             ))
         }
         return result
@@ -70,10 +76,11 @@ public enum CSVImporter {
         return fractional.date(from: text)
     }
 
-    /// Undoes the exporter's formula guard: `'=SUM` was `=SUM`.
+    /// Undoes the exporter's formula guard: `'=SUM` was `=SUM`, `'\tcmd` was `\tcmd` and
+    /// `''Hola` was `'Hola`. Exactly one apostrophe, and only before what the exporter defuses.
     private static func undefused(_ text: String) -> String {
         guard text.hasPrefix("'"), let next = text.dropFirst().unicodeScalars.first,
-              "=+-@".unicodeScalars.contains(next) else { return text }
+              CSVExporter.defusedStarts.unicodeScalars.contains(next) else { return text }
         return String(text.dropFirst())
     }
 

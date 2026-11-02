@@ -70,12 +70,15 @@ struct ExpenseListView: View {
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
     @State private var importMessage: String?
+    /// A change made here (delete, undo, a category) that couldn't be saved.
+    @State private var saveProblem: String?
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
     @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
     @State private var showingSettings = false
+    @State private var backupWarning: String?
     /// «Cómo funciona», and where its «Pruébalo» goes once it has closed.
     @State private var showingTutorial = false
     @State private var afterTutorial: TutorialDestination?
@@ -123,7 +126,7 @@ struct ExpenseListView: View {
                 stamp: StoreStamp(count: dated.count, newest: dated.first?.date),
                 settings: HomeSettings(budget: storedBudget, plans: storedPlans, currency: primaryCurrency,
                                        mode: storedMode, whereItGoesStyle: whereItGoesStyle,
-                                       ignoresWallet: ignoresWallet),
+                                       ignoresWallet: ignoresWallet, backupWarning: backupWarning),
                 catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories,
                                        sources: storedSources, categoryColors: storedCategoryColors,
                                        sourceColors: storedSourceColors),
@@ -244,6 +247,7 @@ struct ExpenseListView: View {
                           allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
                 importMessage = importFile(result)
             }
+            .modifier(SaveProblemAlert(problem: $saveProblem))
             .alert("Importar CSV", isPresented: importAlertShown) {
                 Button("Listo", role: .cancel) {}
             } message: {
@@ -258,6 +262,7 @@ struct ExpenseListView: View {
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
+            .modifier(BackupWatch(warning: $backupWarning, now: now, settingsShown: showingSettings))
             .sheet(isPresented: $showingSettings) {
                 SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
                              health: CaptureHealth(lastCapture: lastCapture, now: now),
@@ -328,6 +333,7 @@ struct ExpenseListView: View {
             add: { adding = true },
             setBudget: { showingBudget = true },
             setup: { showingSetup = true },
+            openSettings: { showingSettings = true },
             openGuideFromWarning: {
                 // Seen: tapping the warning is the last time it shows.
                 UnreadNotice.clear()
@@ -350,6 +356,8 @@ private struct HomeSettings: Equatable {
     let mode: String
     let whereItGoesStyle: String
     let ignoresWallet: Bool
+    /// The daily backup failed or is days late (`DailyBackup.warning`); `nil` while it's fine.
+    let backupWarning: String?
 }
 
 /// What the scrolling part can ask of the frame (`ExpenseListView.actions`).
@@ -361,6 +369,7 @@ private struct HomeActions {
     let add: () -> Void
     let setBudget: () -> Void
     let setup: () -> Void
+    let openSettings: () -> Void
     let openGuideFromWarning: () -> Void
     let setPrimary: (String) -> Void
     let edit: (Expense) -> Void
@@ -463,6 +472,7 @@ private struct HomeContent: View, Equatable {
                     equalHeights: false,
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
+                    backupWarning: isCurrent ? settings.backupWarning : nil,
                     entrance: entrance, model: model, actions: actions
                 )
                 HomeLedger(groups: search?.groups ?? month.groups, primaryCurrency: primary, now: now,
@@ -505,6 +515,7 @@ private struct HomeHeader: View {
     let showsCapture: Bool
     let health: CaptureHealth
     let unread: String?
+    let backupWarning: String?
     let entrance: Entrance
     let model: HomeModel
     let actions: HomeActions
@@ -620,6 +631,10 @@ private struct HomeHeader: View {
                     CaptureHealthRow(health: health, unread: unread, openGuide: actions.openGuideFromWarning)
                         .ticketRow()
                 }
+                if let backupWarning {
+                    BackupWarningRow(text: backupWarning, open: actions.openSettings)
+                        .ticketRow()
+                }
 
                 if let day = selectedDay {
                     FilterRow(title: "Día \(day)", count: month.shownCount, total: month.shownTotal,
@@ -685,11 +700,21 @@ private struct HomeLedger: View {
                     .contextMenu {
                         // One touch, without opening the sheet. The first time it is
                         // «Me lo reembolsan»; after that, the reason it had before.
+                        if expense.maybeRepeated == true {
+                            Button("No es repetida", systemImage: "checkmark.circle") {
+                                expense.maybeRepeated = nil
+                                try? expense.modelContext?.save()
+                            }
+                        }
                         if expense.isUncounted {
-                            Button("Sí cuenta", systemImage: "checkmark.circle") { expense.markCounted() }
+                            Button("Sí cuenta", systemImage: "checkmark.circle") {
+                                expense.markCounted()
+                                try? expense.modelContext?.save()
+                            }
                         } else {
                             Button("No cuenta", systemImage: "nosign") {
                                 expense.markUncounted(expense.reason ?? .reimbursed)
+                                try? expense.modelContext?.save()
                             }
                         }
                         Menu {
@@ -836,6 +861,31 @@ private struct Feedback: ViewModifier {
     }
 }
 
+/// The backup's line in «Hoy» (`DailyBackup.warning`), read again as time passes and when
+/// Ajustes closes. Pulled out of `body`: the CI's compiler gave up type-checking it all.
+private struct BackupWatch: ViewModifier {
+    @Binding var warning: String?
+    let now: Date
+    let settingsShown: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: now) { warning = DailyBackup.warning(now: now) }
+            .onChange(of: settingsShown) { _, shown in if !shown { warning = DailyBackup.warning() } }
+    }
+}
+
+/// A change made in «Hoy» that couldn't be saved, said out loud.
+private struct SaveProblemAlert: ViewModifier {
+    @Binding var problem: String?
+
+    func body(content: Content) -> some View {
+        content.alert("No se guardó", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            Button("Aceptar", role: .cancel) {}
+        } message: { Text(problem ?? "") }
+    }
+}
+
 /// Keeps "now" fresh (coming back, midnight, a time-zone change) and logs the fixed expenses
 /// whose day came while the app was closed.
 private struct KeepsTime: ViewModifier {
@@ -851,6 +901,8 @@ private struct KeepsTime: ViewModifier {
                 if phase == .background { WidgetBridge.refresh() }
             }
             .task(id: now) {
+                // Captures from before «$» was saved as its currency, pinned once (2026-11-02).
+                try? ExpenseRecorder.pinBareDollars(in: context)
                 try? RecurringExpenses.logDue(in: context, now: now)
                 try? ExpenseRecorder.repairBankMerchants(in: context)
                 WidgetBridge.refresh()
@@ -864,6 +916,19 @@ private struct KeepsTime: ViewModifier {
 
 private extension ExpenseListView {
     // Pulled out of `body`: the CI's compiler gave up type-checking it all in one expression.
+    /// Every change made here is saved right then, not left to autosave; if it fails, it's said.
+    @discardableResult
+    func persist() -> Bool {
+        do {
+            try context.save()
+            return true
+        } catch {
+            context.rollback()
+            saveProblem = "Al día no pudo guardar el cambio. Intenta otra vez; si sigue, cierra la app y vuelve a abrirla."
+            return false
+        }
+    }
+
     var importAlertShown: Binding<Bool> {
         Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })
     }
@@ -927,7 +992,7 @@ private extension ExpenseListView {
         expense.categorySource = picked == nil ? Expense.clearedCategory : nil
         expense.category = picked
         UserCatalog.learnCategory(picked, for: expense.merchant)
-        try? context.save()
+        persist()
     }
 
     /// The same expense again, now: the coffee of every morning without opening the sheet.
@@ -937,7 +1002,7 @@ private extension ExpenseListView {
                            category: expense.category)
         copy.displayName = expense.displayName
         context.insert(copy)
-        try? context.save()
+        persist()
     }
 
     @ViewBuilder var undoOverlay: some View {
@@ -962,13 +1027,17 @@ private extension ExpenseListView {
     func delete(_ expense: Expense) {
         let snapshot = DeletedExpense(expense)
         context.delete(expense)
+        guard persist() else { return }
         // A search on screen is asked again, without the deleted expense.
         model.storeSaved()
         withAnimation(Theme.Motion.quick) { lastDeleted = snapshot }
     }
 
     func restore(_ deleted: DeletedExpense) {
-        context.insert(deleted.make())
+        guard let expense = deleted.make() else { return }
+        context.insert(expense)
+        guard persist() else { return }
+        model.storeSaved()
         withAnimation(Theme.Motion.quick) { lastDeleted = nil }
     }
 
@@ -1429,7 +1498,9 @@ private struct LedgerRow: View {
     /// count is in the expense sheet (the list keeps one short line, owner 2026-10-29).
     /// VoiceOver hears the reason too, and «no cuenta para el presupuesto» with the amount.
     private func meta(spoken: Bool = false, withCard: Bool = true) -> String? {
-        let parts = [isUncounted && !spoken ? "No cuenta" : nil, isUncounted && spoken ? expense.reason?.title : nil,
+        // A Wallet payment identical to one minutes before says so first (2026-11-02).
+        let parts = [expense.maybeRepeated == true ? (spoken ? "¿repetida? Igual a otro pago de hace unos minutos" : "¿Repetida?") : nil,
+                     isUncounted && !spoken ? "No cuenta" : nil, isUncounted && spoken ? expense.reason?.title : nil,
                      isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
                      expense.category, withCard ? expense.card : nil]
             .compactMap { $0 }
@@ -1445,7 +1516,10 @@ private struct LedgerRow: View {
     /// icon replaced the short name («Amex») at the owner's request (2026-10-31); VoiceOver
     /// still reads the name.
     private var metaLine: Text? {
-        var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { Text($0) }
+        var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { part in
+            // «¿Repetida?» in brass: it asks for a look.
+            part == "¿Repetida?" ? Text(part).foregroundStyle(Theme.brass) : Text(part)
+        }
         if let card {
             let icon = catalog.sourceIcon(for: card)
             let filled = UIImage(systemName: icon + ".fill") == nil ? icon : icon + ".fill"
@@ -1498,35 +1572,6 @@ private struct LedgerRow: View {
                            date: .now.addingTimeInterval(-86_400), category: "Ropa"))
     context.insert(Expense(amount: 24.99, currencyMarker: "USD", merchant: "Steam", card: "BBVA"))
     return ExpenseListView().modelContainer(container).ticketPreview()
-}
-
-/// Everything needed to bring a deleted expense back exactly as it was.
-private struct DeletedExpense: Identifiable {
-    let id = UUID()
-    let amount: Decimal, currencyMarker: String?, merchant: String, card: String?
-    let date: Date, category: String?, rawAmount: String?
-    let repeatsMonthly: Bool?, repeatsThrough: Date?, isRepeat: Bool?
-    let displayName: String?, categorySource: String?, repeatRule: String?, repeatDay: Int?
-    let countedAmount: Decimal?, uncountedReason: String?
-
-    init(_ e: Expense) {
-        amount = e.amount; currencyMarker = e.currencyMarker; merchant = e.merchant; card = e.card
-        date = e.date; category = e.category; rawAmount = e.rawAmount
-        repeatsMonthly = e.repeatsMonthly; repeatsThrough = e.repeatsThrough; isRepeat = e.isRepeat
-        displayName = e.displayName; categorySource = e.categorySource
-        repeatRule = e.repeatRule; repeatDay = e.repeatDay
-        countedAmount = e.countedAmount; uncountedReason = e.uncountedReason
-    }
-
-    func make() -> Expense {
-        let e = Expense(amount: amount, currencyMarker: currencyMarker, merchant: merchant, card: card,
-                        date: date, category: category, rawAmount: rawAmount)
-        e.repeatsMonthly = repeatsMonthly; e.repeatsThrough = repeatsThrough; e.isRepeat = isRepeat
-        e.displayName = displayName; e.categorySource = categorySource
-        e.repeatRule = repeatRule; e.repeatDay = repeatDay
-        e.countedAmount = countedAmount; e.uncountedReason = uncountedReason
-        return e
-    }
 }
 
 /// "Borraste Oxxo · Deshacer", for a few seconds after a delete.

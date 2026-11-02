@@ -117,4 +117,47 @@ import Testing
             }
         }
     }
+
+    /// A first group of more than three digits can't be thousands: `15000.125` is not 15,000,125.
+    @Test(arguments: ["15000.125", "1234,567", "15000,125", "$12345.678", "0000.125"])
+    func aFirstGroupOfMoreThanThreeIsNotThousands(raw: String) {
+        #expect(AmountParser.parse(raw) == nil, "Leyó «\(raw)» como \(String(describing: AmountParser.parse(raw)))")
+    }
+
+    /// `5.125` is still five thousand one hundred twenty-five, as in Europe (2026-10-13).
+    @Test func aShortFirstGroupIsStillThousands() {
+        #expect(AmountParser.parse("5.125")?.value == 5125)
+        #expect(AmountParser.parse("12,34,567")?.value == 1_234_567)
+        #expect(AmountParser.parse("123.456,78")?.value == Decimal(string: "123456.78"))
+    }
+
+    /// «Mi dinero» and the import ask for a decimal point: the point is always decimal.
+    @Test(arguments: [
+        ("18.125", "18.125", nil), ("1,234.56", "1234.56", nil), ("12,500", "12500", nil),
+        ("$1,234,567.5", "1234567.5", "$"), ("7,5", "7.5", nil), ("8333.333", "8333.333", nil),
+        ("-120000", "-120000", nil), ("USD 2000", "2000", "USD"), (".5", "0.5", nil),
+    ] as [(String, String, String?)])
+    func pointDecimalReadsThePointAsDecimal(raw: String, expected: String, marker: String?) throws {
+        let parsed = try #require(AmountParser.parsePointDecimal(raw))
+        #expect(parsed.value == Decimal(string: expected))
+        #expect(parsed.currencyMarker == marker)
+    }
+
+    @Test(arguments: ["1.234,56", "1.234.567", "15000,125", "0,500", "1,23,456", "1,2345.5", "1e5"])
+    func pointDecimalRejectsOtherFormats(raw: String) {
+        #expect(AmountParser.parsePointDecimal(raw) == nil, "Leyó «\(raw)» como \(String(describing: AmountParser.parsePointDecimal(raw)))")
+    }
+
+    @Test func moreThanCentsIsTold() {
+        #expect(AmountParser.parsePointDecimal("8333.333")?.hasMoreThanCents == true)
+        #expect(AmountParser.parsePointDecimal("8333.33")?.hasMoreThanCents == false)
+        #expect(AmountParser.parsePointDecimal("8333.330")?.hasMoreThanCents == false)
+        #expect(AmountParser.parsePointDecimal("-0.001")?.hasMoreThanCents == true)
+    }
+
+    @Test func anEnDashIsAMinus() {
+        #expect(AmountParser.parse("–$50.00")?.value == -50)
+        #expect(AmountParser.parse("–$50.00")?.currencyMarker == "$")
+        #expect(AmountParser.parse("$–50.00")?.value == -50)
+    }
 }

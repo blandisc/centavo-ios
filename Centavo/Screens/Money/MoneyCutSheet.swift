@@ -17,13 +17,13 @@ struct MoneyCutSheet: View {
     @State private var ratesReviewed: Set<String> = []
     @State private var confirmingDiscard = false
     @State private var problem: String?
+    /// The month already has a cut made on this date: «¿Reemplazar…?» before anything goes.
+    @State private var replacing: Date?
     @FocusState private var focus: UUID?
 
-    private var previous: MoneyCut? {
-        var descriptor = MoneyCut.finished
-        descriptor.sortBy = [SortDescriptor(\.month, order: .reverse)]
-        return (try? context.fetch(descriptor))?.first { $0.id != draft.id }
-    }
+    /// The cut this one starts from: the same month's (being redone) or the one before. Never a
+    /// later month's, when the cut is for the month that just ended.
+    private var previous: MoneyCut? { MoneyStore.cut(before: draft.month, in: context) }
 
     private var entries: [MoneyEntry] {
         (draft.entries ?? []).filter { $0.account != nil }
@@ -55,7 +55,7 @@ struct MoneyCutSheet: View {
                 Section {
                     DestructiveRowButton("Descartar corte", identifier: "corte-descartar") { confirmingDiscard = true }
                 } footer: {
-                    HintText("Si sales sin guardar, el corte te espera como lo dejaste.")
+                    HintText("Corte de \(MoneyHead.fullMonthName(draft.month)). Si sales sin guardar, te espera como lo dejaste.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -88,6 +88,13 @@ struct MoneyCutSheet: View {
                     dismiss()
                 }
             } message: { Text("Se borra lo que escribiste en este corte. Tus cortes pasados no cambian.") }
+            .alert("¿Reemplazar el corte de \(MoneyHead.fullMonthName(draft.month))?",
+                   isPresented: Binding(get: { replacing != nil }, set: { if !$0 { replacing = nil } })) {
+                Button("Cancelar", role: .cancel) {}
+                Button("Reemplazar", role: .destructive) { save(replacing: true) }
+            } message: {
+                Text("Ese mes ya tiene un corte, hecho el \(replacing?.formatted(.dateTime.day().month(.wide).locale(MoneyHead.mexico)) ?? ""). Si lo reemplazas, cuenta este y el otro se quita.")
+            }
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
@@ -110,7 +117,8 @@ struct MoneyCutSheet: View {
                 get: { rateTexts[code] ?? "" },
                 set: { text in
                     rateTexts[code] = text
-                    guard let value = AmountParser.parse(text)?.value, value > 0 else { ratesReviewed.remove(code); return }
+                    // A rate, never thousands: «18.125» is eighteen and a bit.
+                    guard let value = MoneyMath.decimal(text), value > 0 else { ratesReviewed.remove(code); return }
                     var table = draft.rateTable
                     table[code] = value
                     draft.rateTable = table
@@ -167,14 +175,14 @@ struct MoneyCutSheet: View {
                     get: { typed[account.id] ?? "" },
                     set: { text in
                         typed[account.id] = text
-                        if let value = AmountParser.parse(text)?.value {
+                        if let value = MoneyAmount.read(text) {
                             entry.balance = value
                             entry.reviewed = true
                         } else if text.isEmpty {
                             entry.reviewed = false
                         }
                     }),
-                    prompt: Text(before.map { formatMoney($0, isoCode: account.currency, label: account.currency) } ?? "0.00")
+                    prompt: Text(before.map { formatMoney($0, isoCode: account.currency, label: account.currency, main: draft.mainCurrency) } ?? "0.00")
                         .foregroundStyle(Theme.faint))
                     .font(.ticket(.field))
                     .keyboardType(.decimalPad)
@@ -188,7 +196,7 @@ struct MoneyCutSheet: View {
                     set: { text in
                         movements[account.id] = text
                         let negative = text.hasPrefix("-") || text.hasPrefix("−")
-                        let value = AmountParser.parse(String(text.drop(while: { $0 == "-" || $0 == "−" })))?.value
+                        let value = MoneyAmount.read(String(text.drop(while: { $0 == "-" || $0 == "−" })))
                         entry.movement = value.map { negative ? -$0 : $0 }
                     }),
                     prompt: Text("¿Metiste o sacaste? (−300 si sacaste)").foregroundStyle(Theme.faint))
@@ -214,11 +222,11 @@ struct MoneyCutSheet: View {
             }
         }
         guard let before else { return "nueva" }
-        var text = "antes \(formatMoney(before, isoCode: account.currency, label: account.currency))"
+        var text = "antes \(formatMoney(before, isoCode: account.currency, label: account.currency, main: draft.mainCurrency))"
         if let rate = account.yearlyRate, let since = previous?.date {
             let days = Calendar.current.dateComponents([.day], from: since, to: .now).day ?? 0
             let yield = MoneyMath.expectedYield(previous: before, yearlyRate: rate, days: days)
-            if yield > 0 { text += " · rendiría ~\(formatMoney(yield, isoCode: account.currency, label: account.currency))" }
+            if yield > 0 { text += " · rendiría ~\(formatMoney(yield, isoCode: account.currency, label: account.currency, main: draft.mainCurrency))" }
         }
         return text
     }
@@ -245,10 +253,14 @@ struct MoneyCutSheet: View {
         return (ids[start...] + ids[..<start]).first { pendingIDs.contains($0) && $0 != id }
     }
 
-    private func save() {
+    private func save() { save(replacing: false) }
+
+    private func save(replacing: Bool) {
         do {
-            try MoneyStore.finish(draft, in: context)
+            try MoneyStore.finish(draft, replacing: replacing, in: context)
             dismiss()
+        } catch MoneyStore.CutProblem.monthHasCut(let date) {
+            self.replacing = date
         } catch {
             problem = "No se guardó el corte. Intenta otra vez."
         }

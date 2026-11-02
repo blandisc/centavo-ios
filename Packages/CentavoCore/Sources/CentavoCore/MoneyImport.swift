@@ -148,7 +148,8 @@ public enum MoneyImport {
 
     private static func read(amount raw: String, into line: inout Line, column: String) {
         guard !raw.isEmpty else { line.problems.append("Le falta el monto."); return }
-        guard let parsed = AmountParser.parse(raw) else {
+        // The format asks for a decimal point: «18.125» is eighteen and a bit, never 18,125.
+        guard let parsed = AmountParser.parsePointDecimal(raw) else {
             line.problems.append("El monto «\(raw)» no es un número: escríbelo completo, como 25000.")
             return
         }
@@ -175,6 +176,10 @@ public enum MoneyImport {
             if line.kind?.isDebt == true || line.kind == .income || line.kind == .lent || line.kind == .coming { value = -value }
         }
         line.amount = value
+        // «8333.333»: a division the AI pasted whole. Kept as read, so the review shows it.
+        if parsed.hasMoreThanCents {
+            line.problems.append("El monto «\(raw)» trae más de dos decimales: déjalo en centavos, como \(BackupNumber.text(MoneyMath.cents(value))).")
+        }
     }
 
     private static func read(rate raw: String, into line: inout Line) {

@@ -36,9 +36,13 @@ struct LogExpenseIntent: AppIntent {
         defer { WidgetBridge.refreshAfterIntent() }
         // So "what is left" counts this month's rent even if the app was not opened.
         try? RecurringExpenses.logDue(in: container.mainContext)
-        let place = await PaymentPlace.current()
-        switch try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                          place: place, in: container.mainContext) {
+        let context = container.mainContext
+        // Saved first; where the iPhone is comes after, so a slow location never costs a payment.
+        var expense: Expense?
+        let outcome = try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
+                                                 in: context) { expense = $0 }
+        if let expense { ExpenseRecorder.addPlace(await PaymentPlace.current(), to: expense, in: context) }
+        switch outcome {
         case .unreadable:
             // Seen for real: the whole Wallet payment connected here arrives as just the
             // merchant's name. Say how to fix the automation, not only that it failed.
@@ -49,8 +53,8 @@ struct LogExpenseIntent: AppIntent {
             // Wallet sometimes hands over an empty payment. Failing loudly makes Atajos
             // show it, instead of a silent $0 in the list.
             throw CaptureError.empty
-        case .duplicate(let merchant):
-            return .result(dialog: "Ya estaba anotado: \(amount) en \(merchant).")
+        case .maybeRepeated(let merchant):
+            return .result(dialog: "Anotado: \(amount) en \(merchant). Es igual a uno de hace unos minutos: revísalo en Al día.")
         case .saved(let merchant):
             // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
             return .result(dialog: "Anotado: \(amount) en \(merchant).")

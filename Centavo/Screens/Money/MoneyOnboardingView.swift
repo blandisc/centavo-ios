@@ -377,7 +377,7 @@ struct MoneyOnboardingView: View {
 
     private func figure(for account: MoneyAccount) -> String? {
         guard let balance = cuts.last?.entry(for: account)?.balance else { return nil }
-        let text = formatMoney(balance, isoCode: account.currency, label: account.currency)
+        let text = formatMoney(balance, isoCode: account.currency, label: account.currency, main: mainCurrency)
         return account.kind == .debt ? "−" + text : text
     }
 
@@ -690,7 +690,7 @@ struct MoneyRowDraft {
         let text = institution.trimmingCharacters(in: .whitespaces)
         return text.isEmpty ? nil : text
     }
-    var balance: Decimal? { AmountParser.parse(amount)?.value }
+    var balance: Decimal? { MoneyAmount.read(amount) }
     var yearlyRate: Decimal? { rate.isEmpty ? nil : MoneyMath.decimal(rate) }
     var exchange: Decimal? { MoneyMath.decimal(exchangeText) }
     /// Something written that would be lost.

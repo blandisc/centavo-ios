@@ -28,6 +28,8 @@ struct ExpensesCSVFile: Transferable {
                 category: expense.hasSuggestedCategory ? nil : expense.category,
                 // The real amount above; whether it counts goes in a column of its own.
                 counts: !expense.isUncounted,
+                // Only part of it counts: how much, so it comes back the same.
+                countedAmount: expense.isUncounted ? nil : expense.countedAmount,
                 uncountedReason: expense.reason
             )
         }

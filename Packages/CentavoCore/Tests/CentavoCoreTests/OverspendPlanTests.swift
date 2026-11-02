@@ -53,4 +53,19 @@ struct OverspendPlanTests {
         #expect(plan.over == 51)
         #expect(plan.budgetRate.closesOver == plan.stop.closesOver)
     }
+
+    @Test("«Lo que tocaba por día» es el mismo al acumular o al repartir")
+    func budgetRateIgnoresTheMode() throws {
+        // $3,100 − $310 of fixed = $2,790 over 31 days = $90 a day, in both modes.
+        for mode in AllowanceMode.allCases {
+            let pace = BudgetPace(budget: 3_100, spent: 3_480, fixedSpent: 200, reserved: 110,
+                                  mode: mode, on: day(29), calendar: calendar)!
+            let plan = try #require(OverspendPlan(pace: pace))
+            #expect(plan.budgetRate.perDay == 90, "\(mode)")
+            #expect(plan.budgetRate.closesOver == plan.stop.closesOver + 180, "\(mode)")
+        }
+        // Not a whole peso: rounded down, like «Hoy puedes gastar». $3,000 / 31 = $96.77.
+        let spread = BudgetPace(budget: 3_000, spent: 3_480, mode: .spread, on: day(29), calendar: calendar)!
+        #expect(OverspendPlan(pace: spread)?.budgetRate.perDay == 96)
+    }
 }

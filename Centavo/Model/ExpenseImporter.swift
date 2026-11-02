@@ -21,19 +21,33 @@ enum ExpenseImporter {
         let latest = CategoryMemory.latest(in: existing.map(\.categorized) + parsed.records.map {
             CategorizedExpense(merchant: $0.merchant, category: $0.category, date: $0.date)
         })
-        // Same second, same amount, same merchant: the same expense (an export re-imported).
-        var seen = Set(existing.map { key($0.date, $0.amount, $0.merchant) })
+        // Same second, amount, merchant, card and currency: the same expense (an export
+        // re-imported). Counted, not just seen: two «Uber $100» logged the same moment are two
+        // expenses, and a file with both brings both, minus the ones already here.
+        var already: [String: Int] = [:]
+        for expense in existing {
+            already[key(expense.date, expense.amount, expense.merchant, expense.card, expense.currencyMarker), default: 0] += 1
+        }
         var summary = Summary(unreadable: parsed.skipped)
         for record in parsed.records {
-            let k = key(record.date, record.amount, record.merchant)
-            guard !seen.contains(k) else { summary.alreadyThere += 1; continue }
-            seen.insert(k)
+            let k = key(record.date, record.amount, record.merchant, record.card, record.currency)
+            if let count = already[k], count > 0 {
+                already[k] = count - 1
+                summary.alreadyThere += 1
+                continue
+            }
             let category = record.category
                 ?? CategoryMemory.remembered(for: record.merchant, rules: rules, latest: latest, hidden: hidden)
             let expense = Expense(amount: record.amount, currencyMarker: record.currency,
                                   merchant: record.merchant, card: record.card,
                                   date: record.date, category: category)
-            if !record.counts {
+            // A part only when it's a part: between zero and the amount, with its sign. Any other
+            // number under «Cuenta» (an account number, a 1 for yes) means it counts, as before.
+            if let part = record.countedAmount, record.counts, part != 0, part.magnitude < record.amount.magnitude,
+               (part < 0) == (record.amount < 0) {
+                expense.countedAmount = part
+                expense.uncountedReason = record.uncountedReason?.rawValue
+            } else if !record.counts {
                 // Without a reason in the file it just doesn't count; none is made up.
                 expense.countedAmount = 0
                 expense.uncountedReason = record.uncountedReason?.rawValue
@@ -45,11 +59,16 @@ enum ExpenseImporter {
         return summary
     }
 
-    private static func key(_ date: Date, _ amount: Decimal, _ merchant: String) -> String {
-        let name = merchant.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            .trimmingCharacters(in: .whitespaces)
+    private static func key(_ date: Date, _ amount: Decimal, _ merchant: String, _ card: String?,
+                            _ currency: String?) -> String {
+        func fold(_ text: String?) -> String {
+            (text ?? "").folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                .trimmingCharacters(in: .whitespaces)
+        }
+        // A bare «$» and the main currency are the same money; the export writes the code.
+        let code = CurrencyResolver.isoCode(for: currency, primary: CurrencyPreference.current) ?? fold(currency)
         // Whole seconds, floored like the export writes them: rounding put 12:00:20.7 at :21
         // while the file said :20, and the same expense came in twice.
-        return "\(Int(date.timeIntervalSince1970.rounded(.down)))|\(amount)|\(name)"
+        return "\(Int(date.timeIntervalSince1970.rounded(.down)))|\(amount)|\(fold(merchant))|\(fold(card))|\(code)"
     }
 }

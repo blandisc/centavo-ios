@@ -11,12 +11,15 @@ public struct ExpenseRecord: Equatable, Sendable {
     public var category: String?
     /// Whether it counts toward the budget. `amount` is always the real amount.
     public var counts: Bool
+    /// Only part of it counts («solo cuenta mi mitad»): how much, as `Expense.countedAmount`
+    /// stores it. `nil` when `counts` says it all (all of it, or none).
+    public var countedAmount: Decimal?
     /// Why it doesn't count, when it doesn't and someone said.
     public var uncountedReason: UncountedReason?
 
     public init(date: Date, merchant: String, amount: Decimal,
                 currency: String, card: String? = nil, category: String? = nil,
-                counts: Bool = true, uncountedReason: UncountedReason? = nil) {
+                counts: Bool = true, countedAmount: Decimal? = nil, uncountedReason: UncountedReason? = nil) {
         self.date = date
         self.merchant = merchant
         self.amount = amount
@@ -24,6 +27,7 @@ public struct ExpenseRecord: Equatable, Sendable {
         self.card = card
         self.category = category
         self.counts = counts
+        self.countedAmount = countedAmount
         self.uncountedReason = uncountedReason
     }
 }
@@ -34,7 +38,9 @@ public enum CSVExporter {
     public static let header = ["Fecha", "Comercio", "Monto", "Moneda", "Tarjeta", "Categoría",
                                 "Cuenta", "Motivo"]
 
-    /// What «Cuenta» says: whether the expense counts toward the budget.
+    /// What «Cuenta» says: whether the expense counts toward the budget. When only part of it
+    /// counts, «Cuenta» holds that part as an amount (`600.00`): an older importer reads it as
+    /// «Sí», this one gets the part back.
     public static let countsText = "Sí", uncountedText = "No"
 
     /// Oldest first, so the file reads like a ledger.
@@ -54,8 +60,8 @@ public enum CSVExporter {
                 defused(record.currency),
                 defused(record.card ?? ""),
                 defused(record.category ?? ""),
-                record.counts ? countsText : uncountedText,
-                record.counts ? "" : record.uncountedReason?.title ?? "",
+                countText(record),
+                record.counts && part(of: record) == nil ? "" : record.uncountedReason?.title ?? "",
             ]
         }
         return ([header] + rows)
@@ -63,22 +69,38 @@ public enum CSVExporter {
             .joined(separator: "\r\n") + "\r\n"
     }
 
+    /// «Sí», «No», or the part that counts when it is only a part.
+    private static func countText(_ record: ExpenseRecord) -> String {
+        guard record.counts else { return uncountedText }
+        return part(of: record).map(amountText) ?? countsText
+    }
+
+    /// The part that counts, when it is neither all nor nothing.
+    private static func part(of record: ExpenseRecord) -> Decimal? {
+        guard record.counts, let counted = record.countedAmount, counted != 0,
+              counted.magnitude < record.amount.magnitude else { return nil }
+        return counted
+    }
+
     /// Spreadsheets run a cell that starts with `=`, `+`, `-` or `@` as a formula, and
     /// merchant names come from outside (Wallet, a shared card): `=HYPERLINK(...)` as a shop
     /// would be code running on the owner's machine. A leading apostrophe makes it plain text.
-    /// Only text columns go through this; amounts are numbers and keep their minus.
+    /// A text that already starts with one gets another, so the importer can always take
+    /// exactly one off. Only text columns go through this; amounts are numbers and keep their minus.
+    static let defusedStarts = "=+-@\t\r'"
+
     private static func defused(_ text: String) -> String {
         guard let first = text.unicodeScalars.first,
-              "=+-@\t\r".unicodeScalars.contains(first) else { return text }
+              defusedStarts.unicodeScalars.contains(first) else { return text }
         return "'" + text
     }
 
-    /// Plain `1234.56`: no grouping, dot decimals, always two places.
+    /// Plain `1234.56`: no grouping, dot decimals, at least two places and every one it has
+    /// (`0.125` stays `0.125`: rounding here would change the money on the way back in).
     private static func amountText(_ amount: Decimal) -> String {
-        amount.formatted(
-            .number.precision(.fractionLength(2)).grouping(.never)
-                .locale(Locale(identifier: "en_US_POSIX"))
-        )
+        let text = BackupNumber.text(amount)
+        guard let point = text.firstIndex(of: ".") else { return text + ".00" }
+        return text.distance(from: point, to: text.endIndex) == 2 ? text + "0" : text
     }
 
     /// Quotes a field only when it needs it, and doubles any quote inside.

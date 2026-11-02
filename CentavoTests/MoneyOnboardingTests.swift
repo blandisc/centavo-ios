@@ -145,4 +145,108 @@ final class MoneyOnboardingTests: XCTestCase {
         row.place(main: "MXN")
         XCTAssertEqual(row.placed, .owe)
     }
+
+    // MARK: Audit 2026-11-02
+
+    private func monthAgo(_ months: Int, from date: Date = .now) -> Date {
+        Calendar.current.date(byAdding: .month, value: months, to: date)!
+    }
+
+    func testAnAccountAddedWhileACutIsBeingWrittenIsInTheCut() throws {
+        let context = ModelContext(try MoneyStore.inMemory())
+        let nu = MoneyAccount(name: "Nu", kind: .account, currency: "MXN")
+        try MoneyStore.add(nu, balance: 1_000, rate: nil, in: context, mainCurrency: "MXN")
+        let draft = try MoneyStore.draftForThisMonth(in: context, mainCurrency: "MXN")
+        let bbva = MoneyAccount(name: "BBVA", kind: .account, currency: "MXN")
+        try MoneyStore.add(bbva, balance: 2_500, rate: nil, in: context, mainCurrency: "MXN")
+        XCTAssertEqual(draft.entry(for: bbva)?.balance, 2_500)
+        XCTAssertEqual(draft.entry(for: bbva)?.reviewed, true)
+        draft.entry(for: nu)?.reviewed = true
+        try MoneyStore.finish(draft, replacing: true, in: context)
+        // Replacing this month's cut used to delete BBVA's only balance with it.
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 3_500)
+    }
+
+    func testReplacingKeepsLinesTheDraftDidNotHave() throws {
+        let context = ModelContext(try MoneyStore.inMemory())
+        let nu = MoneyAccount(name: "Nu", kind: .account, currency: "MXN")
+        try MoneyStore.add(nu, balance: 1_000, rate: nil, in: context, mainCurrency: "MXN")
+        let draft = try MoneyStore.draftForThisMonth(in: context, mainCurrency: "MXN")
+        // An account that reached the old cut and not the draft (as before this fix).
+        let gbm = MoneyAccount(name: "GBM", kind: .investment, currency: "MXN")
+        context.insert(gbm)
+        let line = MoneyEntry(balance: 700, account: gbm, reviewed: true)
+        context.insert(line)
+        line.cut = MoneyStore.latestCut(in: context)
+        try context.save()
+        try MoneyStore.finish(draft, replacing: true, in: context)
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.entry(for: gbm)?.balance, 700)
+    }
+
+    func testADraftPicksUpNewAccountsAndDropsArchivedOnes() throws {
+        let context = ModelContext(try MoneyStore.inMemory())
+        let nu = MoneyAccount(name: "Nu", kind: .account, currency: "MXN")
+        let old = MoneyAccount(name: "Vieja", kind: .account, currency: "MXN")
+        try MoneyStore.add(nu, balance: 1_000, rate: nil, in: context, mainCurrency: "MXN")
+        try MoneyStore.add(old, balance: 10, rate: nil, in: context, mainCurrency: "MXN")
+        let draft = try MoneyStore.draftForThisMonth(in: context, mainCurrency: "MXN")
+        let added = MoneyAccount(name: "Nueva", kind: .account, currency: "MXN")
+        context.insert(added)
+        old.archived = true
+        try context.save()
+        let again = try XCTUnwrap(MoneyStore.openDraft(in: context))
+        XCTAssertEqual(again.id, draft.id)
+        XCTAssertNotNil(again.entry(for: added))
+        XCTAssertNil(again.entry(for: old))
+    }
+
+    func testALeftoverDraftOfLastMonthIsOfferedNotOrphaned() throws {
+        let context = ModelContext(try MoneyStore.inMemory())
+        let nu = MoneyAccount(name: "Nu", kind: .account, currency: "MXN")
+        let october = monthAgo(-1)
+        try MoneyStore.add(nu, balance: 1_000, rate: nil, in: context, mainCurrency: "MXN", now: october)
+        let draft = try MoneyStore.draftForThisMonth(in: context, now: october, mainCurrency: "MXN")
+        XCTAssertEqual(try MoneyStore.openDraft(in: context)?.id, draft.id, "El corte a medias de octubre se ofrece")
+    }
+
+    func testARateWrittenTodayNeverRewritesAPastCut() throws {
+        let context = ModelContext(try MoneyStore.inMemory())
+        let past = monthAgo(-2)
+        let dollars = MoneyAccount(name: "Dólares", kind: .account, currency: "USD")
+        try MoneyStore.add(dollars, balance: 100, rate: 17, in: context, mainCurrency: "MXN", now: past)
+        try MoneyStore.update(dollars, balance: 120, rate: 20, in: context)
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.rateTable["USD"], 17)
+        let euros = MoneyAccount(name: "Euros", kind: .account, currency: "EUR")
+        try MoneyStore.add(euros, balance: 10, rate: 21, in: context, mainCurrency: "MXN")
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.rateTable["EUR"], 21, "Una moneda que no tenía tipo sí lo recibe")
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.rateTable["USD"], 17)
+    }
+
+    func testTheMonthSuggestedForACut() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Mexico_City")!
+        let early = calendar.date(from: DateComponents(year: 2026, month: 11, day: 2, hour: 12))!
+        let late = calendar.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 12))!
+        XCTAssertEqual(MoneyStore.suggestedMonths(now: early, calendar: calendar), ["2026-10", "2026-11"])
+        XCTAssertEqual(MoneyStore.suggestedMonths(now: late, calendar: calendar), ["2026-11", "2026-10"])
+    }
+
+    func testAMoneyAmountReadsThePointAsDecimal() {
+        XCTAssertEqual(MoneyAmount.read("15,000.50"), Decimal(string: "15000.50"))
+        XCTAssertNil(MoneyAmount.read("15000.125"), "Más de dos decimales se pregunta")
+        XCTAssertNil(MoneyAmount.read("25 mil"))
+        XCTAssertEqual(MoneyAmount.read("2,000"), 2_000)
+    }
+
+    func testAnArchivedAccountNoLongerAddsUpToday() throws {
+        let context = ModelContext(try MoneyStore.inMemory())
+        let nu = MoneyAccount(name: "Nu", kind: .account, currency: "MXN")
+        let amex = MoneyAccount(name: "Amex", kind: .debt, currency: "MXN")
+        try MoneyStore.add(nu, balance: 1_000, rate: nil, in: context, mainCurrency: "MXN")
+        try MoneyStore.add(amex, balance: 300, rate: nil, in: context, mainCurrency: "MXN")
+        amex.archived = true
+        let cut = try XCTUnwrap(MoneyStore.latestCut(in: context))
+        XCTAssertEqual(cut.activeNetWorth.total, 1_000)
+        XCTAssertEqual(cut.netWorth.total, 700, "El corte como se hizo no cambia")
+    }
 }

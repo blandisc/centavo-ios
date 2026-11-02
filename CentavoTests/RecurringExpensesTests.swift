@@ -168,4 +168,74 @@ final class RecurringExpensesTests: XCTestCase {
         XCTAssertEqual(original.date, at(11, 3))
         XCTAssertTrue(FixedPlan.saved.isEmpty, "El plan ya empezó")
     }
+
+    /// Two fixed expenses that look the same (two children at one school) each log their copy.
+    func testTwoIdenticalFixedExpensesEachLogTheirCopy() throws {
+        for _ in 0..<2 {
+            let school = Expense(amount: 5_000, currencyMarker: "MXN", merchant: "Colegio", date: at(8, 5))
+            school.repeatsMonthly = true
+            school.repeatsThrough = school.date
+            context.insert(school)
+        }
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 4)
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.count, 4)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 0)
+    }
+
+    /// Copies from before the ids still count: nothing is logged twice after the update.
+    func testCopiesFromBeforeIdsAreNotLoggedAgain() throws {
+        let netflix = addNetflix()
+        let old = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(9, 24))
+        old.isRepeat = true
+        context.insert(old)
+        netflix.repeatsThrough = at(8, 24)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 1)
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.map(\.date), [at(9, 24), at(10, 24)])
+    }
+
+    /// Two devices on one iCloud logging the same copy leave one.
+    func testTheSameCopyTwiceIsLeftOnce() throws {
+        let netflix = addNetflix()
+        try RecurringExpenses.logDue(in: context, now: at(9, 30))
+        let twin = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(9, 24))
+        twin.isRepeat = true
+        twin.fixedOf = netflix.fixedID
+        context.insert(twin)
+        try context.save()
+        try RecurringExpenses.logDue(in: context, now: at(9, 30))
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.count, 1)
+    }
+
+    /// Two devices each logged the copy: both keep the same one, never each its own.
+    func testTheCopyKeptIsTheSameOnEveryDevice() throws {
+        let netflix = addNetflix()
+        try RecurringExpenses.logDue(in: context, now: at(8, 30))
+        netflix.fixedID = "netflix"
+        for id in ["b", "a"] {
+            let copy = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(9, 24))
+            copy.isRepeat = true
+            copy.fixedOf = "netflix"
+            copy.fixedID = id
+            context.insert(copy)
+        }
+        netflix.repeatsThrough = at(9, 24)
+        try context.save()
+        try RecurringExpenses.logDue(in: context, now: at(9, 30))
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.map(\.fixedID), ["a"])
+    }
+
+    /// A plan two devices started is one fixed expense: the same id, one copy a month.
+    func testAPlanStartedTwiceLogsOnce() throws {
+        let plan = FixedPlan(merchant: "Gym", amount: "500", currency: "MXN", category: nil, rule: nil, firstDate: at(8, 10))
+        context.insert(RecurringExpenses.original(from: plan))
+        context.insert(RecurringExpenses.original(from: plan))
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(9, 30)), 1)
+    }
+
+    /// «Renta, día 31» planned in a 30-day month keeps repeating on the 31st.
+    func testThePlannedDayIsKept() {
+        let plan = FixedPlan(merchant: "Renta", amount: "9000", currency: "MXN", category: nil, rule: nil,
+                             firstDate: at(11, 30), day: 31)
+        XCTAssertEqual(RecurringExpenses.original(from: plan).repeatDay, 31)
+    }
 }

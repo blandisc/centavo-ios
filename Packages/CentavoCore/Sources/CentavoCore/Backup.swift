@@ -30,11 +30,23 @@ public struct BackupPayload: Codable, Equatable, Sendable {
         self.money = money
     }
 
+    /// A `Double` that is not a number (NaN, infinity) can't be written as JSON and would fail
+    /// the whole backup: a setting like that is left out and such a place is dropped, since
+    /// neither ever meant anything.
     public func encoded() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .deferredToDate
-        return try encoder.encode(self)
+        var clean = self
+        clean.settings = settings.filter { _, setting in
+            if case .number(let value) = setting { return value.isFinite }
+            return true
+        }
+        for index in clean.expenses.indices {
+            if clean.expenses[index].latitude?.isFinite == false { clean.expenses[index].latitude = nil }
+            if clean.expenses[index].longitude?.isFinite == false { clean.expenses[index].longitude = nil }
+        }
+        return try encoder.encode(clean)
     }
 
     public static func decoded(from data: Data) throws -> BackupPayload {
@@ -90,10 +102,13 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         public var currency: String
         public var since: Date
         public var archived: Bool
+        /// When it was added. `nil` in a file written before 2026-11-02.
+        public var createdAt: Date?
 
-        public init(id: String, name: String, institution: String?, amount: String, currency: String, since: Date, archived: Bool) {
+        public init(id: String, name: String, institution: String?, amount: String, currency: String, since: Date,
+                    archived: Bool, createdAt: Date? = nil) {
             self.id = id; self.name = name; self.institution = institution; self.amount = amount
-            self.currency = currency; self.since = since; self.archived = archived
+            self.currency = currency; self.since = since; self.archived = archived; self.createdAt = createdAt
         }
     }
 
@@ -137,9 +152,14 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         public var balance: String
         public var yieldOverride: String?
         public var movement: String?
+        /// Whether the person already checked this line. `nil` in a file written before
+        /// 2026-11-02: restore it as before (reviewed).
+        public var reviewed: Bool?
 
-        public init(account: String, balance: String, yieldOverride: String? = nil, movement: String? = nil) {
+        public init(account: String, balance: String, yieldOverride: String? = nil, movement: String? = nil,
+                    reviewed: Bool? = nil) {
             self.account = account; self.balance = balance; self.yieldOverride = yieldOverride; self.movement = movement
+            self.reviewed = reviewed
         }
     }
 }
@@ -167,6 +187,13 @@ public struct BackupExpense: Codable, Equatable, Sendable {
     public var categorySource: String?
     public var countedAmount: String?
     public var uncountedReason: String?
+    /// A fixed expense's own stable id (the original, not its copies). Added 2026-11-02.
+    public var fixedID: String?
+    /// In a copy of a fixed expense: the `fixedID` of the original. Added 2026-11-02.
+    public var fixedOf: String?
+    /// A Wallet capture identical to another within five minutes, marked «¿repetida?».
+    /// Added 2026-11-02.
+    public var maybeRepeated: Bool?
 
     public init(amount: Decimal, date: Date, merchant: String) {
         self.amount = BackupNumber.text(amount)
@@ -209,11 +236,11 @@ public enum BackupNumber {
 public enum BackupError: Error, Equatable, Sendable {
     /// Not an Al día backup at all.
     case notABackup
-    /// The password doesn't open it (or the file was changed after it was written).
+    /// The password doesn't open it (in a version-1 file, also a file changed after it was written).
     case wrongPassword
     /// Written by a newer Al día.
     case newerFormat
-    /// Opened, but what's inside doesn't read.
+    /// Cut short, changed after it was written, or opened but what's inside doesn't read.
     case damaged
     /// The phone couldn't do the cryptography (it never fails on a real iPhone).
     case cryptoUnavailable

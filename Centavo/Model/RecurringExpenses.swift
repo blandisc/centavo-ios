@@ -9,36 +9,72 @@ enum RecurringExpenses {
     @discardableResult
     static func logDue(in context: ModelContext, now: Date = .now,
                        calendar: Calendar = .current) throws -> Int {
-        var logged = try start(dueBy: now, in: context, calendar: calendar)
+        let started = try start(dueBy: now, in: context, calendar: calendar)
         let originals = try context.fetch(FetchDescriptor<Expense>(
             predicate: #Predicate { $0.repeatsMonthly == true }
         ))
-        // Another device on the same iCloud may have logged a copy before `repeatsThrough`
-        // synced here: one copy per merchant, amount and month (per day for what repeats more
-        // often than monthly).
-        let copies = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.isRepeat == true }))
-        func key(_ merchant: String, _ amount: Decimal, _ date: Date, byDay: Bool) -> String {
-            let parts = calendar.dateComponents([.year, .month, .day], from: date)
-            let period = "\(parts.year ?? 0)-\(parts.month ?? 0)" + (byDay ? "-\(parts.day ?? 0)" : "")
-            return "\(merchant)|\(amount)|\(period)"
+        var changed = false
+        // Each original gets its own id the first time, so two that look the same («Colegio»,
+        // $5,000 twice) each log their copy.
+        for original in originals where original.fixedID == nil {
+            original.fixedID = UUID().uuidString
+            changed = true
         }
-        var existing = Set(copies.flatMap { copy in
-            [key(copy.merchant, copy.amount, copy.date, byDay: false),
-             key(copy.merchant, copy.amount, copy.date, byDay: true)]
-        })
-        for original in originals {
+        let ids = Set(originals.compactMap(\.fixedID))
+        let copies = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.isRepeat == true },
+                                                                sortBy: [SortDescriptor(\.date)]))
+        // A copy is known by its original and its exact day. Two of the same (another device on
+        // the same iCloud logged it before `repeatsThrough` synced here) leave one.
+        var logged = started
+        var existing = Set<String>()
+        var legacy: [Expense] = []
+        // Every device must keep the same one, or each keeps its own, deletes the other and
+        // the charge is gone: the tie is broken by the copy's own id, which travels with it.
+        let ordered = copies.sorted { ($0.date, $0.fixedID ?? "") < ($1.date, $1.fixedID ?? "") }
+        for copy in ordered {
+            guard let of = copy.fixedOf, ids.contains(of) else { legacy.append(copy); continue }
+            if existing.insert(key(of, copy.date)).inserted { continue }
+            context.delete(copy)
+            changed = true
+        }
+        // Copies from before ids (or from an original whose id came from another device) are
+        // matched by merchant, amount and period, each one used up by a single original.
+        func period(_ date: Date, byDay: Bool) -> String {
+            let parts = calendar.dateComponents([.year, .month, .day], from: date)
+            return "\(parts.year ?? 0)-\(parts.month ?? 0)" + (byDay ? "-\(parts.day ?? 0)" : "")
+        }
+        func takeLegacy(_ original: Expense, _ date: Date, byDay: Bool) -> Bool {
+            let wanted = period(date, byDay: byDay)
+            guard let index = legacy.firstIndex(where: {
+                $0.merchant == original.merchant && $0.amount == original.amount && period($0.date, byDay: byDay) == wanted
+            }) else { return false }
+            legacy.remove(at: index)
+            return true
+        }
+        // Two originals with one id (a plan another device started too) log once.
+        var seenIDs = Set<String>()
+        for original in originals.sorted(by: { ($0.fixedID ?? "") < ($1.fixedID ?? "") }) {
+            guard let id = original.fixedID else { continue }
+            guard seenIDs.insert(id).inserted else {
+                original.repeatsThrough = originals.first { $0.fixedID == id && $0 !== original }?.repeatsThrough
+                    ?? original.repeatsThrough
+                continue
+            }
             let rule = original.rule
             let byDay = rule != .monthly
             let dates = RecurringSchedule.dates(rule: rule, anchor: original.date, day: original.repeatDay,
                                                 after: original.repeatsThrough ?? original.date,
                                                 through: now, calendar: calendar)
             for date in dates {
-                guard existing.insert(key(original.merchant, original.amount, date, byDay: byDay)).inserted
-                else { continue }
+                guard !existing.contains(key(id, date)), !takeLegacy(original, date, byDay: byDay) else { continue }
+                existing.insert(key(id, date))
                 let copy = Expense(amount: original.amount, currencyMarker: original.currencyMarker,
                                    merchant: original.merchant, card: original.card,
                                    date: date, category: original.category)
                 copy.isRepeat = true
+                copy.fixedOf = id
+                // Its own id: the same tie-break on every device (see above).
+                copy.fixedID = UUID().uuidString
                 copy.displayName = original.displayName
                 copy.categorySource = original.categorySource
                 // A fixed expense that doesn't count (paid by work) doesn't count every month.
@@ -47,9 +83,10 @@ enum RecurringExpenses {
                 context.insert(copy)
                 logged += 1
             }
+            // Every date up to the last one is now logged or was already there.
             if let last = dates.last { original.repeatsThrough = last }
         }
-        if logged > 0 { try context.save() }
+        if logged > 0 || changed { try context.save() }
         return logged
     }
 
@@ -74,15 +111,20 @@ enum RecurringExpenses {
         return started
     }
 
+    private static func key(_ id: String, _ date: Date) -> String { "\(id)|\(date.timeIntervalSinceReferenceDate)" }
+
     /// The first charge of a fixed expense, which every later copy repeats.
     static func original(from plan: FixedPlan, calendar: Calendar = .current) -> Expense {
         let expense = Expense(amount: plan.value, currencyMarker: plan.currency, merchant: plan.merchant,
                               card: plan.card, date: plan.firstDate, category: plan.category)
         expense.repeatsMonthly = true
+        // The plan's id: two devices starting the same plan make one fixed expense, not two.
+        expense.fixedID = plan.id.uuidString
         expense.repeatsThrough = plan.firstDate
         expense.repeatRule = plan.rule
         if plan.repeatRule.kind == .months {
-            expense.repeatDay = calendar.component(.day, from: plan.firstDate)
+            // The day asked for («31»), not the first date's, which a short month cut back.
+            expense.repeatDay = plan.day ?? calendar.component(.day, from: plan.firstDate)
         }
         return expense
     }

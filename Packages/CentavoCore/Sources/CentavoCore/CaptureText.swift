@@ -10,6 +10,12 @@ import Foundation
 public enum CaptureText {
     /// The amount in `text`, or `nil` when there is none to trust.
     public static func amount(in text: String) -> ParsedAmount? {
+        figure(in: text)?.amount
+    }
+
+    /// The amount and the exact piece of `text` it was read from («MXN 300.00» in «ALL 2 GO
+    /// MXN 300.00»), so whoever keeps that piece reads the same amount from it again.
+    public static func figure(in text: String) -> (text: String, amount: ParsedAmount)? {
         let visible = text.filter { !invisible.contains($0) }
             .trimmingCharacters(in: .whitespacesAndNewlines)
         // Just an amount, as Wallet sends it: read it whole, exactly as before.
@@ -19,17 +25,23 @@ public enum CaptureText {
             if let marker = parsed.currencyMarker, marker.allSatisfy(\.isUppercase), !isCurrency(marker) {
                 return nil
             }
-            return parsed
+            return (visible, parsed)
         }
-        // Anything longer: the first figure that carries a currency.
+        // Anything longer: the first figure that carries a currency. A code that is also a
+        // word («ALL 2 GO MXN 300.00»: ALL is the Albanian lek) only when there is no other.
+        var found: [(text: String, amount: ParsedAmount, isWord: Bool)] = []
         for candidate in candidates(in: visible) {
             if let parsed = AmountParser.parse(candidate), let marker = parsed.currencyMarker,
                isCurrency(marker) {
-                return parsed
+                found.append((candidate, parsed, codesThatAreWords.contains(marker)))
             }
         }
-        return nil
+        return (found.first { !$0.isWord } ?? found.first).map { ($0.text, $0.amount) }
     }
+
+    /// ISO codes that are also words in a shop's name or a sentence: «ALL», «TOP», «CUP».
+    static let codesThatAreWords: Set<String> = ["ALL", "BAM", "BOB", "CUP", "GEL", "MAD", "MOP", "PEN",
+                                                  "SOS", "TOP", "TRY"]
 
     /// Direction marks some languages wrap amounts in. `AmountParser` already skips them.
     private static let invisible = Set("\u{200B}\u{200E}\u{200F}\u{202A}\u{202B}\u{202C}\u{202D}\u{202E}\u{2066}\u{2067}\u{2068}\u{2069}")
@@ -41,14 +53,14 @@ public enum CaptureText {
     /// (`$`, `MX$`, `Bs.`, `€`) or capital letters (`USD`). "Nu 1234" is not an amount.
     private static let marker = #"(?:[^\d\s()]{0,3}[^\d\s()\p{L}][^\d\s()]{0,3}|\p{Lu}{2,4})"#
     private static let singleAmount = try! NSRegularExpression(
-        pattern: #"^\(?[-−]?\s?(?:\#(marker)\s?)?[-−]?\#(digits)\)?$|^\(?[-−]?\#(digits)(?:\s?\#(marker))?\)?$"#
+        pattern: #"^\(?[-−–]?\s?(?:\#(marker)\s?)?[-−–]?\#(digits)\)?$|^\(?[-−–]?\#(digits)(?:\s?\#(marker))?\)?$"#
     )
     private static let symbols = "$€£¥₱₩₹"
     private static let figures: [NSRegularExpression] = [
         // `$89.00`, `MX$1,234.50`, `-$230`, `USD 24.99`
-        #"[-−]?(?:[A-Z]{1,2}\$|\b[A-Z]{3}\b|[\#(symbols)])\s?[-−]?\#(digits)"#,
+        #"[-−–]?(?:[A-Z]{1,2}\$|\b[A-Z]{3}\b|[\#(symbols)])\s?[-−–]?\#(digits)"#,
         // `12,50 €`, `24.99 USD`
-        #"[-−]?\#(digits)\s?(?:[\#(symbols)]|\b[A-Z]{3}\b)"#,
+        #"[-−–]?\#(digits)\s?(?:[\#(symbols)]|\b[A-Z]{3}\b)"#,
     ].map { try! NSRegularExpression(pattern: $0) }
 
     /// A symbol (`$`, `MX$`, `€`) or a real ISO code (`USD`). "BBVA" or "Nu" are not.

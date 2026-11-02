@@ -5,7 +5,9 @@ import Foundation
 /// Three ways to spend the days after today, each with what it allows a day and how far over
 /// the month would close:
 /// - **stop**: nothing more (only the fixed expenses still to come);
-/// - **budget rate**: the day's amount the budget gave (`dailyBase`), as if the month were fine;
+/// - **budget rate**: the day's amount the budget gave, (budget − fixed) ÷ days in the month,
+///   as if the month were fine; the same in both modes (with `.spread`, `dailyBase` is today's
+///   share, which is zero once the month is over);
 /// - **current rate**: what this month has been spending a day so far, outside fixed expenses.
 ///
 /// Whole money, rounded up for what goes over (it is worse to promise a peso less of excess).
@@ -42,7 +44,8 @@ public struct OverspendPlan: Equatable, Sendable {
         fixedToCome = Self.up(pace.reserved)
         let days = Decimal(after)
         stop = Path(perDay: 0, closesOver: Self.up(now))
-        let base = max(Self.down(pace.dailyBase), 0)
+        let even = (pace.budget - pace.fixedMonth) / Decimal(max(pace.daysInMonth, 1))
+        let base = max(Self.down(even), 0)
         budgetRate = Path(perDay: base, closesOver: Self.up(now + base * days))
         let variable = max(pace.spent - pace.fixedSpent, 0)
         let average = Self.down(variable / Decimal(max(pace.day, 1)))

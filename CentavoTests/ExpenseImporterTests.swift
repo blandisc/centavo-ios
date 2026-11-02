@@ -46,6 +46,42 @@ final class ExpenseImporterTests: XCTestCase {
         XCTAssertEqual(try all().count, 1)
     }
 
+    /// Two «Uber $100» logged the same moment are two expenses: both come in, and importing the
+    /// file again brings neither.
+    func testTwoIdenticalRowsInAFileAreTwoExpenses() throws {
+        let date = Date(timeIntervalSince1970: 1_792_000_000)
+        let uber = ExpenseRecord(date: date, merchant: "Uber", amount: 100, currency: "MXN")
+        let csv = CSVExporter.csv(from: [uber, uber])
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context),
+                       .init(added: 2, alreadyThere: 0, unreadable: 0))
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context),
+                       .init(added: 0, alreadyThere: 2, unreadable: 0))
+        XCTAssertEqual(try all().count, 2)
+    }
+
+    func testTheSameMomentOnAnotherCardIsAnotherExpense() throws {
+        let date = Date(timeIntervalSince1970: 1_792_000_000)
+        context.insert(Expense(amount: 100, currencyMarker: "MXN", merchant: "Uber", card: "Amex", date: date))
+        try context.save()
+        let csv = CSVExporter.csv(from: [ExpenseRecord(date: date, merchant: "Uber", amount: 100, currency: "MXN", card: "BBVA")])
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context).added, 1)
+    }
+
+    /// «Cuenta» from another spreadsheet (an account number, a 1 for yes) is not a part.
+    func testANumberUnderCuentaThatIsNoPartMeansItCounts() throws {
+        let csv = """
+        Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría,Cuenta,Motivo
+        2026-10-01T12:00:00-06:00,Oxxo,89.00,MXN,,,0123456789,
+        2026-10-02T12:00:00-06:00,Uber,100.00,MXN,,,1,
+        2026-10-03T12:00:00-06:00,Cena,600.00,MXN,,,300.00,
+        """
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context).added, 3)
+        let rows = try all()
+        XCTAssertNil(rows[0].countedAmount)
+        XCTAssertNil(rows[1].countedAmount)
+        XCTAssertEqual(rows[2].countedAmount, 300)
+    }
+
     /// A Wallet capture carries fractions of a second; the export drops them. Re-importing
     /// the export must still recognize it (rounding put :20.7 at :21 and duplicated it).
     func testAFractionOfASecondDoesNotDuplicate() throws {

@@ -39,6 +39,14 @@ final class Expense {
     var repeatRule: String?
     /// On a copy: logged by itself from a fixed expense.
     var isRepeat: Bool?
+    /// On the original: its own id, so two fixed expenses that look the same («Colegio», $5,000
+    /// twice) each get their copy. Optional: a lightweight, CloudKit-safe addition (2026-11-02).
+    var fixedID: String?
+    /// On a copy: the `fixedID` of the original it repeats. `nil` on copies from before.
+    var fixedOf: String?
+    /// A Wallet payment identical to another one minutes before (`CaptureGuard`): kept, marked
+    /// «¿repetida?» until it's confirmed or deleted. `nil` is a normal expense (2026-11-02).
+    var maybeRepeated: Bool?
     /// How the merchant reads on screen («Taquería El Güero» for «CLIP*MX TAQ GUERO 02»).
     /// Only for showing: `merchant` keeps what Wallet sent, for the CSV and the memory.
     var displayName: String?

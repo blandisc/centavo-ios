@@ -19,27 +19,29 @@ struct FixedPlan: Codable, Hashable, Identifiable {
     var card: String? = nil
     var rule: String?
     var firstDate: Date
+    /// The day of the month it was asked for, when `firstDate` had to fall earlier («31» in a
+    /// 30-day month). Optional: plans saved before it decode.
+    var day: Int? = nil
 
     var value: Decimal { Decimal(string: amount, locale: Locale(identifier: "en_US_POSIX")) ?? 0 }
     var repeatRule: RepeatRule { RepeatRule(stored: rule) }
 
     static let key = "fijosPorEmpezar"
 
+    /// One at a time (`LenientList`): a plan that doesn't read never empties the rest.
     static func decode(_ stored: String) -> [FixedPlan] {
-        guard let data = stored.data(using: .utf8),
-              let list = try? JSONDecoder().decode([FixedPlan].self, from: data) else { return [] }
-        return list
+        LenientList.decode(FixedPlan.self, from: stored).items
     }
 
-    static func encode(_ list: [FixedPlan]) -> String {
-        guard let data = try? JSONEncoder().encode(list) else { return "" }
-        return String(decoding: data, as: UTF8.self)
+    /// A plan already stored that doesn't read is written back as it was, never dropped.
+    static func encode(_ list: [FixedPlan], keepingUnreadFrom stored: String = "") -> String {
+        LenientList.encode(list, keepingUnreadFrom: stored)
     }
 
     static var saved: [FixedPlan] { decode(UserDefaults.standard.string(forKey: key) ?? "") }
 
     static func save(_ list: [FixedPlan]) {
-        let text = encode(list)
+        let text = encode(list, keepingUnreadFrom: UserDefaults.standard.string(forKey: key) ?? "")
         UserDefaults.standard.set(text, forKey: key)
         if Store.syncsBudget { BudgetSync.push(text, for: key) }
     }

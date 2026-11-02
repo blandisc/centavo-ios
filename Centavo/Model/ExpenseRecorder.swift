@@ -6,8 +6,9 @@ import SwiftData
 /// What happened to a payment the Wallet automation handed over.
 enum CaptureOutcome: Equatable {
     case saved(merchant: String)
-    /// The same payment was saved a moment ago.
-    case duplicate(merchant: String)
+    /// Saved, but identical to a Wallet payment saved minutes before: marked «¿repetida?» to
+    /// confirm or delete (2026-11-02). Never dropped: two equal coffees are two coffees.
+    case maybeRepeated(merchant: String)
     /// Wallet sent a zero amount, almost certainly a glitch.
     case empty
     /// The amount text could not be read as money.
@@ -24,16 +25,21 @@ enum ExpenseRecorder {
         amountText: String,
         merchant: String?,
         card: String?,
+        amount: ParsedAmount? = nil,
         rawNotice: String? = nil,
         place: CLLocationCoordinate2D? = nil,
         in context: ModelContext,
+        primary: String? = CurrencyPreference.chosen,
         rules: CategoryRules = UserCatalog.categoryRules,
         hidden: [String] = UserCatalog.notAutoAssigned,
         renames: MerchantRenames = UserCatalog.merchantRenames,
-        now: Date = .now
+        now: Date = .now,
+        saved: ((Expense) -> Void)? = nil
     ) throws -> CaptureOutcome {
-        // Usually just the amount; `CaptureText` also finds it when the whole payment came.
-        guard let parsed = CaptureText.amount(in: amountText) else { return .unreadable }
+        // The amount a notice already read (`amount`) is used as is: reading its text a second
+        // time lost thousands written with «'» or a thin space. Usually just the amount;
+        // `CaptureText` also finds it when the whole payment came.
+        guard let parsed = amount ?? CaptureText.amount(in: amountText) else { return .unreadable }
         // The automation is alive, whatever happens to this payment after (a duplicate, or
         // deleted later by hand).
         WalletWatch.noteArrival(now)
@@ -47,17 +53,20 @@ enum ExpenseRecorder {
         let cardName = card?.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCard = (cardName?.isEmpty ?? true) ? nil : cardName
 
+        let repeated: Bool
         switch CaptureGuard.check(amount: parsed.value, merchant: merchantName, card: cleanCard,
                                   at: now, recent: recentCaptures(before: now, in: context)) {
         case .empty: return .empty
-        case .duplicate: return .duplicate(merchant: merchantName)
-        case .save: break
+        case .duplicate: repeated = true
+        case .save: repeated = false
         }
 
         let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden, now: now)
         let expense = Expense(
             amount: parsed.value,
-            currencyMarker: parsed.currencyMarker,
+            // A bare «$» is the main currency of today, kept as its code (2026-11-02).
+            // Before a main currency is chosen it stays «$», to be pinned once it is.
+            currencyMarker: primary.map { CurrencyResolver.pinned(parsed.currencyMarker, primary: $0) } ?? parsed.currencyMarker,
             merchant: merchantName,
             card: cleanCard,
             date: now,
@@ -71,9 +80,40 @@ enum ExpenseRecorder {
         if let renamed { expense.displayName = renamed }
         // Only what Wallet sends gets a cleaner reading: a name someone typed is theirs.
         if expense.displayName == nil { expense.displayName = MerchantName.readable(merchantName) }
+        if repeated { expense.maybeRepeated = true }
         context.insert(expense)
-        try context.save()
-        return .saved(merchant: merchantName)
+        do { try context.save() } catch { context.rollback(); throw error }
+        saved?(expense)
+        return repeated ? .maybeRepeated(merchant: merchantName) : .saved(merchant: merchantName)
+    }
+
+    /// Where the iPhone was, added after the payment is already saved: waiting for a fix first
+    /// could let Atajos stop the app with the payment still unsaved.
+    static func addPlace(_ place: CLLocationCoordinate2D?, to expense: Expense, in context: ModelContext) {
+        guard let place else { return }
+        expense.latitude = place.latitude
+        expense.longitude = place.longitude
+        try? context.save()
+    }
+
+    /// Captures kept before «$» was saved as its currency: each one is pinned once to today's
+    /// main currency, the one they were being read in. Safe to run on every launch.
+    @discardableResult
+    static func pinBareDollars(in context: ModelContext, primary: String? = CurrencyPreference.chosen) throws -> Int {
+        // No main currency chosen yet (a new phone, before iCloud brings it): nothing to pin to.
+        guard let primary else { return 0 }
+        let rows = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate {
+            $0.currencyMarker == nil || $0.currencyMarker == "$"
+        }))
+        var pinned = 0
+        for expense in rows where CurrencyResolver.isAmbiguous(expense.currencyMarker) {
+            expense.currencyMarker = CurrencyResolver.pinned(expense.currencyMarker, primary: primary)
+            pinned += 1
+        }
+        if pinned > 0 {
+            do { try context.save() } catch { context.rollback(); throw error }
+        }
+        return pinned
     }
 
     /// Where `repairBankMerchants` left off: the moment of its last run and the cards it knew.
@@ -186,10 +226,11 @@ enum ExpenseRecorder {
         return primary
     }
 
-    /// Payments saved in the last few minutes, the only ones a repeat could match.
+    /// Wallet payments saved in the last few minutes, the only ones a repeat could match. One
+    /// written by hand never makes a capture look repeated.
     private static func recentCaptures(before now: Date, in context: ModelContext) -> [RecentCapture] {
         let since = now.addingTimeInterval(-CaptureGuard.duplicateWindow)
-        let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since })
+        let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since && $0.rawAmount != nil })
         let rows = (try? context.fetch(descriptor)) ?? []
         return rows.map {
             RecentCapture(amount: $0.amount, merchant: $0.merchant, card: $0.card, date: $0.date)
