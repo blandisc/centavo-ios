@@ -5,6 +5,7 @@
 - **«Hoy» sin datos invita a empezar:** «Tu mes empieza aquí» con el boleto del mes, un renglón de ejemplo que se imprime, «Anotar un gasto» y dos tarjetas con dibujo: «Fijar presupuesto» y «Conectar Wallet». Lo que ya hiciste desaparece; la animación corre una vez y se queda quieta.
 - **Una bienvenida más clara:** una barra de pasos con su nombre, una pregunta por paso y dibujos que explican sin palabras. En «Tu mes», el boleto se reparte en los días mientras escribes; en «Gastos fijos», cada uno se sella en su día de un calendario; al final, «Listo» y cuánto tienes cada día. Las animaciones corren pocas veces y se quedan quietas, sin rebotes; con «Reducir movimiento» o el modo de bajo consumo, todo queda quieto.
 ### Added
+- **«Cómo funciona»:** siete historias animadas de un minuto (la cifra, la barra, lo que sobra, cómo se anota, lo que no cuenta, en qué se va y tu respaldo), en «···» y al final de la bienvenida. Avanzan solas o con un toque; «Pruébalo» te lleva a donde se hace.
 - **«¿Lo tienes en Excel?»** en el primer paso de «Mi dinero»: copia unas instrucciones, pásalas a tu IA con tu Excel y pega o sube lo que te devuelva. Antes de guardar lo revisas y lo corriges: cada renglón se abre, puedes quitar o agregar, cada moneda trae su tipo de cambio (y si tu Excel traía dos distintos, eliges) y lo que no se leyó bien dice por qué. Tus ingresos llegan al resultado: «debes ahorrar $X al mes».
 - **La institución** (Nu, BBVA, Amex…) en cada cuenta y deuda.
 ### Fixed

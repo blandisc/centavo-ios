@@ -68,15 +68,8 @@ struct TutorialArt: View {
         var line = Path()
         line.move(to: CGPoint(x: 14 + 172 * 0.5, y: 38)); line.addLine(to: CGPoint(x: 14 + 172 * 0.5, y: 80))
         c.stroke(line.trimmedPath(from: 0, to: rule), with: .color(Theme.ink), style: artStroke(Theme.ink, ArtGeo.line))
-        let tiles = moneySpan(progress, 0.75, 1)
-        for i in 0..<6 {
-            let x = 108 + CGFloat(i) * 13
-            var tile = c
-            tile.opacity = tiles
-            tile.stroke(artCell(x, 52, 9, 14), with: .color(Theme.outline), style: artStroke(Theme.outline, dash: ArtGeo.dash))
-        }
         label(&c, "Llevas", at: CGPoint(x: 40, y: 96), size: 10, color: Theme.brass, opacity: moneySpan(progress, 0.3, 0.6))
-        label(&c, "Parejo", at: CGPoint(x: 100, y: 28), size: 10, color: Theme.muted, opacity: rule)
+        label(&c, "Podrías", at: CGPoint(x: 100, y: 28), size: 10, color: Theme.muted, opacity: rule)
     }
 
     /// What a day leaves over: the unspent part of today's cell slides into tomorrow's.

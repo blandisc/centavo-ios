@@ -1237,6 +1237,29 @@ final class FlowTests: XCTestCase {
         return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
     }
 
+    /// «Configurar ahora» in the welcome opens the Wallet guide once the welcome is gone.
+    func testLaBienvenidaLlevaALaGuia() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
+                               "-centavo-empty", "-centavo-onboarding", "-centavo-bienvenida-pagina", "3"]
+        app.launch()
+        require(app.buttons["bienvenida-configurar"], "No está «Configurar ahora» en la bienvenida", timeout: 20).tap()
+        let guide = app.buttons.matching(NSPredicate(format: "identifier IN %@", ["guia-siguiente", "atajo-agregar"])).firstMatch
+        require(guide, "No abrió la guía desde la bienvenida")
+    }
+
+    /// The welcome's last page offers «Cómo funciona», and it opens once the welcome is gone.
+    func testTutorialDesdeLaBienvenida() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
+                               "-centavo-empty", "-centavo-onboarding", "-centavo-bienvenida-pagina", "4"]
+        app.launch()
+        require(app.buttons["bienvenida-tutorial"], "No está «Cómo funciona» al final de la bienvenida", timeout: 20).tap()
+        require(app.staticTexts["tutorial-titulo"], "No abrió el tutorial desde la bienvenida")
+        app.buttons["tutorial-cerrar"].tap()
+        require(app.buttons["Anotar gasto"], "Al cerrar no quedó «Hoy»")
+    }
+
     /// «Cómo funciona» from «···»: it moves with «Siguiente» and «Anterior», and «Pruébalo»
     /// closes the stories and opens what it names (the first story: the budget).
     func testTutorial() {

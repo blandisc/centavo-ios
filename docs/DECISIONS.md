@@ -683,3 +683,12 @@ Pedido del dueño: la pantalla vacía más bonita y los botones de abajo con mov
 - Lo hecho desaparece en vez de quedarse con palomita: con presupuesto queda solo la tarjeta de Wallet, a lo ancho.
 - Con `MotionPolicy` quieto (Reducir movimiento, bajo consumo, pruebas) todo se dibuja en su estado final.
 
+## 2026-11-02 · «Cómo funciona»: historias animadas
+Pedido del dueño: un tutorial divertido y animado, como historias, al final de la bienvenida y en «···». Plan atacado por un agente experto antes de construir.
+- **Siete historias**, no nueve: la cifra, la barra del mes, lo que sobra, se anota solo (y a mano con «+»), lo que no es gasto («No cuenta»), en qué se va y el respaldo. «Mi dinero» se presenta solo la primera vez que se abre su pestaña.
+- **Cuánto dura cada una** depende de lo que hay que leer (`StoryTiming`: 4 s más 0.25 s por palabra, máximo 10), no 6 s fijos.
+- **Un solo gesto:** tocar avanza (el 30 % de la izquierda regresa), mantener pausa, deslizar hacia abajo cierra. Siempre hay «Anterior» y «Siguiente» visibles: el gesto es un atajo, no la única forma.
+- **No avanza sola** con VoiceOver, «Reducir movimiento», modo de bajo consumo o letra de accesibilidad (ahí el texto se desplaza). Cada dibujo corre una vez y se queda quieto.
+- **«Pruébalo»** cierra las historias y abre lo que nombra (presupuesto, guía del atajo, Ajustes) cuando ya se fueron, en el `onDismiss`: dos pantallas completas no pueden estar arriba a la vez. La bienvenida hace lo mismo con su salida (antes esperaba 500 ms fijos).
+- No se muestra sola nunca; al final de la bienvenida es un botón secundario, «Cómo funciona · 1 min».
+

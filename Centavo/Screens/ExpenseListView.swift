@@ -79,6 +79,8 @@ struct ExpenseListView: View {
     /// «Cómo funciona», and where its «Pruébalo» goes once it has closed.
     @State private var showingTutorial = false
     @State private var afterTutorial: TutorialDestination?
+    /// Where the welcome said to go, opened once it has gone (two covers can't overlap).
+    @State private var afterOnboarding: OnboardingExit?
     @AppStorage(WalletWatch.key) private var ignoresWallet = false
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHiddenCategories = ""
@@ -291,16 +293,12 @@ struct ExpenseListView: View {
                     onboarded = true
                 }
             }
-            .fullScreenCover(isPresented: $showingOnboarding) {
+            .fullScreenCover(isPresented: $showingOnboarding, onDismiss: openAfterOnboarding) {
                 OnboardingView { exit in
                     onboarded = true
                     if Store.syncsBudget { BudgetSync.markOnboarded() }
+                    afterOnboarding = exit
                     showingOnboarding = false
-                    switch exit {
-                    case .guide: Task { try? await Task.sleep(for: .milliseconds(500)); showingSetup = true }
-                    case .tutorial: Task { try? await Task.sleep(for: .milliseconds(500)); showingTutorial = true }
-                    case .home: break
-                    }
                 }
             }
             .fullScreenCover(isPresented: $showingTutorial, onDismiss: openAfterTutorial) {
@@ -896,6 +894,16 @@ private extension ExpenseListView {
         #endif
     }
 
+    private func openAfterOnboarding() {
+        let exit = afterOnboarding
+        afterOnboarding = nil
+        switch exit {
+        case .guide: showingSetup = true
+        case .tutorial: showingTutorial = true
+        case .home, nil: break
+        }
+    }
+
     /// «Pruébalo» in «Cómo funciona»: what it asked for, once the stories are gone.
     private func openAfterTutorial() {
         guard let destination = afterTutorial else { return }
@@ -903,7 +911,6 @@ private extension ExpenseListView {
         switch destination {
         case .budget: showingBudget = true
         case .guide: showingSetup = true
-        case .catalogs: showingCatalogs = true
         case .settings: showingSettings = true
         }
     }
