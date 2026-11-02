@@ -189,24 +189,30 @@ final class HomeModel {
         guard query.category == nil else { return FetchDescriptor(sortBy: newestFirst) }
         let wordy = query.words.filter { $0.contains { !$0.isNumber && $0 != "." } }
         if let word = wordy.max(by: { $0.count < $1.count }) {
-            return FetchDescriptor(predicate: #Predicate<Expense> { expense in
-                expense.merchant.localizedStandardContains(word)
-                    || (expense.displayName?.localizedStandardContains(word) ?? false)
-                    || (expense.category?.localizedStandardContains(word) ?? false)
-                    || (expense.card?.localizedStandardContains(word) ?? false)
-            }, sortBy: newestFirst)
+            return FetchDescriptor(predicate: names(containing: word), sortBy: newestFirst)
         }
         if query.words.isEmpty, let interval = query.interval, let month = query.monthWord {
             let start = interval.start, end = interval.end
+            let named = names(containing: month)
             return FetchDescriptor(predicate: #Predicate<Expense> { expense in
-                (expense.date >= start && expense.date <= end)
-                    || expense.merchant.localizedStandardContains(month)
-                    || (expense.displayName?.localizedStandardContains(month) ?? false)
-                    || (expense.category?.localizedStandardContains(month) ?? false)
-                    || (expense.card?.localizedStandardContains(month) ?? false)
+                (expense.date >= start && expense.date <= end) || named.evaluate(expense)
             }, sortBy: newestFirst)
         }
         return FetchDescriptor(sortBy: newestFirst)
+    }
+
+    /// An expense whose merchant, readable name, category or card holds `word`, ignoring
+    /// accents and capitals. In pieces: as one expression the CI's compiler gave up on it.
+    private static func names(containing word: String) -> Predicate<Expense> {
+        let shop = #Predicate<Expense> { expense in
+            expense.merchant.localizedStandardContains(word)
+                || (expense.displayName?.localizedStandardContains(word) ?? false)
+        }
+        let filed = #Predicate<Expense> { expense in
+            (expense.category?.localizedStandardContains(word) ?? false)
+                || (expense.card?.localizedStandardContains(word) ?? false)
+        }
+        return #Predicate<Expense> { expense in shop.evaluate(expense) || filed.evaluate(expense) }
     }
 
     /// The oldest expense, one row: how far back the months go.
