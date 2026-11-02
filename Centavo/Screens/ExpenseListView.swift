@@ -247,9 +247,7 @@ struct ExpenseListView: View {
                           allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
                 importMessage = importFile(result)
             }
-            .alert("No se guardó", isPresented: saveProblemShown) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(saveProblem ?? "") }
+            .modifier(SaveProblemAlert(problem: $saveProblem))
             .alert("Importar CSV", isPresented: importAlertShown) {
                 Button("Listo", role: .cancel) {}
             } message: {
@@ -264,8 +262,7 @@ struct ExpenseListView: View {
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
-            .task(id: now) { backupWarning = DailyBackup.warning(now: now) }
-            .onChange(of: showingSettings) { _, shown in if !shown { backupWarning = DailyBackup.warning() } }
+            .modifier(BackupWatch(warning: $backupWarning, now: now, settingsShown: showingSettings))
             .sheet(isPresented: $showingSettings) {
                 SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
                              health: CaptureHealth(lastCapture: lastCapture, now: now),
@@ -864,6 +861,31 @@ private struct Feedback: ViewModifier {
     }
 }
 
+/// The backup's line in «Hoy» (`DailyBackup.warning`), read again as time passes and when
+/// Ajustes closes. Pulled out of `body`: the CI's compiler gave up type-checking it all.
+private struct BackupWatch: ViewModifier {
+    @Binding var warning: String?
+    let now: Date
+    let settingsShown: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: now) { warning = DailyBackup.warning(now: now) }
+            .onChange(of: settingsShown) { _, shown in if !shown { warning = DailyBackup.warning() } }
+    }
+}
+
+/// A change made in «Hoy» that couldn't be saved, said out loud.
+private struct SaveProblemAlert: ViewModifier {
+    @Binding var problem: String?
+
+    func body(content: Content) -> some View {
+        content.alert("No se guardó", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            Button("Aceptar", role: .cancel) {}
+        } message: { Text(problem ?? "") }
+    }
+}
+
 /// Keeps "now" fresh (coming back, midnight, a time-zone change) and logs the fixed expenses
 /// whose day came while the app was closed.
 private struct KeepsTime: ViewModifier {
@@ -894,10 +916,6 @@ private struct KeepsTime: ViewModifier {
 
 private extension ExpenseListView {
     // Pulled out of `body`: the CI's compiler gave up type-checking it all in one expression.
-    var saveProblemShown: Binding<Bool> {
-        Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })
-    }
-
     /// Every change made here is saved right then, not left to autosave; if it fails, it's said.
     @discardableResult
     func persist() -> Bool {
