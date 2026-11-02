@@ -2,22 +2,26 @@ import CentavoCore
 import SwiftData
 import SwiftUI
 
-/// The first time Al día opens empty: four short pages that show before they ask.
+/// How the welcome ends: on the main screen, straight into the Wallet guide, or into «Cómo
+/// funciona» (2026-11-01).
+enum OnboardingExit { case home, guide, tutorial }
+
+/// The first time Al día opens empty (redone 2026-11-01 in «Mi dinero»'s language): a step bar
+/// with its name, a question for a title, a drawing that shows instead of telling, and the least
+/// to fill in.
 ///
-/// 1. What it does, as a live demo: a Wallet notice lands and «Hoy puedes gastar» goes down.
-/// 2. The month: currency and budget on one page, with quick amounts and the daily figure
-///    answering every keystroke.
-/// 3. Fixed expenses, with one-tap suggestions and how much they take off each day.
-/// 4. Connecting Wallet: the chain «pagas → Atajos → Al día», then the guide.
+/// 1. Bienvenida: a Wallet notice lands, the figure goes down and today's cell fills.
+/// 2. Tu mes: currency by its symbol, the budget, and the boleto split into the month's days.
+/// 3. Gastos fijos: a calendar where each one is stamped on its day.
+/// 4. Conecta Wallet: «pagas → Atajos → Al día». Setting it up goes to the guide, as before.
+/// 5. The end: «Listo», and what each day gets.
 ///
-/// Every page can be skipped and whatever was filled in is kept. One wide «Continuar» at the
-/// bottom moves on (it rides above the number pad, so no keyboard bar is needed); the dots
-/// above it show where the person is.
+/// Every step can be skipped and whatever was filled in is kept, saved once.
 struct OnboardingView: View {
-    /// Called when it is done; `openGuide` asks for the Wallet guide right after.
-    let finish: (_ openGuide: Bool) -> Void
+    let finish: (OnboardingExit) -> Void
 
     @Environment(\.modelContext) private var context
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(BudgetStore.key) private var storedBudget = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     @State private var page = Self.firstPage
@@ -30,11 +34,14 @@ struct OnboardingView: View {
     @State private var draftAmount = ""
     @State private var draftDay = 1
     @State private var added = 0
+    /// Saved once, whichever way it ends: saving twice would log the fixed expenses twice.
+    @State private var saved = false
     @FocusState private var focused: Field?
-    @ScaledMetric(relativeTo: .body) private var pointIconWidth = Theme.Size.iconColumnNarrow
 
     private enum Field { case budget, name, amount }
-    private let pages = 4
+    /// The four steps and the end.
+    private let pages = 5
+    private let steps = 4
 
     /// Debug only: open on a given page (`-centavo-bienvenida-pagina 2`) for screenshots.
     private static var firstPage: Int {
@@ -56,7 +63,8 @@ struct OnboardingView: View {
                 case 0: welcome
                 case 1: budgetPage
                 case 2: fixedPage
-                default: walletPage
+                case 3: walletPage
+                default: donePage
                 }
             }
             .id(page)
@@ -68,10 +76,15 @@ struct OnboardingView: View {
             .background(Theme.background.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) { bottomBar }
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle("Bienvenida")
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("al día\(Text(".").foregroundStyle(Theme.brass))")
+                        .font(.ticket(.subheading))
+                        .foregroundStyle(Theme.ink)
+                        .accessibilityLabel("Al día")
+                }
                 ToolbarItem(placement: .topBarLeading) {
-                    if page > 0 {
+                    if page > 0 && page < pages - 1 {
                         Button("Anterior", systemImage: "chevron.left") {
                             focused = nil
                             go(to: page - 1)
@@ -80,8 +93,8 @@ struct OnboardingView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if page < pages - 1 {
-                        Button("Omitir") { save(); finish(false) }
+                    if page < 3 {
+                        Button("Omitir") { save(); finish(.home) }
                             .font(.ticket(.footnote))
                             .accessibilityIdentifier("bienvenida-omitir")
                     }
@@ -93,71 +106,51 @@ struct OnboardingView: View {
         .interactiveDismissDisabled()
     }
 
-    /// The dots, then the one wide button that moves on. On the last page the choice is
-    /// inside the page, so only the dots stay.
-    private var bottomBar: some View {
-        VStack(spacing: Theme.Space.m) {
-            StepDots(current: page, of: pages)
-                .accessibilityHidden(true)
-            if page < pages - 1 {
+    /// The one wide button that moves on. Wallet's page holds its own choice; the end, «Ver mi día».
+    @ViewBuilder private var bottomBar: some View {
+        if page != 3 {
+            VStack(spacing: Theme.Space.m) {
                 Button {
                     focused = nil
-                    go(to: page + 1)
+                    if page == pages - 1 { finish(.home) } else { go(to: page + 1) }
                 } label: {
-                    PrimaryButtonLabel(page == 0 ? "Empezar" : "Continuar")
+                    PrimaryButtonLabel(page == 0 ? "Empezar" : page == pages - 1 ? "Ver mi día" : "Continuar")
                 }
                 .ticketProminent()
                 .accessibilityIdentifier("bienvenida-siguiente")
             }
+            .padding(.horizontal, Theme.Space.screen)
+            .padding(.vertical, Theme.Space.s)
+            .background(Theme.background)
         }
-        .padding(.horizontal, Theme.Space.screen)
-        .padding(.top, Theme.Space.s)
-        .padding(.bottom, Theme.Space.s)
-        .background(Theme.background)
     }
 
     private func go(to target: Int) {
         guard (0..<pages).contains(target), target != page else { return }
         forward = target > page
-        withAnimation(Theme.Motion.page) { page = target }
+        withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) { page = target }
     }
 
     // MARK: Pages
 
     private var welcome: some View {
-        page(title: "Al día", symbol: "calendar.day.timeline.left",
-             lead: "Te dice cuánto puedes gastar hoy. Cada compra con Apple Pay se anota sola.") {
+        page(step: 1, label: "Bienvenida", title: "Cuánto puedes gastar hoy") {
             WelcomeDemo(currency: currency)
                 .onboardingRise(2)
-            // «Wallet» read as «cartera», and cash went unsaid (user research, 2026-10-29).
-            VStack(spacing: Theme.Space.none) {
-                point("wallet.pass", "Con Apple Pay, en línea o acercando el teléfono: sin anotar nada.")
-                pointDivider
-                point("banknote", "¿Efectivo o tarjeta de plástico? Lo anotas tú con «+».")
-                pointDivider
-                point("calendar", "Lo que no gastas hoy, lo tienes mañana.")
-                pointDivider
-                point("lock", "Sin cuenta ni servidor: tus gastos viven en tu iPhone y tu iCloud.")
-            }
-            .padding(.horizontal, Theme.Space.ml)
-            .padding(.vertical, Theme.Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .ticketPanel()
-            .onboardingRise(3)
+            // One line that doesn't lose cash (user research, 2026-10-29).
+            Text("Cada compra con Apple Pay se anota sola; lo demás, con «+». Tú solo miras la cifra.")
+                .font(.ticket(.callout))
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .onboardingRise(3)
         }
     }
 
     private var budgetPage: some View {
-        page(title: "Tu mes", symbol: "target",
-             lead: "Cuánto quieres gastar al mes, sin lo que vas a ahorrar. Con eso, Al día te dice cuánto puedes gastar cada día.") {
+        page(step: 2, label: "Tu mes", title: "¿Cuánto quieres gastar al mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                // Names, not codes: «MXN» said nothing on a first look (user research).
-                Picker("Moneda", selection: $currency) {
-                    ForEach(CurrencyPreference.offered, id: \.self) { Text(Self.currencyName($0)).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("bienvenida-moneda")
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                currencyPills
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     AmountInputField("Presupuesto", text: $budgetText, prompt: suggestions[1].formatted(),
                                      size: .compact, identifier: "bienvenida-presupuesto")
                         .focused($focused, equals: .budget)
@@ -168,19 +161,39 @@ struct OnboardingView: View {
                 quickAmounts
             }
             .onboardingRise(2)
-            NoteText("Lo que no gastes un día se suma al siguiente. Puedes cambiar el monto cuando quieras en «Más».",
+            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «Más».",
                      color: Theme.faint)
                 .onboardingRise(3)
         }
         .sensoryFeedback(.selection, trigger: currency)
     }
 
-    private static func currencyName(_ code: String) -> String {
-        switch code {
-        case "MXN": "Pesos"
-        case "USD": "Dólares"
-        case "EUR": "Euros"
-        default: code
+    /// The currency by its symbol, as in «Mi dinero»: the three the app adds up in.
+    private var currencyPills: some View {
+        HStack(spacing: Theme.Space.xs) {
+            ForEach(CurrencyPreference.offered, id: \.self) { code in
+                let chosen = currency == code
+                Button { currency = code } label: {
+                    VStack(spacing: Theme.Space.xxxs) {
+                        Text(MoneyCurrency.symbol(code)).font(.ticket(.bodyStrong))
+                            .foregroundStyle(chosen ? Theme.brass : Theme.ink)
+                        Text(MoneyCurrency.name(code)).font(.ticket(.micro)).textCase(.uppercase)
+                            .foregroundStyle(Theme.muted)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow)
+                    .background(chosen ? Theme.brass.opacity(Theme.Opacity.moneyCurrency) : .clear,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.control)
+                            .strokeBorder(chosen ? Theme.brass : Theme.outline, lineWidth: Theme.Stroke.hairline)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(MoneyCurrency.name(code))
+                .accessibilityAddTraits(chosen ? .isSelected : [])
+                .accessibilityIdentifier(code == CurrencyPreference.offered.first ? "bienvenida-moneda" : "bienvenida-moneda-\(code)")
+            }
         }
     }
 
@@ -192,21 +205,10 @@ struct OnboardingView: View {
     private var quickAmounts: some View {
         HStack(spacing: Theme.Space.s) {
             ForEach(suggestions, id: \.self) { value in
-                let chosen = budget == value
-                Button {
+                TicketChip("\((value / 1_000).formatted()) mil", selected: budget == value) {
                     withAnimation(Theme.Motion.quick) { budgetText = NSDecimalNumber(decimal: value).stringValue }
-                } label: {
-                    Text("\((value / 1_000).formatted()) mil")
-                        .font(.ticket(.footnoteStrong))
-                        .foregroundStyle(chosen ? Theme.onBrass : Theme.ink)
-                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
-                        .background(chosen ? Theme.brass : Theme.surface,
-                                    in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel(value.formatted(currencyStyle(currency).precision(.fractionLength(0))))
-                .accessibilityAddTraits(chosen ? .isSelected : [])
             }
         }
         .sensoryFeedback(.selection, trigger: budget)
@@ -217,28 +219,43 @@ struct OnboardingView: View {
         return value
     }
 
-    /// The answer the whole app is about, growing as the budget is typed: what each day gets
-    /// (not today's carried figure, which mid-month would add up the days already gone).
+    /// What each day gets, as «Hoy» counts it: (budget − fixed) ÷ the month's days, rounded down.
+    /// Not today's carried figure, which mid-month would add up the days already gone.
+    private var pace: BudgetPace? { BudgetPace(budget: budget, spent: 0, reserved: fixedTotal, on: .now) }
+
+    private func whole(_ value: Decimal) -> String {
+        var input = value, output = Decimal()
+        NSDecimalRound(&output, &input, 0, .down)
+        return output.formatted(currencyStyle(currency).precision(.fractionLength(0)))
+    }
+
+    /// The answer the whole app is about: the month split into its days, as the boleto.
     @ViewBuilder private var dailyAnswer: some View {
-        if let pace = BudgetPace(budget: budget, spent: 0, reserved: fixedTotal, on: .now),
-           pace.dailyBase > 0 {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
-                Text("Al día:")
-                    .font(.ticket(.footnote))
-                    .foregroundStyle(Theme.muted)
-                Text(pace.dailyBase.formatted(currencyStyle(currency).precision(.fractionLength(0))))
-                    .font(.ticket(.heading))
-                    .foregroundStyle(Theme.brass)
-                    .contentTransition(.numericText(value: NSDecimalNumber(decimal: pace.dailyBase).doubleValue))
-                    .animation(Theme.Motion.quick, value: budgetText)
-                    .accessibilityIdentifier("bienvenida-por-dia")
+        if let pace, let budget, pace.dailyBase > 0 {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                    Text(fixedTotal > 0 ? "(\(whole(budget)) − fijos) ÷ \(pace.daysInMonth) días ="
+                                        : "\(whole(budget)) ÷ \(pace.daysInMonth) días =")
+                        .font(.ticket(.footnote))
+                        .foregroundStyle(Theme.muted)
+                    Text(whole(pace.dailyBase))
+                        .font(.ticket(.heading))
+                        .foregroundStyle(Theme.brass)
+                        .contentTransition(.numericText(value: NSDecimalNumber(decimal: pace.dailyBase).doubleValue))
+                        .animation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion), value: budgetText)
+                        .accessibilityIdentifier("bienvenida-por-dia")
+                }
+                WelcomeDaysStrip(days: pace.daysInMonth, filled: true)
             }
             .accessibilityElement(children: .combine)
             .transition(.opacity)
         } else {
-            Text("Escribe un monto o elige uno abajo.")
-                .font(.ticket(.footnote))
-                .foregroundStyle(Theme.faint)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Escribe un monto o elige uno abajo.")
+                    .font(.ticket(.footnote))
+                    .foregroundStyle(Theme.faint)
+                WelcomeDaysStrip(days: Calendar.current.range(of: .day, in: .month, for: .now)?.count ?? 30, filled: false)
+            }
         }
     }
 
@@ -252,12 +269,13 @@ struct OnboardingView: View {
     }
 
     private var fixedPage: some View {
-        page(title: "Gastos fijos", symbol: "repeat",
-             lead: "La renta, la luz y las suscripciones se anotan solas cada mes, y se apartan de lo que puedes gastar.") {
+        page(step: 3, label: "Gastos fijos", title: "¿Qué pagas cada mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                // In rows, all in sight: a sideways scroll cut the last one («Sp…») and hid
-                // the rest (user research, 2026-10-29). Out of the way while typing: in rows they
-                // pushed «Agregar» under the keyboard's «Continuar».
+                Text("Se anotan solos cada mes y se apartan de lo que puedes gastar. Su día lo eliges en el calendario de abajo.")
+                    .font(.ticket(.callout))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                // Out of the way while typing: they pushed «Agregar» under the keyboard.
                 if focused != .name && focused != .amount {
                     WrapLayout {
                         ForEach(fixedSuggestions, id: \.self) { name in
@@ -265,7 +283,6 @@ struct OnboardingView: View {
                                 withAnimation(Theme.Motion.quick) { draftName = name }
                                 focused = .amount
                             }
-                            .transition(.scale.combined(with: .opacity))
                         }
                     }
                     .transition(.opacity)
@@ -279,15 +296,15 @@ struct OnboardingView: View {
                         .onSubmit { focused = .amount }
                         .accessibilityIdentifier("bienvenida-fijo-nombre")
                     Divider().overlay(Theme.hairline)
-                    TextField("Cuánto", text: $draftAmount,
-                              prompt: Text("Monto").foregroundStyle(Theme.faint))
-                        .keyboardType(.decimalPad)
-                        .focused($focused, equals: .amount)
-                        .groupsThousands($draftAmount)
-                        .accessibilityIdentifier("bienvenida-fijo-monto")
-                    Divider().overlay(Theme.hairline)
-                    Stepper("El día \(draftDay) de cada mes", value: $draftDay, in: 1...31)
-                        .foregroundStyle(Theme.ink)
+                    HStack {
+                        TextField("Cuánto", text: $draftAmount,
+                                  prompt: Text("Monto").foregroundStyle(Theme.faint))
+                            .keyboardType(.decimalPad)
+                            .focused($focused, equals: .amount)
+                            .groupsThousands($draftAmount)
+                            .accessibilityIdentifier("bienvenida-fijo-monto")
+                        Text("el día \(draftDay)").foregroundStyle(Theme.muted)
+                    }
                 }
                 .font(.ticket(.field))
                 .padding(Theme.Space.ml)
@@ -296,18 +313,18 @@ struct OnboardingView: View {
                     LinkActionLabel("Agregar", systemImage: "plus")
                 }
                 .buttonStyle(.plain)
-                .disabled(draftValue == nil
-                          || draftName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(draftValue == nil || draftName.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("bienvenida-fijo-agregar")
+                WelcomeFixedCalendar(stamped: Set(fixed.map(\.day)), chosen: $draftDay)
             }
-            .animation(Theme.Motion.quick, value: focused)
+            .animation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion), value: focused)
             .onboardingRise(2)
             if !fixed.isEmpty {
                 VStack(spacing: Theme.Space.none) {
                     ForEach(Array(fixed.enumerated()), id: \.element.id) { index, item in
                         if index > 0 { pointDivider }
                         fixedRow(item)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(.opacity)
                     }
                     if budget != nil {
                         pointDivider
@@ -318,24 +335,25 @@ struct OnboardingView: View {
                 .padding(.vertical, Theme.Space.m)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .ticketPanel()
-            } else {
-                NoteText("También puedes marcar como fijo cualquier gasto que ya anotaste.",
-                         color: Theme.faint)
-                    .onboardingRise(3)
             }
         }
     }
 
-    /// What the fixed expenses leave for each day, so adding one shows what it costs.
+    /// What the fixed expenses leave each day, or by how much they pass the budget: never a bare $0.
     @ViewBuilder private var fixedEffect: some View {
-        if let pace = BudgetPace(budget: budget, spent: 0, reserved: fixedTotal, on: .now) {
+        if let pace, let budget {
             HStack(alignment: .firstTextBaseline) {
-                Text("Te quedan al día").font(.ticket(.footnote)).foregroundStyle(Theme.muted)
-                Spacer(minLength: Theme.Space.s)
-                Text(max(pace.dailyBase, 0).formatted(currencyStyle(currency).precision(.fractionLength(0))))
-                    .font(.ticket(.bodyStrong))
-                    .foregroundStyle(Theme.brass)
-                    .contentTransition(.numericText())
+                if pace.dailyBase > 0 {
+                    Text("Te quedan al día").font(.ticket(.footnote)).foregroundStyle(Theme.muted)
+                    Spacer(minLength: Theme.Space.s)
+                    Text(whole(pace.dailyBase))
+                        .font(.ticket(.bodyStrong))
+                        .foregroundStyle(Theme.brass)
+                        .contentTransition(.numericText())
+                } else {
+                    Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)).")
+                        .font(.ticket(.footnote)).foregroundStyle(Theme.danger)
+                }
             }
             .padding(.vertical, Theme.Space.xxs)
             .accessibilityElement(children: .combine)
@@ -343,64 +361,105 @@ struct OnboardingView: View {
     }
 
     private var walletPage: some View {
-        page(title: "Conecta Wallet", symbol: "wallet.pass",
-             lead: ShortcutsVersion.isIOS27
-                ? "Para que cada pago con Apple Pay se anote solo, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: solo lo agregas, una vez."
-                : "Para que cada pago con Apple Pay se anote solo, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. Se configura una sola vez, en unos 5 minutos.") {
+        page(step: 4, label: "Conecta Wallet", title: "Que cada pago se anote solo") {
             WalletChain()
                 .onboardingRise(2)
-            VStack(spacing: Theme.Space.none) {
-                point("hand.tap", ShortcutsVersion.isIOS27
-                      ? "Solo hay que agregarlo y encenderlo; te decimos dónde tocar."
-                      : "Te guiamos toque por toque, con capturas reales de Atajos.")
-                // The floating guide is for the step-by-step way; iOS 27 adds the shortcut ready.
-                if GuideCompanion.isSupported && !ShortcutsVersion.isIOS27 {
-                    pointDivider
-                    point("pip", "Una ventanita flotante te acompaña dentro de Atajos para que no tengas que ir y venir.")
-                }
-                // Before the guide, not at its end: someone without Apple Pay has nothing to set up.
-                pointDivider
-                point("banknote", "¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+».")
-            }
-            .padding(.horizontal, Theme.Space.ml)
-            .padding(.vertical, Theme.Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .ticketPanel()
-            .onboardingRise(3)
+            Text(ShortcutsVersion.isIOS27
+                 ? "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: lo agregas una vez y lo enciendes."
+                 : "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. Te guiamos toque por toque, en unos 5 minutos.")
+                .font(.ticket(.callout))
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .onboardingRise(3)
             VStack(spacing: Theme.Space.m) {
+                // Setting it up goes straight to the guide, as before (the end is for «Después»).
                 Button {
-                    save(); finish(true)
+                    save(); finish(.guide)
                 } label: {
-                    PrimaryButtonLabel("Configurar ahora", systemImage: "wallet.pass")
+                    PrimaryButtonLabel(ShortcutsVersion.isIOS27 ? "Agregar a Atajos" : "Configurar ahora",
+                                       systemImage: "wallet.pass")
                 }
                 .ticketProminent()
                 .accessibilityIdentifier("bienvenida-configurar")
-                SecondaryButton("Después", identifier: "bienvenida-despues") { save(); finish(false) }
-                HintText("Si lo dejas para después, lo encuentras en «Más › Configurar atajo».")
+                SecondaryButton("Después", identifier: "bienvenida-despues") { save(); go(to: pages - 1) }
+                HintText("¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+». El atajo queda en «Más › Configurar atajo».")
             }
             .onboardingRise(4)
         }
     }
 
+    /// The end: «Listo», and what each day gets — never «Hoy puedes gastar», which mid-month
+    /// would add up the days already gone. Wallet isn't called connected: the shortcut arrives
+    /// off, and only a payment proves it.
+    private var donePage: some View {
+        ScrollView {
+            VStack(spacing: Theme.Space.xl) {
+                StepBar(step: steps, of: steps, label: "Listo")
+                MoneySuccessArt()
+                    .padding(.top, Theme.Space.l)
+                Text("Listo")
+                    .font(.ticket(.pageTitle))
+                    .foregroundStyle(Theme.ink)
+                    .accessibilityAddTraits(.isHeader)
+                doneFigure
+            }
+            .padding(.horizontal, Theme.Space.screen)
+            .padding(.vertical, Theme.Space.xxl)
+        }
+        .onAppear { save() }
+    }
+
+    @ViewBuilder private var doneFigure: some View {
+        if let pace, let budget {
+            if pace.dailyBase > 0 {
+                VStack(spacing: Theme.Space.s) {
+                    Text("Cada día tienes").ticketCaption(strong: true)
+                    MoneyCountUp(value: wholeDecimal(pace.dailyBase), currency: currency)
+                        .accessibilityIdentifier("bienvenida-cada-dia")
+                    Text(fixedTotal > 0 ? "Presupuesto \(whole(budget)) · fijos \(whole(fixedTotal))" : "Presupuesto \(whole(budget))")
+                        .font(.ticket(.detail))
+                        .foregroundStyle(Theme.muted)
+                }
+            } else {
+                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «Más › Presupuesto».")
+                    .font(.ticket(.callout))
+                    .foregroundStyle(Theme.danger)
+                    .multilineTextAlignment(.center)
+            }
+        } else {
+            Text("Fija tu presupuesto cuando quieras en «Más» y Al día te dirá cuánto puedes gastar cada día.")
+                .font(.ticket(.callout))
+                .foregroundStyle(Theme.muted)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private func wholeDecimal(_ value: Decimal) -> Decimal {
+        var input = value, output = Decimal()
+        NSDecimalRound(&output, &input, 0, .down)
+        return output
+    }
+
     // MARK: Pieces
 
-    /// Every page's shell: an emblem, a step caption, the title and lead, then the content,
-    /// each block rising in after the one above it.
-    private func page<Content: View>(title: String, symbol: String, lead: String,
+    /// Every step's shell: the step bar, the question as the title, then the content, each
+    /// block rising in after the one above it.
+    private func page<Content: View>(step: Int, label: String, title: String,
                                      @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                StepHeader(step: page + 1, of: pages, title: title, systemImage: symbol)
+                StepBar(step: step, of: steps, label: label)
                     .onboardingRise(0)
-                Text(lead)
-                    .font(.ticket(.body))
-                    .foregroundStyle(Theme.muted)
+                Text(title)
+                    .font(.ticket(.pageTitle))
+                    .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
                     .onboardingRise(1)
                 content()
             }
             .padding(.horizontal, Theme.Space.screen)
-            .padding(.vertical, Theme.Space.xxl)
+            .padding(.vertical, Theme.Space.xl)
         }
         .scrollDismissesKeyboard(.interactively)
     }
@@ -409,15 +468,6 @@ struct OnboardingView: View {
         Divider()
             .overlay(Theme.hairline)
             .padding(.vertical, Theme.Space.xxs)
-    }
-
-    private func point(_ icon: String, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Image(systemName: icon).foregroundStyle(Theme.brass).frame(width: pointIconWidth)
-            Text(text).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
-        }
-        .font(.ticket(.callout))
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func fixedRow(_ item: FixedDraft) -> some View {
@@ -436,7 +486,9 @@ struct OnboardingView: View {
             }
             Spacer(minLength: Theme.Space.s)
             Button("Quitar \(item.name)", systemImage: "xmark.circle.fill") {
-                withAnimation(Theme.Motion.quick) { fixed.removeAll { $0.id == item.id } }
+                withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+                    fixed.removeAll { $0.id == item.id }
+                }
             }
             .labelStyle(.iconOnly)
             .foregroundStyle(Theme.faint)
@@ -455,7 +507,7 @@ struct OnboardingView: View {
 
     private func addFixed() {
         guard let value = draftValue else { return }
-        withAnimation(Theme.Motion.toggle) {
+        withAnimation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion)) {
             fixed.append(FixedDraft(name: draftName.trimmingCharacters(in: .whitespaces),
                                     amount: value, day: draftDay))
         }
@@ -466,6 +518,8 @@ struct OnboardingView: View {
 
     /// Whatever was filled in is kept, even when the rest is skipped.
     private func save() {
+        guard !saved else { return }
+        saved = true
         // A fixed expense typed in but never «Agregar»-ed still counts.
         if draftValue != nil, !draftName.trimmingCharacters(in: .whitespaces).isEmpty { addFixed() }
         storedCurrency = currency

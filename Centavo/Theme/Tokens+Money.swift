@@ -38,6 +38,8 @@ extension Theme.Motion {
         static let faceCycle: Double = 5
         /// The success plays once and stays.
         static let success: Double = 2.2
+        /// The step bar's light, crossing the current part once.
+        static let sheen: Animation = .smooth(duration: 1.2).delay(0.2)
         /// A row of «Primera cuenta» opening or closing.
         static let row: Animation = .smooth(duration: 0.45)
         /// The running total counting to its new figure.

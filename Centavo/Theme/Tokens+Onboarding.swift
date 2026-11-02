@@ -67,6 +67,17 @@ extension Theme {
     }
 }
 
+extension Theme.Size {
+    /// The welcome demo's month strip.
+    static let welcomeStrip: CGFloat = 22
+    /// A day gone, in the strip: filled this much.
+    static let welcomeDayGone: CGFloat = 0.6
+    /// Each payment of the demo fills today's cell this much more.
+    static let welcomeTodayStep: CGFloat = 0.3
+    /// A fixed expense's stamp lands from this size on its day.
+    static let stampFrom: CGFloat = 1.6
+}
+
 extension Theme.Opacity {
     /// 0.15: a brass wash behind a node that is lit.
     static let wash: Double = 0.15
@@ -80,15 +91,19 @@ extension Theme.Motion {
             .smooth(duration: 0.5).delay(0.08 + Double(index) * 0.07)
         }
         /// The Wallet notice dropping in from the top of the demo.
-        static let noticeIn: Animation = .spring(duration: 0.5, bounce: 0.25)
+        static let noticeIn: Animation = .smooth(duration: 0.6)
         /// The notice folding into the list as a new row, and the figure going down.
-        static let land: Animation = .spring(duration: 0.55, bounce: 0.15)
+        static let land: Animation = .smooth(duration: 0.6)
         /// A node of the Wallet chain lighting up.
         static let light: Animation = .easeOut(duration: 0.35)
         /// Pauses of the demo loop, in seconds: before the notice, while it shows, after it lands.
         static let beforeNotice: Double = 0.9
         static let noticeShown: Double = 1.4
-        static let afterLanding: Double = 2.2
+        static let afterLanding: Double = 2.0
+        /// The demo plays this many payments, then stays still on the last.
+        static let loops = 3
+        /// Today's cell fills just after the row lands, so the eye goes row → cell.
+        static let fillDelay: Double = 0.35
         /// Seconds each node of the Wallet chain stays lit.
         static let chainBeat: Double = 0.9
     }

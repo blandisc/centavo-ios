@@ -288,11 +288,11 @@ struct ExpenseListView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingOnboarding) {
-                OnboardingView { openGuide in
+                OnboardingView { exit in
                     onboarded = true
                     if Store.syncsBudget { BudgetSync.markOnboarded() }
                     showingOnboarding = false
-                    if openGuide {
+                    if exit == .guide {
                         Task { try? await Task.sleep(for: .milliseconds(500)); showingSetup = true }
                     }
                 }

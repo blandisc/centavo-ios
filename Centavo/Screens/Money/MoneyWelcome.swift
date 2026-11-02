@@ -47,23 +47,3 @@ struct MoneyGrowthHero: View {
     /// How far the figure has counted at `t`, in step with the bars.
     static func shown(_ t: Double) -> Double { moneyRise(t, 0.05, 0.40, 0.80, 0.96) }
 }
-
-/// A slow light crossing the current part of the step bar.
-struct MoneyStepSheen: View {
-    var body: some View {
-        MoneyLoopClock(cycle: Theme.Motion.Money.kindCycle, rest: Theme.Motion.Money.sheenRest) { t in
-            GeometryReader { proxy in
-                LinearGradient(colors: [.clear, Theme.ink.opacity(Theme.Opacity.paceBehind), .clear],
-                               startPoint: .leading, endPoint: .trailing)
-                    .frame(width: proxy.size.width * Theme.Size.moneySheenShare)
-                    .offset(x: proxy.size.width * Self.position(t))
-            }
-        }
-    }
-
-    /// From just off the left edge to just off the right, in the middle of each loop.
-    static func position(_ t: Double) -> CGFloat {
-        let start = -Theme.Size.moneySheenShare
-        return start + (1 - start) * moneySpan(t, 0.3, 0.8)
-    }
-}
