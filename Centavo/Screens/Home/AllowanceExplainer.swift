@@ -80,7 +80,8 @@ struct AllowanceExplainer: View {
         .accessibilityAction(named: finished ? "Ver otra vez" : paused ? "Seguir" : "Pausar") {
             if finished { replays += 1 } else { paused.toggle() }
         }
-        .task(id: Run(mode: mode, replays: replays)) { await play() }
+        // Again when the rule changes, on a tap at the end, or when it goes still (low power).
+        .task(id: Run(mode: mode, replays: replays, still: MotionPolicy.isStill(reduceMotion: reduceMotion))) { await play() }
     }
 
     // MARK: Pieces
@@ -153,12 +154,20 @@ struct AllowanceExplainer: View {
     private struct Run: Hashable {
         let mode: AllowanceMode
         let replays: Int
+        let still: Bool
     }
 
+    /// The run that already reached its end: coming back on screen (the keyboard, a scroll)
+    /// leaves it resting instead of playing the week again.
+    @State private var played: Run?
+
     private func play() async {
+        let run = Run(mode: mode, replays: replays, still: MotionPolicy.isStill(reduceMotion: reduceMotion))
+        guard played != run else { return }
         paused = false
         finished = false
-        reset()
+        // From the last frame to the start of the week, faded, never a jump.
+        withAnimation(run.still ? nil : Theme.Motion.Explainer.fill) { reset() }
         if MotionPolicy.isStill(reduceMotion: reduceMotion) {
             // Still and finished: every day spent and every move already made.
             for move in demo.moves { for target in move.to { shown[target] += move.each } }
@@ -197,6 +206,7 @@ struct AllowanceExplainer: View {
             }
             caption = "Fin: gastaste \(whole(demo.spent)) de \(whole(demo.budget)); sobraron \(whole(demo.budget - demo.spent)), igual con las dos reglas. Toca para verlo otra vez."
             finished = true
+            played = run
         }
     }
 
