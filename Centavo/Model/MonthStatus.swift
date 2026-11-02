@@ -26,16 +26,42 @@ enum MonthStatus {
                                           primary: primary, month: now, now: now) else {
             return nil
         }
-        if pace.remaining < 0 {
-            return "Te pasaste del presupuesto por \(money(pace.remaining.magnitude, summary.primary))."
-        }
+        if pace.isOverspent { return overspentSentence(pace, primary: primary, total: summary.primary) }
+        // Fixed expenses past the budget and already charged: what's left is below zero, but
+        // nothing was overspent; that's all there is to say.
+        if pace.remaining < 0, let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return excess }
         let today = pace.dailyAllowance.magnitude.formatted(currencyStyle(summary.primary.isoCode ?? primary)
                                                              .precision(.fractionLength(0)))
-        let left = pace.reserved > 0
-            ? "Te quedan \(money(pace.free, summary.primary)) libres "
-                + "(más \(money(pace.reserved, summary.primary)) apartados para fijos)."
-            : "Te quedan \(money(pace.remaining, summary.primary)) del presupuesto."
+        // What is left never promises more than it has: with the fixed ones still to come
+        // above it, both are said as they are (second audit, 2026-11-02).
+        let left: String
+        if pace.isShortForFixed {
+            left = "Te quedan \(money(pace.remaining, summary.primary)) y faltan "
+                + "\(money(pace.reserved, summary.primary)) de fijos."
+        } else if pace.reserved > 0 {
+            left = "Te quedan \(money(pace.free, summary.primary)) libres "
+                + "(más \(money(pace.setAside, summary.primary)) apartados para fijos)."
+        } else {
+            left = "Te quedan \(money(pace.remaining, summary.primary)) del presupuesto."
+        }
+        if let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return left + " " + excess }
         return left + (pace.isOverToday ? " Hoy ya te pasaste por \(today)." : " Hoy puedes gastar \(today).")
+    }
+
+    /// «Te pasaste del presupuesto por $231.»: whole and rounded up, the same figure as the
+    /// screen and the widgets (independent review: Siri said «$0.40» where they said «$1»).
+    static func overspentSentence(_ pace: BudgetPace, primary: String, total: MoneyTotal) -> String {
+        let figure = pace.overspentShown.formatted(currencyStyle(total.isoCode ?? primary).precision(.fractionLength(0)))
+        return "Te pasaste del presupuesto por \(figure)."
+    }
+
+    /// «Tus fijos pasan el presupuesto por $3,000.»: the fixed expenses take the whole budget,
+    /// so there is no figure for today and nothing to say «te pasaste» about (second audit).
+    static func fixedSentence(_ pace: BudgetPace, primary: String, total: MoneyTotal) -> String? {
+        guard let excess = pace.fixedOverBudgetShown else { return nil }
+        guard excess > 0 else { return "Tus fijos se llevan todo el presupuesto." }
+        let figure = excess.formatted(currencyStyle(total.isoCode ?? primary).precision(.fractionLength(0)))
+        return "Tus fijos pasan el presupuesto por \(figure)."
     }
 
     /// «¿Cuánto puedo gastar hoy?»: "Hoy puedes gastar $290." The screen's big figure, out loud,
@@ -50,9 +76,8 @@ enum MonthStatus {
                                           primary: primary, month: now, now: now) else {
             return "Aún no tienes presupuesto. Fíjalo en Al día para saber cuánto puedes gastar cada día."
         }
-        if pace.remaining < 0 {
-            return "Te pasaste del presupuesto por \(money(pace.remaining.magnitude, summary.primary))."
-        }
+        if pace.isOverspent { return overspentSentence(pace, primary: primary, total: summary.primary) }
+        if let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return excess }
         let today = pace.dailyAllowance.magnitude.formatted(currencyStyle(summary.primary.isoCode ?? primary)
                                                              .precision(.fractionLength(0)))
         return pace.isOverToday ? "Hoy ya te pasaste por \(today)." : "Hoy puedes gastar \(today)."

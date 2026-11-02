@@ -38,7 +38,9 @@ struct MonthBar: View {
     private var width: CGFloat { measuredWidth > Theme.Space.none ? measuredWidth : entrance.barWidth }
     /// Drawn: this view's entrance has played, or the app's has (a rebuilt bar starts drawn).
     private var shown: Bool { drawn || entrance.barShown }
-    private var isOver: Bool { pace.remaining < 0 }
+    /// The same rule as the hero, the widgets and Siri: fixed expenses past the budget, charged,
+    /// are not «te pasaste» (independent review).
+    private var isOver: Bool { pace.isOverspent }
     private var days: Int { isCurrentMonth && !isOver ? min(max(pace.daysLeft, 1), 31) : 0 }
 
     /// Past the budget, how much of what went the budget was (where the red starts).
@@ -316,7 +318,7 @@ struct MonthBar: View {
     /// «Acumular», «Hoy puedes gastar» already is that gap, so no sentence (alternative C).
     private var verdictLine: Line? {
         // This month the hero already says it in big red figures; the bar shows where.
-        if isOver { return isCurrentMonth ? nil : ("Te pasaste ", wholeMoney(pace.sum.remaining.magnitude), " del presupuesto", false) }
+        if isOver { return isCurrentMonth ? nil : ("Te pasaste ", wholeMoney(pace.overspentShown), " del presupuesto", false) }
         if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.sum.remaining), " de sobra", true) }
         guard pace.rhythm != nil else { return nil }
         let rhythm = pace.gapShown
@@ -342,7 +344,15 @@ struct MonthBar: View {
             sumLine("Presupuesto", wholeMoney(sum.budget))
             sumLine("− Llevas", wholeMoney(sum.spent))
             sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
-            if days > 0, pace.mode == .spread {
+            if days > 0, let excess = pace.fixedOverBudgetShown {
+                // Fixed expenses past the budget: nothing to cut into days (second audit).
+                Perforation()
+                sumLine("Presupuesto", wholeMoney(sum.budget))
+                // Whole, so the lines subtract to the peso: the fixed ones are the budget plus
+                // the excess, rounded up like it (independent review).
+                sumLine("− Fijos del mes", wholeMoney(sum.budget + excess))
+                sumLine(excess > 0 ? "= Tus fijos pasan por" : "= Para los días", wholeMoney(excess), strong: true)
+            } else if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
                 Perforation()
                 sumLine("Presupuesto", wholeMoney(sum.budget))

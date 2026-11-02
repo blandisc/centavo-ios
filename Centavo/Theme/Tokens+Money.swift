@@ -46,8 +46,9 @@ extension Theme.Motion {
         static let success: Double = 2.2
         /// The step bar's light, crossing the current part once.
         static let sheen: Animation = .smooth(duration: 1.2).delay(0.2)
-        /// A row of «Primera cuenta» opening or closing.
-        static let row: Animation = .smooth(duration: 0.45)
+        /// A row of «Primera cuenta» opening or closing: the app's one fold (second audit,
+        /// 2026-11-02), with `.unfold` for what it shows.
+        static var row: Animation { Theme.Motion.fold }
         /// The running total counting to its new figure.
         static let total: Animation = .smooth(duration: 0.7)
         /// Frames per second the drawings ask for: smooth enough, light on the battery.

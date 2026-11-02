@@ -13,6 +13,9 @@ enum DayState {
     case overBudget(BudgetPace)
     /// Today went past its share, the month did not: «Hoy te pasaste $300».
     case overToday(BudgetPace)
+    /// The month's fixed expenses take the whole budget: «Tus fijos pasan por $3,000» (second
+    /// audit, 2026-11-02). Nothing was overspent, so it isn't said in red.
+    case fixedOverBudget(BudgetPace)
     case normal(BudgetPace)
 
     init(_ entry: DayEntry) {
@@ -20,7 +23,9 @@ enum DayState {
         if entry.snapshot == nil {
             self = .neverOpened
         } else if let pace = entry.pace {
-            self = pace.isOverBudget ? .overBudget(pace) : pace.isOverToday ? .overToday(pace) : .normal(pace)
+            // The same rule as the screen and Siri (`BudgetPace.isOverspent`).
+            self = pace.isOverspent ? .overBudget(pace) : pace.isFixedOverBudget ? .fixedOverBudget(pace)
+                : pace.isOverToday ? .overToday(pace) : .normal(pace)
         } else {
             self = .noBudget(spent: month?.spent ?? 0, today: month?.spentToday ?? 0)
         }
@@ -29,7 +34,7 @@ enum DayState {
     var pace: BudgetPace? {
         switch self {
         case .neverOpened, .noBudget: nil
-        case .overBudget(let pace), .overToday(let pace), .normal(let pace): pace
+        case .overBudget(let pace), .overToday(let pace), .fixedOverBudget(let pace), .normal(let pace): pace
         }
     }
 
@@ -51,6 +56,8 @@ enum DayState {
         case .noBudget(let spent, let today): "Llevas \(money.whole(spent)) este mes, hoy \(money.whole(today))"
         case .overBudget: "Te pasaste del presupuesto por \(money.whole(figure))"
         case .overToday: "Hoy te pasaste por \(money.whole(figure))"
+        case .fixedOverBudget: figure > 0 ? "Tus fijos pasan el presupuesto por \(money.whole(figure))"
+            : "Tus fijos se llevan todo el presupuesto"
         case .normal: "Hoy puedes gastar \(money.whole(figure))"
         }
     }
@@ -62,6 +69,7 @@ enum DayState {
         case .noBudget: "Llevas en " + Date.now.formatted(.dateTime.month(.wide).locale(Locale(identifier: "es_MX")))
         case .overBudget: "Te pasaste"
         case .overToday: "Hoy te pasaste"
+        case .fixedOverBudget: figure > 0 ? "Tus fijos pasan por" : "Hoy puedes gastar"
         case .normal: "Hoy puedes gastar"
         }
     }
@@ -71,7 +79,9 @@ enum DayState {
         switch self {
         case .neverOpened: 0
         case .noBudget(let spent, _): spent
-        case .overBudget(let pace): pace.remaining.magnitude
+        // Rounded up: «Te pasaste $0» over a few centavos said nothing (second audit).
+        case .overBudget(let pace): pace.overspentShown
+        case .fixedOverBudget(let pace): pace.fixedOverBudgetShown ?? 0
         case .overToday(let pace), .normal(let pace): pace.dailyAllowance.magnitude
         }
     }
@@ -174,6 +184,9 @@ struct Verdict: View {
             return Text("hoy \(money.whole(today))").foregroundStyle(ink.muted)
         case .overBudget:
             return Text("del presupuesto").foregroundStyle(ink.muted)
+        case .fixedOverBudget(let pace):
+            return Text((pace.fixedOverBudgetShown ?? 0) > 0 ? "el presupuesto" : "tus fijos se llevan todo")
+                .foregroundStyle(ink.muted)
         case .overToday(let pace), .normal(let pace):
             guard let rhythm = pace.rhythm else {
                 if twoLines { return nil }
@@ -207,7 +220,7 @@ struct MonthStrip: View {
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
-            let over = pace.isOverBudget
+            let over = pace.isOverspent
             let spentW = width * (over ? 1 : fraction(pace.spent))
             let reservedW = over ? 0 : width * fraction(pace.reserved)
             let freeW = max(0, width - spentW - reservedW - (reservedW > 0 ? gap : 0) - (spentW > 0 ? gap : 0))

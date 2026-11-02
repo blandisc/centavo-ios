@@ -26,8 +26,10 @@ struct MoneyLoopClock<Content: View>: View {
             content(phase(at: context.date))
         }
         // Shown still, it stays on its last frame for good: turning low power off later never
-        // jumps into the middle of a turn.
+        // jumps into the middle of a turn. Gone still while turning (low power on, then off),
+        // the same: once at rest it stays at rest (second audit, 2026-11-02).
         .onAppear { if start == nil { if still { done = true } else { start = .now } } }
+        .onChange(of: still) { _, now in if now { done = true } }
         .task(id: start) {
             guard let start else { return }
             let left = runs - Date.now.timeIntervalSince(start)
@@ -124,13 +126,26 @@ enum MoneyArtKind: String, CaseIterable {
     case account, investment, card, loan, other, lent, coming
     /// «¿Lo tienes en Excel?»: a sheet whose rows fly into the ticket.
     case excel
+
+    /// Where each drawing rests, whole and clean (second audit, 2026-11-02): every part drawn,
+    /// nothing mid-flight. One `rest` for all left a ring frozen halfway in `coming`, the third
+    /// cell almost empty in `excel` and the chip at 60 % in `card`.
+    var rest: Double {
+        switch self {
+        case .account, .investment, .loan, .other: 0.6
+        case .card: 0.25        // the chip's glow at its fullest
+        case .lent: 0.9         // the coin back home, at full
+        case .excel: 0.75       // the three cells filled, nothing flying
+        case .coming: 0.8       // the days passed, the coin landed, the ping gone
+        }
+    }
 }
 
 struct MoneyKindArt: View {
     let kind: MoneyArtKind
 
     var body: some View {
-        MoneyLoopClock(cycle: Theme.Motion.Money.kindCycle, rest: 0.6) { t in
+        MoneyLoopClock(cycle: Theme.Motion.Money.kindCycle, rest: kind.rest) { t in
             Canvas { context, size in
                 var context = context
                 switch kind {
@@ -326,7 +341,8 @@ struct MoneyKindArt: View {
 /// face turns into a check while the corners go brass.
 struct MoneyFaceIDArt: View {
     var body: some View {
-        MoneyLoopClock(cycle: Theme.Motion.Money.faceCycle, rest: 0.75) { t in
+        // At rest: the check drawn, the corners brass, the pulse gone (0.75 left a faint ring).
+        MoneyLoopClock(cycle: Theme.Motion.Money.faceCycle, rest: 0.88) { t in
             Canvas { context, size in
                 var c = context
                 artFit(&c, size, design: CGSize(width: 150, height: 150))
@@ -450,6 +466,9 @@ struct PlayOnceClock<Content: View>: View {
             content(still ? until : min(context.date.timeIntervalSince(start), until))
         }
         .onAppear { start = .now }
+        // Gone still halfway (low power on), it stays at its end: turning it off again never
+        // jumps back into the middle (second audit, 2026-11-02).
+        .onChange(of: MotionPolicy.isStill(reduceMotion: reduceMotion)) { _, now in if now { played = true } }
         .task {
             try? await Task.sleep(for: .seconds(until))
             played = true

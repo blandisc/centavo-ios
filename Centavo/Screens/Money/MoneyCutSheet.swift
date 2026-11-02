@@ -16,6 +16,9 @@ struct MoneyCutSheet: View {
     @State private var movements: [UUID: String] = [:]
     @State private var rateTexts: [String: String] = [:]
     @State private var ratesReviewed: Set<String> = []
+    /// Each foreign rate the draft started with: the last cut's, or one typed since in «Nueva
+    /// cuenta» (`MoneyStore.pendingRates`), offered as is.
+    @State private var startRates: [String: Decimal] = [:]
     @State private var confirmingDiscard = false
     @State private var addingIncome = false
     @State private var problem: String?
@@ -36,8 +39,13 @@ struct MoneyCutSheet: View {
         MoneyMath.foreignCurrencies(in: draft.lines, main: draft.mainCurrency)
     }
 
+    /// A movement typed that doesn't read: it would be dropped without a word.
+    private var unreadableMovements: Int {
+        entries.compactMap(\.account).filter { MoneyTyping.signedReading(movements[$0.id] ?? "") == .unreadable }.count
+    }
+
     private var pending: Int {
-        entries.filter { !$0.reviewed }.count + foreign.filter { !ratesReviewed.contains($0) }.count
+        entries.filter { !$0.reviewed }.count + foreign.filter { !ratesReviewed.contains($0) }.count + unreadableMovements
     }
 
     var body: some View {
@@ -66,7 +74,7 @@ struct MoneyCutSheet: View {
                     .listRowBackground(Theme.surface)
                 }
                 section("¿Cuánto hay hoy?", kinds: [.account, .investment])
-                section("Te deben", kinds: [.receivable])
+                section("¿Cuánto te deben hoy?", kinds: [.receivable])
                 section("¿Cuánto debes hoy?", kinds: [.debt])
                 Section {
                     DestructiveRowButton("Descartar corte", identifier: "corte-descartar") { confirmingDiscard = true }
@@ -101,8 +109,14 @@ struct MoneyCutSheet: View {
             .alert("¿Descartar el corte?", isPresented: $confirmingDiscard) {
                 Button("Cancelar", role: .cancel) {}
                 Button("Descartar", role: .destructive) {
-                    try? MoneyStore.discard(draft, in: context)
-                    dismiss()
+                    // A failure is said, and the sheet stays (second audit, 2026-11-02).
+                    do {
+                        try MoneyStore.discard(draft, in: context)
+                        dismiss()
+                    } catch {
+                        context.rollback()
+                        problem = "No se descartó el corte"
+                    }
                 }
             } message: { Text("Se borra lo que escribiste en este corte. Tus cortes pasados no cambian.") }
             .alert("¿Reemplazar el corte de \(MoneyHead.fullMonthName(draft.month))?",
@@ -125,11 +139,14 @@ struct MoneyCutSheet: View {
     // MARK: Rows
 
     private func rateRow(_ code: String) -> some View {
-        let before = previous?.rateTable[code]
+        // A rate typed since the last cut (in «Nueva cuenta») is offered first.
+        let last = previous?.rateTable[code]
+        let typedSince = startRates[code].flatMap { $0 != last ? $0 : nil }
+        let before = typedSince ?? last
         return HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                 Text("1 \(code)").font(.ticket(.bodyMedium))
-                Text(before.map { "el corte pasado: \(formatMoney($0, isoCode: draft.mainCurrency, label: draft.mainCurrency))" } ?? "primera vez")
+                Text(before.map { "\(typedSince != nil ? "el que escribiste" : "el corte pasado"): \(formatMoney($0, isoCode: draft.mainCurrency, label: draft.mainCurrency))" } ?? "primera vez")
                     .font(.ticket(.hint)).foregroundStyle(ratesReviewed.contains(code) ? Theme.good : Theme.muted)
             }
             Spacer()
@@ -150,7 +167,7 @@ struct MoneyCutSheet: View {
                 .multilineTextAlignment(.trailing)
                 .accessibilityIdentifier("corte-cambio-\(code)")
             if let before, !ratesReviewed.contains(code) {
-                Button("Sin cambio") {
+                Button(typedSince != nil ? "Usar ese" : "Sin cambio") {
                     var table = draft.rateTable
                     table[code] = before
                     draft.rateTable = table
@@ -178,7 +195,7 @@ struct MoneyCutSheet: View {
 
     private func row(_ entry: MoneyEntry) -> some View {
         let account = entry.account!
-        let before = previous?.entry(for: account)?.balance
+        let before = previous?.shownEntry(for: account)?.balance
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
@@ -188,17 +205,20 @@ struct MoneyCutSheet: View {
                         .textCase(.uppercase)
                     Text(hint(for: entry, account: account, before: before))
                         .font(.ticket(.hint))
-                        .foregroundStyle(entry.reviewed ? Theme.good : Theme.muted)
+                        .foregroundStyle(MoneyTyping.reading(typed[account.id] ?? "") == .unreadable ? Theme.danger
+                                         : entry.reviewed ? Theme.good : Theme.muted)
                 }
                 Spacer(minLength: Theme.Space.s)
                 TextField(account.name, text: Binding(
                     get: { typed[account.id] ?? "" },
                     set: { text in
                         typed[account.id] = text
-                        if let value = MoneyAmount.read(text) {
+                        switch MoneyTyping.reading(text) {
+                        case .value(let value):
                             entry.balance = value
                             entry.reviewed = true
-                        } else if text.isEmpty {
+                        case .empty, .unreadable:
+                            // What doesn't read waits, marked: never the last amount that read.
                             entry.reviewed = false
                         }
                     }),
@@ -215,13 +235,19 @@ struct MoneyCutSheet: View {
                     get: { movements[account.id] ?? "" },
                     set: { text in
                         movements[account.id] = text
-                        let negative = text.hasPrefix("-") || text.hasPrefix("−")
-                        let value = MoneyAmount.read(String(text.drop(while: { $0 == "-" || $0 == "−" })))
-                        entry.movement = value.map { negative ? -$0 : $0 }
+                        if case .value(let value) = MoneyTyping.signedReading(text) {
+                            entry.movement = value
+                        } else {
+                            entry.movement = nil
+                        }
                     }),
                     prompt: Text("¿Metiste o sacaste? (−300 si sacaste)").foregroundStyle(Theme.faint))
                     .font(.ticket(.detail))
                     .keyboardType(.numbersAndPunctuation)
+                if MoneyTyping.signedReading(movements[account.id] ?? "") == .unreadable {
+                    Text("No se lee: escribe solo el número, como −300.")
+                        .font(.ticket(.hint)).foregroundStyle(Theme.danger)
+                }
             }
             if !entry.reviewed, before != nil {
                 Button("Sin cambio") { keep(entry) }
@@ -234,6 +260,9 @@ struct MoneyCutSheet: View {
     }
 
     private func hint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> String {
+        if MoneyTyping.reading(typed[account.id] ?? "") == .unreadable {
+            return "no se lee: escribe solo el número, como 12500.50"
+        }
         if entry.reviewed {
             switch typed[account.id] {
             case .some(""): return "✓ sin cambio"
@@ -253,19 +282,27 @@ struct MoneyCutSheet: View {
 
     // MARK: Actions
 
-    /// Reopening a draft: the rates already looked at stay looked at, with their value shown.
+    /// Reopening a draft: what was written comes back in its fields (second audit,
+    /// 2026-11-02: the balances already looked at and the movements were saved but the fields
+    /// opened empty), and the rates already looked at stay looked at, with their value shown.
     private func load() {
         let reviewed = MoneyWords.decodeCodes(draft.reviewedRates).intersection(foreign)
         ratesReviewed.formUnion(reviewed)
         for code in foreign where rateTexts[code] == nil {
             rateTexts[code] = reviewed.contains(code) ? draft.rateTable[code].map { BackupNumber.text($0) } ?? "" : ""
+            if !reviewed.contains(code), let start = draft.rateTable[code] { startRates[code] = start }
+        }
+        for entry in entries {
+            guard let account = entry.account else { continue }
+            if typed[account.id] == nil, entry.reviewed { typed[account.id] = MoneyTyping.text(entry.balance) }
+            if movements[account.id] == nil, entry.movement != nil { movements[account.id] = MoneyTyping.signedText(entry.movement) }
         }
     }
 
     /// «Sin cambio»: the last balance, looked at. With a rate it means no yield, on purpose.
     private func keep(_ entry: MoneyEntry) {
         guard let account = entry.account else { return }
-        entry.balance = previous?.entry(for: account)?.balance ?? entry.balance
+        entry.balance = previous?.shownEntry(for: account)?.balance ?? entry.balance
         entry.reviewed = true
         typed[account.id] = ""
         focus = nextPending(after: account.id)

@@ -12,6 +12,10 @@ struct MoneyAccountSheet: View {
     @Environment(\.modelContext) private var context
 
     @State private var kind: MoneyKind = .account
+    /// What a new debt or money owed is within its kind, as the first time asks (second audit,
+    /// 2026-11-02: from here they were saved without it).
+    @State private var debtSubtype: MoneySubtype = .card
+    @State private var owedSubtype: MoneySubtype = .lent
     @State private var name = ""
     @State private var institution = ""
     @State private var currency = ""
@@ -24,7 +28,24 @@ struct MoneyAccountSheet: View {
     private var isNew: Bool { account == nil }
     private var isForeign: Bool { currency != mainCurrency }
     /// The same rule as the first time: an investment keeps its rate (editing it used to drop it).
-    private var takesRate: Bool { account.map { MoneySubtype.of($0).takesRate } ?? (kind != .receivable) }
+    private var takesRate: Bool { account.map { MoneySubtype.of($0).takesRate } ?? subtype.takesRate }
+    /// The subtype a new line is saved with.
+    private var subtype: MoneySubtype {
+        switch kind {
+        case .account: .account
+        case .investment: .investment
+        case .debt: debtSubtype
+        case .receivable: owedSubtype
+        }
+    }
+    /// The rate typed now won't change the latest cut (a past month's, which keeps its own):
+    /// it waits for the next cut, and the sheet says so.
+    /// Added after the latest cut's month: its money may have come out of another account,
+    /// still shown with its balance at that cut (independent review).
+    private var opensAfterLatest: Bool {
+        isNew && MoneyStore.latestCut(in: context).map { $0.month < MoneyMath.monthKey(of: .now) } == true
+    }
+    private var rateWaits: Bool { isNew && isForeign && MoneyStore.rateWaits(for: currency, in: context) }
     /// The same seven as the first time (`MoneyCurrency.offered`), and the main one if it isn't.
     private var currencies: [String] {
         MoneyCurrency.offered.contains(mainCurrency) ? MoneyCurrency.offered : [mainCurrency] + MoneyCurrency.offered
@@ -66,6 +87,20 @@ struct MoneyAccountSheet: View {
                     } footer: {
                         HintText(kindHint)
                     }
+                    if kind == .debt || kind == .receivable {
+                        Section {
+                            Picker(selection: kind == .debt ? $debtSubtype : $owedSubtype) {
+                                ForEach(kind == .debt ? [MoneySubtype.card, .loan, .other] : [MoneySubtype.lent, .coming],
+                                        id: \.self) { Text($0.name).tag($0) }
+                            } label: {
+                                Text(kind == .debt ? "Qué debes" : "Qué es").font(.ticket(.body)).foregroundStyle(Theme.ink)
+                            }
+                            .pickerStyle(.menu)
+                            .tint(Theme.brass)
+                            .accessibilityIdentifier("cuenta-subtipo")
+                        }
+                        .listRowBackground(Theme.surface)
+                    }
                 }
 
                 Section {
@@ -84,6 +119,8 @@ struct MoneyAccountSheet: View {
                     }
                 } header: {
                     Text("Cuenta").ticketCaption()
+                } footer: {
+                    if !isNew { HintText("El saldo se actualiza en el corte.") }
                 }
                 .listRowBackground(Theme.surface)
 
@@ -96,8 +133,10 @@ struct MoneyAccountSheet: View {
                     } header: {
                         Text(balanceTitle).ticketCaption()
                     } footer: {
-                        HintText(isForeign ? "El tipo de cambio de hoy: con él se suma a tu patrimonio en \(mainCurrency). Lo actualizas en cada corte."
-                                           : "Lo que hay hoy. Lo actualizas en cada corte.")
+                        HintText(rateWaits ? "Tu último corte ya tiene tipo de cambio de \(currency) y se suma con ese. Este se usa en tu próximo corte."
+                                 : isForeign ? "El tipo de cambio de hoy: con él se suma a tu patrimonio en \(mainCurrency). Lo actualizas en cada corte."
+                                 : opensAfterLatest ? "Lo que hay hoy. Si este dinero salió de otra de tus cuentas, cambia también su saldo."
+                                 : "Lo que hay hoy. Lo actualizas en cada corte.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -157,8 +196,8 @@ struct MoneyAccountSheet: View {
         Picker("Qué es", selection: $kind) {
             Text("Cuenta").tag(MoneyKind.account)
             Text("Inversión").tag(MoneyKind.investment)
-            Text("Me deben").tag(MoneyKind.receivable)
-            Text("Debo").tag(MoneyKind.debt)
+            Text("Te deben").tag(MoneyKind.receivable)
+            Text("Debes").tag(MoneyKind.debt)
         }
         .accessibilityIdentifier("cuenta-tipo")
     }
@@ -168,6 +207,7 @@ struct MoneyAccountSheet: View {
         guard let account else {
             return !(name + institution + balance + rate + exchange).trimmingCharacters(in: .whitespaces).isEmpty
                 || kind != .account || (!currency.isEmpty && currency != mainCurrency)
+                || debtSubtype != .card || owedSubtype != .lent
         }
         return name != account.name || institution != (account.institution ?? "")
             || rate != (account.yearlyRate.map { BackupNumber.text($0) } ?? "")
@@ -218,9 +258,16 @@ struct MoneyAccountSheet: View {
                 account.name = trimmed
                 account.institution = institutionOrNil
                 account.yearlyRate = takesRate ? parsedRate : nil
-                try context.save()
+                do {
+                    try context.save()
+                } catch {
+                    // Not left half-saved in memory, looking saved until the app closes.
+                    context.rollback()
+                    throw error
+                }
             } else if let value = parsedBalance {
                 let new = MoneyAccount(name: trimmed, kind: kind, currency: currency, yearlyRate: takesRate ? parsedRate : nil)
+                new.subtype = subtype.rawValue
                 new.institution = institutionOrNil
                 try MoneyStore.add(new, balance: value, rate: isForeign ? parsedExchange : nil,
                                    in: context, mainCurrency: mainCurrency)

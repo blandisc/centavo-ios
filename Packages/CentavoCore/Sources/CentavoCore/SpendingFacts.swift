@@ -68,7 +68,7 @@ public enum SpendingFacts {
     /// The notes for `now`, most useful first. Only the primary currency: adding currencies
     /// up would be a lie.
     public static func detect(_ records: [SpendingRecord], now: Date, primary: String,
-                              budget: Decimal?, money: (Decimal) -> String,
+                              budget: Decimal?, reserved: Decimal = 0, money: (Decimal) -> String,
                               calendar: Calendar = .current) -> [SpendingFact] {
         let mine = records.filter { record in
             let code = CurrencyResolver.isoCode(for: record.currencyMarker, primary: primary)
@@ -77,7 +77,7 @@ public enum SpendingFacts {
         }
         return doubleCharges(mine, now: now, money: money)
             + subscriptions(mine, now: now, money: money, calendar: calendar)
-            + projection(mine, now: now, budget: budget, money: money, calendar: calendar)
+            + projection(mine, now: now, budget: budget, reserved: reserved, money: money, calendar: calendar)
             + categoriesUp(mine, now: now, calendar: calendar)
     }
 
@@ -139,8 +139,10 @@ public enum SpendingFacts {
         return facts
     }
 
-    /// From day 7: what's spent so far, spread over the whole month, against the budget.
-    static func projection(_ records: [SpendingRecord], now: Date, budget: Decimal?,
+    /// From day 7: what's spent so far, spread over the whole month, against the budget. The
+    /// fixed expenses still to come (`reserved`, what «Hoy» sets apart) are added whole: they
+    /// will be charged whatever the pace (second audit, 2026-11-02).
+    static func projection(_ records: [SpendingRecord], now: Date, budget: Decimal?, reserved: Decimal = 0,
                            money: (Decimal) -> String, calendar: Calendar) -> [SpendingFact] {
         guard let budget, budget > 0,
               let days = calendar.range(of: .day, in: .month, for: now)?.count else { return [] }
@@ -149,7 +151,7 @@ public enum SpendingFacts {
         let month = records.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .month) }
         let fixed = month.filter(\.isFixed).reduce(Decimal(0)) { $0 + $1.counted }
         let variable = month.filter { !$0.isFixed }.reduce(Decimal(0)) { $0 + $1.counted }
-        let projected = whole(fixed + variable / Decimal(day) * Decimal(days))
+        let projected = whole(fixed + max(reserved, 0) + variable / Decimal(day) * Decimal(days))
         let over = projected - budget
         guard over > budget * Decimal(0.05) else { return [] }
         let total = money(projected), extra = money(whole(over))

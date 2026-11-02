@@ -115,10 +115,12 @@ final class HomeModel {
     // MARK: The note
 
     /// The month's most useful fact (`MonthNote`), from the last few months' `rows`.
-    func note(rows: [Expense], now: Date, primary: String, budget: String) -> String? {
-        let key = NoteKey(now: now, primary: primary, budget: budget, rows: Self.fingerprint(rows))
+    /// `reserved`: the fixed expenses still to come, which the projection adds (second audit).
+    func note(rows: [Expense], now: Date, primary: String, budget: String, reserved: Decimal = 0) -> String? {
+        let key = NoteKey(now: now, primary: primary, budget: budget, rows: Self.fingerprint(rows), reserved: reserved)
         return noteMemo.value(for: key) {
-            MonthNote.facts(rows, now: now, primary: primary, budget: BudgetStore.amount(from: budget)).first?.line
+            MonthNote.facts(rows, now: now, primary: primary, budget: BudgetStore.amount(from: budget),
+                            reserved: reserved).first?.line
         }
     }
 
@@ -278,6 +280,7 @@ private struct NoteKey: Equatable {
     let primary: String
     let budget: String
     let rows: Int
+    let reserved: Decimal
 }
 
 private struct SearchKey: Equatable {

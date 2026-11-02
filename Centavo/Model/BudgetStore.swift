@@ -28,9 +28,16 @@ extension BudgetStore {
     /// What a budget means today, said while it is typed: the same «Hoy puedes gastar» the
     /// main screen will show with it (`pace` is `TodayBudget`'s, for this budget).
     static func dailyPreview(_ pace: BudgetPace?, currency: String) -> String {
-        guard let pace, pace.remaining > 0 else {
+        guard let pace, !pace.isOverspent else {
             return "Este mes ya gastaste más que eso."
         }
+        if let excess = pace.fixedOverBudgetShown {
+            let text = excess.formatted(currencyStyle(currency).precision(.fractionLength(0)))
+            return excess > 0 ? "Con eso, tus fijos pasan el presupuesto por \(text)."
+                : "Con eso, tus fijos se llevan todo el presupuesto."
+        }
+        // Spent exactly that: not «más que eso» (second audit, 2026-11-02).
+        if pace.remaining == 0 { return "Este mes ya gastaste justo eso." }
         let figure = pace.dailyAllowance.magnitude.formatted(currencyStyle(currency).precision(.fractionLength(0)))
         return pace.isOverToday ? "Con eso, hoy ya te pasaste por \(figure)." : "Con eso, hoy puedes gastar \(figure)."
     }

@@ -19,6 +19,22 @@ struct MoneyIncomeSheet: View {
     @State private var problem: String?
 
     private var isNew: Bool { income == nil }
+    /// The offered ones, plus the income's own and the main one when they aren't (an imported
+    /// income in another currency showed an empty picker; second audit, 2026-11-02).
+    private var currencies: [String] {
+        var list = MoneyCurrency.offered
+        for code in [mainCurrency, income?.currency].compactMap({ $0 }) where !list.contains(code) { list.insert(code, at: 0) }
+        return list
+    }
+    /// Something typed: a stray swipe down must not throw it away.
+    private var hasChanges: Bool {
+        guard let income else {
+            return !(name + institution + amount).trimmingCharacters(in: .whitespaces).isEmpty
+                || (!currency.isEmpty && currency != mainCurrency)
+        }
+        return name != income.name || institution != (income.institution ?? "")
+            || amount != BackupNumber.text(income.amount) || (!currency.isEmpty && currency != income.currency)
+    }
     private var parsedAmount: Decimal? { MoneyAmount.read(amount) }
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && (parsedAmount ?? 0) > 0
@@ -32,7 +48,7 @@ struct MoneyIncomeSheet: View {
                     TicketTextField("De dónde", text: $institution, prompt: "De dónde · opcional (tu empresa…)",
                                     identifier: "ingreso-institucion")
                     Picker(selection: $currency) {
-                        ForEach(MoneyCurrency.offered, id: \.self) { Text(MoneyCurrency.name($0)).tag($0) }
+                        ForEach(currencies, id: \.self) { Text(MoneyCurrency.name($0)).tag($0) }
                     } label: {
                         Text("Moneda").font(.ticket(.body)).foregroundStyle(Theme.ink)
                     }
@@ -86,12 +102,13 @@ struct MoneyIncomeSheet: View {
             } message: {
                 Text("Deja de contar como lo que te entra al mes.")
             }
-            .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert("No se guardó el ingreso", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
             .onAppear(perform: load)
             .onMoneyCovered { confirmingRemove = false; problem = nil }
         }
+        .interactiveDismissDisabled(hasChanges)
     }
 
     private func load() {
@@ -117,7 +134,7 @@ struct MoneyIncomeSheet: View {
             }
             dismiss()
         } catch {
-            problem = "No se guardó. Intenta otra vez."
+            problem = "Intenta otra vez."
         }
     }
 

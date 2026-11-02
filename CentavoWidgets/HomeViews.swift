@@ -33,7 +33,7 @@ struct HoyView: View {
         switch state {
         case .neverOpened, .noBudget: ink.primary
         case .overBudget, .overToday: ink.danger
-        case .normal: ink.brass
+        case .normal, .fixedOverBudget: ink.brass
         }
     }
 
@@ -111,7 +111,7 @@ struct HoyView: View {
                         .accessibilityLabel(spoken)
                     HStack(alignment: .lastTextBaseline, spacing: Theme.Space.s) {
                         Figure(text: money.whole(state.figure), color: figureColor, style: .figureLarge)
-                        if case .overBudget = state {
+                        if isOverBudget {
                             Verdict(state: state, money: money, ink: ink).fixedSize()
                         }
                     }
@@ -138,7 +138,7 @@ struct HoyView: View {
                         dataLine(pace)
                             .padding(.top, Theme.Space.s)
                     } else {
-                        if !pace.isOverBudget {
+                        if !pace.isOverspent {
                             annotation(pace)
                         }
                         MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripTall, tiles: true)
@@ -154,9 +154,12 @@ struct HoyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
+    /// Past the budget, or fixed expenses past it: the verdict rides beside the figure.
     private var isOverBudget: Bool {
-        if case .overBudget = state { return true }
-        return false
+        switch state {
+        case .overBudget, .fixedOverBudget: true
+        default: false
+        }
     }
 
     /// «PODRÍAS LLEVAR $8,516», over the rule it names; «Deberías» once past it.
@@ -185,7 +188,7 @@ struct HoyView: View {
     private func dataLine(_ pace: BudgetPace) -> some View {
         let average = pace.spent / Decimal(max(pace.day, 1))
         return (Text("Llevas ").foregroundStyle(ink.muted)
-            + Text(money.whole(pace.spent)).foregroundStyle(pace.isOverBudget ? ink.danger : ink.primary)
+            + Text(money.whole(pace.spent)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
             + Text(" de ").foregroundStyle(ink.muted)
             + Text(money.whole(pace.budget)).foregroundStyle(ink.primary)
             + Text(" · ").foregroundStyle(ink.brass)
@@ -200,12 +203,12 @@ struct HoyView: View {
     private func keys(_ pace: BudgetPace) -> some View {
         HStack(spacing: Theme.Space.xs) {
             RoundedRectangle(cornerRadius: Theme.Radius.widgetTile)
-                .fill(pace.isOverBudget ? ink.danger : ink.brass)
+                .fill(pace.isOverspent ? ink.danger : ink.brass)
                 .frame(width: Theme.Size.widgetKeySquare, height: Theme.Size.widgetKeySquare)
                 .widgetAccentable()
             keyText("Llevas", money.whole(pace.spent), ink: ink)
             Spacer(minLength: Theme.Space.xxs)
-            if pace.fixedMonth > 0, !pace.isOverBudget {
+            if pace.fixedMonth > 0, !pace.isOverspent {
                 keyText("Fijos", money.whole(pace.fixedMonth), ink: ink)
                 Spacer(minLength: Theme.Space.xxs)
             }

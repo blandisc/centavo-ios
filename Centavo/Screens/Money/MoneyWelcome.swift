@@ -12,6 +12,15 @@ struct MoneyGrowthHero: View {
     }
 
     var body: some View {
+        // One clock for the figure and the bars: two kept the same time apart and could part.
+        MoneyLoopClock(cycle: Theme.Motion.Money.heroCycle, rest: Theme.Motion.Money.heroRest) { t in
+            picture(t)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Ejemplo: un patrimonio que crece mes a mes durante un año.")
+    }
+
+    private func picture(_ t: Double) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Así crece tu patrimonio").ticketCaption(strong: true)
@@ -19,15 +28,11 @@ struct MoneyGrowthHero: View {
                 // The final figure, invisible, holds the width: counting up never moves the title.
                 ZStack(alignment: .trailing) {
                     figure(Self.example).hidden()
-                    MoneyLoopClock(cycle: Theme.Motion.Money.heroCycle, rest: Theme.Motion.Money.heroRest) { t in
-                        figure(Self.example * Self.shown(t))
-                    }
+                    figure(Self.example * Self.shown(t))
                 }
             }
-            MoneyLoopClock(cycle: Theme.Motion.Money.heroCycle, rest: Theme.Motion.Money.heroRest) { t in
-                MoneyGrowthBars(t: t)
-            }
-            .frame(height: Theme.Size.moneyHeroBoleto)
+            MoneyGrowthBars(t: t)
+                .frame(height: Theme.Size.moneyHeroBoleto)
             HStack {
                 Text("hace un año")
                 Spacer()
@@ -38,8 +43,6 @@ struct MoneyGrowthHero: View {
             .font(.ticket(.micro))
             .foregroundStyle(Theme.muted)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ejemplo: un patrimonio que crece mes a mes durante un año.")
     }
 
     private func figure(_ value: Double) -> some View {

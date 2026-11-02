@@ -470,7 +470,8 @@ private struct HomeContent: View, Equatable {
         // where the month closes.
         let showsCarousel = !searching && !storeIsEmpty
         let note = showsCarousel && isCurrent && (month.pace?.remaining ?? 0) >= 0
-            ? model.note(rows: recentRows, now: now, primary: primary, budget: settings.budget)
+            ? model.note(rows: recentRows, now: now, primary: primary, budget: settings.budget,
+                         reserved: month.pace?.reserved ?? 0)
             : nil
 
         // Not a `List`: a list snaps a row to its new height, and the carousel's height has
@@ -1206,16 +1207,25 @@ private struct HeroTotal: View {
     /// This month, with a budget not yet blown, the figure to decide by is what can still go
     /// today; the month's total becomes the line under it.
     private var allowance: Decimal? {
-        guard isCurrentMonth, let pace, pace.remaining >= 0 else { return nil }
+        guard isCurrentMonth, let pace, !pace.isOverspent, !pace.isFixedOverBudget else { return nil }
         return pace.dailyAllowance
+    }
+
+    /// This month, within the budget, with fixed expenses that take all of it (second audit,
+    /// 2026-11-02): by how much they pass it. Not «te pasaste»: nothing was overspent, even once
+    /// the fixed ones are charged (independent review; `BudgetPace.isOverspent`).
+    private var fixedExcess: Decimal? {
+        guard isCurrentMonth, let pace, !pace.isOverspent else { return nil }
+        return pace.fixedOverBudgetShown
     }
 
     @State private var counted: Double = 0
 
     /// This month, past the budget: how far past it (the hero's figure then).
     private var overage: Decimal? {
-        guard isCurrentMonth, let pace, pace.remaining < 0 else { return nil }
-        return -pace.remaining
+        guard isCurrentMonth, let pace, pace.isOverspent else { return nil }
+        // Rounded up, like «Para cerrar el mes»: never «$0» over a few centavos.
+        return pace.overspentShown
     }
 
     private func wholeText(_ amount: Decimal) -> String {
@@ -1310,6 +1320,8 @@ private struct HeroTotal: View {
                         withAnimation(reduceMotion ? nil : Theme.Motion.quick) { counted = value }
                     }
 
+            } else if let fixedExcess {
+                FixedOverBudgetHero(excess: fixedExcess, text: wholeText(fixedExcess))
             } else if let overage {
                 // The month went past its budget: the figure that matters now is by how much.
                 Text("Te pasaste del presupuesto")
@@ -1341,13 +1353,56 @@ private struct HeroTotal: View {
             // Adding currencies together would be a lie, so they ride along separately, under the
             // month's total; with «Hoy puedes gastar» on top they would only crowd it (each one
             // still shows in its own row of the list).
-            if allowance == nil, !summary.others.isEmpty {
+            if allowance == nil, fixedExcess == nil, !summary.others.isEmpty {
                 // «aparte» said nothing on a first look (user research, 2026-10-29).
                 Text(verbatim: "+ \(othersText) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")")
                     .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.muted)
             }
+        }
+    }
+}
+
+/// «Tus fijos pasan el presupuesto por $3,000» (second audit, 2026-11-02): the fixed expenses
+/// take the whole budget, so there is no «Hoy puedes gastar». Brass, not red: nothing was
+/// overspent; the budget or the fixed expenses need a look.
+private struct FixedOverBudgetHero: View {
+    let excess: Decimal
+    let text: String
+
+    var body: some View {
+        if excess > 0 {
+            Text("Tus fijos pasan el presupuesto por")
+                .accessibilityHidden(true)
+                .ticketCaption(strong: true)
+            Text(text)
+                .accessibilityIdentifier("fijos-pasan")
+                .accessibilityLabel("Tus fijos pasan el presupuesto por " + text)
+                .font(.ticket(.hero))
+                .tracking(Theme.Tracking.hero)
+                .foregroundStyle(Theme.brass)
+                .padding(.leading, Theme.Space.outset)
+                .padding(.vertical, Theme.Space.heroTrim)
+                .lineLimit(1)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
+        } else {
+            Text("Hoy puedes gastar")
+                .accessibilityHidden(true)
+                .ticketCaption(strong: true)
+            Text(text)
+                .accessibilityIdentifier("fijos-pasan")
+                .accessibilityLabel("Tus fijos se llevan todo el presupuesto")
+                .font(.ticket(.hero))
+                .tracking(Theme.Tracking.hero)
+                .foregroundStyle(Theme.brass)
+                .padding(.leading, Theme.Space.outset)
+                .padding(.vertical, Theme.Space.heroTrim)
+                .lineLimit(1)
+                .minimumScaleFactor(Theme.MinimumScale.figure)
+            Text("Tus fijos se llevan todo el presupuesto")
+                .font(.ticket(.detail))
+                .foregroundStyle(Theme.muted)
         }
     }
 }

@@ -97,8 +97,8 @@ public enum MoneyImport {
             guard fields.filter({ !$0.isEmpty }).count > 1 else { continue }
             var line = Line(row: row.number, kind: kind(value(fields, "tipo")), name: value(fields, "nombre"),
                             institution: value(fields, "institucion"), currency: "", amount: nil)
-            if fields.count > columns.count && delimiter == "," {
-                line.problems.append("Trae más columnas que los títulos: ¿un monto con comas? Revísalo.")
+            if delimiter == "," && looksSplitByThousands(fields, columns: columns) {
+                line.problems.append("No trae las mismas columnas que los títulos: ¿un monto con comas? Revísalo.")
             }
             if line.kind == nil {
                 let said = value(fields, "tipo")
@@ -110,8 +110,11 @@ public enum MoneyImport {
             let code = value(fields, "moneda").uppercased()
             if code.isEmpty {
                 line.currency = main
-            } else if code.count == 3, code.allSatisfy(\.isLetter) {
+            } else if code.count == 3, code.allSatisfy(\.isLetter), knownCurrency(code) {
                 line.currency = code
+            } else if code.count == 3, code.allSatisfy(\.isLetter) {
+                line.currency = main
+                line.problems.append("No conozco la moneda «\(code)»: escribe un código como MXN, USD o EUR.")
             } else {
                 line.currency = main
                 line.problems.append("La moneda «\(code)» no es un código de tres letras (MXN, USD, EUR).")
@@ -143,6 +146,20 @@ public enum MoneyImport {
         return result
     }
 
+    /// A comma file where «12,000» went in without quotes: the row has more or fewer fields
+    /// than the titles, or what follows the amount is exactly three digits («1,500» → 1 and 500).
+    static func looksSplitByThousands(_ fields: [String], columns: [String]) -> Bool {
+        if fields.count != columns.count { return true }
+        guard let at = columns.firstIndex(of: "monto"), at + 1 < fields.count else { return false }
+        let next = fields[at + 1]
+        return next.count == 3 && next.allSatisfy { $0.isASCII && $0.isNumber }
+    }
+
+    /// A three-letter code the system knows as a currency (ISO 4217).
+    static func knownCurrency(_ code: String) -> Bool {
+        Locale.commonISOCurrencyCodes.contains(code)
+    }
+
     /// The marks an amount may carry: a symbol or a three-letter code. «k», «mil», «M» are not money.
     private static let markers: Set<String> = ["$", "MX$", "US$", "USD$", "€", "£", "¥", "CA$", "C$"]
 
@@ -155,7 +172,7 @@ public enum MoneyImport {
         }
         if let marker = parsed.currencyMarker {
             let clean = marker.trimmingCharacters(in: .whitespaces)
-            let isCode = clean.count == 3 && clean.allSatisfy(\.isUppercase)
+            let isCode = clean.count == 3 && clean.allSatisfy(\.isUppercase) && knownCurrency(clean)
             guard markers.contains(clean) || isCode else {
                 line.problems.append("El monto «\(raw)» no es un número: escríbelo completo, como 25000.")
                 return
