@@ -316,7 +316,7 @@ struct MonthBar: View {
     /// «Acumular», «Hoy puedes gastar» already is that gap, so no sentence (alternative C).
     private var verdictLine: Line? {
         // This month the hero already says it in big red figures; the bar shows where.
-        if isOver { return isCurrentMonth ? nil : ("Te pasaste ", wholeMoney(pace.sum.remaining.magnitude), " del presupuesto", false) }
+        if isOver { return isCurrentMonth ? nil : ("Te pasaste ", wholeMoney(pace.overBudgetShown), " del presupuesto", false) }
         if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.sum.remaining), " de sobra", true) }
         guard pace.rhythm != nil else { return nil }
         let rhythm = pace.gapShown
@@ -342,7 +342,13 @@ struct MonthBar: View {
             sumLine("Presupuesto", wholeMoney(sum.budget))
             sumLine("− Llevas", wholeMoney(sum.spent))
             sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
-            if days > 0, pace.mode == .spread {
+            if days > 0, let excess = pace.fixedOverBudgetShown {
+                // Fixed expenses past the budget: nothing to cut into days (second audit).
+                Perforation()
+                sumLine("Presupuesto", wholeMoney(sum.budget))
+                sumLine("− Fijos del mes", wholeMoney(pace.fixedMonth))
+                sumLine(excess > 0 ? "= Tus fijos pasan por" : "= Para los días", wholeMoney(excess), strong: true)
+            } else if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
                 Perforation()
                 sumLine("Presupuesto", wholeMoney(sum.budget))

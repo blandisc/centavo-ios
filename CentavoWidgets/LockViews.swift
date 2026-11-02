@@ -101,6 +101,7 @@ struct LockView: View {
             case .neverOpened: Text("Al día · ábrela una vez")
             case .noBudget(let spent, _): Text("Al día · llevas \(money.whole(spent))")
             case .overBudget: Text("Al día · te pasaste \(money.whole(state.figure))")
+            case .fixedOverBudget: Text("Al día · fijos pasan por \(money.whole(state.figure))")
             case .overToday, .normal: Text("Al día \(signed) hoy")
             }
         }

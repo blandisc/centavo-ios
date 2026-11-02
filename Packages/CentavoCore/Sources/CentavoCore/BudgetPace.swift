@@ -91,6 +91,21 @@ public struct BudgetPace: Equatable, Sendable {
     public let mode: AllowanceMode
 
     public var isOverBudget: Bool { spent > budget }
+    /// How far past the budget the month is, in whole units rounded up (it is worse to say
+    /// «te pasaste $0» over 40 centavos): «Te pasaste $X». Zero while within it.
+    public var overBudgetShown: Decimal { isOverBudget ? Self.whole(spent - budget, .up) : 0 }
+    /// The month's fixed expenses take the whole budget or more (second audit, 2026-11-02):
+    /// by how much (zero when they take exactly all of it), or `nil`. Then there is nothing to
+    /// cut into days: «Tus fijos pasan el presupuesto por $3,000», never «Hoy te pasaste».
+    public var fixedOverBudget: Decimal? { fixedMonth >= budget ? fixedMonth - budget : nil }
+    public var isFixedOverBudget: Bool { fixedOverBudget != nil }
+    /// `fixedOverBudget` in whole units, rounded up like any excess.
+    public var fixedOverBudgetShown: Decimal? { fixedOverBudget.map { Self.whole($0, .up) } }
+    /// What is set aside for the fixed expenses still to come, out of what is left: never more
+    /// than what is left (Siri promised «$5,000 apartados» with $4,000 left).
+    public var setAside: Decimal { min(reserved, max(0, remaining)) }
+    /// What is left doesn't cover the fixed expenses still to come.
+    public var isShortForFixed: Bool { reserved > max(0, remaining) }
     /// Spent more than an even month would have by today: «Deberías llevar», not «Podrías».
     public var isAheadOfPace: Bool { spent > expectedToDate }
     /// Today already spent more than it could.
@@ -130,7 +145,10 @@ public struct BudgetPace: Equatable, Sendable {
         self.variableToday = spentToday - fixedToday
         // Multiplied before dividing: 1,000 ÷ 31 × 31 is 999.99… in Decimal, and the last day
         // has to get exactly what is left.
-        let pool = budget - fixedSpent - self.reserved
+        // Never below zero: fixed expenses past the budget are their own state
+        // (`fixedOverBudget`), not a day overspent before anything was spent.
+        let pool = max(0, budget - fixedSpent - self.reserved)
+        let fixedTakeAll = fixedSpent + self.reserved >= budget
         let length = Decimal(days)
         let variableBefore = (spent - spentToday) - (fixedSpent - fixedToday)
         let throughToday = pool * Decimal(day) / length
@@ -139,15 +157,16 @@ public struct BudgetPace: Equatable, Sendable {
         if mode == .spread {
             // A fixed expense charged today was still to come when the day began: it comes off
             // what is shared, not off today's share.
-            let share = (budget - (spent - variableToday) - self.reserved) / Decimal(days - day + 1)
+            let share = max(0, (budget - (spent - variableToday) - self.reserved) / Decimal(days - day + 1))
             self.dailyBase = share
             self.todayShare = share
-            self.dailyAllowance = max(0, Self.whole(share - variableToday))
+            self.dailyAllowance = fixedTakeAll ? 0 : max(0, Self.whole(share - variableToday))
             return
         }
         self.dailyBase = pool / length
         self.todayShare = throughToday - variableBefore
-        self.dailyAllowance = Self.whole(todayShare - variableToday)
+        // With the fixed expenses taking it all, both modes say the same: nothing for today.
+        self.dailyAllowance = fixedTakeAll ? 0 : Self.whole(todayShare - variableToday)
     }
 
     /// The sum behind «Hoy puedes gastar», in whole units, with each line picked so the ticket
@@ -173,7 +192,9 @@ public struct BudgetPace: Equatable, Sendable {
 
     public var sum: Sum {
         let budget = Self.whole(budget, .plain)
-        let spent = spentShown
+        // Past the budget, «Te pasaste» is rounded up (never $0 over a few centavos) and
+        // «Llevas» follows it, so the lines still subtract to the peso.
+        let spent = isOverBudget ? budget + overBudgetShown : spentShown
         let variable = Self.whole(variableToday, .plain)
         var perDay = Self.whole(dailyBase, .plain)
         var carried = Decimal(0)

@@ -33,7 +33,7 @@ struct HoyView: View {
         switch state {
         case .neverOpened, .noBudget: ink.primary
         case .overBudget, .overToday: ink.danger
-        case .normal: ink.brass
+        case .normal, .fixedOverBudget: ink.brass
         }
     }
 
@@ -111,7 +111,7 @@ struct HoyView: View {
                         .accessibilityLabel(spoken)
                     HStack(alignment: .lastTextBaseline, spacing: Theme.Space.s) {
                         Figure(text: money.whole(state.figure), color: figureColor, style: .figureLarge)
-                        if case .overBudget = state {
+                        if isOverBudget {
                             Verdict(state: state, money: money, ink: ink).fixedSize()
                         }
                     }
@@ -154,9 +154,12 @@ struct HoyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
+    /// Past the budget, or fixed expenses past it: the verdict rides beside the figure.
     private var isOverBudget: Bool {
-        if case .overBudget = state { return true }
-        return false
+        switch state {
+        case .overBudget, .fixedOverBudget: true
+        default: false
+        }
     }
 
     /// «PODRÍAS LLEVAR $8,516», over the rule it names; «Deberías» once past it.
