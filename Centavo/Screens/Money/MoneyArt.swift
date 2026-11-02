@@ -47,11 +47,6 @@ struct MoneyLoopClock<Content: View>: View {
     }
 }
 
-enum MoneyMotion {
-    /// The UI tests wait for the app to be idle; a drawing at 30 fps never is.
-    static var stillForTests: Bool { MotionPolicy.testsWantStill }
-}
-
 /// Smooth in and out, no overshoot.
 func moneyEase(_ x: Double) -> Double {
     let t = min(max(x, 0), 1)

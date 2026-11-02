@@ -11,7 +11,7 @@ struct BackupWarningRow: View {
     var body: some View {
         Button(action: open) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Image(systemName: "exclamationmark.icloud")
+                Image(systemName: "exclamationmark.triangle")
                     .imageScale(.small)
                     .frame(width: glyphWidth, alignment: .leading)
                 Text(text)

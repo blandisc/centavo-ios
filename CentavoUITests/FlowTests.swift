@@ -1272,7 +1272,7 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(title.label, "Cuánto puedes gastar hoy")
         snap("tutorial-1")
         app.buttons["tutorial-siguiente"].tap()
-        XCTAssertTrue(app.staticTexts["Tu mes en una barra"].waitForExistence(timeout: 3), "«Siguiente» no avanzó")
+        XCTAssertTrue(app.staticTexts["Tu mes en un boleto"].waitForExistence(timeout: 3), "«Siguiente» no avanzó")
         XCTAssertFalse(app.buttons["tutorial-pruebalo"].exists, "La barra no tiene dónde probarse")
         snap("tutorial-2")
         for story in 3...7 {

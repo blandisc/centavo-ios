@@ -552,6 +552,12 @@ struct ExpenseEditorView: View {
                     }
                     if repeatsMonthly {
                         HintText(FixedWording.howItRepeats(rule, from: date))
+                        if let started = expense, started.repeatsMonthly == true {
+                            // The original is the first charge too: its amount is that charge's.
+                            HintText("Cambiar el monto cambia también el primer cobro, del "
+                                     + started.date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_MX")))
+                                     + ". Para un aumento, deja de repetir este y agrega uno nuevo.")
+                        }
                     } else if expense?.isRepeat == true {
                         HintText("Se anotó solo, de un gasto fijo.")
                     }
@@ -787,7 +793,7 @@ struct ExpenseEditorView: View {
         let sources = paymentSources.map(\.name)
         guard let entry = await QuickExpense.read(text, sources: sources),
               let parsed = AmountParser.parse(entry.amountText) else {
-            sentenceProblem = "No encontré un monto en «\(text)». Escríbelo arriba."
+            sentenceProblem = "No hay un monto en «\(text)». Escríbelo arriba."
             sentence = ""
             amountFocused = true
             return

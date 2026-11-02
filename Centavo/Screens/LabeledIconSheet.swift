@@ -58,7 +58,7 @@ struct LabeledIconSheet: View {
                     Text("Nombre").ticketCaption()
                 } footer: {
                     if isTaken {
-                        NoteText("Ya tienes uno con ese nombre.", color: Theme.danger)
+                        NoteText("Ya tienes una con ese nombre.", color: Theme.danger)
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -139,7 +139,7 @@ struct LabeledIconSheet: View {
             .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(title)
-            .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes uno con ese nombre" : trimmed,
+            .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes una con ese nombre" : trimmed,
                      enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
                 onSave(LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon))
                 // A renamed one leaves its old name's color behind.

@@ -2,7 +2,7 @@ import CentavoCore
 import SwiftUI
 
 /// The stories of «Cómo funciona» (2026-11-01), in the order the app is learned: the figure,
-/// the bar, what is left, how payments arrive, what doesn't count, where it goes, the backup.
+/// the boleto, what is left, how payments arrive, what doesn't count, where it goes, the backup.
 enum TutorialStory: Int, CaseIterable, Identifiable {
     case figure, bar, leftover, wallet, uncounted, categories, backup
 
@@ -11,7 +11,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .figure: "Cuánto puedes gastar hoy"
-        case .bar: "Tu mes en una barra"
+        case .bar: "Tu mes en un boleto"
         case .leftover: "Lo que sobra no se pierde"
         case .wallet: "Se anota solo"
         case .uncounted: "Lo que no es gasto"
@@ -22,13 +22,13 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
 
     var text: String {
         switch self {
-        case .figure: "Tu presupuesto, menos tus fijos, entre los días del mes: eso te toca cada día. Es la cifra de arriba y baja con cada pago."
-        case .bar: "El latón es lo que llevas; la raya, lo que podrías llevar a estas alturas del mes. Si el latón la pasa, vas arriba del ritmo."
+        case .figure: "Tu presupuesto, menos tus fijos, entre los días del mes. A eso se suma o resta lo que te sobró o te pasaste antes: esa es la cifra de arriba, y baja con cada pago."
+        case .bar: "Cada celda es un día. Se llena con lo que gastas; si un día te pasas, se pinta de rojo. Los días por venir van punteados."
         case .leftover: "Lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
         case .wallet: "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+»."
         case .uncounted: "Un pago a tu tarjeta o un traspaso: ábrelo, toca «Más detalles» y en «Tipo» elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
         case .categories: "Abajo ves tus categorías. Toca una para ver solo esos gastos."
-        case .backup: "Elige una contraseña y una carpeta en Ajustes, y Al día guarda ahí una copia diaria cerrada con ella. Así no pierdes nada al cambiar de iPhone."
+        case .backup: "Elige una contraseña y una carpeta en Más › Ajustes › Respaldo diario, y agrega en Atajos la automatización «Respaldar Al día». Así cada noche se guarda una copia cerrada con tu contraseña."
         }
     }
 
@@ -146,12 +146,13 @@ struct TutorialView: View {
             HStack(spacing: Theme.Space.xxs) {
                 ForEach(stories) { item in
                     if item.rawValue == index && advancesByItself {
-                        // Only the current bar follows the clock, and only it redraws.
-                        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval,
-                                                paused: heldSince != nil)) { context in
-                            StoryBar(fill: StoryTiming.progress(elapsed: elapsed(at: context.date),
-                                                                duration: story.duration))
-                        }
+                        // One linear animation to the end, stopped where it is while held (audit
+                        // 2026-11-02: a 30 fps clock redrew it the whole story). A new clock is a
+                        // new bar.
+                        RunningStoryBar(now: StoryTiming.progress(elapsed: elapsed(at: .now),
+                                                                  duration: story.duration),
+                                        duration: story.duration, paused: heldSince != nil)
+                            .id(storyStart)
                     } else {
                         StoryBar(fill: item.rawValue <= index ? 1 : 0)
                     }
@@ -206,7 +207,8 @@ struct TutorialView: View {
             }
         }
         .id(index)
-        .transition(.opacity)
+        // The old story leaves before the new one comes in: they never overlap (audit 2026-11-02).
+        .transition(still ? .identity : .storyChange)
     }
 
     private var footer: some View {
@@ -293,6 +295,41 @@ struct TutorialView: View {
                     tap(value.location.x < width * Theme.Size.tutorialBackShare ? index - 1 : index + 1)
                 }
             }
+    }
+}
+
+/// The current story's part of the bar: one linear animation from where it is now to full,
+/// frozen in place while `paused` and picked up again after.
+private struct RunningStoryBar: View {
+    let now: Double
+    let duration: Double
+    let paused: Bool
+    @State private var fill: Double
+
+    init(now: Double, duration: Double, paused: Bool) {
+        self.now = now
+        self.duration = duration
+        self.paused = paused
+        _fill = State(initialValue: now)
+    }
+
+    var body: some View {
+        StoryBar(fill: fill)
+            .onAppear { if !paused { play() } }
+            .onChange(of: paused) { _, held in
+                if held {
+                    var stop = Transaction(animation: nil)
+                    stop.disablesAnimations = true
+                    withTransaction(stop) { fill = now }
+                } else {
+                    play()
+                }
+            }
+    }
+
+    private func play() {
+        guard fill < 1 else { return }
+        withAnimation(Theme.Motion.Tutorial.fill(seconds: duration * (1 - fill))) { fill = 1 }
     }
 }
 

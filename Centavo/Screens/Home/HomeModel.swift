@@ -27,8 +27,10 @@ final class HomeModel {
     @ObservationIgnored var swipeBlocked = false
     /// Where the carousel's pages stand, moved by the swipe over the whole top of the screen.
     let carousel = CarouselMotion()
-    /// Goes up each time the store saves, so a search on screen is asked again (an edit can
-    /// make an expense match or stop matching).
+    /// Goes up each time the store saves (here, or iCloud bringing changes), so a search on
+    /// screen is asked again (an edit can make an expense match or stop matching) and the
+    /// month's numbers are worked out again. Reading it is what has the screen redraw after an
+    /// expense is edited in place.
     private(set) var revision = 0
 
     /// How long typing has to pause before the search runs over every month.
@@ -48,7 +50,10 @@ final class HomeModel {
     /// Everything about the month on screen. `rows` are that month's expenses, newest first;
     /// `originals` the fixed expenses' first charges.
     func month(_ inputs: MonthInputs, rows: [Expense], originals: [Expense]) -> HomeMonth {
-        let key = MonthKey(inputs: inputs, rows: Self.fingerprint(rows), originals: Self.fingerprint(originals))
+        // A save counter and the counts, not a hash of every row (audit 2026-11-02: that walked
+        // the whole month on every redraw). Every change is saved right away, and each save
+        // moves `revision`.
+        let key = MonthKey(inputs: inputs, rows: rows.count, originals: originals.count, revision: revision)
         return monthMemo.value(for: key) { Self.makeMonth(inputs, rows: rows, originals: originals) }
     }
 
@@ -117,7 +122,7 @@ final class HomeModel {
     /// The month's most useful fact (`MonthNote`), from the last few months' `rows`.
     /// `reserved`: the fixed expenses still to come, which the projection adds (second audit).
     func note(rows: [Expense], now: Date, primary: String, budget: String, reserved: Decimal = 0) -> String? {
-        let key = NoteKey(now: now, primary: primary, budget: budget, rows: Self.fingerprint(rows), reserved: reserved)
+        let key = NoteKey(now: now, primary: primary, budget: budget, rows: rows.count, revision: revision, reserved: reserved)
         return noteMemo.value(for: key) {
             MonthNote.facts(rows, now: now, primary: primary, budget: BudgetStore.amount(from: budget),
                             reserved: reserved).first?.line
@@ -231,29 +236,6 @@ final class HomeModel {
         return descriptor
     }
 
-    /// What of each expense the screen's numbers use: when it changes (an amount, a category,
-    /// «No cuenta»), they are worked out again. Reading it is also what has the screen redraw
-    /// when one of them is edited in place.
-    static func fingerprint(_ rows: [Expense]) -> Int {
-        var hasher = Hasher()
-        hasher.combine(rows.count)
-        for row in rows {
-            hasher.combine(row.persistentModelID)
-            hasher.combine(row.date)
-            hasher.combine(row.amount)
-            hasher.combine(row.countedAmount)
-            hasher.combine(row.currencyMarker)
-            hasher.combine(row.category)
-            hasher.combine(row.merchant)
-            hasher.combine(row.displayName)
-            hasher.combine(row.repeatsMonthly)
-            hasher.combine(row.isRepeat)
-            hasher.combine(row.repeatsThrough)
-            hasher.combine(row.repeatDay)
-            hasher.combine(row.repeatRule)
-        }
-        return hasher.finalize()
-    }
 }
 
 /// What the month's numbers depend on besides its expenses.
@@ -273,6 +255,7 @@ private struct MonthKey: Equatable {
     let inputs: MonthInputs
     let rows: Int
     let originals: Int
+    let revision: Int
 }
 
 private struct NoteKey: Equatable {
@@ -280,6 +263,7 @@ private struct NoteKey: Equatable {
     let primary: String
     let budget: String
     let rows: Int
+    let revision: Int
     let reserved: Decimal
 }
 

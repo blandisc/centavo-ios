@@ -56,20 +56,36 @@ struct TutorialArt: View {
         c.fill(artCell(22, 110 - 20 * today, 9, 20 * today), with: .color(Theme.brass))
     }
 
-    /// The month bar: brass is what went, the white rule is an even month so far.
+    /// The month's boleto, as on «Hoy»: one cell per day fills with what went, a day over its
+    /// share goes red with a mark on top, today is outlined and the days to come are dotted.
     private func bar(_ c: inout GraphicsContext) {
-        let track = CGRect(x: 14, y: 46, width: 172, height: 26)
-        c.stroke(Path(roundedRect: track, cornerRadius: ArtGeo.cellCorner), with: .color(Theme.outline),
-                 style: artStroke(Theme.outline))
-        let went = 172 * 0.42 * moneySpan(progress, 0.05, 0.55)
-        c.fill(Path(roundedRect: CGRect(x: 14, y: 46, width: went, height: 26), cornerRadius: ArtGeo.cellCorner),
-               with: .color(Theme.brass))
-        let rule = moneySpan(progress, 0.5, 0.8)
-        var line = Path()
-        line.move(to: CGPoint(x: 14 + 172 * 0.5, y: 38)); line.addLine(to: CGPoint(x: 14 + 172 * 0.5, y: 80))
-        c.stroke(line.trimmedPath(from: 0, to: rule), with: .color(Theme.ink), style: artStroke(Theme.ink, ArtGeo.line))
-        label(&c, "Llevas", at: CGPoint(x: 40, y: 96), size: 10, color: Theme.brass, opacity: moneySpan(progress, 0.3, 0.6))
-        label(&c, "Podrías", at: CGPoint(x: 100, y: 28), size: 10, color: Theme.muted, opacity: rule)
+        let fills: [CGFloat] = [0.6, 0.85, 0.4, 1, 0.7, 0.5, 0.8]
+        let over = 3, today = fills.count, days = 13
+        let top: CGFloat = 30, height: CGFloat = 60, width: CGFloat = 10, step: CGFloat = 14
+        let left = (200 - step * CGFloat(days - 1) - width) / 2
+        for day in 0..<days {
+            let x = left + CGFloat(day) * step
+            let cell = artCell(x, top, width, height)
+            if day < today {
+                let grown = fills[day] * moneySpan(progress, Double(day) * 0.06, 0.3 + Double(day) * 0.06)
+                let color = day == over ? Theme.danger : Theme.brass
+                c.stroke(cell, with: .color(Theme.outline), style: artStroke(Theme.outline))
+                c.fill(artCell(x, top + height * (1 - grown), width, height * grown), with: .color(color))
+                if day == over {
+                    var mark = c
+                    mark.opacity = moneySpan(progress, 0.45, 0.6)
+                    mark.fill(artCell(x, top - 6, width, 3), with: .color(Theme.danger))
+                }
+            } else if day == today {
+                let grown = 0.35 * moneySpan(progress, 0.6, 0.9)
+                c.fill(artCell(x, top + height * (1 - grown), width, height * grown), with: .color(Theme.brass))
+                c.stroke(cell, with: .color(Theme.brass), style: artStroke(Theme.brass, ArtGeo.line))
+            } else {
+                c.stroke(cell, with: .color(Theme.outline), style: artStroke(Theme.outline, dash: ArtGeo.dash))
+            }
+        }
+        label(&c, "Hoy", at: CGPoint(x: left + CGFloat(today) * step + width / 2, y: 104), size: 10,
+              color: Theme.brass, opacity: moneySpan(progress, 0.7, 1))
     }
 
     /// What a day leaves over: the unspent part of today's cell slides into tomorrow's.

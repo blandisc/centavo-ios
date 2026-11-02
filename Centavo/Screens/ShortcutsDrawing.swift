@@ -30,6 +30,9 @@ enum ShortcutsScene {
 /// tap. Decorative: the numbered steps under it say the same thing in words.
 struct ShortcutsDrawing: View {
     let scene: ShortcutsScene
+    /// Off on a page that isn't on screen: its loop rests until the page is shown (audit
+    /// 2026-11-02: the neighbor page of the guide kept playing out of sight).
+    var isActive = true
 
     var body: some View {
         if case .frames(let frames) = scene {
@@ -47,7 +50,7 @@ struct ShortcutsDrawing: View {
             case .runOptions: runOptions
             case .newShortcut: newShortcut
             case .addAction: addAction
-            case .connect(let field, let done): ConnectAnimation(field: field, done: done)
+            case .connect(let field, let done): ConnectAnimation(field: field, done: done, isActive: isActive)
             case .finished: finished
             case .library27: library27
             case .editor27: editor27
@@ -308,6 +311,7 @@ struct ShortcutsDrawing: View {
 private struct ConnectAnimation: View {
     let field: String
     let done: [String]
+    let isActive: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Phase: CaseIterable {
@@ -315,7 +319,7 @@ private struct ConnectAnimation: View {
     }
 
     var body: some View {
-        if MotionPolicy.isStill(reduceMotion: reduceMotion) {
+        if MotionPolicy.isStill(reduceMotion: reduceMotion) || !isActive {
             frame(.pickProperty)
         } else {
             PhaseAnimator(Phase.allCases) { phase in

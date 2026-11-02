@@ -78,6 +78,8 @@ struct ExpenseListView: View {
     @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
+    /// What «Anotar otra vez» just wrote down, kept a few seconds so it can be taken back.
+    @State private var lastCopy: CopiedExpense?
     @State private var importMessage: String?
     /// A change made here (delete, undo, a category) that couldn't be saved.
     @State private var saveProblem: String?
@@ -149,10 +151,7 @@ struct ExpenseListView: View {
                 if phase == .interacting, model.openRow != nil { model.openRow = nil }
             }
             .modifier(BottomSearch(text: Bindable(model).searchText) { model.query = $0 })
-            // An edit can make an expense match the search or stop matching.
-            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
-                model.storeSaved()
-            }
+            .modifier(RefreshesOnSave(model: model))
             .modifier(CountsStore(newest: newestRows.first?.persistentModelID,
                                   oldest: oldestRows.first?.persistentModelID, recount: countStore))
             .background(Theme.background.ignoresSafeArea())
@@ -667,10 +666,7 @@ private struct HomeHeader: View {
                 }
                 if !month.hasExpenses {
                     Text("Sin gastos este mes")
-                        .font(.ticket(.footnote))
-                        .tracking(Theme.Tracking.action)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Theme.muted)
+                        .ticketCaption()
                         .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
                         .overlay(alignment: .top) { Perforation() }
                         .ticketRow()
@@ -908,6 +904,22 @@ private struct SaveProblemAlert: ViewModifier {
     }
 }
 
+/// Every save, here or brought by iCloud, moves `HomeModel.revision`: the month's numbers and a
+/// search on screen are worked out again (an edit can change a figure, or make an expense match
+/// the search or stop matching).
+private struct RefreshesOnSave: ViewModifier {
+    let model: HomeModel
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in model.storeSaved() }
+            // Posted off the main thread.
+            .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
+                Task { @MainActor in model.storeSaved() }
+            }
+    }
+}
+
 /// Counts the expenses again whenever the store saves, a payment lands or the oldest one goes:
 /// a count asked of the store, instead of every expense loaded to count them.
 private struct CountsStore: ViewModifier {
@@ -1043,25 +1055,37 @@ private extension ExpenseListView {
                            category: expense.category)
         copy.displayName = expense.displayName
         context.insert(copy)
-        persist()
+        guard persist() else { return }
+        // A tap in a menu is easy to make by mistake: it can be taken back (audit 2026-11-02).
+        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+            lastDeleted = nil
+            lastCopy = CopiedExpense(expense: copy, name: copy.displayName ?? copy.merchant)
+        }
+    }
+
+    /// «Deshacer» on «Anotaste otra vez»: the copy goes, the original stays.
+    private func undoCopy(_ copied: CopiedExpense) {
+        context.delete(copied.expense)
+        guard persist() else { return }
+        countStore()
+        model.storeSaved()
+        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastCopy = nil }
     }
 
     @ViewBuilder var undoOverlay: some View {
-        if let deleted = lastDeleted {
+        if let copied = lastCopy {
+            UndoBar(text: "Anotaste otra vez \(copied.name)", identifier: "deshacer-copia") { undoCopy(copied) }
+                .modifier(UndoBarPlacement(id: copied.id, spoken: "Anotaste otra vez \(copied.name). Puedes deshacerlo.",
+                                           reduceMotion: reduceMotion) {
+                    if lastCopy?.id == copied.id { lastCopy = nil }
+                })
+        } else if let deleted = lastDeleted {
             UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
-                .padding(.horizontal, Theme.Space.screen)
-                // Right above the bottom bar: the safe area already ends at the bar.
-                .padding(.bottom, Theme.Space.m)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .task(id: deleted.id) {
-                    // Said out loud, and with VoiceOver it stays long enough to reach it.
-                    AccessibilityNotification.Announcement(
-                        "Borraste \(deleted.displayName ?? deleted.merchant). Puedes deshacerlo.").post()
-                    try? await Task.sleep(for: .seconds(UIAccessibility.isVoiceOverRunning
-                                                        ? Theme.Motion.undoLongSeconds
-                                                        : Theme.Motion.undoSeconds))
-                    withAnimation { if lastDeleted?.id == deleted.id { lastDeleted = nil } }
-                }
+                .modifier(UndoBarPlacement(id: deleted.id,
+                                           spoken: "Borraste \(deleted.displayName ?? deleted.merchant). Puedes deshacerlo.",
+                                           reduceMotion: reduceMotion) {
+                    if lastDeleted?.id == deleted.id { lastDeleted = nil }
+                })
         }
     }
 
@@ -1072,7 +1096,10 @@ private extension ExpenseListView {
         countStore()
         // A search on screen is asked again, without the deleted expense.
         model.storeSaved()
-        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastDeleted = snapshot }
+        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+            lastCopy = nil
+            lastDeleted = snapshot
+        }
     }
 
     func restore(_ deleted: DeletedExpense) {
@@ -1424,14 +1451,12 @@ private struct EmptyTicket: View {
         // Only what moves follows the clock: the text and the button are drawn once.
         VStack(alignment: .leading, spacing: Theme.Space.ml) {
             Text("Tu mes empieza aquí")
-                .font(.ticket(.bodyStrong))
-                .tracking(Theme.Tracking.caption)
-                .textCase(.uppercase)
+                .ticketCaption(strong: true)
             if !hasBudget { monthStrip }
             PlayOnceClock(until: Empty.end) { t in
                 ghostRow(moneySpan(t, Empty.ghost.lowerBound, Empty.ghost.upperBound))
             }
-            Text("Anota uno o conecta Wallet y cada compra se anotará sola.")
+            Text("Anota uno, o conecta Wallet y cada pago con Apple Pay se anotará solo.")
                 .font(.ticket(.callout))
                 .lineSpacing(Theme.Space.xxs)
                 .foregroundStyle(Theme.muted)
@@ -1442,7 +1467,7 @@ private struct EmptyTicket: View {
             .ticketProminent()
             .accessibilityIdentifier("vacio-anotar")
             .padding(.top, Theme.Space.xs)
-            PlayOnceClock(until: Empty.end) { t in steps(t) }
+            steps
         }
         .padding(Theme.Space.xlx)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1491,13 +1516,15 @@ private struct EmptyTicket: View {
         .accessibilityHidden(true)
     }
 
-    @ViewBuilder private func steps(_ t: Double) -> some View {
-        let wallet = moneySpan(t, Empty.wallet.lowerBound, Empty.wallet.upperBound)
+    /// The cards are built once; only each one's drawing follows the clock (audit 2026-11-02:
+    /// one clock around both cards rebuilt their buttons and layout 30 times a second).
+    @ViewBuilder private var steps: some View {
+        let wallet = Empty.wallet
         if hasBudget {
             EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay se anota solo.",
                           progress: wallet, wide: true, identifier: "vacio-wallet", action: onSetup)
         } else {
-            let budget = moneySpan(t, Empty.budget.lowerBound, Empty.budget.upperBound)
+            let budget = Empty.budget
             // Side by side when they fit; one under the other on a narrow phone or large text.
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: Theme.Space.s) {
@@ -1512,12 +1539,12 @@ private struct EmptyTicket: View {
         }
     }
 
-    private func budgetCard(_ progress: Double, wide: Bool) -> some View {
+    private func budgetCard(_ progress: ClosedRange<Double>, wide: Bool) -> some View {
         EmptyStepCard(kind: .budget, title: "Fijar presupuesto", detail: "Para saber cuánto puedes gastar al día.",
                       progress: progress, wide: wide, identifier: "vacio-presupuesto", action: onBudget)
     }
 
-    private func walletCard(_ progress: Double, wide: Bool) -> some View {
+    private func walletCard(_ progress: ClosedRange<Double>, wide: Bool) -> some View {
         EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay se anota solo.",
                       progress: progress, wide: wide, identifier: "vacio-wallet", action: onSetup)
     }
@@ -1528,7 +1555,8 @@ private struct EmptyStepCard: View {
     let kind: EmptyStepArt.Kind
     let title: String
     let detail: String
-    let progress: Double
+    /// When, on the empty screen's clock, this card's drawing plays.
+    let progress: ClosedRange<Double>
     let wide: Bool
     let identifier: String
     let action: () -> Void
@@ -1538,7 +1566,9 @@ private struct EmptyStepCard: View {
             let layout = wide ? AnyLayout(HStackLayout(spacing: Theme.Space.m))
                               : AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.xs))
             layout {
-                EmptyStepArt(kind: kind, progress: progress)
+                PlayOnceClock(until: Theme.Motion.Money.Empty.end) { t in
+                    EmptyStepArt(kind: kind, progress: moneySpan(t, progress.lowerBound, progress.upperBound))
+                }
                     .frame(width: wide ? Theme.Size.moneyExcelArt : nil, height: Theme.Size.emptyStepArt)
                     .frame(maxWidth: wide ? nil : .infinity)
                     .background(Theme.ink.opacity(Theme.Opacity.moneyArtWash), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
@@ -1663,9 +1693,43 @@ private struct LedgerRow: View {
     return ExpenseListView().modelContainer(container).ticketPreview()
 }
 
-/// "Borraste Oxxo · Deshacer", for a few seconds after a delete.
+/// What «Anotar otra vez» wrote down, while its «Deshacer» is on screen.
+private struct CopiedExpense: Identifiable {
+    let id = UUID()
+    let expense: Expense
+    let name: String
+}
+
+/// Where the undo bar sits and how it comes and goes: right above the bottom bar, said out loud,
+/// gone after a few seconds (longer with VoiceOver). Slides up, or only fades with «Reducir
+/// movimiento».
+private struct UndoBarPlacement: ViewModifier {
+    let id: UUID
+    let spoken: String
+    let reduceMotion: Bool
+    let expire: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, Theme.Space.screen)
+            // Right above the bottom bar: the safe area already ends at the bar.
+            .padding(.bottom, Theme.Space.m)
+            .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            .task(id: id) {
+                AccessibilityNotification.Announcement(spoken).post()
+                try? await Task.sleep(for: .seconds(UIAccessibility.isVoiceOverRunning
+                                                    ? Theme.Motion.undoLongSeconds
+                                                    : Theme.Motion.undoSeconds))
+                guard !Task.isCancelled else { return }
+                withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { expire() }
+            }
+    }
+}
+
+/// "Borraste Oxxo · Deshacer", for a few seconds after a delete (or «Anotaste otra vez»).
 private struct UndoBar: View {
     let text: String
+    var identifier = "deshacer-borrado"
     let undo: () -> Void
 
     var body: some View {
@@ -1677,7 +1741,7 @@ private struct UndoBar: View {
             Spacer(minLength: Theme.Space.s)
             Button(action: undo) { LinkActionLabel("Deshacer", fillsWidth: false) }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("deshacer-borrado")
+                .accessibilityIdentifier(identifier)
         }
         .padding(.horizontal, Theme.Space.l)
         .modifier(UndoBarSurface())
@@ -1708,16 +1772,14 @@ private struct SearchHeaderRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
-                .font(.ticket(.label))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
+            SectionLabel(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")",
+                         color: Theme.brass)
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                 .accessibilityIdentifier("resultados-busqueda")
             if count == 0 {
                 NoteText("Prueba con un comercio, un mes o un monto:")
-                HStack(spacing: Theme.Space.s) {
+                // They wrap to a new line with a large text size instead of running off.
+                WrapLayout {
                     ForEach(examples, id: \.self) { example in
                         TicketChip(example) { tryExample(example) }
                     }
@@ -1738,17 +1800,11 @@ private struct FilterRow: View {
 
     var body: some View {
         HStack {
-            Text("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")" + (total.map { " · \($0)" } ?? ""))
-                .font(.ticket(.label))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
+            SectionLabel("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")" + (total.map { " · \($0)" } ?? ""),
+                         color: Theme.brass)
             Spacer()
-            Button("Ver todo el mes", action: clear)
-                .font(.ticket(.detail))
-                .foregroundStyle(Theme.muted)
-                .frame(minHeight: Theme.Size.tapTarget)
-                .accessibilityIdentifier("ver-todo-el-mes")
+            // The quiet way out, like every «Después» (decision 2026-10-29: in ink, a button).
+            SecondaryButton("Ver todo el mes", identifier: "ver-todo-el-mes", action: clear)
         }
     }
 }

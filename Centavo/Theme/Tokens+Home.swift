@@ -139,4 +139,7 @@ extension Theme.Motion {
     /// it rests at full (`breathes`).
     static let todayBreaths = 3
     static let todayBreathSeconds: Double = 0.8
+    /// The boleto's entrance (`Entrance.legend`: 0.9 s late, 0.4 s long) is over before today
+    /// starts breathing.
+    static let todayBreathAfter: Double = 1.3
 }

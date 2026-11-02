@@ -97,7 +97,7 @@ struct MonthBar: View {
             }
             .buttonStyle(.plain)
             .padding(.vertical, -Theme.Space.ml)
-            .accessibilityLabel(showsSum ? "Ocultar la cuenta" : "Ver la cuenta")
+            .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
             .accessibilityIdentifier("ver-cuenta")
 
 

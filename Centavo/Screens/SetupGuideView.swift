@@ -12,6 +12,7 @@ import SwiftUI
 /// person is.
 struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
     /// Payments the automation saved (only it keeps the raw Wallet text): proof that it works.
     @Query(Self.latestCapture) private var captured: [Expense]
@@ -42,7 +43,7 @@ struct SetupGuideView: View {
         } else {
             NavigationStack {
                 ShortcutInstallView(latest: captured.first) {
-                    withAnimation(Theme.Motion.settle) { stepByStep = true }
+                    withAnimation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion)) { stepByStep = true }
                 }
                 .background(Theme.background.ignoresSafeArea())
                 .presentationBackground(Theme.background)
@@ -70,7 +71,8 @@ struct SetupGuideView: View {
             .safeAreaInset(edge: .bottom) {
                 if steps[step].opensShortcuts { launcher }
             }
-            .animation(Theme.Motion.settle, value: steps[step].opensShortcuts)
+            .animation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion),
+                       value: steps[step].opensShortcuts)
             .task { companion.load(companionPages) }
             // While the window floats over Atajos, the guide follows it: coming back to Al día
             // lands on the step the person was on.
@@ -93,7 +95,7 @@ struct SetupGuideView: View {
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
                     Button("Paso anterior", systemImage: "chevron.left") {
-                        withAnimation { step -= 1 }
+                        withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) { step -= 1 }
                     }
                     .disabled(step == 0)
                     .accessibilityIdentifier("guia-anterior")
@@ -106,7 +108,7 @@ struct SetupGuideView: View {
                         .padding(.horizontal, Theme.Space.s)
                     Spacer()
                     Button("Paso siguiente", systemImage: "chevron.right") {
-                        withAnimation { step += 1 }
+                        withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) { step += 1 }
                     }
                     .disabled(isLast)
                     .accessibilityIdentifier("guia-siguiente")
@@ -134,7 +136,7 @@ struct SetupGuideView: View {
                 } else {
                     // A picture of another app: it grows a little with the text, then stops. The
                     // numbered steps under it carry the words and scale all the way.
-                    ShortcutsDrawing(scene: guide.scene)
+                    ShortcutsDrawing(scene: guide.scene, isActive: number - 1 == step)
                         .dynamicTypeSize(...DynamicTypeSize.xLarge)
                         .accessibilityHidden(true)
                 }
@@ -210,7 +212,8 @@ struct SetupGuideView: View {
             }
         }
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        // With «Reducir movimiento» it only fades.
+        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
     }
 
     /// Every picture of the guide, in order, for the floating window.

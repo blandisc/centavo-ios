@@ -7,13 +7,17 @@ import SwiftUI
 struct CatalogSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.modelContext) private var context
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
     @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
-    @Query private var expenses: [Expense]
+    /// The categories and cards the expenses use, read with only those two fields when the
+    /// screen opens (audit 2026-11-02: a live query loaded every expense whole).
+    @State private var used = UsedNames()
+    @State private var saveProblem: String?
     @State private var editing: Editing?
     /// A card or category about to be deleted, waiting for «Borrar».
     @State private var confirmingRemoval: Editing?
@@ -35,9 +39,8 @@ struct CatalogSettingsView: View {
     /// The app's own categories and any other already used, less the ones made here (those
     /// are deleted instead): what can be hidden from the picker.
     private var others: [String] {
-        let used = CategoryMemory.known(in: expenses.map(\.categorized))
         var names: [String] = []
-        for name in CategoryStyle.common.map(\.name) + used
+        for name in CategoryStyle.common.map(\.name) + used.categories
         where !names.contains(where: { UserCatalog.same($0, name) })
             && !categories.contains(where: { UserCatalog.same($0.name, name) }) {
             names.append(name)
@@ -67,8 +70,9 @@ struct CatalogSettingsView: View {
     /// show beside the saved ones, so the screen is never empty for someone using Wallet.
     private var detectedCards: [String] {
         var names: [String] = []
-        for expense in expenses {
-            guard let card = expense.card?.trimmingCharacters(in: .whitespaces), !card.isEmpty,
+        for name in used.cards {
+            let card = name.trimmingCharacters(in: .whitespaces)
+            guard !card.isEmpty,
                   !sources.contains(where: { UserCatalog.same($0.name, card) }),
                   !names.contains(where: { UserCatalog.same($0, card) }) else { continue }
             names.append(card)
@@ -182,7 +186,7 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Categorías").ticketCaption()
                 } footer: {
-                    HintText("Toca una para ocultarla al anotar, o para cambiar las tuyas. Los gastos que ya la tienen no cambian.")
+                    HintText("Toca una para ocultarla al anotar, o para cambiar las tuyas. Ocultarla o borrarla no cambia los gastos que ya la tienen; cambiarle el nombre, sí.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -207,6 +211,7 @@ struct CatalogSettingsView: View {
                                      onSetDefault: setDefault, colorKind: .source,
                                      siblings: sources.map(\.name) + detectedCards) { saved in
                         save(saved, replacing: source)
+                        if let source { renameExpenses(\.card, from: source.name, to: saved.name) }
                     }
                 case .category(let category):
                     LabeledIconSheet(title: category == nil ? "Nueva categoría" : "Editar categoría",
@@ -219,6 +224,7 @@ struct CatalogSettingsView: View {
                         if let category, let index = list.firstIndex(of: category) {
                             list[index] = saved
                             UserCatalog.renameCategory(category.name, to: saved.name)
+                            renameExpenses(\.category, from: category.name, to: saved.name)
                         } else { list.append(saved) }
                         storedCategories = UserCatalog.encode(list, keepingUnreadFrom: storedCategories)
                         UserCatalog.markDeleted(saved.name, false)
@@ -238,7 +244,29 @@ struct CatalogSettingsView: View {
             } message: { _ in
                 Text("Los gastos que ya la tienen no cambian.")
             }
+            .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
+                Button("Aceptar", role: .cancel) {}
+            } message: { Text(saveProblem ?? "") }
+            .onAppear { used = UsedNames.read(in: context) }
         }
+    }
+
+    /// A category or card renamed here renames it in the expenses that have it too, all in one
+    /// save: otherwise the old name stays on them and the category is split in two (audit
+    /// 2026-11-02). Same comparison as everywhere: case, accents and spaces don't count.
+    private func renameExpenses(_ field: ReferenceWritableKeyPath<Expense, String?>, from old: String, to new: String) {
+        guard old != new else { return }
+        let all = (try? context.fetch(FetchDescriptor<Expense>())) ?? []
+        let matching = all.filter { $0[keyPath: field].map { UserCatalog.same($0, old) } ?? false }
+        guard !matching.isEmpty else { return }
+        for expense in matching { expense[keyPath: field] = new }
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            saveProblem = "Al día no pudo cambiar el nombre en tus gastos. Los que tenían «\(old)» lo conservan; intenta otra vez."
+        }
+        used = UsedNames.read(in: context)
     }
 
     private var confirmationTitle: String {
@@ -288,5 +316,20 @@ struct CatalogSettingsView: View {
         storedSources = UserCatalog.encode(list, keepingUnreadFrom: storedSources)
         UserCatalog.setColor(nil, for: source.name, key: UserCatalog.sourceColorsKey)
         if UserCatalog.same(defaultSource, source.name) { defaultSource = list.first?.name ?? "" }
+    }
+}
+
+/// The names the expenses use, newest first: categories most used first, cards as they come.
+/// Only those fields are read from the store.
+private struct UsedNames {
+    var categories: [String] = []
+    var cards: [String] = []
+
+    static func read(in context: ModelContext) -> UsedNames {
+        var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.propertiesToFetch = [\.category, \.card, \.date]
+        let rows = (try? context.fetch(descriptor)) ?? []
+        let history = rows.map { CategorizedExpense(merchant: "", category: $0.category, date: $0.date) }
+        return UsedNames(categories: CategoryMemory.known(in: history), cards: rows.compactMap(\.card))
     }
 }

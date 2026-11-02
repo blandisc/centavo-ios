@@ -128,9 +128,10 @@ struct WelcomeDemo: View {
                 .foregroundStyle(Theme.muted)
                 .monospacedDigit()
         }
-        // A new row comes in from the top; the one pushed off the bottom just fades, instead of
-        // sliding up through the others.
-        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
+        // A new row fades in where it lands while the others make room; it doesn't slide down
+        // across the perforation and the figure (audit 2026-11-02). The one pushed off the
+        // bottom just fades.
+        .transition(.opacity)
     }
 
     private func money(_ amount: Decimal) -> String {
@@ -146,10 +147,14 @@ struct WelcomeDemo: View {
             todayFill = Theme.Size.welcomeTodayStep
             return
         }
-        for payment in Self.coming.prefix(Theme.Motion.Onboarding.loops) {
+        let payments = Array(Self.coming.prefix(Theme.Motion.Onboarding.loops))
+        for (index, payment) in payments.enumerated() {
+            // Low Power Mode or reduced motion turned on midway: straight to the end, still.
             guard await pause(Theme.Motion.Onboarding.beforeNotice) else { return }
+            guard !still else { return land(payments[index...]) }
             withAnimation(Theme.Motion.Onboarding.noticeIn) { notice = payment }
             guard await pause(Theme.Motion.Onboarding.noticeShown) else { return }
+            guard !still else { return land(payments[index...]) }
             withAnimation(Theme.Motion.Onboarding.land) {
                 notice = nil
                 rows.insert(payment, at: 0)
@@ -160,6 +165,22 @@ struct WelcomeDemo: View {
             }
             landings += 1
             guard await pause(Theme.Motion.Onboarding.afterLanding) else { return }
+        }
+    }
+
+    private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
+
+    /// What is left to come, all at once and with no animation: where the demo ends.
+    private func land(_ payments: ArraySlice<Payment>) {
+        var instantly = Transaction(animation: nil)
+        instantly.disablesAnimations = true
+        withTransaction(instantly) {
+            notice = nil
+            for payment in payments {
+                rows.insert(payment, at: 0)
+                left -= payment.amount
+                todayFill = min(1, todayFill + Theme.Size.welcomeTodayStep)
+            }
         }
     }
 
@@ -213,7 +234,9 @@ struct WalletChain: View {
         .task {
             guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { lit = nodes.count - 1; return }
             for index in lit.advanced(by: 1)..<nodes.count {
-                guard (try? await Task.sleep(for: .seconds(Theme.Motion.Onboarding.chainBeat))) != nil else {
+                // Cancelled, or still since (Low Power Mode midway): fully lit at once.
+                guard (try? await Task.sleep(for: .seconds(Theme.Motion.Onboarding.chainBeat))) != nil,
+                      !MotionPolicy.isStill(reduceMotion: reduceMotion) else {
                     lit = nodes.count - 1
                     return
                 }

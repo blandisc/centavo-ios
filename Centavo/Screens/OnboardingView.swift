@@ -181,7 +181,7 @@ struct OnboardingView: View {
                 quickAmounts
             }
             .onboardingRise(2)
-            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «Más».",
+            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «Más › Presupuesto del mes».",
                      color: Theme.faint)
                 .onboardingRise(3)
         }
@@ -223,7 +223,8 @@ struct OnboardingView: View {
     }
 
     private var quickAmounts: some View {
-        HStack(spacing: Theme.Space.s) {
+        // They wrap to a second line with a large text size instead of running off the edge.
+        WrapLayout(spacing: Theme.Space.s) {
             ForEach(suggestions, id: \.self) { value in
                 TicketChip("\((value / 1_000).formatted()) mil", selected: budget == value) {
                     withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
@@ -426,7 +427,7 @@ struct OnboardingView: View {
                     .accessibilityAddTraits(.isHeader)
                 doneFigure
                 if saveFailed {
-                    HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «Gastos fijos» del menú «Más».")
+                    HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «Más › Gastos fijos».")
                 }
             }
             .padding(.horizontal, Theme.Space.screen)

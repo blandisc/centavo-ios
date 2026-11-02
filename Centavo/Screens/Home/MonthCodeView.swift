@@ -79,10 +79,11 @@ struct MonthCodeView: View {
             ForEach(code.days, id: \.number) { day in
                 cell(day)
                     .opacity(opacity(day))
-                    // Today breathes a few times when the boleto appears, then rests at full
-                    // (audit 2026-11-02: it breathed forever on the screen of every day).
+                    // Today breathes a few times once the boleto has come in, then rests at full
+                    // (audit 2026-11-02: it breathed forever, and began before it could be seen).
                     .breathes(day.kind == .today && shownDay == nil, times: Theme.Motion.todayBreaths,
-                              seconds: Theme.Motion.todayBreathSeconds, low: Theme.Opacity.tileBreath)
+                              seconds: Theme.Motion.todayBreathSeconds, low: Theme.Opacity.tileBreath,
+                              begins: shown, after: Theme.Motion.todayBreathAfter)
             }
         }
         .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion), value: shownDay)
@@ -214,7 +215,7 @@ struct MonthCodeView: View {
     private func spoken(_ number: Int) -> String {
         guard number >= 1, number <= code.days.count else { return "" }
         let day = code.days[number - 1]
-        if day.kind == .future { return "\(number): todavía no llega" }
+        if day.kind == .future { return "Día \(number): todavía no llega" }
         let amount = wholeMoney(day.input.total)
         let payments = day.input.payments == 1 ? "1 pago" : "\(day.input.payments) pagos"
         return "\(title(number)): \(amount), \(payments)"
@@ -258,7 +259,7 @@ private struct DayCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if let limit {
                     let over = day.input.variable - limit
-                    Text(over > 0 ? "\(wholeMoney(over)) arriba de tu tope" : "\(wholeMoney(-over)) abajo de tu tope")
+                    Text(over > 0 ? "\(wholeMoney(over)) arriba de tu cifra por día" : "\(wholeMoney(-over)) abajo de tu cifra por día")
                         .font(.ticket(.detail))
                         .foregroundStyle(over > 0 ? Theme.danger : Theme.good)
                 }
