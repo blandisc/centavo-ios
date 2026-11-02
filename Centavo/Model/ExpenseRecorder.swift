@@ -53,9 +53,16 @@ enum ExpenseRecorder {
         let cardName = card?.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCard = (cardName?.isEmpty ?? true) ? nil : cardName
 
+        // A bare «$» is the main currency of today, kept as its code (2026-11-02).
+        // Before a main currency is chosen it stays «$», to be pinned once it is.
+        let currency = primary.map { CurrencyResolver.pinned(parsed.currencyMarker, primary: $0) } ?? parsed.currencyMarker
+
+        // The same payment may come through both automations, each with its own text: one with
+        // the notice (`rawNotice`) and one without is compared by amount and currency alone.
         let repeated: Bool
         switch CaptureGuard.check(amount: parsed.value, merchant: merchantName, card: cleanCard,
-                                  at: now, recent: recentCaptures(before: now, in: context)) {
+                                  at: now, recent: recentCaptures(before: now, in: context),
+                                  currency: currency, fromNotice: rawNotice != nil) {
         case .empty: return .empty
         case .duplicate: repeated = true
         case .save: repeated = false
@@ -64,9 +71,7 @@ enum ExpenseRecorder {
         let before = remembered(for: merchantName, in: context, rules: rules, hidden: hidden, now: now)
         let expense = Expense(
             amount: parsed.value,
-            // A bare «$» is the main currency of today, kept as its code (2026-11-02).
-            // Before a main currency is chosen it stays «$», to be pinned once it is.
-            currencyMarker: primary.map { CurrencyResolver.pinned(parsed.currencyMarker, primary: $0) } ?? parsed.currencyMarker,
+            currencyMarker: currency,
             merchant: merchantName,
             card: cleanCard,
             date: now,
@@ -146,11 +151,14 @@ enum ExpenseRecorder {
                   WalletNotice.looksLikeCard(expense.merchant, knownCards: knownCards),
                   let read = WalletNotice.parse(raw, knownCards: knownCards),
                   let merchant = read.merchant, merchant != expense.merchant else { continue }
+            // A name someone wrote (in the sheet, or remembered from one) is theirs: the line is
+            // left as it is, merchant included (2026-11-02, second audit).
             let wasReadable = expense.displayName == nil
                 || expense.displayName == MerchantName.readable(expense.merchant)
+            guard wasReadable else { continue }
             if expense.card == nil || expense.card == "" { expense.card = read.card ?? expense.merchant }
             expense.merchant = String(merchant.prefix(maxMerchantLength))
-            if wasReadable { expense.displayName = MerchantName.readable(expense.merchant) }
+            expense.displayName = MerchantName.readable(expense.merchant)
             fixed += 1
         }
         if fixed > 0 { try context.save() }
@@ -195,7 +203,9 @@ enum ExpenseRecorder {
         )
         before.apply(to: expense, withName: false)
         context.insert(expense)
-        try context.save()
+        // A failed save leaves nothing behind: Siri already said it failed, and a later save of
+        // the same context would otherwise write it after all (and the person would add it again).
+        do { try context.save() } catch { context.rollback(); throw error }
         return .saved(merchant: merchantName)
     }
 
@@ -233,7 +243,9 @@ enum ExpenseRecorder {
         let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since && $0.rawAmount != nil })
         let rows = (try? context.fetch(descriptor)) ?? []
         return rows.map {
-            RecentCapture(amount: $0.amount, merchant: $0.merchant, card: $0.card, date: $0.date)
+            RecentCapture(amount: $0.amount, merchant: $0.merchant, card: $0.card, date: $0.date,
+                          currency: $0.currencyMarker, fromNotice: $0.rawNotice != nil,
+                          markedRepeated: $0.maybeRepeated == true)
         }
     }
 

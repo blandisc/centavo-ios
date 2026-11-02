@@ -19,6 +19,9 @@ struct ExpenseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var amountText = ""
+    /// The amount as the sheet showed it on opening: left as it was, the amount isn't rewritten
+    /// (0.125 shown as «0.13» became 0.13 when only the category changed).
+    @State private var loadedAmountText: String?
     /// The expense's currency. New ones start in the month's currency.
     @State private var currency = CurrencyPreference.current
     /// A refund is saved as a negative amount (the decimal pad has no minus key).
@@ -124,7 +127,8 @@ struct ExpenseEditorView: View {
             return !(amountText + merchant + changedCard + category).trimmingCharacters(in: .whitespaces).isEmpty
                 || !counts || isRefund
         }
-        return parsed?.value != expense.amount.magnitude || isRefund != (expense.amount < 0)
+        return (amountText != loadedAmountText && parsed?.value != expense.amount.magnitude)
+            || isRefund != (expense.amount < 0)
             || counts == expense.isUncounted || (!counts && reason != (expense.reason ?? .reimbursed))
             || merchant != expense.merchant || card != (expense.card ?? "")
             || category != (expense.category ?? "") || date != expense.date
@@ -702,9 +706,8 @@ struct ExpenseEditorView: View {
 
     private func stopRepeating() {
         guard let original else { return }
-        original.repeatsMonthly = nil
-        original.repeatsThrough = nil
-        original.repeatDay = nil
+        // The original keeps counting as the fixed charge it was (`RecurringExpenses.stopRepeating`).
+        RecurringExpenses.stopRepeating(original)
         if persist() { dismiss() }
     }
 
@@ -754,6 +757,7 @@ struct ExpenseEditorView: View {
         reason = expense.reason ?? .reimbursed
         amountText = expense.amount.magnitude
             .formatted(.number.precision(.fractionLength(2)).grouping(.never))
+        loadedAmountText = amountText
         merchant = expense.merchant
         repeatsMonthly = expense.repeatsMonthly == true
         rule = expense.rule
@@ -768,14 +772,9 @@ struct ExpenseEditorView: View {
             || (expense.latitude != nil && expense.longitude != nil)
     }
 
-    /// The fixed expense a copy came from: same merchant and amount, still repeating.
+    /// The fixed expense a copy came from, by its id (`RecurringExpenses.original(of:in:)`).
     private func originalOfCopy(_ expense: Expense) -> Expense? {
-        guard expense.isRepeat == true else { return nil }
-        let merchant = expense.merchant, amount = expense.amount
-        let candidates = try? context.fetch(FetchDescriptor<Expense>(predicate: #Predicate {
-            $0.repeatsMonthly == true && $0.merchant == merchant
-        }))
-        return candidates?.first { $0.amount == amount }
+        RecurringExpenses.original(of: expense, in: context)
     }
 
     /// Fills the fields from `sentence` by plain rules. Nothing is saved until «Guardar». A
@@ -817,13 +816,14 @@ struct ExpenseEditorView: View {
     /// Turning it on starts counting from the expense's own month; turning it off stops it.
     private func setRepeats(_ expense: Expense) {
         if repeatsMonthly {
-            // From now on: marking an old expense must not backfill months already lived (and
-            // maybe already logged by hand).
-            if expense.repeatsMonthly != true { expense.repeatsThrough = max(date, Date.now) }
+            let day = rule.kind == .months ? Calendar.current.component(.day, from: date) : nil
+            expense.repeatsThrough = RecurringExpenses.repeatsThrough(
+                for: date, rule: rule, day: day, wasRepeating: expense.repeatsMonthly == true,
+                current: expense.repeatsThrough)
             expense.repeatsMonthly = true
             expense.repeatRule = rule.stored
             // The day of the month matters only to what repeats by months.
-            expense.repeatDay = rule.kind == .months ? Calendar.current.component(.day, from: date) : nil
+            expense.repeatDay = day
         } else {
             expense.repeatsMonthly = nil
             expense.repeatsThrough = nil
@@ -843,7 +843,9 @@ struct ExpenseEditorView: View {
         // Saved as its ISO code, never "$": a bare "$" would follow the month's currency and
         // change meaning if that is switched later.
         if let expense {
-            expense.amount = value
+            // The amount as it was, unless it was typed again (only the sign may change).
+            let magnitude = amountText == loadedAmountText ? expense.amount.magnitude : parsed.value.magnitude
+            expense.amount = isRefund ? -magnitude : magnitude
             let before = CurrencyResolver.isoCode(for: expense.currencyMarker,
                                                   primary: CurrencyPreference.current)
             if before != currency { expense.currencyMarker = currency }

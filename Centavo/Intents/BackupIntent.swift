@@ -10,8 +10,12 @@ struct BackupIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
-        try DailyBackup.runNow(in: container.mainContext)
+        guard case .success(let container) = Store.opened else {
+            // A night without a backup is said in «Hoy», whatever the reason.
+            UserDefaults.standard.set(Date.now, forKey: DailyBackup.failedKey)
+            throw CaptureError.storeUnavailable
+        }
+        try await DailyBackup.runNow(in: container.mainContext)
         return .result(dialog: "Respaldo guardado.")
     }
 }

@@ -86,11 +86,35 @@ public struct BackupMoney: Codable, Equatable, Sendable {
     public var cuts: [Cut]
     /// Format 3. `nil` in an older file.
     public var incomes: [Income]?
+    /// Cuts left half-done. Only in the copy taken before a restore (2026-11-02, second audit),
+    /// so restoring that copy brings them back; `nil` in the daily files, which leave drafts out.
+    public var drafts: [Cut]?
 
-    public init(accounts: [Account], cuts: [Cut], incomes: [Income]? = nil) {
+    public init(accounts: [Account], cuts: [Cut], incomes: [Income]? = nil, drafts: [Cut]? = nil) {
         self.accounts = accounts
         self.cuts = cuts
         self.incomes = incomes
+        self.drafts = drafts
+    }
+
+    /// Something in it: an account, a cut or an income. An empty «Mi dinero» is nothing to keep.
+    public var hasContent: Bool {
+        !accounts.isEmpty || !cuts.isEmpty || !(incomes ?? []).isEmpty || !(drafts ?? []).isEmpty
+    }
+
+    /// Every figure reads and every line of a cut or a draft names an account the file brings:
+    /// restoring it can't stop halfway. Checked before a damaged «Mi dinero» is set aside
+    /// (independent review), so a broken file never leaves it empty with the good one hidden.
+    public var isWhole: Bool {
+        func reads(_ text: String?) -> Bool { text.map { BackupNumber.value($0) != nil } ?? true }
+        let ids = Set(accounts.map(\.id))
+        guard accounts.allSatisfy({ reads($0.yearlyRate) }),
+              (incomes ?? []).allSatisfy({ reads($0.amount) }) else { return false }
+        return (cuts + (drafts ?? [])).allSatisfy { cut in
+            cut.entries.allSatisfy { line in
+                ids.contains(line.account) && reads(line.balance) && reads(line.yieldOverride) && reads(line.movement)
+            }
+        }
     }
 
     /// What comes in each month (format 3).
@@ -143,10 +167,13 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         public var mainCurrency: String
         public var rates: String
         public var entries: [Entry]
+        /// A draft's currencies already looked at. `nil` in a finished cut and in older files.
+        public var reviewedRates: String?
 
-        public init(id: String, month: String, date: Date, mainCurrency: String, rates: String, entries: [Entry]) {
+        public init(id: String, month: String, date: Date, mainCurrency: String, rates: String, entries: [Entry],
+                    reviewedRates: String? = nil) {
             self.id = id; self.month = month; self.date = date; self.mainCurrency = mainCurrency
-            self.rates = rates; self.entries = entries
+            self.rates = rates; self.entries = entries; self.reviewedRates = reviewedRates
         }
     }
 
@@ -256,10 +283,46 @@ public enum BackupRetention {
     public static let fileExtension = "aldia"
     public static let dailyKept = 30
 
-    public static func fileName(for day: Date, calendar: Calendar = .current) -> String {
-        let parts = calendar.dateComponents([.year, .month, .day], from: day)
-        let name = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
-        return "\(prefix)\(name).\(fileExtension)"
+    /// The calendar every name is written with: always Gregorian, on this phone's clock. A phone
+    /// set to the Japanese or Buddhist calendar wrote «0008-…» or «2569-…» and broke the cleanup;
+    /// UTC wrote tomorrow's date at 21:00 in Mexico (2026-11-02, second audit).
+    public static func calendar(in timeZone: TimeZone = .current) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = timeZone
+        return calendar
+    }
+
+    /// «2026-03-07», or «2026-03-07T210500» with the time.
+    public static func stamp(_ date: Date, timeZone: TimeZone = .current, withTime: Bool = false) -> String {
+        let parts = calendar(in: timeZone).dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        let day = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        guard withTime else { return day }
+        return day + String(format: "T%02d%02d%02d", parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0)
+    }
+
+    public static func fileName(for day: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)\(stamp(day, timeZone: timeZone)).\(fileExtension)"
+    }
+
+    /// A day's expenses alone, when «Mi dinero» didn't open. Not a daily name: never trimmed.
+    public static func partialName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)solo-gastos-\(stamp(date, timeZone: timeZone)).\(fileExtension)"
+    }
+
+    /// What there was before a restore. Never trimmed.
+    public static func safetyName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)antes-de-restaurar-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
+    }
+
+    /// A backup that would have replaced today's file with less (`BackupPlan.aside`). Never trimmed.
+    public static func asideName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)aparte-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
+    }
+
+    /// Any file Al día wrote: daily, apart, or before a restore.
+    public static func isBackupFile(_ name: String) -> Bool {
+        name.hasPrefix(prefix) && name.hasSuffix(".\(fileExtension)")
     }
 
     /// The day in a backup's name, or `nil` for any other file.
@@ -272,9 +335,25 @@ public enum BackupRetention {
         return String(day)
     }
 
+    /// A day no clock gives yet: «2569-…» was written by a phone set to the Buddhist calendar
+    /// before names were Gregorian. Such files are left alone: never deleted (they may be the
+    /// only copy of their day) and never counted among the newest 30 (independent review).
+    static func isPlausible(_ day: String, now: Date) -> Bool {
+        guard let year = Int(day.prefix(4)) else { return false }
+        return year <= calendar().component(.year, from: now) + 1
+    }
+
+    /// The newest daily file, by the day in its name.
+    public static func newestDaily(_ names: [String], now: Date = .now) -> String? {
+        names.compactMap { name in day(of: name).map { (name: name, day: $0) } }
+            .filter { isPlausible($0.day, now: now) }
+            .max { $0.day < $1.day }?.name
+    }
+
     /// The names to delete, from everything in the folder.
-    public static func toDelete(_ names: [String]) -> [String] {
+    public static func toDelete(_ names: [String], now: Date = .now) -> [String] {
         let backups = names.compactMap { name in day(of: name).map { (name: name, day: $0) } }
+            .filter { isPlausible($0.day, now: now) }
             .sorted { $0.day > $1.day }
         var keep = Set(backups.prefix(dailyKept).map(\.name))
         var monthsSeen = Set<String>()

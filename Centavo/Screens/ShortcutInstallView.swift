@@ -12,6 +12,11 @@ struct ShortcutInstallView: View {
     let latest: Expense?
     let stepByStep: () -> Void
 
+    /// iOS 27: the «Notificación» automation replaces the «Transacción» one; with both, every
+    /// purchase arrives twice, each with its own text (2026-11-02, second audit).
+    nonisolated static let removeOldAutomation = "Si ya tenías la automatización de «Transacción» con Al día, bórrala en Atajos: "
+        + "con las dos, cada compra se anotaría dos veces."
+
     private static let file = Bundle.main.url(forResource: "Registrar aviso de Wallet", withExtension: "shortcut")
 
     var body: some View {
@@ -39,6 +44,7 @@ struct ShortcutInstallView: View {
                     instruction("2", "Toca «Agregar atajo». Si ya tenías uno con ese nombre, elige «Reemplazar».")
                     instruction("3", "Arriba del atajo dice que la automatización está apagada: tócalo y enciéndela.")
                     instruction("4", "Compra algo, en línea o acercando el teléfono, y vuelve aquí.")
+                    NoteText(Self.removeOldAutomation)
                 }
                 .padding(Theme.Space.l)
                 .frame(maxWidth: .infinity, alignment: .leading)

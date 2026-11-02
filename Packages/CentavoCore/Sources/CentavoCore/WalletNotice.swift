@@ -29,7 +29,7 @@ public struct WalletNotice: Equatable, Sendable {
             .filter { !$0.isEmpty }
         let folded = lines.joined(separator: " ")
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
-        if received.contains(where: folded.contains) { return nil }
+        if isMoneyIn(folded) { return nil }
         let isRefund = refunds.contains(where: folded.contains)
         // The last line with money: a concept like "OXXO 123 MTY" can look like an amount too.
         guard let index = lines.lastIndex(where: { line in
@@ -98,7 +98,7 @@ public struct WalletNotice: Equatable, Sendable {
     public static func rescue(_ text: String, merchant: String?, card: String?,
                               amountFragment: String) -> WalletNotice? {
         let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
-        if received.contains(where: folded.contains) { return nil }
+        if isMoneyIn(folded) { return nil }
         let figure = amountFragment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !figure.isEmpty, containsWhole(figure, in: text),
               let amount = CaptureText.amount(in: figure), amount.value != 0,
@@ -198,4 +198,27 @@ public struct WalletNotice: Equatable, Sendable {
     /// Money that came in from someone: not spending at all.
     static let received = ["recibiste", "te enviaron", "te envio", "te mando", "deposito recibido",
                            "you received", "sent you", "received from"]
+
+    /// `received` as whole words: «Flete Envío» holds «te envio» as letters, not as words, and
+    /// is a purchase (2026-11-02, second audit). `folded` is already folded.
+    static func isMoneyIn(_ folded: String) -> Bool {
+        let spaced = words(folded)
+        return received.contains { spaced.contains(words($0)) }
+    }
+
+    /// « a b c »: the words alone, one space apart and around, to match whole words.
+    private static func words(_ text: String) -> String {
+        " " + text.components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }.joined(separator: " ") + " "
+    }
+
+    /// A notice that carries a currency code (or symbol) next to a figure and isn't money coming
+    /// in: if it couldn't be read it's kept to say so, never dropped in silence (2026-11-02).
+    public static func mentionsMoney(_ text: String) -> Bool {
+        let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es_MX"))
+        guard !isMoneyIn(folded), text.contains(where: \.isNumber) else { return false }
+        if text.contains(where: { "$€£¥₱₩₹".contains($0) }) { return true }
+        let tokens = text.components(separatedBy: CharacterSet.letters.inverted)
+        return tokens.contains { $0.count == 3 && $0.allSatisfy(\.isUppercase) && CaptureText.isCurrency($0) }
+    }
 }

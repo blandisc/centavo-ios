@@ -48,7 +48,9 @@ struct LogWalletNoticeIntent: AppIntent {
         // Not every Wallet notification is a charge (passes, Apple Cash...): skip those quietly,
         // but keep one that looks like a wrong wiring (see `UnreadNotice`) so the app can say so.
         guard let parsed = read else {
-            UnreadNotice.note(notice)
+            // A notice with a currency next to a figure that couldn't be read is a charge that
+            // would vanish in silence (2026-11-02, second audit): always kept to say so.
+            UnreadNotice.note(notice, always: WalletNotice.mentionsMoney(text))
             return .result()
         }
         UnreadNotice.clear()

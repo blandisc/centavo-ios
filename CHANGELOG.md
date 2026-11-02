@@ -1,6 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **Respaldo, captura y gastos fijos, revisados otra vez (segunda auditoría del 2 de noviembre):**
+  - Restaurar un respaldo ahora sí arregla un «Mi dinero» que no abre: el dañado se guarda aparte en el iPhone, sin borrarse, y se pone el del respaldo.
+  - Un iPhone nuevo o recién instalado ya no puede pisar el respaldo bueno del día con uno vacío ni hacer que la limpieza borre los del mes: dice «Parece un iPhone nuevo: restaura tu respaldo antes de respaldar.» Un respaldo con menos gastos que el del día se guarda aparte.
+  - Si el respaldo no sube a iCloud (sin espacio) o lleva más de un día subiendo, «Hoy» lo avisa, y no se borran respaldos viejos hasta que suba.
+  - Restaurar guarda en la copia «antes de restaurar» el corte que tenías a medias.
+  - Los nombres de los respaldos usan la fecha de tu iPhone (a las 21:00 ya no sale la de mañana) y el calendario gregoriano.
+  - Si el iPhone no deja leer la contraseña del respaldo, lo dice en vez de pedirte crearla; si no se pudo guardar la contraseña, también lo dice. «No coinciden.» y «Mínimo 8 caracteres.» se ven al escribirla.
+  - «Respaldar ahora» ya no congela la pantalla.
+  - La pantalla de «no pudo abrir tus gastos» se desplaza con letra grande y dice qué hacer.
+  - Un mismo pago que llega por las dos automatizaciones de Wallet se marca «¿Repetida?», y la guía de iOS 27 pide borrar la de «Transacción».
+  - Montos en dinares («JOD 1.250», «BHD 0.750») se leen bien; un aviso con moneda que no se pudo leer ya no se pierde en silencio. «Flete Envío» ya no se toma por dinero recibido.
+  - Gastos fijos: empezado en dos dispositivos queda uno; marcar un gasto viejo como «Cada mes» ya no se salta el cobro de este mes; cambiar su fecha no crea una copia el mismo día; «Dejar de repetir» ya no baja de golpe «Hoy puedes gastar» y encuentra su original aunque haya dos con el mismo nombre.
+  - Cambiar solo la categoría ya no redondea el monto; un gasto por Siri que falló al guardarse ya no aparece después; un comercio que escribiste no se cambia solo; «No es repetida», «Sí cuenta» y «No cuenta» avisan si no se pudieron guardar.
 ### Changed
 - **El ejemplo de «Hoy puedes gastar»** en la hoja del presupuesto recorre la semana una vez y se queda en el final; tócalo para verlo otra vez.
 ### Security

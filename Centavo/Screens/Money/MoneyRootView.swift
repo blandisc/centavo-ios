@@ -256,7 +256,7 @@ struct MoneyStoreErrorView: View {
             Text("«Mi dinero» no pudo abrir")
                 .font(.ticket(.heading))
                 .foregroundStyle(Theme.ink)
-            Text("Tus gastos de «Hoy» están bien. Cierra Al día por completo y vuelve a abrirla. Si sigue igual, restaurar un respaldo en Ajustes lo arregla, pero también regresa tus gastos al día de ese respaldo.")
+            Text("Tus gastos de «Hoy» están bien. Cierra Al día por completo y vuelve a abrirla. Si sigue igual, restaurar un respaldo en Más › Ajustes › Respaldo diario lo arregla: «Mi dinero» que no abre se guarda aparte en este iPhone, sin borrarse. Restaurar también regresa tus gastos al día de ese respaldo.")
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)

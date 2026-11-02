@@ -354,6 +354,10 @@ struct ExpenseListView: View {
             edit: { editing = $0 },
             askDelete: { pendingDelete = $0 },
             setCategory: { setCategory($0, of: $1) },
+            change: { expense, edit in
+                edit(expense)
+                persist()
+            },
             logAgain: { logAgain($0) }
         )
     }
@@ -386,6 +390,9 @@ private struct HomeActions {
     let edit: (Expense) -> Void
     let askDelete: (Expense) -> Void
     let setCategory: (String, Expense) -> Void
+    /// A change from the row's menu («No es repetida», «Sí cuenta», «No cuenta»), saved right
+    /// then; if it fails, it's said (2026-11-02, second audit: it was saved with `try?`).
+    let change: (Expense, (Expense) -> Void) -> Void
     let logAgain: (Expense) -> Void
 }
 
@@ -713,19 +720,16 @@ private struct HomeLedger: View {
                         // «Me lo reembolsan»; after that, the reason it had before.
                         if expense.maybeRepeated == true {
                             Button("No es repetida", systemImage: "checkmark.circle") {
-                                expense.maybeRepeated = nil
-                                try? expense.modelContext?.save()
+                                actions.change(expense) { $0.maybeRepeated = nil }
                             }
                         }
                         if expense.isUncounted {
                             Button("Sí cuenta", systemImage: "checkmark.circle") {
-                                expense.markCounted()
-                                try? expense.modelContext?.save()
+                                actions.change(expense) { $0.markCounted() }
                             }
                         } else {
                             Button("No cuenta", systemImage: "nosign") {
-                                expense.markUncounted(expense.reason ?? .reimbursed)
-                                try? expense.modelContext?.save()
+                                actions.change(expense) { $0.markUncounted($0.reason ?? .reimbursed) }
                             }
                         }
                         Menu {
