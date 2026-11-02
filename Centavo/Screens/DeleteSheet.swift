@@ -11,6 +11,7 @@ private struct DeleteSheet: View {
     let confirm: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var height: CGFloat = 320 // ds-allow: altura inicial antes de medir el contenido
 
     private var details: String {
@@ -21,6 +22,25 @@ private struct DeleteSheet: View {
     }
 
     var body: some View {
+        if typeSize.isAccessibilitySize {
+            // With the largest text it may not fit under the thumb: the whole sheet, scrolling,
+            // so «Borrar» and «Conservar» are always reachable (audit 2026-11-02).
+            ScrollView { ticket }
+                .presentationDetents([.large])
+                .presentationBackground(Theme.background)
+                .presentationCornerRadius(Theme.Radius.sheet)
+        } else {
+            ticket
+                .fixedSize(horizontal: false, vertical: true)
+                // As tall as what it holds.
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+                .presentationDetents([.height(height)])
+                .presentationBackground(Theme.background)
+                .presentationCornerRadius(Theme.Radius.sheet)
+        }
+    }
+
+    private var ticket: some View {
         VStack(spacing: Theme.Space.none) {
             // Ink like every other sheet's title.
             Text("¿Borrar este gasto?")
@@ -85,12 +105,6 @@ private struct DeleteSheet: View {
         .padding(.horizontal, Theme.Space.screen)
         .padding(.top, Theme.Space.xxxl)
         .padding(.bottom, Theme.Space.s)
-        .fixedSize(horizontal: false, vertical: true)
-        // As tall as what it holds, at any text size.
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
-        .presentationDetents([.height(height)])
-        .presentationBackground(Theme.background)
-        .presentationCornerRadius(Theme.Radius.sheet)
     }
 }
 

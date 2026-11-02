@@ -18,6 +18,9 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @AppStorage(PaymentPlace.key) private var savesPlace = false
     @AppStorage(WalletWatch.key) private var ignoresWallet = false
+    @Environment(\.scenePhase) private var scenePhase
+    /// The location is off for the app in the iPhone's Ajustes: «Guardar dónde pagas» can't work.
+    @State private var locationDenied = PaymentPlace.isDenied
     /// The whole history as a CSV, read once when the sheet opens (not on every redraw).
     @State private var csv: ExpensesCSVFile?
 
@@ -54,17 +57,22 @@ struct SettingsView: View {
                     }
                     .tint(Theme.brass)
                     .accessibilityIdentifier("ajustes-avisar-wallet")
-                    Toggle(isOn: Binding(get: { savesPlace }, set: { on in
+                    // Off, and not switchable, while the iPhone denies the location: on, it would
+                    // say it saves where you pay and save nothing (audit 2026-11-02).
+                    Toggle(isOn: Binding(get: { savesPlace && !locationDenied }, set: { on in
                         savesPlace = on
                         if on { PaymentPlace.requestPermission() }
                     })) {
                         IconRow("Guardar dónde pagas", systemImage: "mappin.and.ellipse") { EmptyView() }
                     }
                     .tint(Theme.brass)
+                    .disabled(locationDenied)
+                    .accessibilityIdentifier("ajustes-ubicacion")
                 } header: {
                     Text("Wallet").ticketCaption()
                 } footer: {
-                    HintText("Si no usas Wallet, apaga el aviso y la pantalla principal deja de pedirte que lo conectes. «Dónde pagas» usa la ubicación del iPhone al anotar.")
+                    HintText("Si no usas Wallet, apaga el aviso y la pantalla principal deja de pedirte que lo conectes. «Dónde pagas» usa la ubicación del iPhone al anotar."
+                             + (locationDenied ? " La ubicación está apagada para Al día en Ajustes del iPhone." : ""))
                 }
                 .listRowBackground(Theme.surface)
 
@@ -83,7 +91,7 @@ struct SettingsView: View {
                     NavigationLink {
                         BackupSettingsView()
                     } label: {
-                        IconRow("Respaldo diario", systemImage: "lock.icloud") {
+                        IconRow("Respaldo diario", systemImage: "lock.doc") {
                             Text(backupText)
                                 .font(.ticket(.detail))
                                 .foregroundStyle(Theme.muted)
@@ -117,6 +125,13 @@ struct SettingsView: View {
                 let all = (try? context.fetch(FetchDescriptor<Expense>(
                     sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
                 csv = ExpensesCSVFile(expenses: all, primaryCurrency: currency)
+            }
+            // The answer to the system's question, or a change made in Ajustes of the iPhone.
+            .onReceive(NotificationCenter.default.publisher(for: PaymentPlace.permissionChanged)) { _ in
+                locationDenied = PaymentPlace.isDenied
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { locationDenied = PaymentPlace.isDenied }
             }
         }
     }

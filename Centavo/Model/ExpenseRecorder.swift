@@ -33,6 +33,7 @@ enum ExpenseRecorder {
         rules: CategoryRules = UserCatalog.categoryRules,
         hidden: [String] = UserCatalog.notAutoAssigned,
         renames: MerchantRenames = UserCatalog.merchantRenames,
+        cardRenames: MerchantRenames = UserCatalog.cardRenames,
         now: Date = .now,
         saved: ((Expense) -> Void)? = nil
     ) throws -> CaptureOutcome {
@@ -50,7 +51,8 @@ enum ExpenseRecorder {
         let renamed = renames.name(for: sent)
         let merchantName = renamed ?? sent
         // A card that is only spaces is no card: it would print as an empty gap in the ledger.
-        let cardName = card?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A card renamed in «Pagos y categorías» comes back with its new name.
+        let cardName = card.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.map { cardRenames.name(for: $0) ?? $0 }
         let cleanCard = (cardName?.isEmpty ?? true) ? nil : cardName
 
         // A bare «$» is the main currency of today, kept as its code (2026-11-02).

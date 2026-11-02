@@ -17,6 +17,8 @@ struct FixedExpensesView: View {
     /// The new fixed expense being written, with the name of a suggestion if one was tapped.
     @State private var adding: NewFixed?
     @State private var editing: Expense?
+    /// A fixed expense still to start, opened to change it.
+    @State private var editingPlan: FixedPlan?
     /// A fixed expense about to stop or be deleted, waiting for the answer.
     @State private var confirming: FixedItem?
     @State private var saveProblem: String?
@@ -73,7 +75,7 @@ struct FixedExpensesView: View {
 
                 Section {
                     ForEach(items) { item in
-                        Button { editing = item.original } label: { row(item) }
+                        Button { open(item) } label: { row(item) }
                             .buttonStyle(.plain)
                             // No role: a destructive swipe would take the row out before the question.
                             .swipeActions(edge: .trailing) {
@@ -138,6 +140,7 @@ struct FixedExpensesView: View {
             } message: { Text(saveProblem ?? "") }
             .sheet(item: $adding) { FixedPlanSheet(initialName: $0.name) }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
+            .sheet(item: $editingPlan) { FixedPlanSheet(editing: $0) }
             .onAppear { try? RecurringExpenses.logDue(in: context) }
         }
     }
@@ -219,7 +222,7 @@ struct FixedExpensesView: View {
                 Spacer()
                 summaryFigure("Por venir", money(coming, primary), brass: true)
             }
-            NoteText("Lo que está por venir ya no cuenta en «Hoy puedes gastar».", color: Theme.faint)
+            NoteText("Lo que está por venir ya se apartó de «Hoy puedes gastar».", color: Theme.faint)
         }
         .padding(.vertical, Theme.Space.s)
         .accessibilityElement(children: .combine)
@@ -247,6 +250,15 @@ struct FixedExpensesView: View {
             Text(amount)
                 .font(.ticket(.headline))
                 .foregroundStyle(brass ? Theme.brass : Theme.ink)
+        }
+    }
+
+    /// One already running opens as an expense; one still to start, in its own sheet.
+    private func open(_ item: FixedItem) {
+        if let original = item.original {
+            editing = original
+        } else if let plan = item.plan {
+            editingPlan = plan
         }
     }
 
@@ -292,14 +304,37 @@ struct FixedPlanSheet: View {
     /// `initialName`: a suggestion tapped on «Gastos fijos» («Renta»), already written.
     init(initialName: String = "") {
         self.initialName = initialName
+        editing = nil
         _merchant = State(initialValue: initialName)
     }
+
+    /// One still to start, to change: saving replaces it (same id), or starts it if its first
+    /// charge is now today or before.
+    init(editing plan: FixedPlan) {
+        initialName = plan.merchant
+        editing = plan
+        _merchant = State(initialValue: plan.merchant)
+        _amountText = State(initialValue: plan.amount)
+        _rule = State(initialValue: plan.repeatRule)
+        _firstDay = State(initialValue: plan.firstDate)
+        _category = State(initialValue: plan.category ?? "")
+        // Its category was already chosen: the name no longer changes it.
+        _pickedCategory = State(initialValue: plan.category != nil)
+        _card = State(initialValue: plan.card ?? "")
+    }
     private let initialName: String
+    private let editing: FixedPlan?
 
     /// Something typed or picked: a stray swipe down must not throw it away.
     private var hasChanges: Bool {
-        !amountText.isEmpty || merchant != initialName || !card.isEmpty || pickedCategory
+        if let editing {
+            return amountText != editing.amount || merchant != editing.merchant || card != (editing.card ?? "")
+                || category != (editing.category ?? "") || rule != editing.repeatRule || firstDay != editing.firstDate
+        }
+        return !amountText.isEmpty || merchant != initialName || !card.isEmpty || pickedCategory
     }
+
+    private var currency: String { editing?.currency ?? CurrencyPreference.current }
 
     private var customCategories: [LabeledIcon] { UserCatalog.decode(storedCategories) }
     private var sources: [LabeledIcon] { UserCatalog.decode(storedSources) }
@@ -335,7 +370,7 @@ struct FixedPlanSheet: View {
                     AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "fijo-monto")
                         .focused($amountFocused)
                 } header: {
-                    Text("Monto (\(CurrencyPreference.current))").ticketCaption()
+                    Text("Monto (\(currency))").ticketCaption()
                 }
                 .listRowBackground(Theme.surface)
 
@@ -401,7 +436,7 @@ struct FixedPlanSheet: View {
             .ticketForm()
             .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle("Nuevo gasto fijo")
+            .ticketBarTitle(editing == nil ? "Nuevo gasto fijo" : "Gasto fijo")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
@@ -431,24 +466,38 @@ struct FixedPlanSheet: View {
         pastExpenses = history.map(\.categorized)
         knownCategories = CategoryMemory.known(in: pastExpenses)
         knownCards = PaymentChoices.mostUsedCards(history.prefix(300).map(\.card))
-        amountFocused = true
+        amountFocused = editing == nil
     }
 
     private func save() {
         guard let amount else { return }
+        // Started meanwhile (its day came, or another device started it): it is no longer a
+        // plan, and saving would make a second one (independent review, 2026-11-02).
+        if let editing, !FixedPlan.saved.contains(where: { $0.id == editing.id }) {
+            problem = "Este gasto fijo ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo."
+            return
+        }
         let categoryName = category.trimmingCharacters(in: .whitespaces)
         let cardName = card.trimmingCharacters(in: .whitespaces)
-        let plan = FixedPlan(
+        var plan = FixedPlan(
             merchant: String(name.prefix(ExpenseRecorder.maxMerchantLength)),
             amount: "\(amount)",
-            currency: CurrencyPreference.current,
+            currency: currency,
             category: categoryName.isEmpty ? nil : categoryName,
             card: cardName.isEmpty ? nil : cardName,
             rule: rule.stored,
             firstDate: firstDate
         )
-        // Picked by hand: the next expense from here starts with it too.
-        if pickedCategory, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
+        if let editing {
+            plan.id = editing.id
+            // The day asked for («31») holds while the date is the same.
+            if firstDay == editing.firstDate { plan.firstDate = editing.firstDate; plan.day = editing.day }
+        }
+        let others = FixedPlan.saved.filter { $0.id != editing?.id }
+        // Picked by hand: the next expense from here starts with it too. Editing one, only if
+        // it was changed (it opens already picked).
+        let chosen = editing.map { !UserCatalog.same(categoryName, $0.category ?? "") } ?? pickedCategory
+        if chosen, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
         if plan.firstDate <= .now {
             context.insert(RecurringExpenses.original(from: plan))
             do {
@@ -458,9 +507,13 @@ struct FixedPlanSheet: View {
                 problem = "Al día no pudo guardar el gasto fijo. Intenta otra vez."
                 return
             }
+            // It started: it is no longer a plan.
+            if editing != nil { FixedPlan.save(others) }
             try? RecurringExpenses.logDue(in: context)
+        } else if let editing {
+            FixedPlan.save(FixedPlan.saved.map { $0.id == editing.id ? plan : $0 })
         } else {
-            FixedPlan.save(FixedPlan.saved + [plan])
+            FixedPlan.save(others + [plan])
         }
         dismiss()
     }

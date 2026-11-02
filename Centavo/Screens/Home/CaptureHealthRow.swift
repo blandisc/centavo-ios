@@ -38,7 +38,7 @@ struct CaptureHealthRow: View {
         case .quiet(let days):
             return ("Sin pagos de Wallet desde hace \(days) días", "Si sí pagaste, toca para revisar el atajo.")
         default:
-            return ("Wallet sin conectar", "Conéctalo una vez y cada compra se anota sola.")
+            return ("Wallet sin conectar", "Conéctalo una vez y cada pago con Apple Pay se anota solo.")
         }
     }
 

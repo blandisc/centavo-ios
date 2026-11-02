@@ -36,8 +36,6 @@ extension Theme.Motion {
         static let heroCycle: Double = 6.4
         /// Where the hero stands with reduced motion: full and still.
         static let heroRest: Double = 0.6
-        /// The sheen stays hidden with reduced motion.
-        static let sheenRest: Double = 0
         static let kindCycle: Double = 4.4
         static let faceCycle: Double = 5
         /// How many turns a looping drawing makes before it rests on its still frame.

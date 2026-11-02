@@ -26,6 +26,9 @@ enum UserCatalog {
     static let deletedCategoriesKey = "deletedCategories"
     /// The names the owner gave merchants by hand (`MerchantRenames`), synced too.
     static let merchantRenamesKey = "merchantRenames"
+    /// Cards renamed in «Pagos y categorías» (`MerchantRenames`, keyed the same way), synced too:
+    /// Wallet keeps sending the old name.
+    static let cardRenamesKey = "cardRenames"
     /// The color each category and each card or cash keeps (`ColorTags`), synced too.
     static let categoryColorsKey = "categoryColors"
     static let sourceColorsKey = "sourceColors"
@@ -94,6 +97,20 @@ enum UserCatalog {
         let stored = renames.stored
         UserDefaults.standard.set(stored, forKey: merchantRenamesKey)
         if Store.syncsBudget { BudgetSync.push(stored, for: merchantRenamesKey) }
+    }
+
+    /// The cards renamed by hand, for the capture.
+    static var cardRenames: MerchantRenames {
+        MerchantRenames(stored: UserDefaults.standard.string(forKey: cardRenamesKey) ?? "")
+    }
+
+    /// The owner renamed the card `old` to `new`: Wallet's next payment with `old` is saved as `new`.
+    static func learnCardRename(_ old: String, to new: String) {
+        var renames = cardRenames
+        renames.rename(old, to: new)
+        let stored = renames.stored
+        UserDefaults.standard.set(stored, forKey: cardRenamesKey)
+        if Store.syncsBudget { BudgetSync.push(stored, for: cardRenamesKey) }
     }
 
     /// One of their categories was renamed: what was filed under the old name follows it.

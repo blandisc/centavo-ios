@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **Segunda auditoría de textos y animaciones:**
+  - «Cómo funciona»: la historia del mes muestra el boleto («Tu mes en un boleto»), la cifra de arriba explica lo que se suma o resta de días anteriores y el respaldo dice que hace falta la automatización «Respaldar Al día» en Atajos.
+  - Un gasto fijo que aún no empieza se abre al tocarlo para cambiarlo. Al editar uno que ya empezó, la hoja avisa que cambiar el monto cambia también el primer cobro.
+  - Cambiarle el nombre a una categoría o a una forma de pago lo cambia también en los gastos que ya la tenían y en los fijos por empezar: la categoría ya no queda partida en dos, y los pagos de Wallet con la tarjeta renombrada llegan con su nombre nuevo.
+  - «Anotar otra vez» se puede deshacer unos segundos («Anotaste otra vez Oxxo · Deshacer»).
+  - «Guardar dónde pagas» se ve apagado, y lo dice, si la ubicación está apagada para Al día en los Ajustes del iPhone.
+  - Las pastillas de montos y de ejemplos de búsqueda bajan de renglón con letra grande, y «¿Borrar este gasto?» se desplaza con la letra más grande.
+  - Textos: «cada pago con Apple Pay se anota solo», rutas «Más › Presupuesto del mes» y «Más › Gastos fijos», «Ya tienes una con ese nombre», «No hay un monto en…», «tu cifra por día» en el boleto; el respaldo usa un ícono de documento con candado.
+  - Animaciones: las historias ya no se enciman al cambiar; su barra avanza con una sola animación; la celda de hoy respira después de que aparece el boleto; la bienvenida, la cadena de Wallet y la respiración se detienen si se activa el modo de bajo consumo; la guía del atajo y la barra de deshacer respetan «Reducir movimiento»; el dibujo de la guía que no está a la vista ya no corre.
+  - Rendimiento: «Hoy» ya no recorre todos los gastos del mes en cada redibujo y «Pagos y categorías» lee solo las categorías y tarjetas.
 ### Fixed
 - **«Mi dinero» y los cálculos de «Hoy», revisados otra vez (segunda auditoría del 2 de noviembre):**
   - Importar ya no guarda $12 cuando tu Excel decía «12,000» sin comillas: un renglón con columnas de más o de menos, o con tres cifras sueltas después del monto, va a revisión con «¿un monto con comas?». Una moneda que no existe («ABC») también va a revisión.

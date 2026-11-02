@@ -27,8 +27,10 @@ final class HomeModel {
     @ObservationIgnored var swipeBlocked = false
     /// Where the carousel's pages stand, moved by the swipe over the whole top of the screen.
     let carousel = CarouselMotion()
-    /// Goes up each time the store saves, so a search on screen is asked again (an edit can
-    /// make an expense match or stop matching).
+    /// Goes up each time the store saves (here, or iCloud bringing changes), so a search on
+    /// screen is asked again (an edit can make an expense match or stop matching) and the
+    /// month's numbers are worked out again. Reading it is what has the screen redraw after an
+    /// expense is edited in place.
     private(set) var revision = 0
 
     /// How long typing has to pause before the search runs over every month.
@@ -48,7 +50,10 @@ final class HomeModel {
     /// Everything about the month on screen. `rows` are that month's expenses, newest first;
     /// `originals` the fixed expenses' first charges.
     func month(_ inputs: MonthInputs, rows: [Expense], originals: [Expense]) -> HomeMonth {
-        let key = MonthKey(inputs: inputs, rows: Self.fingerprint(rows), originals: Self.fingerprint(originals))
+        // The save counter and a light print of the rows (independent review, 2026-11-02): a
+        // counter alone missed what iCloud or a restore merged after it moved.
+        let key = MonthKey(inputs: inputs, rows: Self.lightPrint(rows), originals: Self.fixedPrint(originals),
+                           revision: revision)
         return monthMemo.value(for: key) { Self.makeMonth(inputs, rows: rows, originals: originals) }
     }
 
@@ -117,7 +122,8 @@ final class HomeModel {
     /// The month's most useful fact (`MonthNote`), from the last few months' `rows`.
     /// `reserved`: the fixed expenses still to come, which the projection adds (second audit).
     func note(rows: [Expense], now: Date, primary: String, budget: String, reserved: Decimal = 0) -> String? {
-        let key = NoteKey(now: now, primary: primary, budget: budget, rows: Self.fingerprint(rows), reserved: reserved)
+        let key = NoteKey(now: now, primary: primary, budget: budget, rows: Self.lightPrint(rows), revision: revision,
+                          reserved: reserved)
         return noteMemo.value(for: key) {
             MonthNote.facts(rows, now: now, primary: primary, budget: BudgetStore.amount(from: budget),
                             reserved: reserved).first?.line
@@ -224,17 +230,10 @@ final class HomeModel {
         return descriptor
     }
 
-    /// The newest `limit` expenses.
-    static func newest(_ limit: Int) -> FetchDescriptor<Expense> {
-        var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = limit
-        return descriptor
-    }
-
-    /// What of each expense the screen's numbers use: when it changes (an amount, a category,
-    /// «No cuenta»), they are worked out again. Reading it is also what has the screen redraw
-    /// when one of them is edited in place.
-    static func fingerprint(_ rows: [Expense]) -> Int {
+    /// Only what the month's numbers read of each row: which one, when, how much, how much
+    /// counts, in what and under what. Reading them is also what has the screen redraw when
+    /// one is changed in place, or by a merge.
+    static func lightPrint(_ rows: [Expense]) -> Int {
         var hasher = Hasher()
         hasher.combine(rows.count)
         for row in rows {
@@ -244,16 +243,30 @@ final class HomeModel {
             hasher.combine(row.countedAmount)
             hasher.combine(row.currencyMarker)
             hasher.combine(row.category)
-            hasher.combine(row.merchant)
-            hasher.combine(row.displayName)
+        }
+        return hasher.finalize()
+    }
+
+    /// The fixed expenses' first charges, with how they repeat: what sets the month's fixed part.
+    static func fixedPrint(_ rows: [Expense]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(lightPrint(rows))
+        for row in rows {
             hasher.combine(row.repeatsMonthly)
-            hasher.combine(row.isRepeat)
             hasher.combine(row.repeatsThrough)
             hasher.combine(row.repeatDay)
             hasher.combine(row.repeatRule)
         }
         return hasher.finalize()
     }
+
+    /// The newest `limit` expenses.
+    static func newest(_ limit: Int) -> FetchDescriptor<Expense> {
+        var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = limit
+        return descriptor
+    }
+
 }
 
 /// What the month's numbers depend on besides its expenses.
@@ -273,6 +286,7 @@ private struct MonthKey: Equatable {
     let inputs: MonthInputs
     let rows: Int
     let originals: Int
+    let revision: Int
 }
 
 private struct NoteKey: Equatable {
@@ -280,6 +294,7 @@ private struct NoteKey: Equatable {
     let primary: String
     let budget: String
     let rows: Int
+    let revision: Int
     let reserved: Decimal
 }
 

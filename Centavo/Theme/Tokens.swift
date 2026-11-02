@@ -228,14 +228,10 @@ extension Theme {
         static let pageGlideTopSpeed: Double = 8
         /// A swipe settling, a dot sliding.
         static let settle: Animation = .smooth(duration: 0.3)
-        /// A height easing to the next page.
-        static let resize: Animation = .smooth(duration: 0.4)
         /// A layout changing style or size.
         static let restyle: Animation = .smooth(duration: 0.45)
         /// The hero figure counting up on open.
         static let countUp: Animation = .smooth(duration: 0.9)
-        /// A slow breathing pulse (a tile asking to be looked at).
-        static let pulse: Animation = .easeInOut(duration: 1.4)
         /// A tap that opens or closes a detail; it settles without a bounce.
         static let toggle: Animation = .spring(duration: 0.45, bounce: 0)
 
@@ -244,16 +240,10 @@ extension Theme {
             static let fill: Animation = .spring(duration: 0.9, bounce: 0).delay(0.1)
             static let refill: Animation = .spring(duration: 0.6, bounce: 0)
             static let markers: Animation = .easeOut(duration: 0.3).delay(0.5)
-            /// One bar of the chart; `index` staggers them left to right.
-            static func bar(_ index: Int) -> Animation {
-                .spring(duration: 0.4, bounce: 0).delay(0.45 + Double(index) * 0.035)
-            }
             static let today: Animation = .easeOut(duration: 0.35).delay(0.7)
             static let annotation: Animation = .easeOut(duration: 0.4).delay(0.75)
             static let pace: Animation = .easeOut(duration: 0.4).delay(0.8)
             static let legend: Animation = .easeOut(duration: 0.4).delay(0.9)
-            /// Bars start this tall (fraction of their height) and grow to full.
-            static let barStart: CGFloat = 0.3
         }
 
         /// Runs `body` with no animation at all: a filter that swaps a list must not fade the old

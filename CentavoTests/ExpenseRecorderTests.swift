@@ -457,4 +457,19 @@ final class ExpenseRecorderTests: XCTestCase {
                                    now: now.addingTimeInterval(3_600))
         XCTAssertEqual(try saved().last?.merchant, "OXXO SUC 5678")
     }
+
+    /// A card renamed in «Pagos y categorías» comes back from Wallet with its new name; another
+    /// card keeps its own.
+    func testARenamedCardArrivesWithItsNewName() throws {
+        var cards = MerchantRenames()
+        cards.rename("BBVA", to: "Débito BBVA")
+        try ExpenseRecorder.record(amountText: "$45.00", merchant: "Oxxo", card: "bbva ", in: context,
+                                   rules: CategoryRules(), hidden: [], renames: MerchantRenames(),
+                                   cardRenames: cards, now: now)
+        XCTAssertEqual(try saved().last?.card, "Débito BBVA")
+        try ExpenseRecorder.record(amountText: "$20.00", merchant: "Uber", card: "Nu", in: context,
+                                   rules: CategoryRules(), hidden: [], renames: MerchantRenames(),
+                                   cardRenames: cards, now: now.addingTimeInterval(3_600))
+        XCTAssertEqual(try saved().last?.card, "Nu")
+    }
 }

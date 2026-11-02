@@ -16,6 +16,15 @@ enum PaymentPlace {
         return status == .authorizedWhenInUse || status == .authorizedAlways
     }
 
+    /// The person said no (or the iPhone doesn't let it): only Ajustes of the iPhone turns it on.
+    static var isDenied: Bool {
+        let status = CLLocationManager().authorizationStatus
+        return status == .denied || status == .restricted
+    }
+
+    /// Posted when the location permission changes (the answer to the system's question).
+    static let permissionChanged = Notification.Name("PaymentPlace.permissionChanged")
+
     /// Where the iPhone is now, or `nil` (off, no permission, no fix within a few seconds).
     static func current(timeout: Duration = .seconds(6)) async -> CLLocationCoordinate2D? {
         guard isOn, isAllowed else { return nil }
@@ -34,6 +43,10 @@ enum PaymentPlace {
         func request() {
             manager.delegate = self
             manager.requestWhenInUseAuthorization()
+        }
+
+        nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+            Task { @MainActor in NotificationCenter.default.post(name: PaymentPlace.permissionChanged, object: nil) }
         }
     }
 }
