@@ -210,12 +210,13 @@ extension Theme {
     /// Timings. Always go through `Theme.Motion.animation(_:reduceMotion:)` or check
     /// `accessibilityReduceMotion` yourself: with «Reducir movimiento» nothing slides.
     enum Motion {
-        /// A tap's answer: selection, a filter, a small figure rolling.
-        static let quick: Animation = .snappy
+        /// A tap's answer: selection, a filter, a small figure rolling. No bounce (owner: every
+        /// animation settles, nothing overshoots; audit 2026-11-02).
+        static let quick: Animation = .smooth(duration: 0.3)
         /// A ring or a tint answering a tap (a day, a category): short enough to feel instant.
         static let select: Animation = .easeOut(duration: 0.12)
         /// A page changing.
-        static let page: Animation = .snappy(duration: 0.3)
+        static let page: Animation = .smooth(duration: 0.3)
         /// The hero's two pages (boleto and calendar) gliding to rest once the finger lets go:
         /// they leave at the finger's speed (`velocity`, in page-distances per second) and brake
         /// to a stop with no bounce (owner, 2026-10-30: «más suave, elegante»). A tapped dot
@@ -232,20 +233,20 @@ extension Theme {
         /// A layout changing style or size.
         static let restyle: Animation = .smooth(duration: 0.45)
         /// The hero figure counting up on open.
-        static let countUp: Animation = .snappy(duration: 0.9)
+        static let countUp: Animation = .smooth(duration: 0.9)
         /// A slow breathing pulse (a tile asking to be looked at).
         static let pulse: Animation = .easeInOut(duration: 1.4)
-        /// A tap that opens or closes a detail with a small bounce.
-        static let toggle: Animation = .spring(duration: 0.45, bounce: 0.2)
+        /// A tap that opens or closes a detail; it settles without a bounce.
+        static let toggle: Animation = .spring(duration: 0.45, bounce: 0)
 
         /// The month bar drawing itself when the screen opens, in order.
         enum Entrance {
-            static let fill: Animation = .spring(duration: 0.9, bounce: 0.18).delay(0.1)
-            static let refill: Animation = .spring(duration: 0.6, bounce: 0.15)
+            static let fill: Animation = .spring(duration: 0.9, bounce: 0).delay(0.1)
+            static let refill: Animation = .spring(duration: 0.6, bounce: 0)
             static let markers: Animation = .easeOut(duration: 0.3).delay(0.5)
             /// One bar of the chart; `index` staggers them left to right.
             static func bar(_ index: Int) -> Animation {
-                .spring(duration: 0.4, bounce: 0.3).delay(0.45 + Double(index) * 0.035)
+                .spring(duration: 0.4, bounce: 0).delay(0.45 + Double(index) * 0.035)
             }
             static let today: Animation = .easeOut(duration: 0.35).delay(0.7)
             static let annotation: Animation = .easeOut(duration: 0.4).delay(0.75)
@@ -261,7 +262,8 @@ extension Theme {
             withTransaction(Transaction(animation: nil), body)
         }
 
-        /// `animation`, or none with «Reducir movimiento» on.
+        /// `animation`, or none with «Reducir movimiento» on. Drawings and loops go through
+        /// `MotionPolicy` instead, which also stands still in Low Power Mode.
         static func animation(_ animation: Animation, reduceMotion: Bool) -> Animation? {
             reduceMotion ? nil : animation
         }

@@ -130,9 +130,10 @@ final class HomeModel {
         let key = SearchKey(query: query, now: now, stamp: stamp, revision: revision)
         return searchMemo.value(for: key) {
             let parsed = ExpenseSearch.query(from: key.query, now: now)
-            let all = (try? context.fetch(FetchDescriptor<Expense>(
-                sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-            let found = all.filter { ExpenseSearch.matches($0.searchable, parsed) }
+            // The store narrows it down first (audit 2026-11-02: every letter loaded every
+            // expense); the exact rule (`ExpenseSearch.matches`) then decides, as before.
+            let candidates = (try? context.fetch(Self.searchCandidates(for: parsed))) ?? []
+            let found = candidates.filter { ExpenseSearch.matches($0.searchable, parsed) }
             return HomeSearch(count: found.count, groups: DayGroup.split(found))
         }
     }
@@ -177,11 +178,47 @@ final class HomeModel {
                         sortBy: [SortDescriptor(\.date, order: .reverse)])
     }
 
-    /// Every expense, but only its date: how many there are, the newest and the oldest. A
-    /// payment that lands, a delete or an import changes it; nothing reads the rest of each row.
-    static var dated: FetchDescriptor<Expense> {
-        var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.propertiesToFetch = [\.date]
+    /// What the store can rule out of a search, newest first: never fewer than
+    /// `ExpenseSearch.matches` would keep. A word that can't be part of an amount must be in
+    /// the merchant, its readable name, the category or the card, ignoring accents and
+    /// capitals (`localizedStandardContains`); the longest one narrows the most. With only a
+    /// month, the month's days, or an expense named after it («Don Julio»). With only amounts,
+    /// everything (an amount's sign is not something the store compares).
+    static func searchCandidates(for query: SearchQuery) -> FetchDescriptor<Expense> {
+        let newestFirst = [SortDescriptor(\Expense.date, order: .reverse)]
+        guard query.category == nil else { return FetchDescriptor(sortBy: newestFirst) }
+        let wordy = query.words.filter { $0.contains { !$0.isNumber && $0 != "." } }
+        if let word = wordy.max(by: { $0.count < $1.count }) {
+            return FetchDescriptor(predicate: names(containing: word), sortBy: newestFirst)
+        }
+        if query.words.isEmpty, let interval = query.interval, let month = query.monthWord {
+            let start = interval.start, end = interval.end
+            let named = names(containing: month)
+            return FetchDescriptor(predicate: #Predicate<Expense> { expense in
+                (expense.date >= start && expense.date <= end) || named.evaluate(expense)
+            }, sortBy: newestFirst)
+        }
+        return FetchDescriptor(sortBy: newestFirst)
+    }
+
+    /// An expense whose merchant, readable name, category or card holds `word`, ignoring
+    /// accents and capitals. In pieces: as one expression the CI's compiler gave up on it.
+    private static func names(containing word: String) -> Predicate<Expense> {
+        let shop = #Predicate<Expense> { expense in
+            expense.merchant.localizedStandardContains(word)
+                || (expense.displayName?.localizedStandardContains(word) ?? false)
+        }
+        let filed = #Predicate<Expense> { expense in
+            (expense.category?.localizedStandardContains(word) ?? false)
+                || (expense.card?.localizedStandardContains(word) ?? false)
+        }
+        return #Predicate<Expense> { expense in shop.evaluate(expense) || filed.evaluate(expense) }
+    }
+
+    /// The oldest expense, one row: how far back the months go.
+    static var oldest: FetchDescriptor<Expense> {
+        var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)])
+        descriptor.fetchLimit = 1
         return descriptor
     }
 

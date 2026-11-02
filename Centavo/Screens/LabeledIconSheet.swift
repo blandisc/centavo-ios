@@ -26,6 +26,8 @@ struct LabeledIconSheet: View {
     @State private var usesByDefault = false
     @State private var color = 0
     @State private var confirmingDelete = false
+    /// How it opened (`snapshot`), to tell whether anything changed.
+    @State private var loaded: [String]?
     @FocusState private var nameFocused: Bool
     @ScaledMetric(relativeTo: .body) private var iconColumn = Theme.Size.iconColumnWide
 
@@ -164,8 +166,15 @@ struct LabeledIconSheet: View {
             color = initial.map { colors.index($0.name, kind: colorKind) }
                 ?? colors.nextFree(colorKind, among: siblings)
             nameFocused = initial == nil
+            loaded = snapshot
         }
+        // A stray swipe down must not throw away a name, an icon or a color just picked.
+        .interactiveDismissDisabled(hasChanges)
     }
+
+    /// What can be changed here, as it is now.
+    private var snapshot: [String] { [name, icon, "\(usesByDefault)", "\(color)"] }
+    private var hasChanges: Bool { loaded.map { $0 != snapshot } ?? false }
 }
 
 /// What VoiceOver says for each icon that can be picked, in es-MX, instead of the symbol's

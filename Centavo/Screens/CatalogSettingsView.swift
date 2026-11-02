@@ -6,6 +6,7 @@ import SwiftUI
 /// write down by hand) and the categories of their own, each with its icon.
 struct CatalogSettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
@@ -109,7 +110,7 @@ struct CatalogSettingsView: View {
                                 CategoryTile(name: source.name, icon: source.icon, color: colors.source(source.name),
                                             badge: isDefault ? "star.fill" : nil, twoLines: true)
                             }
-                            .accessibilityLabel(isDefault ? "\(source.name), predeterminada" : source.name)
+                            .accessibilityLabel(isDefault ? "\(source.name), por defecto" : source.name)
                             .accessibilityIdentifier("fuente-\(source.name)")
                         }
                         ForEach(detectedCards, id: \.self) { card in
@@ -151,7 +152,9 @@ struct CatalogSettingsView: View {
                             Menu {
                                 Button(shown.wrappedValue ? "Ocultar al anotar" : "Mostrar al anotar",
                                        systemImage: shown.wrappedValue ? "eye.slash" : "eye") {
-                                    withAnimation(Theme.Motion.quick) { shown.wrappedValue.toggle() }
+                                    withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+                                        shown.wrappedValue.toggle()
+                                    }
                                 }
                                 ColorMenu(selection: color(item.name, .category))
                                 if item.isCustom, let custom = categories.first(where: { $0.name == item.name }) {
@@ -195,7 +198,7 @@ struct CatalogSettingsView: View {
             .sheet(item: $editing) { item in
                 switch item {
                 case .source(let source):
-                    LabeledIconSheet(title: source == nil ? "Nueva forma de pago" : "Editar forma de pago",
+                    LabeledIconSheet(title: "Forma de pago",
                                      prompt: "BBVA, Nu, Efectivo…", icons: UserCatalog.sourceIcons,
                                      taken: sources.map(\.name), initial: source,
                                      onDelete: source.map { item in { remove(item) } },

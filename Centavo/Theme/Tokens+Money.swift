@@ -40,6 +40,8 @@ extension Theme.Motion {
         static let sheenRest: Double = 0
         static let kindCycle: Double = 4.4
         static let faceCycle: Double = 5
+        /// How many turns a looping drawing makes before it rests on its still frame.
+        static let loops = 3
         /// The success plays once and stays.
         static let success: Double = 2.2
         /// The step bar's light, crossing the current part once.
@@ -58,8 +60,8 @@ extension Theme.Motion {
             static let end: Double = 4
             /// Today's cell breathes this many times, then rests.
             static let breaths = 3
+            /// Each half of a breath (down, or back up).
             static let breathSeconds: Double = 1.4
-            static let breath: Animation = .easeInOut(duration: breathSeconds)
         }
         /// The final figure starts counting once the ring has mostly closed.
         static let countUpDelay: Double = 0.9

@@ -43,6 +43,11 @@ enum CurrencyPreference {
         case "MXN": "Pesos (MXN)"
         case "USD": "Dólares (USD)"
         case "EUR": "Euros (EUR)"
+        // The rest of «Mi dinero»'s currencies (`MoneyCurrency.offered`).
+        case "GBP": "Libras (GBP)"
+        case "CAD": "Dólares canadienses (CAD)"
+        case "JPY": "Yenes (JPY)"
+        case "CHF": "Francos suizos (CHF)"
         default: code
         }
     }

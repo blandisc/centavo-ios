@@ -371,7 +371,7 @@ final class FlowTests: XCTestCase {
         require(app.buttons["fuente-Efectivo"], "No aparece el efectivo").tap()
         require(app.buttons["Usar por defecto"], "No deja elegir la predeterminada").tap()
         require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS[c] %@",
-                                                 "Efectivo", "predeterminada")).firstMatch,
+                                                 "Efectivo", "por defecto")).firstMatch,
                 "La estrella no pasó al efectivo")
         snap("flujo-tarjetas-y-categorias")
         app.buttons["Listo"].tap()
@@ -688,6 +688,7 @@ final class FlowTests: XCTestCase {
         }
         XCTAssertEqual(app.keyboards.count, 0, "Al deslizar no se escondió el teclado")
         require(remove, "No ofrece quitar el presupuesto").tap()
+        require(app.buttons["Quitar"], "No pidió confirmación para quitar el presupuesto").tap()
         require(app.buttons["fijar-presupuesto"], "No quitó el presupuesto")
     }
 
@@ -1196,7 +1197,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
                                "-centavo-broken-store"]
         app.launch()
-        require(app.staticTexts["No se pudo abrir tu base de datos"],
+        require(app.staticTexts["Al día no pudo abrir tus gastos"],
                 "No mostró la pantalla de error de la base")
         XCTAssertFalse(app.buttons["Anotar gasto"].exists)
         snap("flujo-error-base")

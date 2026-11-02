@@ -132,9 +132,11 @@ extension Theme.Opacity {
 }
 
 extension Theme.Motion {
-    /// Today's bar breathes, like a cursor waiting.
     /// How long a finger rests on the boleto before sliding reads the days; a quicker swipe goes
     /// to the calendar.
     static let scrubHold: Double = 0.25
-    static let todayBreath: Animation = .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
+    /// Today's cell breathes, like a cursor waiting: this many times, each half this long, then
+    /// it rests at full (`breathes`).
+    static let todayBreaths = 3
+    static let todayBreathSeconds: Double = 0.8
 }

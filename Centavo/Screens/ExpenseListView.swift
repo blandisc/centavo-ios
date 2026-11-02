@@ -1,4 +1,5 @@
 import CentavoCore
+import CoreData
 import SwiftData
 import SwiftUI
 import UIKit
@@ -14,9 +15,16 @@ import UniformTypeIdentifiers
 /// the store for the month on screen only and works its numbers out in `HomeModel`, once per
 /// change instead of on every redraw.
 struct ExpenseListView: View {
-    /// Every expense, by date only: how many there are, the newest and the oldest. Nothing
-    /// else of each row is read here, so a long history costs little.
-    @Query(HomeModel.dated) private var dated: [Expense]
+    /// The newest and the oldest expense, one row each (audit 2026-11-02: it used to load every
+    /// expense just to count them). How many there are is asked of the store as a count.
+    @Query(HomeModel.newest(1)) private var newestRows: [Expense]
+    @Query(HomeModel.oldest) private var oldestRows: [Expense]
+    @State private var storeCount = 0
+
+    /// How many expenses there are, counted by the store (`fetchCount`), not loaded.
+    private func countStore() {
+        storeCount = (try? context.fetchCount(FetchDescriptor<Expense>())) ?? storeCount
+    }
     /// The newest payment the Wallet automation saved (only it keeps the raw text). Asked of
     /// the store, one row, instead of scanning every expense on each redraw.
     @Query(Self.latestCapture) private var latestCaptures: [Expense]
@@ -38,6 +46,7 @@ struct ExpenseListView: View {
         return descriptor
     }
     @Environment(\.modelContext) private var context
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(BudgetStore.key) private var storedBudget = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// The welcome runs once, and only on an empty app (someone who already has expenses
@@ -111,9 +120,9 @@ struct ExpenseListView: View {
     }
 
     var body: some View {
-        // `dated` is newest first, so the oldest is the last one. You can browse back as far as
-        // that, and no further; deleting it pulls the limit forward.
-        let earliest = MonthNavigator.earliestOffset(oldest: dated.last?.date, now: now)
+        // You can browse back as far as the oldest expense, and no further; deleting it pulls the
+        // limit forward.
+        let earliest = MonthNavigator.earliestOffset(oldest: oldestRows.first?.date, now: now)
         let offset = min(0, max(monthOffset, earliest))
         let isCurrent = offset == 0
         let viewed = MonthNavigator.month(offsetBy: offset, from: now)
@@ -122,8 +131,8 @@ struct ExpenseListView: View {
         NavigationStack {
             HomeContent(
                 model: model, viewed: viewed, now: now, isCurrent: isCurrent,
-                storeIsEmpty: dated.isEmpty,
-                stamp: StoreStamp(count: dated.count, newest: dated.first?.date),
+                storeIsEmpty: newestRows.isEmpty,
+                stamp: StoreStamp(count: storeCount, newest: newestRows.first?.date),
                 settings: HomeSettings(budget: storedBudget, plans: storedPlans, currency: primaryCurrency,
                                        mode: storedMode, whereItGoesStyle: whereItGoesStyle,
                                        ignoresWallet: ignoresWallet, backupWarning: backupWarning),
@@ -144,6 +153,8 @@ struct ExpenseListView: View {
             .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
                 model.storeSaved()
             }
+            .modifier(CountsStore(newest: newestRows.first?.persistentModelID,
+                                  oldest: oldestRows.first?.persistentModelID, recount: countStore))
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: storedBudget) { _, budget in
@@ -257,7 +268,7 @@ struct ExpenseListView: View {
             .onChange(of: viewed) { _, _ in selectedDay = nil; selectedCategory = nil }
             // Another view starts unfiltered: what was picked may not be on it.
             .onChange(of: whereItGoesStyle) { _, _ in selectedCategory = nil }
-            .modifier(Feedback(expenseCount: dated.count, newest: dated.first?.date))
+            .modifier(Feedback(expenseCount: storeCount, newest: newestRows.first?.date))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
@@ -292,7 +303,7 @@ struct ExpenseListView: View {
                 guard !onboarded else { return }
                 // A reinstall or a new phone: the expenses are still coming from iCloud.
                 let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere
-                if dated.isEmpty && Onboarding.isAllowed && !setUpElsewhere {
+                if newestRows.isEmpty && Onboarding.isAllowed && !setUpElsewhere {
                     showingOnboarding = true
                 } else {
                     onboarded = true
@@ -752,11 +763,16 @@ private struct CurrencySuggestionRow: View {
     let apply: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
+        // With large text the button goes under the sentence instead of squeezing it.
+        AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.s) {
             NoteText("Casi todos tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: Theme.Space.s)
-            Button("Sumar en \(CurrencyPreference.spoken(code))", action: apply)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: apply) {
+                Text("Sumar en \(CurrencyPreference.spoken(code))")
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
                 .font(.ticket(.label))
                 .foregroundStyle(Theme.onBrass)
                 .ticketProminent()
@@ -856,7 +872,8 @@ private struct Feedback: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sensoryFeedback(.success, trigger: expenseCount) { old, new in
-                new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
+                // From 0 is the first count at launch, not a payment landing now.
+                old > 0 && new > old && (newest.map { Date.now.timeIntervalSince($0) < 120 } ?? false)
             }
     }
 }
@@ -883,6 +900,25 @@ private struct SaveProblemAlert: ViewModifier {
         content.alert("No se guardó", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button("Aceptar", role: .cancel) {}
         } message: { Text(problem ?? "") }
+    }
+}
+
+/// Counts the expenses again whenever the store saves, a payment lands or the oldest one goes:
+/// a count asked of the store, instead of every expense loaded to count them.
+private struct CountsStore: ViewModifier {
+    let newest: PersistentIdentifier?
+    let oldest: PersistentIdentifier?
+    let recount: () -> Void
+    @Environment(\.scenePhase) private var scenePhase
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in recount() }
+            // What iCloud brought in the background (it doesn't post `didSave` here).
+            .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in recount() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { recount() } }
+            .onChange(of: newest, initial: true) { recount() }
+            .onChange(of: oldest) { recount() }
     }
 }
 
@@ -1028,9 +1064,10 @@ private extension ExpenseListView {
         let snapshot = DeletedExpense(expense)
         context.delete(expense)
         guard persist() else { return }
+        countStore()
         // A search on screen is asked again, without the deleted expense.
         model.storeSaved()
-        withAnimation(Theme.Motion.quick) { lastDeleted = snapshot }
+        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastDeleted = snapshot }
     }
 
     func restore(_ deleted: DeletedExpense) {
@@ -1038,7 +1075,8 @@ private extension ExpenseListView {
         context.insert(expense)
         guard persist() else { return }
         model.storeSaved()
-        withAnimation(Theme.Motion.quick) { lastDeleted = nil }
+        countStore()
+        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastDeleted = nil }
     }
 
     /// Reads the chosen file and says plainly what happened.
@@ -1065,7 +1103,7 @@ private extension ExpenseListView {
             if MoneyImport.parse(text, main: primaryCurrency).refusal == nil {
                 return "Este archivo es de «Mi dinero», no de tus gastos: cárgalo en esa pestaña."
             }
-            return "Ese archivo no es un CSV exportado de Al día (le falta la fila Fecha, Comercio, Monto, Moneda)."
+            return "Ese archivo no es un CSV exportado de Al día (le falta el encabezado Fecha, Comercio, Monto, Moneda)."
         } catch {
             return "No se pudo guardar lo importado. Intenta de nuevo."
         }
@@ -1321,33 +1359,31 @@ private struct EmptyTicket: View {
     let onBudget: () -> Void
     let onSetup: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var breathe = false
-
     private typealias Empty = Theme.Motion.Money.Empty
 
     var body: some View {
-        PlayOnceClock(until: Empty.end) { t in
-            VStack(alignment: .leading, spacing: Theme.Space.ml) {
-                Text("Tu mes empieza aquí")
-                    .font(.ticket(.bodyStrong))
-                    .tracking(Theme.Tracking.caption)
-                    .textCase(.uppercase)
-                if !hasBudget { monthStrip }
+        // Only what moves follows the clock: the text and the button are drawn once.
+        VStack(alignment: .leading, spacing: Theme.Space.ml) {
+            Text("Tu mes empieza aquí")
+                .font(.ticket(.bodyStrong))
+                .tracking(Theme.Tracking.caption)
+                .textCase(.uppercase)
+            if !hasBudget { monthStrip }
+            PlayOnceClock(until: Empty.end) { t in
                 ghostRow(moneySpan(t, Empty.ghost.lowerBound, Empty.ghost.upperBound))
-                Text("Anota uno o conecta Wallet y cada compra se anotará sola.")
-                    .font(.ticket(.callout))
-                    .lineSpacing(Theme.Space.xxs)
-                    .foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button(action: onAdd) {
-                    PrimaryButtonLabel("Anotar un gasto", systemImage: "plus")
-                }
-                .ticketProminent()
-                .accessibilityIdentifier("vacio-anotar")
-                .padding(.top, Theme.Space.xs)
-                steps(t)
             }
+            Text("Anota uno o conecta Wallet y cada compra se anotará sola.")
+                .font(.ticket(.callout))
+                .lineSpacing(Theme.Space.xxs)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: onAdd) {
+                PrimaryButtonLabel("Anotar un gasto", systemImage: "plus")
+            }
+            .ticketProminent()
+            .accessibilityIdentifier("vacio-anotar")
+            .padding(.top, Theme.Space.xs)
+            PlayOnceClock(until: Empty.end) { t in steps(t) }
         }
         .padding(Theme.Space.xlx)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1365,19 +1401,13 @@ private struct EmptyTicket: View {
                     .strokeBorder(day == today ? Theme.ink : Theme.hairline,
                                   style: StrokeStyle(lineWidth: day == today ? Theme.Stroke.emphasis : Theme.Stroke.hairline,
                                                      dash: day == today ? [] : Theme.Dash.dotted))
-                    .opacity(day == today && breathe ? Theme.Opacity.unselected : Theme.Opacity.visible)
+                    // Each breath fades down and back up, so the last one ends at rest.
+                    .breathes(day == today, times: Empty.breaths, seconds: Empty.breathSeconds,
+                              low: Theme.Opacity.unselected)
             }
         }
         .frame(height: Theme.Size.emptyStrip)
         .accessibilityHidden(true)
-        .onAppear {
-            guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { return }
-            withAnimation(Empty.breath.repeatCount(Empty.breaths * 2, autoreverses: true)) { breathe = true }
-            Task {
-                try? await Task.sleep(for: .seconds(Double(Empty.breaths * 2) * Empty.breathSeconds))
-                breathe = false
-            }
-        }
     }
 
     /// Where the first expense will land: printed once, then faint.
@@ -1405,7 +1435,7 @@ private struct EmptyTicket: View {
     @ViewBuilder private func steps(_ t: Double) -> some View {
         let wallet = moneySpan(t, Empty.wallet.lowerBound, Empty.wallet.upperBound)
         if hasBudget {
-            EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay, solo.",
+            EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay se anota solo.",
                           progress: wallet, wide: true, identifier: "vacio-wallet", action: onSetup)
         } else {
             let budget = moneySpan(t, Empty.budget.lowerBound, Empty.budget.upperBound)
@@ -1429,7 +1459,7 @@ private struct EmptyTicket: View {
     }
 
     private func walletCard(_ progress: Double, wide: Bool) -> some View {
-        EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay, solo.",
+        EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay se anota solo.",
                       progress: progress, wide: wide, identifier: "vacio-wallet", action: onSetup)
     }
 }
@@ -1772,7 +1802,8 @@ private struct DayDivider: View {
                     dayText.lineLimit(1).layoutPriority(1)
                     Rectangle().fill(Theme.brass.opacity(Theme.Opacity.rule))
                         .frame(height: Theme.Stroke.hairline)
-                    totalText.lineLimit(1)
+                    // Nor does the total: an amount is never cut (audit 2026-11-02).
+                    totalText.lineLimit(1).fixedSize()
                 }
             }
         }

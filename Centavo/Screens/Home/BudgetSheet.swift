@@ -21,6 +21,7 @@ struct BudgetSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var text = ""
     @State private var mode = AllowanceMode.carry
+    @State private var confirmingRemoval = false
     @FocusState private var focused: Bool
 
     private var amount: Decimal? {
@@ -72,8 +73,7 @@ struct BudgetSheet: View {
                 if BudgetStore.amount(from: stored) != nil {
                     Section {
                         DestructiveRowButton("Quitar presupuesto", identifier: "quitar-presupuesto") {
-                            stored = ""
-                            dismiss()
+                            confirmingRemoval = true
                         }
                     }
                     .listRowBackground(Theme.surface)
@@ -99,6 +99,18 @@ struct BudgetSheet: View {
                 }
             }
         }
+        // Taking the budget off empties the boleto and the day's amount: asked first (audit
+        // 2026-11-02), like every other delete.
+        .confirmationDialog("¿Quitar el presupuesto?", isPresented: $confirmingRemoval,
+                            titleVisibility: .visible) {
+            Button("Quitar", role: .destructive) {
+                stored = ""
+                dismiss()
+            }
+            Button("Conservar", role: .cancel) {}
+        } message: {
+            Text("La pantalla principal deja de decir cuánto puedes gastar al día. Tus gastos no se tocan.")
+        }
         .presentationDetents([.large])
         .presentationBackground(Theme.background)
         // A typed number is not thrown away by a stray swipe down.
@@ -118,7 +130,7 @@ struct BudgetSheet: View {
         // the month); asked with «Se acumula» so «Se reparte» doesn't show today's share.
         if let amount, let pace = pace(amount, .carry) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
-                Text("Al día:")
+                Text("Por día:")
                     .foregroundStyle(Theme.muted)
                 Text(whole(max(pace.dailyBase, 0)))
                     .foregroundStyle(Theme.brass)

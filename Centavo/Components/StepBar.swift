@@ -47,26 +47,54 @@ struct StepBar: View {
         .onChange(of: step) { cross() }
     }
 
+    /// Back to the start with no animation (it would run backwards over the bar), then across
+    /// once, in the next update so the two changes don't merge into one.
     private func cross() {
-        sheen = -Theme.Size.moneySheenShare
+        var reset = Transaction(animation: nil)
+        reset.disablesAnimations = true
+        withTransaction(reset) { sheen = -Theme.Size.moneySheenShare }
         guard !MotionPolicy.isStill(reduceMotion: reduceMotion) else { return }
-        withAnimation(Theme.Motion.Money.sheen) { sheen = 1 }
+        Task { @MainActor in
+            withAnimation(Theme.Motion.Money.sheen) { sheen = 1 }
+        }
     }
 }
 
 /// When the drawings and loops of the app stand still (2026-11-01): «Reducir movimiento», Low
 /// Power Mode, and the UI tests (which wait for the app to be idle, and a loop never is).
+/// A view that reads it in `body` redraws when Low Power Mode turns on or off (`LowPowerWatch`).
+@MainActor
 enum MotionPolicy {
     static func isStill(reduceMotion: Bool) -> Bool {
-        reduceMotion || ProcessInfo.processInfo.isLowPowerModeEnabled || testsWantStill
+        reduceMotion || LowPowerWatch.shared.isOn || testsWantStill
     }
 
-    static var testsWantStill: Bool {
+    nonisolated static var testsWantStill: Bool {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-centavo-sin-animaciones") || arguments.contains("-centavo-dibujos-quietos")
         #else
         false
         #endif
+    }
+}
+
+/// Low Power Mode, watched live (audit 2026-11-02): reading `ProcessInfo` once left a loop
+/// running after the person turned it on. Observable, so `MotionPolicy` readers redraw.
+@MainActor @Observable
+final class LowPowerWatch {
+    static let shared = LowPowerWatch()
+
+    private(set) var isOn = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @ObservationIgnored private var observer: (any NSObjectProtocol)?
+
+    private init() {
+        observer = NotificationCenter.default.addObserver(
+            forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isOn = ProcessInfo.processInfo.isLowPowerModeEnabled
+            }
+        }
     }
 }

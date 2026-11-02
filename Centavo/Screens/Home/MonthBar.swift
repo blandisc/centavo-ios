@@ -62,8 +62,8 @@ struct MonthBar: View {
                     .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
                     .animation(reduceMotion ? nil : Theme.Motion.Entrance.legend, value: shown)
                     .padding(.bottom, isCurrentMonth ? Theme.Space.l : Theme.Space.s)
-                    .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity),
-                                            removal: .opacity))
+                    // It fades in place: sliding down from the top it crossed the figure above it.
+                    .transition(.opacity)
             }
 
             if showsTrack {
@@ -146,7 +146,7 @@ struct MonthBar: View {
                         // The days still empty.
                         Rectangle().fill(Theme.raised)
                         HStack(spacing: Theme.Space.none) {
-                            // What went: grows in from nothing, with a little bounce.
+                            // What went: grows in from nothing and settles, no bounce.
                             if isOver {
                                 Rectangle()
                                     .fill(Theme.brass)

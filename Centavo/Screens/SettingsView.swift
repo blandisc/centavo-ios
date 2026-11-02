@@ -36,7 +36,7 @@ struct SettingsView: View {
                     Text("Moneda").ticketCaption()
                 } footer: {
                     HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. "
-                             + "La vista (Lista, Mosaico o Mínima) se elige en «···».")
+                             + "La vista (Lista, Mosaico o Mínima) se elige en «Más».")
                 }
                 .listRowBackground(Theme.surface)
 

@@ -61,10 +61,10 @@ struct MoneyImportView: View {
         .fileImporter(isPresented: $choosingFile,
                       allowedContentTypes: [.commaSeparatedText, .tabSeparatedText, .plainText, .utf8PlainText]) { result in
             guard case .success(let url) = result else { return }
-            guard let text = Self.read(url) else { problem = "No pude abrir ese archivo."; return }
+            guard let text = Self.read(url) else { problem = "No se pudo abrir ese archivo."; return }
             load(text)
         }
-        .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+        .alert("No se pudo importar", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button("Aceptar", role: .cancel) {}
         } message: { Text(problem ?? "") }
         .alert("¿Pegar otra respuesta?", isPresented: $confirmingRestart) {
@@ -221,7 +221,7 @@ struct MoneyImportView: View {
                             .accessibilityIdentifier("importar-cambio-\(code)")
                     }
                     if let choices = rateChoices[code], choices.count > 1 {
-                        Text("Tu Excel trae \(choices.count) distintos. ¿Cuál usamos?")
+                        Text("Tu Excel trae \(choices.count) distintos. ¿Cuál se usa?")
                             .font(.ticket(.detail)).foregroundStyle(Theme.brass)
                         HStack(spacing: Theme.Space.xs) {
                             ForEach(choices, id: \.self) { value in

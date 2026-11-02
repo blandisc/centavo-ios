@@ -769,7 +769,7 @@ struct MoneyRowEditor: View {
             if draft.subtype.takesRate {
                 field(draft.subtype.kind == .debt ? "¿Te cobra interés? · opcional" : "¿Te da rendimiento? · opcional",
                       hint: draft.subtype.kind == .debt ? "Al año, en %. Solo para orientarte en el corte."
-                                                        : "Al año, en %. Con ella, en cada corte te digo cuánto debió rendir.") {
+                                                        : "Al año, en %. Con ella, cada corte te dice cuánto debió rendir.") {
                     TextField("Tasa", text: $draft.rate, prompt: Text("Ej. 10.5").foregroundStyle(Theme.faint))
                         .keyboardType(.decimalPad)
                         .accessibilityIdentifier("fila-tasa")

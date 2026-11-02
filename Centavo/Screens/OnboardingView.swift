@@ -75,6 +75,14 @@ struct OnboardingView: View {
                 removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .clipped()
+            // The step bar stays put while the pages slide under it, and only fills its next part
+            // (audit 2026-11-02: it slid away with each page).
+            .safeAreaInset(edge: .top, spacing: Theme.Space.none) {
+                StepBar(step: min(page + 1, steps), of: steps, label: Self.labels[min(page, Self.labels.count - 1)])
+                    .padding(.horizontal, Theme.Space.screen)
+                    .padding(.top, Theme.Space.xl)
+                    .background(Theme.background)
+            }
             .background(Theme.background.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) { bottomBar }
             .navigationBarTitleDisplayMode(.inline)
@@ -130,16 +138,23 @@ struct OnboardingView: View {
         }
     }
 
+    /// Each page's name on the step bar; the end is «Listo».
+    private static let labels = ["Bienvenida", "Tu mes", "Gastos fijos", "Conecta Wallet", "Listo"]
+
     private func go(to target: Int) {
         guard (0..<pages).contains(target), target != page else { return }
+        // The way first, in its own update, so the page leaving already knows which side to go:
+        // set together with the page, going back slid both pages the same way and they crossed.
         forward = target > page
-        withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) { page = target }
+        Task { @MainActor in
+            withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) { page = target }
+        }
     }
 
     // MARK: Pages
 
     private var welcome: some View {
-        page(step: 1, label: "Bienvenida", title: "Cuánto puedes gastar hoy") {
+        page(title: "Cuánto puedes gastar hoy") {
             WelcomeDemo(currency: currency)
                 .onboardingRise(2)
             // One line that doesn't lose cash (user research, 2026-10-29).
@@ -152,7 +167,7 @@ struct OnboardingView: View {
     }
 
     private var budgetPage: some View {
-        page(step: 2, label: "Tu mes", title: "¿Cuánto quieres gastar al mes?") {
+        page(title: "¿Cuánto quieres gastar al mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 currencyPills
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -211,7 +226,9 @@ struct OnboardingView: View {
         HStack(spacing: Theme.Space.s) {
             ForEach(suggestions, id: \.self) { value in
                 TicketChip("\((value / 1_000).formatted()) mil", selected: budget == value) {
-                    withAnimation(Theme.Motion.quick) { budgetText = NSDecimalNumber(decimal: value).stringValue }
+                    withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+                        budgetText = NSDecimalNumber(decimal: value).stringValue
+                    }
                 }
                 .accessibilityLabel(value.formatted(currencyStyle(currency).precision(.fractionLength(0))))
             }
@@ -274,7 +291,7 @@ struct OnboardingView: View {
     }
 
     private var fixedPage: some View {
-        page(step: 3, label: "Gastos fijos", title: "¿Qué pagas cada mes?") {
+        page(title: "¿Qué pagas cada mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text("Se anotan solos cada mes y se apartan de lo que puedes gastar. Su día lo eliges en el calendario de abajo.")
                     .font(.ticket(.callout))
@@ -285,7 +302,9 @@ struct OnboardingView: View {
                     WrapLayout {
                         ForEach(fixedSuggestions, id: \.self) { name in
                             TicketChip(name, selected: draftName == name) {
-                                withAnimation(Theme.Motion.quick) { draftName = name }
+                                withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+                                    draftName = name
+                                }
                                 focused = .amount
                             }
                         }
@@ -349,7 +368,7 @@ struct OnboardingView: View {
         if let pace, let budget {
             HStack(alignment: .firstTextBaseline) {
                 if pace.dailyBase > 0 {
-                    Text("Te quedan al día").font(.ticket(.footnote)).foregroundStyle(Theme.muted)
+                    Text("Cada día tienes").font(.ticket(.footnote)).foregroundStyle(Theme.muted)
                     Spacer(minLength: Theme.Space.s)
                     Text(whole(pace.dailyBase))
                         .font(.ticket(.bodyStrong))
@@ -366,12 +385,12 @@ struct OnboardingView: View {
     }
 
     private var walletPage: some View {
-        page(step: 4, label: "Conecta Wallet", title: "Que cada pago se anote solo") {
+        page(title: "Que cada pago se anote solo") {
             WalletChain()
                 .onboardingRise(2)
             Text(ShortcutsVersion.isIOS27
                  ? "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: lo agregas una vez y lo enciendes."
-                 : "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. Te guiamos toque por toque, en unos 5 minutos.")
+                 : "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos.")
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -399,7 +418,6 @@ struct OnboardingView: View {
     private var donePage: some View {
         ScrollView {
             VStack(spacing: Theme.Space.xl) {
-                StepBar(step: steps, of: steps, label: "Listo")
                 MoneySuccessArt()
                     .padding(.top, Theme.Space.l)
                 Text("Listo")
@@ -429,13 +447,13 @@ struct OnboardingView: View {
                         .foregroundStyle(Theme.muted)
                 }
             } else {
-                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «Más › Presupuesto».")
+                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «Más › Presupuesto del mes».")
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
         } else {
-            Text("Fija tu presupuesto cuando quieras en «Más» y Al día te dirá cuánto puedes gastar cada día.")
+            Text("Fija tu presupuesto cuando quieras en «Más › Presupuesto del mes» y Al día te dirá cuánto puedes gastar cada día.")
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
@@ -450,14 +468,11 @@ struct OnboardingView: View {
 
     // MARK: Pieces
 
-    /// Every step's shell: the step bar, the question as the title, then the content, each
+    /// Every step's shell under the step bar: the question as the title, then the content, each
     /// block rising in after the one above it.
-    private func page<Content: View>(step: Int, label: String, title: String,
-                                     @ViewBuilder content: () -> Content) -> some View {
+    private func page<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                StepBar(step: step, of: steps, label: label)
-                    .onboardingRise(0)
                 Text(title)
                     .font(.ticket(.pageTitle))
                     .foregroundStyle(Theme.ink)

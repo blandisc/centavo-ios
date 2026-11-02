@@ -367,7 +367,7 @@ private struct GuideStep {
             symbol: "play.fill",
             taps: ["Elige las tarjetas con las que pagas.",
                    "Marca «Ejecutar de inmediato».",
-                   "Activa «Notificar al ejecutar»: después de cada pago te dirá cuánto te queda.",
+                   "Si quieres un aviso cada vez que se anota un pago, activa «Notificar al ejecutar».",
                    "Toca «Siguiente»."],
             scene: .runOptions
         ),
@@ -519,6 +519,7 @@ private struct GuideStep {
 /// The last step's answer: the first payment the automation saved, or that it is still waiting.
 struct CaptureCheck: View {
     let latest: Expense?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Proof only if it is recent: a capture from days ago says nothing about the automation
     /// someone came here to fix.
@@ -533,8 +534,8 @@ struct CaptureCheck: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.brass)
                     .font(Theme.Symbol.large)
-                    .symbolEffect(.bounce, value: latest.persistentModelID)
-                    .transition(.scale.combined(with: .opacity))
+                    // The check fades in where the spinner was: no bounce (audit 2026-11-02).
+                    .transition(.opacity)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Ya funciona")
                         .font(.ticket(.button))
@@ -565,7 +566,7 @@ struct CaptureCheck: View {
         .ticketPanel()
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("guia-comprobacion")
-        .animation(Theme.Motion.toggle, value: recent?.persistentModelID)
+        .animation(Theme.Motion.animation(Theme.Motion.toggle, reduceMotion: reduceMotion), value: recent?.persistentModelID)
         .sensoryFeedback(.success, trigger: recent?.persistentModelID) { old, new in old == nil && new != nil }
     }
 }
