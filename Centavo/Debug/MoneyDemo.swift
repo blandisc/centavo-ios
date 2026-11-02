@@ -17,6 +17,8 @@ extension DemoData {
 
 enum MoneyDemo {
     static func makeContainer() throws -> ModelContainer {
+        // Each demo starts at the beginning of «Primera cuenta», whatever an earlier run left.
+        UserDefaults.standard.removeObject(forKey: MoneyHomeView.stepKey)
         let container = try MoneyStore.inMemory()
         guard ProcessInfo.processInfo.arguments.contains("-centavo-dinero-demo") else { return container }
         let context = ModelContext(container)

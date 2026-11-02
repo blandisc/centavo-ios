@@ -102,6 +102,17 @@ public enum MoneyMath {
         return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
     }
 
+    /// A rate or an exchange rate as typed: digits with one decimal point or comma, never
+    /// thousands («18.125» is eighteen and a bit, not 18,125, as `AmountParser` would read an
+    /// amount). `nil` for anything else, so the field can say it doesn't read.
+    public static func decimal(_ typed: String) -> Decimal? {
+        let text = typed.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        let pieces = text.split(separator: ".", omittingEmptySubsequences: false)
+        guard text.contains(where: \.isNumber), pieces.count <= 2,
+              pieces.allSatisfy({ $0.allSatisfy(\.isNumber) }) else { return nil }
+        return BackupNumber.value(text.hasPrefix(".") ? "0" + text : text)
+    }
+
     /// How a cut's yield hint reads: the previous balance × the yearly rate × days ÷ 365.
     /// Only a hint: the cut keeps what the person types.
     public static func expectedYield(previous: Decimal, yearlyRate: Decimal, days: Int) -> Decimal {

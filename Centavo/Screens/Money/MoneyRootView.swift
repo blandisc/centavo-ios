@@ -17,18 +17,29 @@ struct MoneyRootView: View {
     @State private var visible = false
     @State private var asking = false
     @State private var wentToBackground = false
+    @State private var opened = MoneyLock.skips
 
     var body: some View {
         Group {
             switch MoneyStore.opened {
             case .success(let container):
-                if unlocked {
-                    MoneyHomeView().modelContainer(container)
-                } else if !explained {
-                    MoneyFaceIDIntro { explained = true; ask() }
-                } else {
-                    MoneyLockedView(asking: asking, unlock: ask)
+                ZStack {
+                    // Once opened, «Mi dinero» stays mounted under the lock: leaving to check the
+                    // bank (as the rows suggest) and coming back keeps a half-written row.
+                    if opened {
+                        MoneyHomeView().modelContainer(container)
+                            .accessibilityHidden(!unlocked)
+                            .allowsHitTesting(unlocked)
+                    }
+                    if !unlocked {
+                        if explained {
+                            MoneyLockedView(asking: asking, unlock: ask)
+                        } else {
+                            MoneyFaceIDIntro { explained = true; ask() }
+                        }
+                    }
                 }
+                .onChange(of: unlocked) { _, now in if now { opened = true } }
             case .failure:
                 MoneyStoreErrorView()
             }
@@ -105,11 +116,9 @@ struct MoneyFaceIDIntro: View {
 
     var body: some View {
         NavigationStack {
+            ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                Spacer()
-                Image(systemName: "faceid")
-                    .font(Theme.Symbol.large)
-                    .foregroundStyle(Theme.brass)
+                MoneyFaceIDArt().frame(maxWidth: .infinity)
                 Text("«Mi dinero» se abre solo con tu cara")
                     .font(.ticket(.heading))
                     .foregroundStyle(Theme.ink)
@@ -119,13 +128,13 @@ struct MoneyFaceIDIntro: View {
                     point("Te lo pide cada vez que abres esta pestaña. Si Face ID falla, usas el código de tu iPhone.")
                     point("Al tocar «Activar», iOS te pregunta si Al día puede usar Face ID. Tu cara nunca sale del iPhone.")
                 }
-                Spacer()
                 Button(action: start) { PrimaryButtonLabel("Activar Face ID", systemImage: "faceid") }
                     .ticketProminent()
                     .accessibilityIdentifier("dinero-activar-faceid")
             }
             .padding(.horizontal, Theme.Space.screen)
-            .padding(.bottom, Theme.Space.xxl)
+            .padding(.vertical, Theme.Space.xxl)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .background(Theme.background.ignoresSafeArea())
             .toolbar { ToolbarItem(placement: .principal) { MoneySignature() } }
