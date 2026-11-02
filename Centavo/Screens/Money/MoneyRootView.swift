@@ -13,11 +13,13 @@ import SwiftUI
 struct MoneyRootView: View {
     @Environment(\.scenePhase) private var phase
     @AppStorage(MoneyLock.explainedKey) private var explained = false
-    @State private var unlocked = MoneyLock.skips
+    @State private var lock = MoneyLockState.shared
     @State private var visible = false
-    @State private var asking = false
     @State private var wentToBackground = false
     @State private var opened = MoneyLock.skips
+
+    private var unlocked: Bool { lock.unlocked }
+    private var asking: Bool { lock.asking }
 
     var body: some View {
         Group {
@@ -39,7 +41,7 @@ struct MoneyRootView: View {
                         }
                     }
                 }
-                .onChange(of: unlocked) { _, now in if now { opened = true } }
+                .onChange(of: lock.unlocked) { _, now in if now { opened = true } }
             case .failure:
                 MoneyStoreErrorView()
             }
@@ -53,13 +55,13 @@ struct MoneyRootView: View {
         }
         .onDisappear {
             visible = false
-            lock()
+            relock()
         }
         .onChange(of: phase) { _, now in
             switch now {
             case .background:
                 wentToBackground = true
-                lock()
+                relock()
             case .active where wentToBackground:
                 wentToBackground = false
                 if visible && explained { ask() }
@@ -69,12 +71,25 @@ struct MoneyRootView: View {
         }
     }
 
-    private func lock() {
+    private func relock() { lock.lock() }
+
+    private func ask() { lock.ask() }
+}
+
+/// The one lock of «Mi dinero», shared by the tab and its sheets: a sheet sits above the tab,
+/// so it needs the same «locked» to cover itself and the same Face ID to open.
+@MainActor @Observable
+final class MoneyLockState {
+    static let shared = MoneyLockState()
+    private(set) var unlocked = MoneyLock.skips
+    private(set) var asking = false
+
+    func lock() {
         guard !MoneyLock.skips else { return }
         unlocked = false
     }
 
-    private func ask() {
+    func ask() {
         guard !unlocked, !asking else { return }
         asking = true
         Task {
@@ -223,4 +238,24 @@ struct MoneyStoreErrorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background.ignoresSafeArea())
     }
+}
+
+/// Covers a «Mi dinero» sheet with the blank ticket whenever the app isn't in front (the app
+/// switcher, a Face ID prompt): sheets sit above the tab's lock.
+private struct MoneyPrivacyCover: ViewModifier {
+    @Environment(\.scenePhase) private var phase
+    @State private var lock = MoneyLockState.shared
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            // Covered while the app isn't in front, and until Face ID opens it again after.
+            if !MoneyLock.skips && (phase != .active || !lock.unlocked) {
+                MoneyLockedView(asking: lock.asking, unlock: { lock.ask() })
+            }
+        }
+    }
+}
+
+extension View {
+    func moneyPrivacyCover() -> some View { modifier(MoneyPrivacyCover()) }
 }

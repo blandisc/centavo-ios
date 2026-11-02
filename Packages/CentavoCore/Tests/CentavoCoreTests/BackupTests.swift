@@ -76,14 +76,14 @@ struct BackupTests {
     @Test("Un respaldo de una versión más nueva lo dice en vez de fallar raro")
     func newerFormat() throws {
         var newer = String(data: try sample().encoded(), encoding: .utf8)!
-        newer = newer.replacingOccurrences(of: "\"format\":2", with: "\"format\":3")
+        newer = newer.replacingOccurrences(of: "\"format\":3", with: "\"format\":4")
         #expect(throws: BackupError.newerFormat) { try BackupPayload.decoded(from: Data(newer.utf8)) }
     }
 
     @Test("Un respaldo de antes de «Mi dinero» (formato 1) se sigue leyendo, sin dinero")
     func formatOne() throws {
         var old = String(data: try sample().encoded(), encoding: .utf8)!
-        old = old.replacingOccurrences(of: "\"format\":2", with: "\"format\":1")
+        old = old.replacingOccurrences(of: "\"format\":3", with: "\"format\":1")
         let back = try BackupPayload.decoded(from: Data(old.utf8))
         #expect(back.money == nil)
         #expect(back.expenses == sample().expenses)
@@ -95,13 +95,21 @@ struct BackupTests {
         var payload = sample()
         payload.money = BackupMoney(
             accounts: [.init(id: "A1", name: "CETES", kind: "cuenta", currency: "MXN", yearlyRate: "9.8",
-                             order: 0, archived: false, createdAt: Date(timeIntervalSinceReferenceDate: 5))],
+                             order: 0, archived: false, createdAt: Date(timeIntervalSinceReferenceDate: 5),
+                             subtype: "cuenta", institution: "GBM"),
+                       .init(id: "A2", name: "Auto", kind: "deuda", currency: "MXN", yearlyRate: nil,
+                             order: 1, archived: false, createdAt: Date(timeIntervalSinceReferenceDate: 6),
+                             subtype: "prestamo", institution: nil)],
             cuts: [.init(id: "C1", month: "2026-10", date: Date(timeIntervalSinceReferenceDate: 9), mainCurrency: "MXN",
-                         rates: "USD=18.5", entries: [.init(account: "A1", balance: "150000.01", movement: "-0.1")])])
+                         rates: "USD=18.5", entries: [.init(account: "A1", balance: "150000.01", movement: "-0.1")])],
+            incomes: [.init(id: "I1", name: "Sueldo", institution: "Arca", amount: "60000", currency: "MXN",
+                            since: Date(timeIntervalSinceReferenceDate: 7), archived: false)])
         let file = try BackupSeal.seal(payload, password: "clave", rounds: rounds)
         let back = try BackupSeal.open(file, password: "clave")
         #expect(back == payload)
-        #expect(back.summary.accountCount == 1)
+        #expect(back.summary.accountCount == 2)
+        #expect(back.money?.accounts[1].subtype == "prestamo")
+        #expect(back.money?.incomes?.first?.amount == "60000")
         #expect(back.summary.cutCount == 1)
     }
 

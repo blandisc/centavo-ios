@@ -48,7 +48,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testMiDineroVacio() {
-        let app = launch(["-centavo-dinero-vacio"])
+        let app = launch(["-centavo-dinero-vacio", "-centavo-dibujos-quietos"])
         app.tabBars.buttons["Mi dinero"].tap()
         XCTAssertTrue(app.buttons["dinero-primera-cuenta"].waitForExistence(timeout: 5))
         sleep(3)
@@ -87,6 +87,46 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["recorrido-siguiente"].tap()
         XCTAssertTrue(app.staticTexts["dinero-patrimonio"].waitForExistence(timeout: 5), "No llegó a «Mi dinero»")
         snap("53-mi-dinero-listo")
+    }
+
+    func testMiDineroDesdeExcel() {
+        let app = launch(["-centavo-dinero-vacio", "-centavo-importar-ejemplo", "-centavo-dibujos-quietos"])
+        app.tabBars.buttons["Mi dinero"].tap()
+        XCTAssertTrue(app.buttons["dinero-primera-cuenta"].waitForExistence(timeout: 5))
+        app.buttons["dinero-primera-cuenta"].tap()
+        XCTAssertTrue(app.buttons["recorrido-excel"].waitForExistence(timeout: 5), "No está «¿Lo tienes en Excel?»")
+        snap("60-paso-1-con-excel")
+        app.buttons["recorrido-excel"].tap()
+        XCTAssertTrue(app.buttons["importar-copiar"].waitForExistence(timeout: 5))
+        snap("61-excel-instrucciones")
+        app.buttons["importar-ejemplo"].tap()
+        XCTAssertTrue(app.staticTexts["importar-resumen"].waitForExistence(timeout: 5), "No mostró la revisión")
+        sleep(1)
+        snap("62-excel-revision")
+        app.swipeUp()
+        sleep(1)
+        snap("63-excel-revision-abajo")
+        let save = app.buttons["importar-guardar"]
+        XCTAssertFalse(save.isEnabled, "Sin el tipo de cambio del euro no debe guardar")
+        let euro = app.textFields["importar-cambio-EUR"]
+        if euro.waitForExistence(timeout: 3) {
+            euro.tap()
+            euro.typeText("20")
+            app.buttons["Ocultar teclado"].tap()
+        }
+        XCTAssertTrue(save.waitForExistence(timeout: 3) && save.isEnabled)
+        save.tap()
+        XCTAssertTrue(app.buttons["recorrido-siguiente"].waitForExistence(timeout: 5))
+        sleep(1)
+        snap("64-paso-1-importado")
+        app.buttons["recorrido-siguiente"].tap()
+        sleep(1)
+        snap("65-paso-2-importado")
+        app.buttons["recorrido-siguiente"].tap()
+        sleep(1)
+        app.buttons["recorrido-siguiente"].tap()
+        sleep(3)
+        snap("66-paso-4-ingresos")
     }
 
     func testRespaldo() {

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 ### Added
+- **«¿Lo tienes en Excel?»** en el primer paso de «Mi dinero»: copia unas instrucciones, pásalas a tu IA con tu Excel y pega o sube lo que te devuelva. Antes de guardar lo revisas y lo corriges: cada renglón se abre, puedes quitar o agregar, cada moneda trae su tipo de cambio (y si tu Excel traía dos distintos, eliges) y lo que no se leyó bien dice por qué. Tus ingresos llegan al resultado: «debes ahorrar $X al mes».
+- **La institución** (Nu, BBVA, Amex…) en cada cuenta y deuda.
+### Fixed
+- **El respaldo guarda el tipo de cada deuda** (antes, al restaurar, un préstamo volvía como tarjeta).
+- **Las hojas de «Mi dinero» ya no dejan ver tus saldos** en el selector de apps ni al volver a la app.
+- **Una tasa como «18.125» en «Nueva cuenta»** ya no se lee como 18,125.
 - **«Mi dinero» te guía la primera vez.** Una presentación con tu patrimonio creciendo mes a mes en un boleto; antes de pedir Face ID, el símbolo dibujado con líneas y por qué se pide; y «Primera cuenta» en cuatro pasos (lo que tienes, lo que debes, lo que te deben y el resultado), con dibujos de cada tipo, renglones que se abren en su lugar, la moneda por su símbolo y una animación de éxito al final.
 ### Fixed
 - **Borrar pagos ya no hace que Wallet se vea desconectado.** La app recuerda cuándo llegó el último pago de Wallet aparte de los gastos, así que borrarlos no cambia el aviso.

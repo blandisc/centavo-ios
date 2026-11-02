@@ -20,6 +20,8 @@ extension Theme.Size {
     static let moneyCurrencyTile: CGFloat = 66
     /// A color swatch beside an account's name.
     static let moneySwatch: CGFloat = 8
+    /// The Excel button's little drawing.
+    static let moneyExcelArt: CGFloat = 92
     /// How wide the step bar's sheen is, as a share of its part.
     static let moneySheenShare: CGFloat = 0.5
 }

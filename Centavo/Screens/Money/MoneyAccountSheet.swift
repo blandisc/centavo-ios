@@ -13,6 +13,7 @@ struct MoneyAccountSheet: View {
 
     @State private var kind: MoneyKind = .account
     @State private var name = ""
+    @State private var institution = ""
     @State private var currency = ""
     @State private var balance = ""
     @State private var rate = ""
@@ -26,8 +27,12 @@ struct MoneyAccountSheet: View {
     private static let currencies = ["MXN", "USD", "EUR"]
 
     private var parsedBalance: Decimal? { AmountParser.parse(balance)?.value }
-    private var parsedRate: Decimal? { rate.isEmpty ? nil : AmountParser.parse(rate)?.value }
-    private var parsedExchange: Decimal? { AmountParser.parse(exchange)?.value }
+    private var parsedRate: Decimal? { rate.isEmpty ? nil : MoneyMath.decimal(rate) }
+    private var parsedExchange: Decimal? { MoneyMath.decimal(exchange) }
+    private var institutionOrNil: String? {
+        let text = institution.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
+    }
 
     private var canSave: Bool {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
@@ -58,6 +63,8 @@ struct MoneyAccountSheet: View {
 
                 Section {
                     TicketTextField("Nombre", text: $name, prompt: namePrompt, identifier: "cuenta-nombre")
+                    TicketTextField("Institución", text: $institution, prompt: "Institución · opcional (Nu, BBVA…)",
+                                    identifier: "cuenta-institucion")
                     if isNew {
                         Picker(selection: $currency) {
                             ForEach(Self.currencies, id: \.self) { Text(CurrencyPreference.name($0)).tag($0) }
@@ -171,6 +178,7 @@ struct MoneyAccountSheet: View {
         guard let account else { return }
         kind = account.kind
         name = account.name
+        institution = account.institution ?? ""
         rate = account.yearlyRate.map { BackupNumber.text($0) } ?? ""
     }
 
@@ -179,10 +187,12 @@ struct MoneyAccountSheet: View {
         do {
             if let account {
                 account.name = trimmed
+                account.institution = institutionOrNil
                 account.yearlyRate = takesRate ? parsedRate : nil
                 try context.save()
             } else if let value = parsedBalance {
                 let new = MoneyAccount(name: trimmed, kind: kind, currency: currency, yearlyRate: takesRate ? parsedRate : nil)
+                new.institution = institutionOrNil
                 try MoneyStore.add(new, balance: value, rate: isForeign ? parsedExchange : nil,
                                    in: context, mainCurrency: mainCurrency)
             }

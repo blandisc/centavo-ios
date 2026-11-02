@@ -7,8 +7,9 @@ import Foundation
 /// nudge the money. Dates travel as seconds since 2001, which a `Double` keeps exactly.
 public struct BackupPayload: Codable, Equatable, Sendable {
     /// Bumped when the shape changes in a way an older app cannot read. 2 (2026-10-31) adds
-    /// «Mi dinero»: an app that only knows 1 refuses it instead of restoring without it.
-    public static let currentFormat = 2
+    /// «Mi dinero»: an app that only knows 1 refuses it instead of restoring without it. 3
+    /// (2026-11-01) adds each line's subtype and institution, and the incomes.
+    public static let currentFormat = 3
 
     public var format: Int
     public var createdAt: Date
@@ -71,10 +72,29 @@ public struct BackupSummary: Equatable, Sendable {
 public struct BackupMoney: Codable, Equatable, Sendable {
     public var accounts: [Account]
     public var cuts: [Cut]
+    /// Format 3. `nil` in an older file.
+    public var incomes: [Income]?
 
-    public init(accounts: [Account], cuts: [Cut]) {
+    public init(accounts: [Account], cuts: [Cut], incomes: [Income]? = nil) {
         self.accounts = accounts
         self.cuts = cuts
+        self.incomes = incomes
+    }
+
+    /// What comes in each month (format 3).
+    public struct Income: Codable, Equatable, Sendable {
+        public var id: String
+        public var name: String
+        public var institution: String?
+        public var amount: String
+        public var currency: String
+        public var since: Date
+        public var archived: Bool
+
+        public init(id: String, name: String, institution: String?, amount: String, currency: String, since: Date, archived: Bool) {
+            self.id = id; self.name = name; self.institution = institution; self.amount = amount
+            self.currency = currency; self.since = since; self.archived = archived
+        }
     }
 
     public struct Account: Codable, Equatable, Sendable {
@@ -86,11 +106,15 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         public var order: Int
         public var archived: Bool
         public var createdAt: Date
+        /// Format 3: a card or a loan among debts, money lent or to come among receivables.
+        public var subtype: String?
+        public var institution: String?
 
         public init(id: String, name: String, kind: String, currency: String, yearlyRate: String?,
-                    order: Int, archived: Bool, createdAt: Date) {
+                    order: Int, archived: Bool, createdAt: Date, subtype: String? = nil, institution: String? = nil) {
             self.id = id; self.name = name; self.kind = kind; self.currency = currency
             self.yearlyRate = yearlyRate; self.order = order; self.archived = archived; self.createdAt = createdAt
+            self.subtype = subtype; self.institution = institution
         }
     }
 

@@ -12,11 +12,24 @@ struct MoneyLoopClock<Content: View>: View {
     @ViewBuilder let content: (Double) -> Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var still: Bool { reduceMotion || MoneyMotion.stillForTests }
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: reduceMotion)) { context in
+        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: still)) { context in
             let seconds = context.date.timeIntervalSinceReferenceDate
-            content(reduceMotion ? rest : seconds.truncatingRemainder(dividingBy: cycle) / cycle)
+            content(still ? rest : seconds.truncatingRemainder(dividingBy: cycle) / cycle)
         }
+    }
+}
+
+enum MoneyMotion {
+    /// The UI tests wait for the app to be idle; a drawing at 30 fps never is.
+    static var stillForTests: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-centavo-dibujos-quietos")
+        #else
+        false
+        #endif
     }
 }
 
@@ -92,6 +105,8 @@ struct MoneyGrowthBars: View {
 /// What each kind of line is, drawn small on its card.
 enum MoneyArtKind: String, CaseIterable {
     case account, investment, card, loan, other, lent, coming
+    /// «¿Lo tienes en Excel?»: a sheet whose rows fly into the ticket.
+    case excel
 }
 
 struct MoneyKindArt: View {
@@ -109,6 +124,7 @@ struct MoneyKindArt: View {
                 case .other: other(&context, size, t)
                 case .lent: lent(&context, size, t)
                 case .coming: coming(&context, size, t)
+                case .excel: excel(&context, size, t)
                 }
             }
         }
@@ -208,6 +224,46 @@ struct MoneyKindArt: View {
         let x = 22 + 76 * out - 76 * home
         let dim = t > 0.38 && t < 0.56 ? 0.35 : 1
         c.fill(Path(ellipseIn: CGRect(x: x - 5, y: 23, width: 10, height: 10)), with: .color(Theme.brass.opacity(dim)))
+    }
+
+    /// A hairline spreadsheet: a brass row walks down it, its rows fly into the dashed ticket
+    /// and fill its cells.
+    private func excel(_ c: inout GraphicsContext, _ size: CGSize, _ t: Double) {
+        fit(&c, size, design: CGSize(width: 110, height: 58))
+        let sheet = CGRect(x: 6, y: 8, width: 44, height: 40)
+        c.stroke(Path(roundedRect: sheet, cornerRadius: 3), with: .color(Theme.outline), style: stroke(Theme.outline))
+        for y: CGFloat in [18, 28, 38] {
+            var row = Path(); row.move(to: CGPoint(x: 6, y: y)); row.addLine(to: CGPoint(x: 50, y: y))
+            c.stroke(row, with: .color(Theme.outline), style: stroke(Theme.outline))
+        }
+        for x: CGFloat in [20, 35] {
+            var column = Path(); column.move(to: CGPoint(x: x, y: 8)); column.addLine(to: CGPoint(x: x, y: 48))
+            c.stroke(column, with: .color(Theme.outline), style: stroke(Theme.outline))
+        }
+        // The highlight walks the three rows.
+        let walk = moneySpan(t, 0.08, 0.50)
+        let shown = moneyRise(t, 0.04, 0.10, 0.52, 0.60)
+        c.fill(Path(CGRect(x: 6.6, y: 18.6 + 20 * walk, width: 42.8, height: 8.8)),
+               with: .color(Theme.brass.opacity(Geo.soft * 1.2 * shown)))
+        // Each row's figure flies right into the ticket, and its cell fills.
+        c.stroke(Path(roundedRect: CGRect(x: 62, y: 8, width: 42, height: 40), cornerRadius: 3),
+                 with: .color(Theme.outline), style: stroke(Theme.outline, dash: Geo.dash))
+        let heights: [CGFloat] = [18, 22, 14]
+        for i in 0..<3 {
+            let start = 0.14 + Double(i) * 0.12
+            let fly = moneySpan(t, start, start + 0.22)
+            let visible = t > start && fly < 1
+            if visible {
+                let x = 40 + 30 * CGFloat(fly) + CGFloat(i) * 11 * CGFloat(fly)
+                c.fill(Path(roundedRect: CGRect(x: x, y: 21 + CGFloat(i) * 8 * CGFloat(1 - fly), width: 8, height: 4), cornerRadius: 1),
+                       with: .color(Theme.brass))
+            }
+            let cellX = 68 + CGFloat(i) * 11
+            c.stroke(cell(cellX, 16, 8, 26), with: .color(Theme.outline), style: stroke(Theme.outline))
+            let filled = moneyRise(t, start + 0.20, start + 0.30, 0.86, 0.98)
+            let h = heights[i] * filled
+            c.fill(cell(cellX, 42 - h, 8, h), with: .color(Theme.brass))
+        }
     }
 
     /// «Hoy» stays put; the days pass; a coin lands on the day it arrives, which stays marked.
@@ -314,9 +370,10 @@ struct MoneySuccessArt: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval, paused: reduceMotion || played)) { context in
+        TimelineView(.animation(minimumInterval: Theme.Motion.Money.frameInterval,
+                                paused: reduceMotion || played || MoneyMotion.stillForTests)) { context in
             let elapsed = context.date.timeIntervalSince(start)
-            let t = reduceMotion || played ? 1 : min(elapsed / Theme.Motion.Money.success, 1)
+            let t = reduceMotion || played || MoneyMotion.stillForTests ? 1 : min(elapsed / Theme.Motion.Money.success, 1)
             Canvas { context, size in
                 var c = context
                 fit(&c, size, design: CGSize(width: 132, height: 132))
