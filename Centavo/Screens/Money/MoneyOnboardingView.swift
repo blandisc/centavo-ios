@@ -26,6 +26,8 @@ struct MoneyOnboardingView: View {
     /// While typing, the step's button steps aside instead of riding over the fields.
     @State private var typing = false
     @State private var confirmingLeave = false
+    /// A saved row whose «Quitar» was tapped: it's asked before (2026-11-02 audit).
+    @State private var removing: MoneyAccount?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -80,6 +82,19 @@ struct MoneyOnboardingView: View {
             } message: {
                 Text("Si continúas, ese renglón no se guarda.")
             }
+            .alert("¿Quitar \(removing?.name ?? "")?",
+                   isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
+                Button("Cancelar", role: .cancel) { removing = nil }
+                Button("Quitar", role: .destructive) {
+                    if let removing { remove(removing) }
+                    removing = nil
+                }
+            } message: {
+                Text(removing.map(MoneyStore.hasHistory) ?? false
+                     ? "Tiene cortes pasados: se archiva y esos cortes la conservan."
+                     : "Se borra con su saldo.")
+            }
+            .onMoneyCovered { confirmingLeave = false; removing = nil; problem = nil }
             .onAppear(perform: arrive)
         }
     }
@@ -121,7 +136,7 @@ struct MoneyOnboardingView: View {
                          figure: figure(for: account), isOpen: open == account.id,
                          toggle: { toggle(account) }) {
                     MoneyRowEditor(draft: $draft, mainCurrency: mainCurrency, isNew: false,
-                                   done: { save(account) }, remove: { remove(account) })
+                                   done: { save(account) }, remove: { removing = account })
                 }
             }
             if open == Self.draftID {

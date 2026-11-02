@@ -156,7 +156,8 @@ struct BackupTests {
                                                  .init(account: "A2", balance: "2", reviewed: true)])],
             incomes: [.init(id: "I1", name: "Sueldo", institution: nil, amount: "60000", currency: "MXN",
                             since: Date(timeIntervalSinceReferenceDate: 7), archived: false,
-                            createdAt: Date(timeIntervalSinceReferenceDate: 8))])
+                            createdAt: Date(timeIntervalSinceReferenceDate: 8),
+                            until: Date(timeIntervalSinceReferenceDate: 9))])
         let back = try BackupSeal.open(BackupSeal.seal(payload, password: "clave", rounds: rounds), password: "clave")
         #expect(back == payload)
         #expect(back.expenses.map(\.fixedID) == ["F-1", nil, nil])
@@ -164,6 +165,7 @@ struct BackupTests {
         #expect(back.expenses.map(\.maybeRepeated) == [nil, nil, true])
         #expect(back.money?.cuts[0].entries.map(\.reviewed) == [false, true])
         #expect(back.money?.incomes?[0].createdAt == Date(timeIntervalSinceReferenceDate: 8))
+        #expect(back.money?.incomes?[0].until == Date(timeIntervalSinceReferenceDate: 9))
     }
 
     @Test("Un archivo de antes de esos campos se lee con todos vacíos")

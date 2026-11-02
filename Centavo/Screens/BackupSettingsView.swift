@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 /// The nightly run itself is an automation in Atajos with «Respaldar Al día».
 struct BackupSettingsView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasPassword = BackupPassword.read() != nil
     @State private var newPassword = ""
@@ -28,6 +29,8 @@ struct BackupSettingsView: View {
     @State private var fileToOpen: URL?
     @State private var typedPassword = ""
     @State private var askingPassword = false
+    /// The password typed a moment ago didn't open the file: the alert says so.
+    @State private var wrongTry = false
     @State private var pending: BackupPayload?
     /// The password that opened `pending`, to lock the safety copy when this phone has none.
     @State private var openedWith: String?
@@ -47,6 +50,9 @@ struct BackupSettingsView: View {
         .foregroundStyle(Theme.ink)
         .navigationBarTitleDisplayMode(.inline)
         .ticketBarTitle("Respaldo")
+        // The check before «Cambiar contraseña» is for who's holding the phone now: leaving the
+        // app closes the form, so coming back asks again.
+        .onChange(of: scenePhase) { _, phase in if phase == .background, changingPassword { cancelChanging() } }
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
             guard case .success(let url) = result else { return }
             do {
@@ -63,13 +69,14 @@ struct BackupSettingsView: View {
         }
         .alert("Contraseña del respaldo", isPresented: $askingPassword) {
             SecureField("Contraseña", text: $typedPassword)
-            Button("Cancelar", role: .cancel) { typedPassword = "" }
+            Button("Cancelar", role: .cancel) { typedPassword = ""; wrongTry = false }
             Button("Abrir") {
-                if let fileToOpen { open(fileToOpen, password: typedPassword) }
+                if let fileToOpen { open(fileToOpen, password: typedPassword, typed: true) }
                 typedPassword = ""
             }
         } message: {
-            Text("Escribe la contraseña con la que se guardó este respaldo.")
+            Text(wrongTry ? "Esa contraseña no abre este respaldo. Prueba otra vez."
+                          : "Escribe la contraseña con la que se guardó este respaldo.")
         }
         .alert("¿Restaurar este respaldo?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {
             Button("Cancelar", role: .cancel) { pending = nil }
@@ -114,9 +121,10 @@ struct BackupSettingsView: View {
                     }
                 }
                 .accessibilityIdentifier("respaldo-ver-contrasena")
-                Button { changingPassword = true; shownPassword = nil } label: {
+                Button { Task { await startChanging() } } label: {
                     IconRow("Cambiar contraseña", systemImage: "key") { EmptyView() }
                 }
+                .accessibilityIdentifier("respaldo-cambiar-contrasena")
             } else {
                 SecureField("Contraseña", text: $newPassword,
                             prompt: Text("Contraseña, mínimo \(Self.minimumLength)").foregroundStyle(Theme.faint))
@@ -132,13 +140,24 @@ struct BackupSettingsView: View {
                 }
                 .disabled(!passwordIsValid)
                 .accessibilityIdentifier("respaldo-guardar-contrasena")
+                if hasPassword {
+                    Button(action: cancelChanging) {
+                        Text("Cancelar")
+                            .font(.ticket(.body))
+                            .foregroundStyle(Theme.muted)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+                    }
+                    .accessibilityIdentifier("respaldo-cancelar-cambio")
+                }
             }
         } header: {
             Text("Contraseña").ticketCaption()
         } footer: {
-            HintText(hasPassword && !changingPassword
-                     ? "Sin ella el respaldo no se puede abrir, ni por ti ni por nadie. Guárdala también en la app Contraseñas."
-                     : "Guárdala también en la app Contraseñas: si pierdes este iPhone, la vas a necesitar para abrir tu respaldo en otro. Sin ella, nadie puede abrirlo.")
+            HintText(!hasPassword
+                     ? "Guárdala también en la app Contraseñas: si pierdes este iPhone, la vas a necesitar para abrir tu respaldo en otro. Sin ella, nadie puede abrirlo."
+                     : changingPassword
+                     ? "Los respaldos que ya tienes se abren con la contraseña anterior. Guárdala también."
+                     : "Sin ella el respaldo no se puede abrir, ni por ti ni por nadie. Guárdala también en la app Contraseñas.")
         }
         .listRowBackground(Theme.surface)
     }
@@ -194,12 +213,12 @@ struct BackupSettingsView: View {
 
     private var restoreSection: some View {
         Section {
-            Button { choosingFile = true } label: {
+            Button { Task { await startRestoring() } } label: {
                 IconRow("Restaurar respaldo", systemImage: "clock.arrow.circlepath") { EmptyView() }
             }
             .accessibilityIdentifier("respaldo-restaurar")
         } footer: {
-            HintText("Antes de restaurar ves de qué día es y cuántos gastos trae. Nada cambia hasta que confirmas.")
+            HintText("Primero confirmas que eres tú. Antes de restaurar ves de qué día es y cuántos gastos trae. Nada cambia hasta que confirmas.")
         }
         .listRowBackground(Theme.surface)
     }
@@ -233,6 +252,26 @@ struct BackupSettingsView: View {
         changingPassword = false
     }
 
+    /// «Cambiar contraseña» asks the owner first (2026-11-02 audit): whoever holds the phone
+    /// shouldn't be able to lock the next backups with a password only they know.
+    private func startChanging() async {
+        guard await OwnerCheck.confirm(reason: "Para cambiar la contraseña del respaldo.") else { return }
+        shownPassword = nil
+        changingPassword = true
+    }
+
+    private func cancelChanging() {
+        newPassword = ""
+        repeated = ""
+        changingPassword = false
+    }
+
+    /// Restoring opens a backup with the saved password and replaces everything: the owner first.
+    private func startRestoring() async {
+        guard await OwnerCheck.confirm(reason: "Para restaurar un respaldo.") else { return }
+        choosingFile = true
+    }
+
     private func reveal() async {
         if shownPassword != nil { shownPassword = nil; return }
         if await BackupPassword.unlock(reason: "Para mostrar la contraseña del respaldo.") {
@@ -251,8 +290,9 @@ struct BackupSettingsView: View {
         }
     }
 
-    private func open(_ url: URL, password: String?) {
+    private func open(_ url: URL, password: String?, typed: Bool = false) {
         fileToOpen = url
+        wrongTry = false
         guard let password else { askingPassword = true; return }
         working = true
         // The key takes a moment to derive: off the main thread, so the screen doesn't freeze.
@@ -262,6 +302,8 @@ struct BackupSettingsView: View {
                 pending = try await Task.detached { try DailyBackup.read(url, password: password) }.value
                 openedWith = password
             } catch DailyBackup.Failure.unreadable(.wrongPassword) {
+                // The saved one not opening it is the first ask; a typed one is a retry.
+                wrongTry = typed
                 askingPassword = true
             } catch {
                 problem = message(for: error)

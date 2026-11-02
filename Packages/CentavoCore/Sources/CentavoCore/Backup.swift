@@ -104,11 +104,14 @@ public struct BackupMoney: Codable, Equatable, Sendable {
         public var archived: Bool
         /// When it was added. `nil` in a file written before 2026-11-02.
         public var createdAt: Date?
+        /// When it stopped counting. `nil` while it counts, and in a file written before.
+        public var until: Date?
 
         public init(id: String, name: String, institution: String?, amount: String, currency: String, since: Date,
-                    archived: Bool, createdAt: Date? = nil) {
+                    archived: Bool, createdAt: Date? = nil, until: Date? = nil) {
             self.id = id; self.name = name; self.institution = institution; self.amount = amount
             self.currency = currency; self.since = since; self.archived = archived; self.createdAt = createdAt
+            self.until = until
         }
     }
 

@@ -57,6 +57,9 @@ final class MoneyCut {
     /// A cut being written (the sheet is open, or was left half-done). Never counts: every
     /// query that adds up goes through `MoneyCut.finished`.
     var isDraft: Bool = false
+    /// While a draft: the currencies whose rate was already looked at (`MoneyWords.encodeCodes`),
+    /// so reopening the cut doesn't ask them again (2026-11-02 audit). Empty once finished.
+    var reviewedRates: String = ""
     @Relationship(deleteRule: .cascade, inverse: \MoneyEntry.cut)
     var entries: [MoneyEntry]? = []
 
@@ -189,6 +192,8 @@ final class MoneyIncome {
     var since: Date = Date.now
     var archived: Bool = false
     var createdAt: Date = Date.now
+    /// When it stopped counting (archived, or replaced by a new amount). Optional (2026-11-02).
+    var until: Date?
 
     init(name: String, institution: String?, amount: Decimal, currency: String, since: Date = .now) {
         self.name = name
@@ -505,11 +510,16 @@ enum MoneyStore {
         do { try context.save() } catch { context.rollback(); throw error }
     }
 
+    /// A line with a history: in more than one finished cut. Drafts don't count.
+    static func hasHistory(_ account: MoneyAccount) -> Bool {
+        (account.entries ?? []).filter { $0.cut?.isDraft != true }.count > 1
+    }
+
     /// Removes an account written by mistake during the first time, with its lines: it has no
     /// history yet. Later, accounts are only archived.
     static func remove(_ account: MoneyAccount, in context: ModelContext) throws {
         // In more than one cut it has a history: it's archived instead, and past cuts keep it.
-        if (account.entries ?? []).filter({ $0.cut?.isDraft != true }).count > 1 {
+        if hasHistory(account) {
             account.archived = true
             try context.save()
             return

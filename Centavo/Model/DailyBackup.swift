@@ -253,7 +253,8 @@ enum DailyBackup {
             incomes: incomes.map { income in
                 .init(id: income.id.uuidString, name: income.name, institution: income.institution,
                       amount: BackupNumber.text(income.amount), currency: income.currency,
-                      since: income.since, archived: income.archived, createdAt: income.createdAt)
+                      since: income.since, archived: income.archived, createdAt: income.createdAt,
+                      until: income.until)
             })
     }
 
@@ -282,6 +283,7 @@ enum DailyBackup {
                 income.id = UUID(uuidString: row.id) ?? UUID()
                 income.archived = row.archived
                 if let createdAt = row.createdAt { income.createdAt = createdAt }
+                income.until = row.until
                 context.insert(income)
             }
             var byID: [String: MoneyAccount] = [:]

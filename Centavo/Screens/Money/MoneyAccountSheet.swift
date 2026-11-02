@@ -142,6 +142,7 @@ struct MoneyAccountSheet: View {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
             .onAppear(perform: load)
+            .onMoneyCovered { confirmingArchive = false; problem = nil }
         }
     }
 
