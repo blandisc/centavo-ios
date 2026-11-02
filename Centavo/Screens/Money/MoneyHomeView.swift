@@ -50,9 +50,14 @@ struct MoneyHomeView: View {
                         .accessibilityIdentifier("dinero-agregar")
                 }
             }
-            .sheet(isPresented: $adding) { MoneyAccountSheet(account: nil, mainCurrency: latest?.mainCurrency ?? main) }
-            .sheet(item: $editing) { MoneyAccountSheet(account: $0, mainCurrency: latest?.mainCurrency ?? main) }
-            .sheet(item: $cutting) { MoneyCutSheet(draft: $0) }
+            // A sheet sits above the tab's Face ID lock: it's covered while the app isn't in front
+            // and until Face ID opens it again, keeping what was being written.
+            .sheet(isPresented: $adding) {
+                MoneyAccountSheet(account: nil, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover()
+            }
+            .sheet(item: $editing) { MoneyAccountSheet(account: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover() }
+            .sheet(item: $cutting) { MoneyCutSheet(draft: $0).moneyPrivacyCover() }
+
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
@@ -207,7 +212,7 @@ struct MoneyAccountRow: View {
     private var balance: Decimal? { cut.entry(for: account)?.balance }
 
     private var detail: String {
-        var bits: [String] = []
+        var bits: [String] = account.institution.map { [$0] } ?? []
         if let rate = account.yearlyRate { bits.append("\(rate.formatted(.number.precision(.fractionLength(0...2))))% anual") }
         if account.currency != cut.mainCurrency, let balance {
             bits.append(formatMoney(balance, isoCode: account.currency, label: account.currency))

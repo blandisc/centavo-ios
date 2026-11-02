@@ -22,6 +22,8 @@ final class MoneyAccount {
     /// Accounts are archived, never deleted: past cuts keep their lines.
     var archived: Bool = false
     var createdAt: Date = Date.now
+    /// The bank, card or place it's at («Nu», «Amex»). Optional (2026-11-01).
+    var institution: String?
     /// What it is within its kind (`MoneySubtype.rawValue`): a card or a loan among debts, money
     /// lent or a bonus to come among receivables. Optional: a lightweight addition (2026-11-01).
     var subtype: String?
@@ -113,10 +115,13 @@ enum MoneySubtype: String, CaseIterable {
     case account = "cuenta", investment = "inversion"
     case card = "tarjeta", loan = "prestamo", other = "otros"
     case lent = "me_deben", coming = "por_caer"
+    /// What comes in each month (2026-11-01). Not a line of the net worth: it's saved as a
+    /// `MoneyIncome`, never as an account; it shares the rows and words of the others.
+    case income = "ingreso"
 
     var kind: MoneyKind {
         switch self {
-        case .account: .account
+        case .account, .income: .account
         case .investment: .investment
         case .card, .loan, .other: .debt
         case .lent, .coming: .receivable
@@ -132,6 +137,7 @@ enum MoneySubtype: String, CaseIterable {
         case .other: "Otros"
         case .lent: "Me deben"
         case .coming: "Por caer"
+        case .income: "Ingreso"
         }
     }
 
@@ -145,6 +151,7 @@ enum MoneySubtype: String, CaseIterable {
         case .other: "debes"
         case .lent: "me deben"
         case .coming: "por caer"
+        case .income: "cada mes"
         }
     }
 
@@ -160,8 +167,90 @@ enum MoneySubtype: String, CaseIterable {
     }
 }
 
+/// What comes in each month (2026-11-01): a salary, a rent collected. Only incomes that repeat;
+/// `since` is the month it started, so a raise later doesn't rewrite what months past should
+/// have saved. Not part of the net worth.
+@Model
+final class MoneyIncome {
+    var id: UUID = UUID()
+    var name: String = ""
+    var institution: String?
+    var amount: Decimal = 0
+    var currency: String = "MXN"
+    var since: Date = Date.now
+    var archived: Bool = false
+    var createdAt: Date = Date.now
+
+    init(name: String, institution: String?, amount: Decimal, currency: String, since: Date = .now) {
+        self.name = name
+        self.institution = institution
+        self.amount = amount
+        self.currency = currency
+        self.since = since
+    }
+}
+
+/// A line written in a row, before it's saved: an account, a debt, money owed, or an income.
+struct MoneyLineToSave {
+    var subtype: MoneySubtype
+    var name: String
+    var institution: String?
+    var currency: String
+    var amount: Decimal
+    var yearlyRate: Decimal?
+}
+
 enum MoneyStore {
-    static let models: [any PersistentModel.Type] = [MoneyAccount.self, MoneyCut.self, MoneyEntry.self]
+    static let models: [any PersistentModel.Type] = [MoneyAccount.self, MoneyCut.self, MoneyEntry.self, MoneyIncome.self]
+
+    /// The incomes that count today.
+    static var activeIncomes: FetchDescriptor<MoneyIncome> {
+        FetchDescriptor(predicate: #Predicate { !$0.archived }, sortBy: [SortDescriptor(\.createdAt)])
+    }
+
+    /// Everything an import brought, in one save: the lines into the latest cut (the first
+    /// makes it), the exchange rates into that cut, the incomes apart. All or nothing.
+    static func addAll(_ lines: [MoneyLineToSave], rates: [String: Decimal], in context: ModelContext,
+                       mainCurrency: String, now: Date = .now) throws {
+        var order = ((try? context.fetch(activeAccounts))?.map(\.order).max() ?? -1) + 1
+        let accounts = lines.filter { $0.subtype != .income }
+        var cut: MoneyCut?
+        if !accounts.isEmpty {
+            if let latest = latestCut(in: context) {
+                cut = latest
+            } else {
+                let first = MoneyCut(month: MoneyMath.monthKey(of: now), date: now, mainCurrency: mainCurrency, isDraft: false)
+                context.insert(first)
+                cut = first
+            }
+        }
+        if let cut {
+            // This month's rates may be updated; an older cut keeps the rates it was made with.
+            let isThisMonth = cut.month == MoneyMath.monthKey(of: now)
+            var table = cut.rateTable
+            for (code, rate) in rates where code != cut.mainCurrency && rate > 0 && (isThisMonth || table[code] == nil) {
+                table[code] = rate
+            }
+            cut.rateTable = table
+        }
+        for line in lines {
+            if line.subtype == .income {
+                context.insert(MoneyIncome(name: line.name, institution: line.institution, amount: line.amount,
+                                           currency: line.currency, since: now))
+                continue
+            }
+            let account = MoneyAccount(name: line.name, kind: line.subtype.kind, currency: line.currency,
+                                       yearlyRate: line.yearlyRate, order: order)
+            account.subtype = line.subtype.rawValue
+            account.institution = line.institution
+            order += 1
+            context.insert(account)
+            let entry = MoneyEntry(balance: line.amount, account: account, reviewed: true)
+            context.insert(entry)
+            entry.cut = cut
+        }
+        do { try context.save() } catch { context.rollback(); throw error }
+    }
 
     /// Its own file next to the expenses' store, never synced.
     static let opened: Result<ModelContainer, Error> = Result {

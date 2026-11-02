@@ -16,6 +16,25 @@ extension DemoData {
 }
 
 enum MoneyDemo {
+    /// What an AI might return from a spreadsheet, for `-centavo-importar-ejemplo`: two
+    /// currencies, a rate that disagrees, a line to fix, a note.
+    static let importSample = """
+    ```csv
+    tipo,nombre,institucion,moneda,monto,tasa_anual,tipo_cambio,repite
+    cuenta,Cajita,Nu,MXN,185000,10.5,,
+    cuenta,CETES,GBM,MXN,150000,9.8,,
+    cuenta,Dólares,BBVA,USD,2000,,19,
+    inversion,Fondo,GBM,USD,1000,,18.5,
+    cuenta,Euros,Wise,EUR,500,,,
+    tarjeta,Platinum,Amex,MXN,6420,48,,
+    prestamo,Auto,BBVA,MXN,120000,12,,
+    por_caer,Bono anual,Arca,MXN,35000,,,
+    inversion,Acciones,GBM,MXN,25 mil,,,
+    ingreso,Sueldo,Arca,MXN,60000,,,si
+    # Las acciones decían «25 mil»: revísalas.
+    ```
+    """
+
     static func makeContainer() throws -> ModelContainer {
         // Each demo starts at the beginning of «Primera cuenta», whatever an earlier run left.
         UserDefaults.standard.removeObject(forKey: MoneyHomeView.stepKey)

@@ -14,6 +14,9 @@ struct MoneyOnboardingView: View {
     @Environment(\.modelContext) private var context
     @Query(MoneyStore.activeAccounts) private var accounts: [MoneyAccount]
     @Query(MoneyCut.finished) private var cuts: [MoneyCut]
+    @Query(MoneyStore.activeIncomes) private var incomes: [MoneyIncome]
+    @AppStorage(BudgetStore.key) private var storedBudget = ""
+    @State private var importing = false
 
     @State private var chosen: MoneySubtype = .account
     /// The row that is open: a saved account's id, or `draftID` for a new one.
@@ -68,6 +71,9 @@ struct MoneyOnboardingView: View {
             .alert("No se pudo", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
+            .navigationDestination(isPresented: $importing) {
+                MoneyImportView(mainCurrency: mainCurrency) { importing = false }
+            }
             .alert("Tienes un renglón sin terminar", isPresented: $confirmingLeave) {
                 Button("Seguir llenando", role: .cancel) {}
                 Button("Continuar sin guardarlo", role: .destructive) { go(to: page.following) }
@@ -87,6 +93,7 @@ struct MoneyOnboardingView: View {
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)
         kinds
+        if page == .have { excelButton }
         if let note = page.note {
             Text(note).font(.ticket(.detail)).foregroundStyle(Theme.muted)
         }
@@ -141,6 +148,34 @@ struct MoneyOnboardingView: View {
         }
     }
 
+    /// «¿Lo tienes en Excel?»: a secondary way in, full width under the two main kinds.
+    private var excelButton: some View {
+        Button { importing = true } label: {
+            HStack(spacing: Theme.Space.m) {
+                if !typeSize.isAccessibilitySize {
+                    MoneyKindArt(kind: .excel)
+                        .frame(width: Theme.Size.moneyExcelArt)
+                }
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    Text("¿Lo tienes en Excel?").font(.ticket(.bodyStrong)).foregroundStyle(Theme.brass)
+                    Text("Pásalo con tu IA y cárgalo todo de una vez.").font(.ticket(.hint)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: Theme.Space.xxs)
+                Image(systemName: "chevron.right").font(.ticket(.footnote)).foregroundStyle(Theme.faint)
+                    .accessibilityHidden(true)
+            }
+            .padding(Theme.Space.sm)
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("recorrido-excel")
+    }
+
     private var kinds: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Theme.Space.m))
                                                   : AnyLayout(HStackLayout(alignment: .top, spacing: Theme.Space.m))
@@ -176,11 +211,40 @@ struct MoneyOnboardingView: View {
         }
         .padding(Theme.Space.l)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.ticket))
+        if !incomes.isEmpty { incomeLine }
         Text("Tu próximo corte es a fin de mes. Ese día sabrás cuánto ahorraste.")
             .font(.ticket(.callout))
             .foregroundStyle(Theme.muted)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
+    }
+
+    /// What comes in each month, and — with a budget in «Hoy» and everything in the main
+    /// currency — what that leaves to save. Asked for in the first cut when it wasn't imported.
+    private var incomeLine: some View {
+        let sameCurrency = incomes.allSatisfy { $0.currency == mainCurrency }
+        let total = incomes.reduce(Decimal(0)) { $0 + $1.amount }
+        let budget = BudgetStore.amount(from: storedBudget)
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack {
+                Text("Te entra al mes").font(.ticket(.body))
+                Spacer()
+                Text(sameCurrency ? money(total, mainCurrency) : incomes.count == 1 ? "1 ingreso" : "\(incomes.count) ingresos").font(.ticket(.bodyMedium)).monospacedDigit()
+            }
+            .foregroundStyle(Theme.ink)
+            if sameCurrency, let budget, budget > 0 {
+                let left = total - budget
+                Text(left > 0 ? "Con tu presupuesto de \(money(budget, mainCurrency)), debes ahorrar \(Text(money(left, mainCurrency)).foregroundStyle(Theme.brass)) al mes."
+                     : left == 0 ? "Tu presupuesto de \(money(budget, mainCurrency)) es todo lo que te entra: no queda para ahorrar."
+                     : "Tu presupuesto de \(money(budget, mainCurrency)) es mayor que lo que te entra.")
+                    .font(.ticket(.callout))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(Theme.Space.l)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.ticket))
+        .accessibilityElement(children: .combine)
     }
 
     private func receiptLine(_ title: String, _ value: Decimal) -> some View {
@@ -277,12 +341,14 @@ struct MoneyOnboardingView: View {
         do {
             if let account {
                 account.name = draft.trimmedName
+                account.institution = draft.trimmedInstitution
                 account.yearlyRate = draft.subtype.takesRate ? draft.yearlyRate : nil
                 try MoneyStore.update(account, balance: balance, rate: draft.exchange, in: context)
             } else {
                 let new = MoneyAccount(name: draft.trimmedName, kind: draft.subtype.kind, currency: draft.currency,
                                        yearlyRate: draft.subtype.takesRate ? draft.yearlyRate : nil)
                 new.subtype = draft.subtype.rawValue
+                new.institution = draft.trimmedInstitution
                 try MoneyStore.add(new, balance: balance, rate: draft.exchange, in: context, mainCurrency: mainCurrency)
             }
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
@@ -303,7 +369,7 @@ struct MoneyOnboardingView: View {
     // MARK: Words
 
     private func subtitle(for account: MoneyAccount) -> String {
-        var bits = [MoneySubtype.of(account).short]
+        var bits = [account.institution, MoneySubtype.of(account).short].compactMap { $0 }
         if let rate = account.yearlyRate { bits.append("\(rate.formatted(.number.precision(.fractionLength(0...2))))% anual") }
         if account.currency != mainCurrency { bits.append(MoneyCurrency.symbol(account.currency)) }
         return bits.joined(separator: " · ")
@@ -439,6 +505,7 @@ struct MoneyKindCard: View {
         case .other: .other
         case .lent: .lent
         case .coming: .coming
+        case .income: .account
         }
     }
 
@@ -495,6 +562,7 @@ extension MoneySubtype {
         case .other: compact ? "A familia, pendientes." : "Lo que no es tarjeta ni préstamo."
         case .lent: "Prestaste dinero y te lo van a regresar."
         case .coming: "Ya lo ganaste, pero llega en una fecha que viene."
+        case .income: "Lo que te entra cada mes."
         }
     }
 
@@ -518,7 +586,7 @@ extension MoneySubtype {
     }
 
     /// Accounts and debts can carry a yearly rate (a yield, or the interest charged).
-    var takesRate: Bool { self == .account || self == .card || self == .loan }
+    var takesRate: Bool { self == .account || self == .investment || self == .card || self == .loan }
 
     var amountQuestion: String {
         switch self {
@@ -527,6 +595,7 @@ extension MoneySubtype {
         case .card, .loan, .other: "¿Cuánto debes hoy?"
         case .lent: "¿Cuánto te deben?"
         case .coming: "¿Cuánto te va a llegar?"
+        case .income: "¿Cuánto te entra al mes?"
         }
     }
 
@@ -539,6 +608,7 @@ extension MoneySubtype {
         case .other: "Cuánto le debes hoy."
         case .lent: "Lo que todavía no te regresan."
         case .coming: "Lo que te van a pagar."
+        case .income: "Lo que te llega cada mes, ya sin impuestos."
         }
     }
 
@@ -551,6 +621,7 @@ extension MoneySubtype {
         case .other: "Mamá, renta pendiente…"
         case .lent: "Préstamo a Ana…"
         case .coming: "Bono anual, aguinaldo…"
+        case .income: "Sueldo, renta que cobras…"
         }
     }
 }
@@ -618,6 +689,7 @@ struct MoneyRow<Editor: View>: View {
 struct MoneyRowDraft {
     var subtype: MoneySubtype = .account
     var name = ""
+    var institution = ""
     var currency = "MXN"
     var amount = ""
     var rate = ""
@@ -633,6 +705,7 @@ struct MoneyRowDraft {
     init(account: MoneyAccount, balance: Decimal?, rate exchange: Decimal?) {
         subtype = MoneySubtype.of(account)
         name = account.name
+        institution = account.institution ?? ""
         currency = account.currency
         amount = balance.map { BackupNumber.text($0) } ?? ""
         rate = account.yearlyRate.map { BackupNumber.text($0) } ?? ""
@@ -640,6 +713,10 @@ struct MoneyRowDraft {
     }
 
     var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
+    var trimmedInstitution: String? {
+        let text = institution.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
+    }
     var balance: Decimal? { AmountParser.parse(amount)?.value }
     var yearlyRate: Decimal? { rate.isEmpty ? nil : MoneyMath.decimal(rate) }
     var exchange: Decimal? { MoneyMath.decimal(exchangeText) }
@@ -657,14 +734,25 @@ struct MoneyRowEditor: View {
     @Binding var draft: MoneyRowDraft
     let mainCurrency: String
     let isNew: Bool
+    /// The import asks one exchange rate per currency, above the rows, not one per row.
+    var asksExchange = true
     let done: () -> Void
     let remove: () -> Void
+    /// What the left button says; «Cancelar» for a new row, «Quitar» for a saved one.
+    var removeTitle: String?
+
+    /// Complete for its «Listo»: without the per-row exchange rate when it's asked elsewhere.
+    private var complete: Bool { draft.isComplete(mainCurrency: asksExchange ? mainCurrency : draft.currency) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             field("Nombre", hint: "Como le dices.") {
                 TextField("Nombre", text: $draft.name, prompt: Text(draft.subtype.namePrompt).foregroundStyle(Theme.faint))
                     .accessibilityIdentifier("fila-nombre")
+            }
+            field("Institución · opcional", hint: "El banco, la tarjeta o el lugar: Nu, BBVA, Amex.") {
+                TextField("Institución", text: $draft.institution, prompt: Text("Nu, BBVA, Amex…").foregroundStyle(Theme.faint))
+                    .accessibilityIdentifier("fila-institucion")
             }
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text("Moneda").ticketCaption()
@@ -682,7 +770,7 @@ struct MoneyRowEditor: View {
                     .groupsThousands($draft.amount)
                     .accessibilityIdentifier("fila-monto")
             }
-            if draft.currency != mainCurrency {
+            if asksExchange && draft.currency != mainCurrency {
                 field("1 \(MoneyCurrency.symbol(draft.currency)) = \(MoneyCurrency.symbol(mainCurrency))",
                       hint: "El tipo de cambio de hoy. Lo actualizas en cada corte.") {
                     TextField("Tipo de cambio", text: $draft.exchangeText, prompt: Text("0.00").foregroundStyle(Theme.faint))
@@ -700,18 +788,19 @@ struct MoneyRowEditor: View {
                 }
             }
             HStack {
-                Button(isNew ? "Cancelar" : "Quitar", role: isNew ? .cancel : .destructive, action: remove)
+                Button(removeTitle ?? (isNew ? "Cancelar" : "Quitar"), role: isNew && removeTitle == nil ? .cancel : .destructive,
+                       action: remove)
                     .font(.ticket(.label))
                     .tracking(Theme.Tracking.label)
                     .textCase(.uppercase)
-                    .foregroundStyle(isNew ? Theme.muted : Theme.danger)
+                    .foregroundStyle(isNew && removeTitle == nil ? Theme.muted : Theme.danger)
                 Spacer()
                 Button("Listo", action: done)
                     .font(.ticket(.label))
                     .tracking(Theme.Tracking.label)
                     .textCase(.uppercase)
-                    .foregroundStyle(draft.isComplete(mainCurrency: mainCurrency) ? Theme.brass : Theme.faint)
-                    .disabled(!draft.isComplete(mainCurrency: mainCurrency))
+                    .foregroundStyle(complete ? Theme.brass : Theme.faint)
+                    .disabled(!complete)
                     .accessibilityIdentifier("fila-listo")
             }
             .frame(minHeight: Theme.Size.tapTarget)

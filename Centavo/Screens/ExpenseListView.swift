@@ -963,6 +963,10 @@ private extension ExpenseListView {
             }
             return parts.joined(separator: " ")
         } catch CSVImporter.Failure.notOurFile {
+            // «Mi dinero»'s file has its own place (2026-11-01).
+            if MoneyImport.parse(text, main: primaryCurrency).refusal == nil {
+                return "Este archivo es de «Mi dinero», no de tus gastos: cárgalo en esa pestaña."
+            }
             return "Ese archivo no es un CSV exportado de Al día (le falta la fila Fecha, Comercio, Monto, Moneda)."
         } catch {
             return "No se pudo guardar lo importado. Intenta de nuevo."

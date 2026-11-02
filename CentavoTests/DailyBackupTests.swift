@@ -86,6 +86,9 @@ final class DailyBackupTests: XCTestCase {
         let cetes = MoneyAccount(name: "CETES", kind: .account, currency: "MXN", yearlyRate: Decimal(string: "9.8"))
         let dollars = MoneyAccount(name: "Dólares", kind: .account, currency: "USD")
         let amex = MoneyAccount(name: "Amex", kind: .debt, currency: "MXN")
+        amex.subtype = MoneySubtype.loan.rawValue
+        amex.institution = "American Express"
+        context.insert(MoneyIncome(name: "Sueldo", institution: "Arca", amount: 60_000, currency: "MXN"))
         try MoneyStore.add(cetes, balance: Decimal(string: "150000.01")!, rate: nil, in: context, mainCurrency: "MXN")
         try MoneyStore.add(dollars, balance: 2_000, rate: 19, in: context, mainCurrency: "MXN")
         try MoneyStore.add(amex, balance: 6_420, rate: nil, in: context, mainCurrency: "MXN")
@@ -103,6 +106,10 @@ final class DailyBackupTests: XCTestCase {
         let back = try XCTUnwrap(MoneyStore.latestCut(in: ModelContext(elsewhere)))
         XCTAssertEqual(back.netWorth.total, before)
         XCTAssertEqual(back.rateTable, ["USD": 19])
+        let restored = try ModelContext(elsewhere).fetch(FetchDescriptor<MoneyAccount>(predicate: #Predicate { $0.name == "Amex" }))
+        XCTAssertEqual(restored.first?.subtype, "prestamo", "El respaldo ya no pierde el tipo de cada deuda")
+        XCTAssertEqual(restored.first?.institution, "American Express")
+        XCTAssertEqual(try ModelContext(elsewhere).fetch(FetchDescriptor<MoneyIncome>()).first?.amount, 60_000)
     }
 
     func testAnOldBackupLeavesMiDineroAlone() throws {

@@ -118,7 +118,8 @@ enum DailyBackup {
         guard let reread, let back = try? BackupSeal.open(reread, password: password),
               back.expenses.count == payload.expenses.count,
               back.money?.accounts.count == payload.money?.accounts.count,
-              back.money?.cuts.count == payload.money?.cuts.count else { throw Failure.notWritten }
+              back.money?.cuts.count == payload.money?.cuts.count,
+              back.money?.incomes?.count == payload.money?.incomes?.count else { throw Failure.notWritten }
 
         guard trims, let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
         else { return }
@@ -150,11 +151,13 @@ enum DailyBackup {
         let context = ModelContext(container)
         let accounts = try context.fetch(FetchDescriptor<MoneyAccount>(sortBy: [SortDescriptor(\.createdAt)]))
         let cuts = try context.fetch(MoneyCut.finished)
+        let incomes = try context.fetch(FetchDescriptor<MoneyIncome>(sortBy: [SortDescriptor(\.createdAt)]))
         return BackupMoney(
             accounts: accounts.map { account in
                 .init(id: account.id.uuidString, name: account.name, kind: account.kindRaw, currency: account.currency,
                       yearlyRate: account.yearlyRate.map(BackupNumber.text), order: account.order,
-                      archived: account.archived, createdAt: account.createdAt)
+                      archived: account.archived, createdAt: account.createdAt,
+                      subtype: account.subtype, institution: account.institution)
             },
             cuts: cuts.map { cut in
                 .init(id: cut.id.uuidString, month: cut.month, date: cut.date, mainCurrency: cut.mainCurrency,
@@ -164,6 +167,11 @@ enum DailyBackup {
                                        yieldOverride: entry.yieldOverride.map(BackupNumber.text),
                                        movement: entry.movement.map(BackupNumber.text))
                       })
+            },
+            incomes: incomes.map { income in
+                .init(id: income.id.uuidString, name: income.name, institution: income.institution,
+                      amount: BackupNumber.text(income.amount), currency: income.currency,
+                      since: income.since, archived: income.archived)
             })
     }
 
@@ -182,6 +190,17 @@ enum DailyBackup {
             for cut in try context.fetch(FetchDescriptor<MoneyCut>()) { context.delete(cut) }
             for entry in try context.fetch(FetchDescriptor<MoneyEntry>()) { context.delete(entry) }
             for account in try context.fetch(FetchDescriptor<MoneyAccount>()) { context.delete(account) }
+            // An older file has no incomes: the ones here stay.
+            if money.incomes != nil {
+                for income in try context.fetch(FetchDescriptor<MoneyIncome>()) { context.delete(income) }
+            }
+            for row in money.incomes ?? [] {
+                let income = MoneyIncome(name: row.name, institution: row.institution, amount: try number(row.amount),
+                                         currency: row.currency, since: row.since)
+                income.id = UUID(uuidString: row.id) ?? UUID()
+                income.archived = row.archived
+                context.insert(income)
+            }
             var byID: [String: MoneyAccount] = [:]
             for row in money.accounts {
                 let account = MoneyAccount(name: row.name, kind: MoneyKind(rawValue: row.kind) ?? .account,
@@ -189,6 +208,8 @@ enum DailyBackup {
                 account.id = UUID(uuidString: row.id) ?? UUID()
                 account.archived = row.archived
                 account.createdAt = row.createdAt
+                account.subtype = row.subtype
+                account.institution = row.institution
                 context.insert(account)
                 byID[row.id] = account
             }
