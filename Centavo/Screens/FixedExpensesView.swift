@@ -471,6 +471,12 @@ struct FixedPlanSheet: View {
 
     private func save() {
         guard let amount else { return }
+        // Started meanwhile (its day came, or another device started it): it is no longer a
+        // plan, and saving would make a second one (independent review, 2026-11-02).
+        if let editing, !FixedPlan.saved.contains(where: { $0.id == editing.id }) {
+            problem = "Este gasto fijo ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo."
+            return
+        }
         let categoryName = category.trimmingCharacters(in: .whitespaces)
         let cardName = card.trimmingCharacters(in: .whitespaces)
         var plan = FixedPlan(
@@ -488,8 +494,10 @@ struct FixedPlanSheet: View {
             if firstDay == editing.firstDate { plan.firstDate = editing.firstDate; plan.day = editing.day }
         }
         let others = FixedPlan.saved.filter { $0.id != editing?.id }
-        // Picked by hand: the next expense from here starts with it too.
-        if pickedCategory, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
+        // Picked by hand: the next expense from here starts with it too. Editing one, only if
+        // it was changed (it opens already picked).
+        let chosen = editing.map { !UserCatalog.same(categoryName, $0.category ?? "") } ?? pickedCategory
+        if chosen, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: plan.merchant) }
         if plan.firstDate <= .now {
             context.insert(RecurringExpenses.original(from: plan))
             do {

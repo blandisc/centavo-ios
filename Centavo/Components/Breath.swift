@@ -28,8 +28,10 @@ private struct Breath: ViewModifier {
             // the breaths still end undimmed, so turning it back on never finds it faint.
             .task(id: begins) {
                 guard begins, !breathed, isOn, !still else { return }
-                breathed = true
                 if after > 0 { try? await Task.sleep(for: .seconds(after)) }
+                // Marked only once it really starts: cancelled while waiting, it can still breathe.
+                guard !Task.isCancelled, !still else { return }
+                breathed = true
                 let half = Animation.easeInOut(duration: seconds)
                 for _ in 0..<times {
                     // Low Power Mode (or reduced motion) turned on midway: straight to rest.

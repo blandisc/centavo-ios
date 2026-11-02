@@ -18,6 +18,10 @@ struct LabeledIconSheet: View {
     /// none of them has.
     var colorKind: CatalogColors.Kind = .category
     var siblings: [String] = []
+    /// Saving that can fail (a rename that must reach the expenses), used instead of `onSave`:
+    /// `false` keeps the sheet open with what was typed, says so, and moves no color, so it can
+    /// be tried again.
+    var commit: ((LabeledIcon) -> Bool)?
     let onSave: (LabeledIcon) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -26,6 +30,7 @@ struct LabeledIconSheet: View {
     @State private var usesByDefault = false
     @State private var color = 0
     @State private var confirmingDelete = false
+    @State private var saveFailed = false
     /// How it opened (`snapshot`), to tell whether anything changed.
     @State private var loaded: [String]?
     @FocusState private var nameFocused: Bool
@@ -141,7 +146,15 @@ struct LabeledIconSheet: View {
             .ticketBarTitle(title)
             .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes una con ese nombre" : trimmed,
                      enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
-                onSave(LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon))
+                let item = LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon)
+                if let commit {
+                    guard commit(item) else {
+                        saveFailed = true
+                        return
+                    }
+                } else {
+                    onSave(item)
+                }
                 // A renamed one leaves its old name's color behind.
                 if let old = initial?.name, !UserCatalog.same(old, trimmed) {
                     UserCatalog.setColor(nil, for: old, key: colorKind.key)
@@ -155,6 +168,11 @@ struct LabeledIconSheet: View {
                     Button("Cancelar") { dismiss() }
                         .font(.ticket(.footnote))
                 }
+            }
+            .alert("No se guardó", isPresented: $saveFailed) {
+                Button("Aceptar", role: .cancel) {}
+            } message: {
+                Text("Al día no pudo cambiar el nombre en tus gastos; nada cambió. Intenta otra vez.")
             }
         }
         .presentationDetents([.large])

@@ -50,10 +50,10 @@ final class HomeModel {
     /// Everything about the month on screen. `rows` are that month's expenses, newest first;
     /// `originals` the fixed expenses' first charges.
     func month(_ inputs: MonthInputs, rows: [Expense], originals: [Expense]) -> HomeMonth {
-        // A save counter and the counts, not a hash of every row (audit 2026-11-02: that walked
-        // the whole month on every redraw). Every change is saved right away, and each save
-        // moves `revision`.
-        let key = MonthKey(inputs: inputs, rows: rows.count, originals: originals.count, revision: revision)
+        // The save counter and a light print of the rows (independent review, 2026-11-02): a
+        // counter alone missed what iCloud or a restore merged after it moved.
+        let key = MonthKey(inputs: inputs, rows: Self.lightPrint(rows), originals: Self.fixedPrint(originals),
+                           revision: revision)
         return monthMemo.value(for: key) { Self.makeMonth(inputs, rows: rows, originals: originals) }
     }
 
@@ -122,7 +122,8 @@ final class HomeModel {
     /// The month's most useful fact (`MonthNote`), from the last few months' `rows`.
     /// `reserved`: the fixed expenses still to come, which the projection adds (second audit).
     func note(rows: [Expense], now: Date, primary: String, budget: String, reserved: Decimal = 0) -> String? {
-        let key = NoteKey(now: now, primary: primary, budget: budget, rows: rows.count, revision: revision, reserved: reserved)
+        let key = NoteKey(now: now, primary: primary, budget: budget, rows: Self.lightPrint(rows), revision: revision,
+                          reserved: reserved)
         return noteMemo.value(for: key) {
             MonthNote.facts(rows, now: now, primary: primary, budget: BudgetStore.amount(from: budget),
                             reserved: reserved).first?.line
@@ -227,6 +228,36 @@ final class HomeModel {
         var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)])
         descriptor.fetchLimit = 1
         return descriptor
+    }
+
+    /// Only what the month's numbers read of each row: which one, when, how much, how much
+    /// counts, in what and under what. Reading them is also what has the screen redraw when
+    /// one is changed in place, or by a merge.
+    static func lightPrint(_ rows: [Expense]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(rows.count)
+        for row in rows {
+            hasher.combine(row.persistentModelID)
+            hasher.combine(row.date)
+            hasher.combine(row.amount)
+            hasher.combine(row.countedAmount)
+            hasher.combine(row.currencyMarker)
+            hasher.combine(row.category)
+        }
+        return hasher.finalize()
+    }
+
+    /// The fixed expenses' first charges, with how they repeat: what sets the month's fixed part.
+    static func fixedPrint(_ rows: [Expense]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(lightPrint(rows))
+        for row in rows {
+            hasher.combine(row.repeatsMonthly)
+            hasher.combine(row.repeatsThrough)
+            hasher.combine(row.repeatDay)
+            hasher.combine(row.repeatRule)
+        }
+        return hasher.finalize()
     }
 
     /// The newest `limit` expenses.

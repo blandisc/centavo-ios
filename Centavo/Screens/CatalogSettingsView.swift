@@ -17,7 +17,6 @@ struct CatalogSettingsView: View {
     /// The categories and cards the expenses use, read with only those two fields when the
     /// screen opens (audit 2026-11-02: a live query loaded every expense whole).
     @State private var used = UsedNames()
-    @State private var saveProblem: String?
     @State private var editing: Editing?
     /// A card or category about to be deleted, waiting for «Borrar».
     @State private var confirmingRemoval: Editing?
@@ -209,26 +208,32 @@ struct CatalogSettingsView: View {
                                      isDefault: source.map { UserCatalog.same($0.name, defaultSource) }
                                         ?? sources.isEmpty,
                                      onSetDefault: setDefault, colorKind: .source,
-                                     siblings: sources.map(\.name) + detectedCards) { saved in
+                                     siblings: sources.map(\.name) + detectedCards, commit: { saved in
+                        // The expenses first: if they can't be saved, nothing else changes.
+                        if let source {
+                            guard rename(.card, from: source.name, to: saved.name) else { return false }
+                        }
                         save(saved, replacing: source)
-                        if let source { renameExpenses(\.card, from: source.name, to: saved.name) }
-                    }
+                        return true
+                    }, onSave: { _ in })
                 case .category(let category):
                     LabeledIconSheet(title: category == nil ? "Nueva categoría" : "Editar categoría",
                                      prompt: "Mascotas, Gimnasio…", icons: UserCatalog.categoryIcons,
                                      taken: categories.map(\.name) + CategoryStyle.common.map(\.name),
                                      initial: category,
                                      onDelete: category.map { item in { removeCategory(item) } },
-                                     colorKind: .category, siblings: allCategories.map(\.name)) { saved in
+                                     colorKind: .category, siblings: allCategories.map(\.name), commit: { saved in
                         var list = categories
                         if let category, let index = list.firstIndex(of: category) {
+                            // The expenses first: if they can't be saved, nothing else changes.
+                            guard rename(.category, from: category.name, to: saved.name) else { return false }
                             list[index] = saved
                             UserCatalog.renameCategory(category.name, to: saved.name)
-                            renameExpenses(\.category, from: category.name, to: saved.name)
                         } else { list.append(saved) }
                         storedCategories = UserCatalog.encode(list, keepingUnreadFrom: storedCategories)
                         UserCatalog.markDeleted(saved.name, false)
-                    }
+                        return true
+                    }, onSave: { _ in })
                 }
             }
             .confirmationDialog(confirmationTitle, isPresented: confirmingBinding, titleVisibility: .visible,
@@ -244,29 +249,49 @@ struct CatalogSettingsView: View {
             } message: { _ in
                 Text("Los gastos que ya la tienen no cambian.")
             }
-            .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(saveProblem ?? "") }
             .onAppear { used = UsedNames.read(in: context) }
+            // A payment that lands, or iCloud, while it is open.
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+                used = UsedNames.read(in: context)
+            }
         }
     }
 
+    private enum Renamed { case category, card }
+
     /// A category or card renamed here renames it in the expenses that have it too, all in one
-    /// save: otherwise the old name stays on them and the category is split in two (audit
-    /// 2026-11-02). Same comparison as everywhere: case, accents and spaces don't count.
-    private func renameExpenses(_ field: ReferenceWritableKeyPath<Expense, String?>, from old: String, to new: String) {
-        guard old != new else { return }
+    /// save, and in the fixed expenses still to start: otherwise the old name stays on them and
+    /// the category is split in two (audit 2026-11-02). Same comparison as everywhere: case,
+    /// accents and spaces don't count. A card's new name is also remembered, so Wallet's next
+    /// payment with the old one arrives renamed. `false` if the expenses couldn't be saved:
+    /// then nothing changed, and it can be tried again.
+    private func rename(_ kind: Renamed, from old: String, to new: String) -> Bool {
+        guard old != new else { return true }
+        let field: ReferenceWritableKeyPath<Expense, String?> = kind == .card ? \.card : \.category
         let all = (try? context.fetch(FetchDescriptor<Expense>())) ?? []
         let matching = all.filter { $0[keyPath: field].map { UserCatalog.same($0, old) } ?? false }
-        guard !matching.isEmpty else { return }
-        for expense in matching { expense[keyPath: field] = new }
-        do {
-            try context.save()
-        } catch {
-            context.rollback()
-            saveProblem = "Al día no pudo cambiar el nombre en tus gastos. Los que tenían «\(old)» lo conservan; intenta otra vez."
+        if !matching.isEmpty {
+            for expense in matching { expense[keyPath: field] = new }
+            do {
+                try context.save()
+            } catch {
+                context.rollback()
+                return false
+            }
         }
+        let plans = FixedPlan.saved
+        let renamedPlans = plans.map { plan -> FixedPlan in
+            var plan = plan
+            switch kind {
+            case .category: if plan.category.map({ UserCatalog.same($0, old) }) == true { plan.category = new }
+            case .card: if plan.card.map({ UserCatalog.same($0, old) }) == true { plan.card = new }
+            }
+            return plan
+        }
+        if renamedPlans != plans { FixedPlan.save(renamedPlans) }
+        if kind == .card { UserCatalog.learnCardRename(old, to: new) }
         used = UsedNames.read(in: context)
+        return true
     }
 
     private var confirmationTitle: String {

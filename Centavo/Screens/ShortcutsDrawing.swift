@@ -313,20 +313,33 @@ private struct ConnectAnimation: View {
     let done: [String]
     let isActive: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase = Phase.start
 
     private enum Phase: CaseIterable {
         case start, tapWord, tapSuggestion, tapBubble, pickProperty, connected
+
+        var next: Phase {
+            let all = Phase.allCases
+            return all[(all.firstIndex(of: self)! + 1) % all.count]
+        }
     }
 
     var body: some View {
-        if MotionPolicy.isStill(reduceMotion: reduceMotion) || !isActive {
+        if MotionPolicy.isStill(reduceMotion: reduceMotion) {
             frame(.pickProperty)
         } else {
-            PhaseAnimator(Phase.allCases) { phase in
-                frame(phase)
-            } animation: { phase in
-                .easeInOut(duration: 0.3).delay(phase == .start ? 0.4 : 1.3)
-            }
+            // Off screen it stops where it is, instead of jumping to a still picture while the
+            // page is still sliding away (independent review, 2026-11-02); back on, it goes on.
+            frame(phase)
+                .task(id: isActive) {
+                    guard isActive else { return }
+                    while !Task.isCancelled {
+                        let next = phase.next
+                        guard (try? await Task.sleep(for: .seconds(next == .start ? 0.4 : 1.3))) != nil else { return }
+                        withAnimation(.easeInOut(duration: 0.3)) { phase = next }
+                        guard (try? await Task.sleep(for: .seconds(0.3))) != nil else { return }
+                    }
+                }
         }
     }
 

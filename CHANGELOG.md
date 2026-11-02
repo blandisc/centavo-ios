@@ -5,7 +5,7 @@
 - **Segunda auditoría de textos y animaciones:**
   - «Cómo funciona»: la historia del mes muestra el boleto («Tu mes en un boleto»), la cifra de arriba explica lo que se suma o resta de días anteriores y el respaldo dice que hace falta la automatización «Respaldar Al día» en Atajos.
   - Un gasto fijo que aún no empieza se abre al tocarlo para cambiarlo. Al editar uno que ya empezó, la hoja avisa que cambiar el monto cambia también el primer cobro.
-  - Cambiarle el nombre a una categoría o a una forma de pago lo cambia también en los gastos que ya la tenían: la categoría ya no queda partida en dos.
+  - Cambiarle el nombre a una categoría o a una forma de pago lo cambia también en los gastos que ya la tenían y en los fijos por empezar: la categoría ya no queda partida en dos, y los pagos de Wallet con la tarjeta renombrada llegan con su nombre nuevo.
   - «Anotar otra vez» se puede deshacer unos segundos («Anotaste otra vez Oxxo · Deshacer»).
   - «Guardar dónde pagas» se ve apagado, y lo dice, si la ubicación está apagada para Al día en los Ajustes del iPhone.
   - Las pastillas de montos y de ejemplos de búsqueda bajan de renglón con letra grande, y «¿Borrar este gasto?» se desplaza con la letra más grande.

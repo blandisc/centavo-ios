@@ -1065,6 +1065,11 @@ private extension ExpenseListView {
 
     /// «Deshacer» on «Anotaste otra vez»: the copy goes, the original stays.
     private func undoCopy(_ copied: CopiedExpense) {
+        // Already deleted another way (its row, a sync): only the bar goes.
+        guard copied.expense.modelContext != nil, !copied.expense.isDeleted else {
+            withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastCopy = nil }
+            return
+        }
         context.delete(copied.expense)
         guard persist() else { return }
         countStore()
