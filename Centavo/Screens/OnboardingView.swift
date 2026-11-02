@@ -541,7 +541,8 @@ struct OnboardingView: View {
         for item in fixed {
             let first = Self.firstCharge(day: item.day)
             let plan = FixedPlan(merchant: item.name, amount: "\(item.amount)", currency: currency,
-                                 category: MerchantCatalog.category(for: item.name), rule: nil, firstDate: first)
+                                 category: MerchantCatalog.category(for: item.name), rule: nil, firstDate: first,
+                                 day: item.day)
             if first <= .now {
                 let expense = RecurringExpenses.original(from: plan)
                 expense.repeatDay = item.day

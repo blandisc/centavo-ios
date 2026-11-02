@@ -17,6 +17,12 @@ enum CurrencyPreference {
         offered.contains(stored) ? stored : fallback
     }
 
+    /// The one the person chose, or `nil` before choosing (or before iCloud brought it): a
+    /// bare «$» isn't pinned to anything until then.
+    static var chosen: String? {
+        UserDefaults.standard.string(forKey: key).flatMap { $0.isEmpty ? nil : resolve($0) }
+    }
+
     static var current: String {
         resolve(UserDefaults.standard.string(forKey: key) ?? "")
     }

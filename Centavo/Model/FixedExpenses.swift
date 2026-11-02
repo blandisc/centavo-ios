@@ -19,6 +19,9 @@ struct FixedPlan: Codable, Hashable, Identifiable {
     var card: String? = nil
     var rule: String?
     var firstDate: Date
+    /// The day of the month it was asked for, when `firstDate` had to fall earlier («31» in a
+    /// 30-day month). Optional: plans saved before it decode.
+    var day: Int? = nil
 
     var value: Decimal { Decimal(string: amount, locale: Locale(identifier: "en_US_POSIX")) ?? 0 }
     var repeatRule: RepeatRule { RepeatRule(stored: rule) }

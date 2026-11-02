@@ -178,6 +178,16 @@ final class DailyBackupTests: XCTestCase {
         XCTAssertEqual(try all(target).map(\.merchant), ["Antes"])
     }
 
+    func testAnOldFileRestoresWithoutMiDinero() throws {
+        let source = try container()
+        source.mainContext.insert(Expense(amount: 89, merchant: "Oxxo"))
+        let payload = try DailyBackup.snapshot(in: source.mainContext, moneyContainer: nil)
+        XCTAssertNil(payload.money)
+        let target = try container()
+        try DailyBackup.restore(payload, into: target)
+        XCTAssertEqual(try all(target).map(\.merchant), ["Oxxo"])
+    }
+
     func testUndoBringsBackEveryField() throws {
         let context = try container().mainContext
         let expense = fullExpense()

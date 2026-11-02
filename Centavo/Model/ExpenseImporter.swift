@@ -41,7 +41,10 @@ enum ExpenseImporter {
             let expense = Expense(amount: record.amount, currencyMarker: record.currency,
                                   merchant: record.merchant, card: record.card,
                                   date: record.date, category: category)
-            if let part = record.countedAmount, record.counts {
+            // A part only when it's a part: between zero and the amount, with its sign. Any other
+            // number under «Cuenta» (an account number, a 1 for yes) means it counts, as before.
+            if let part = record.countedAmount, record.counts, part != 0, part.magnitude < record.amount.magnitude,
+               (part < 0) == (record.amount < 0) {
                 expense.countedAmount = part
                 expense.uncountedReason = record.uncountedReason?.rawValue
             } else if !record.counts {

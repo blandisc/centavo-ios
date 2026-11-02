@@ -28,7 +28,10 @@ enum RecurringExpenses {
         var logged = started
         var existing = Set<String>()
         var legacy: [Expense] = []
-        for copy in copies {
+        // Every device must keep the same one, or each keeps its own, deletes the other and
+        // the charge is gone: the tie is broken by the copy's own id, which travels with it.
+        let ordered = copies.sorted { ($0.date, $0.fixedID ?? "") < ($1.date, $1.fixedID ?? "") }
+        for copy in ordered {
             guard let of = copy.fixedOf, ids.contains(of) else { legacy.append(copy); continue }
             if existing.insert(key(of, copy.date)).inserted { continue }
             context.delete(copy)
@@ -48,8 +51,15 @@ enum RecurringExpenses {
             legacy.remove(at: index)
             return true
         }
-        for original in originals {
+        // Two originals with one id (a plan another device started too) log once.
+        var seenIDs = Set<String>()
+        for original in originals.sorted(by: { ($0.fixedID ?? "") < ($1.fixedID ?? "") }) {
             guard let id = original.fixedID else { continue }
+            guard seenIDs.insert(id).inserted else {
+                original.repeatsThrough = originals.first { $0.fixedID == id && $0 !== original }?.repeatsThrough
+                    ?? original.repeatsThrough
+                continue
+            }
             let rule = original.rule
             let byDay = rule != .monthly
             let dates = RecurringSchedule.dates(rule: rule, anchor: original.date, day: original.repeatDay,
@@ -63,6 +73,8 @@ enum RecurringExpenses {
                                    date: date, category: original.category)
                 copy.isRepeat = true
                 copy.fixedOf = id
+                // Its own id: the same tie-break on every device (see above).
+                copy.fixedID = UUID().uuidString
                 copy.displayName = original.displayName
                 copy.categorySource = original.categorySource
                 // A fixed expense that doesn't count (paid by work) doesn't count every month.
@@ -106,11 +118,13 @@ enum RecurringExpenses {
         let expense = Expense(amount: plan.value, currencyMarker: plan.currency, merchant: plan.merchant,
                               card: plan.card, date: plan.firstDate, category: plan.category)
         expense.repeatsMonthly = true
-        expense.fixedID = UUID().uuidString
+        // The plan's id: two devices starting the same plan make one fixed expense, not two.
+        expense.fixedID = plan.id.uuidString
         expense.repeatsThrough = plan.firstDate
         expense.repeatRule = plan.rule
         if plan.repeatRule.kind == .months {
-            expense.repeatDay = calendar.component(.day, from: plan.firstDate)
+            // The day asked for («31»), not the first date's, which a short month cut back.
+            expense.repeatDay = plan.day ?? calendar.component(.day, from: plan.firstDate)
         }
         return expense
     }

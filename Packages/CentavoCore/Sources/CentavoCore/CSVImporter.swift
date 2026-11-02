@@ -43,9 +43,11 @@ public enum CSVImporter {
                 result.skipped += 1
                 continue
             }
-            // «Cuenta» may hold the part that counts (`600.00`) instead of «Sí» or «No».
+            // «Cuenta» may hold the part that counts (`600.00`) instead of «Sí» or «No». Only as
+            // the exporter writes it, with its decimal point: a bare «1» or an account number
+            // from another spreadsheet is not a part.
             let countsText = field(counts)
-            let part = countsText.flatMap(number)
+            let part = countsText.flatMap { $0.contains(".") ? number($0) : nil }
             let counted = !isNo(countsText)
             result.records.append(ExpenseRecord(
                 date: parsedDate, merchant: field(merchant) ?? "Sin comercio", amount: value,

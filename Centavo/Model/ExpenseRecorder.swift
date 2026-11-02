@@ -29,7 +29,7 @@ enum ExpenseRecorder {
         rawNotice: String? = nil,
         place: CLLocationCoordinate2D? = nil,
         in context: ModelContext,
-        primary: String = CurrencyPreference.current,
+        primary: String? = CurrencyPreference.chosen,
         rules: CategoryRules = UserCatalog.categoryRules,
         hidden: [String] = UserCatalog.notAutoAssigned,
         renames: MerchantRenames = UserCatalog.merchantRenames,
@@ -65,7 +65,8 @@ enum ExpenseRecorder {
         let expense = Expense(
             amount: parsed.value,
             // A bare «$» is the main currency of today, kept as its code (2026-11-02).
-            currencyMarker: CurrencyResolver.pinned(parsed.currencyMarker, primary: primary),
+            // Before a main currency is chosen it stays «$», to be pinned once it is.
+            currencyMarker: primary.map { CurrencyResolver.pinned(parsed.currencyMarker, primary: $0) } ?? parsed.currencyMarker,
             merchant: merchantName,
             card: cleanCard,
             date: now,
@@ -98,7 +99,9 @@ enum ExpenseRecorder {
     /// Captures kept before «$» was saved as its currency: each one is pinned once to today's
     /// main currency, the one they were being read in. Safe to run on every launch.
     @discardableResult
-    static func pinBareDollars(in context: ModelContext, primary: String = CurrencyPreference.current) throws -> Int {
+    static func pinBareDollars(in context: ModelContext, primary: String? = CurrencyPreference.chosen) throws -> Int {
+        // No main currency chosen yet (a new phone, before iCloud brings it): nothing to pin to.
+        guard let primary else { return 0 }
         let rows = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate {
             $0.currencyMarker == nil || $0.currencyMarker == "$"
         }))

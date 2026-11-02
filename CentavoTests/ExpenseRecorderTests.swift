@@ -240,6 +240,15 @@ final class ExpenseRecorderTests: XCTestCase {
         XCTAssertEqual(try saved().compactMap(\.currencyMarker).sorted(), ["MXN", "MXN", "USD"])
     }
 
+    func testNothingIsPinnedBeforeAMainCurrencyIsChosen() throws {
+        context.insert(Expense(amount: 10, currencyMarker: "$", merchant: "A", date: now))
+        try context.save()
+        XCTAssertEqual(try ExpenseRecorder.pinBareDollars(in: context, primary: nil), 0)
+        try ExpenseRecorder.record(amountText: "$5.00", merchant: "B", card: nil, in: context, primary: nil,
+                                   rules: CategoryRules(), hidden: [], renames: MerchantRenames(), now: now)
+        XCTAssertEqual(try saved().map(\.currencyMarker), ["$", "$"])
+    }
+
     /// A notice the capture already read keeps its amount: reading the text again lost the
     /// thousands of «CHF 1'234.50».
     func testTheAmountANoticeReadIsTheOneSaved() throws {

@@ -67,6 +67,21 @@ final class ExpenseImporterTests: XCTestCase {
         XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context).added, 1)
     }
 
+    /// «Cuenta» from another spreadsheet (an account number, a 1 for yes) is not a part.
+    func testANumberUnderCuentaThatIsNoPartMeansItCounts() throws {
+        let csv = """
+        Fecha,Comercio,Monto,Moneda,Tarjeta,Categoría,Cuenta,Motivo
+        2026-10-01T12:00:00-06:00,Oxxo,89.00,MXN,,,0123456789,
+        2026-10-02T12:00:00-06:00,Uber,100.00,MXN,,,1,
+        2026-10-03T12:00:00-06:00,Cena,600.00,MXN,,,300.00,
+        """
+        XCTAssertEqual(try ExpenseImporter.importCSV(csv, into: context).added, 3)
+        let rows = try all()
+        XCTAssertNil(rows[0].countedAmount)
+        XCTAssertNil(rows[1].countedAmount)
+        XCTAssertEqual(rows[2].countedAmount, 300)
+    }
+
     /// A Wallet capture carries fractions of a second; the export drops them. Re-importing
     /// the export must still recognize it (rounding put :20.7 at :21 and duplicated it).
     func testAFractionOfASecondDoesNotDuplicate() throws {

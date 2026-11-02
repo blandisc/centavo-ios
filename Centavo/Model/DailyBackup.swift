@@ -30,7 +30,7 @@ enum DailyBackup {
             case .noFolder: "Primero elige la carpeta del respaldo en Ajustes de Al día."
             case .folderGone: "La carpeta del respaldo ya no está. Elígela otra vez en Ajustes de Al día."
             case .notWritten: "No se pudo guardar el respaldo en la carpeta. Revisa que siga ahí y que haya espacio."
-            case .moneyUnreadable: "No se hizo el respaldo: «Mi dinero» no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez."
+            case .moneyUnreadable: "Se guardaron tus gastos, pero no «Mi dinero»: no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez."
             case .unreadable(.wrongPassword): "La contraseña no abre este respaldo."
             case .unreadable(.notABackup): "Ese archivo no es un respaldo de Al día."
             case .unreadable(.newerFormat): "Ese respaldo es de una versión más nueva de Al día. Actualiza la app."
@@ -124,7 +124,16 @@ enum DailyBackup {
     static func runNow(in context: ModelContext, now: Date = .now) throws -> Date {
         do {
             guard let password = BackupPassword.read() else { throw Failure.noPassword }
-            let payload = try snapshot(in: context, now: now)
+            let payload: BackupPayload
+            do {
+                payload = try snapshot(in: context, now: now)
+            } catch Failure.moneyUnreadable {
+                // The expenses are still kept, in a file of their own that the cleanup never
+                // touches; the day doesn't count as backed up and the good files stay.
+                let partial = try snapshot(in: context, now: now, moneyContainer: nil)
+                try write(partial, password: password, named: partialName(for: now), trims: false)
+                throw Failure.moneyUnreadable
+            }
             let name = BackupRetention.fileName(for: now)
             try write(payload, password: password, named: name, trims: true)
             UserDefaults.standard.set(now, forKey: lastKey)
@@ -141,7 +150,8 @@ enum DailyBackup {
     /// the name isn't a daily one) and to the app's own Documents, whichever works.
     @MainActor
     static func safetyCopy(in context: ModelContext, password: String, now: Date = .now) throws {
-        let payload = try snapshot(in: context, now: now)
+        // A «Mi dinero» that doesn't open can't be copied, but the expenses still can.
+        let payload = try (try? snapshot(in: context, now: now)) ?? snapshot(in: context, now: now, moneyContainer: nil)
         let stamp = now.formatted(.iso8601.year().month().day().dateSeparator(.dash).time(includingFractionalSeconds: false)
             .timeSeparator(.omitted)).replacingOccurrences(of: ":", with: "")
         let name = "\(BackupRetention.prefix)antes-de-restaurar-\(stamp).\(BackupRetention.fileExtension)"
@@ -380,7 +390,14 @@ enum DailyBackup {
     /// before covers both anyway.
     @MainActor
     static func restore(_ payload: BackupPayload, into container: ModelContainer) throws {
-        try restore(payload, into: container, money: moneyContainer())
+        // A file without «Mi dinero» never needs it open.
+        try restore(payload, into: container, money: payload.money == nil ? nil : moneyContainer())
+    }
+
+    /// A day's expenses alone, when «Mi dinero» didn't open: not a daily name, so never trimmed.
+    static func partialName(for date: Date) -> String {
+        let day = date.formatted(.iso8601.year().month().day().dateSeparator(.dash))
+        return "\(BackupRetention.prefix)solo-gastos-\(day).\(BackupRetention.fileExtension)"
     }
 
     @MainActor
