@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- **«Ver más» de categorías** en la hoja del gasto se abre hacia abajo sin mover las que ya ves, y las demás aparecen en orden; al cerrar se desvanecen primero.
 - **Segunda auditoría de textos y animaciones:**
   - «Cómo funciona»: la historia del mes muestra el boleto («Tu mes en un boleto»), la cifra de arriba explica lo que se suma o resta de días anteriores y el respaldo dice que hace falta la automatización «Respaldar Al día» en Atajos.
   - Un gasto fijo que aún no empieza se abre al tocarlo para cambiarlo. Al editar uno que ya empezó, la hoja avisa que cambiar el monto cambia también el primer cobro.

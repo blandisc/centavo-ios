@@ -9,15 +9,12 @@ extension Theme.Size {
     static let swipeButton: CGFloat = 84
 }
 
-extension Theme.Size {
-    /// How small a category tile starts as it appears under «Ver más» (fraction of its size).
-    static let tileAppear: CGFloat = 0.85
-}
-
 extension Theme.Motion {
-    /// A category tile appearing under «Ver más»; `index` staggers them in reading order.
-    static func tileIn(_ index: Int) -> Animation {
-        .smooth(duration: 0.3).delay(0.04 * Double(max(index, 0)))
+    /// One of the categories under «Ver más» showing: each once the room opening downward
+    /// (`fold`) has reached about where it sits, so they appear top to bottom and never draw
+    /// over the button.
+    static func tileIn(_ index: Int, of count: Int) -> Animation {
+        let reached = foldSeconds * Double(index + 1) / Double(max(count, 1))
+        return .easeOut(duration: 0.22).delay(max(.zero, reached - 0.12))
     }
 }
-
