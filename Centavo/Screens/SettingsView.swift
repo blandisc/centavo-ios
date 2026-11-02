@@ -143,6 +143,24 @@ struct SettingsView: View {
 /// to connect it and stops warning about quiet days.
 enum WalletWatch {
     static let key = "noUsaWallet"
+    /// When Wallet last sent a payment (seconds since 2001), kept apart from the expenses:
+    /// deleting the payments that came from Wallet must not make it look disconnected
+    /// (owner, 2026-11-01). The main screen takes the later of this and the newest capture.
+    static let lastArrivalKey = "walletUltimaLlegada"
+
+    static func noteArrival(_ date: Date = .now) {
+        let defaults = UserDefaults.standard
+        let known = defaults.double(forKey: lastArrivalKey)
+        if date.timeIntervalSinceReferenceDate > known {
+            defaults.set(date.timeIntervalSinceReferenceDate, forKey: lastArrivalKey)
+        }
+    }
+
+    /// The later of the remembered arrival and the newest capture still in the store.
+    static func lastCapture(stored: Double, newestInStore: Date?) -> Date? {
+        let remembered = stored > 0 ? Date(timeIntervalSinceReferenceDate: stored) : nil
+        return [remembered, newestInStore].compactMap { $0 }.max()
+    }
 }
 
 #Preview {

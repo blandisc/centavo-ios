@@ -29,6 +29,7 @@ enum DemoData {
         UserDefaults.standard.removeObject(forKey: BudgetStore.key)
         UserDefaults.standard.removeObject(forKey: CurrencyPreference.key)
         UserDefaults.standard.removeObject(forKey: "onboarded")
+        UserDefaults.standard.removeObject(forKey: WalletWatch.lastArrivalKey)
         for key in [UserCatalog.categoriesKey, UserCatalog.sourcesKey, UserCatalog.defaultSourceKey,
                     UserCatalog.hiddenCategoriesKey, UserCatalog.categoryRulesKey,
                     UserCatalog.deletedCategoriesKey, UserCatalog.merchantRenamesKey,

@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **Borrar pagos ya no hace que Wallet se vea desconectado.** La app recuerda cuándo llegó el último pago de Wallet aparte de los gastos, así que borrarlos no cambia el aviso.
 ### Changed
 - **La forma de pago en la lista es una tarjetita en su color** (el ícono de la forma de pago, relleno) en lugar de su nombre corto («Amex»). VoiceOver sigue diciendo el nombre.
 ### Added

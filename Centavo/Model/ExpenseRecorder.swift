@@ -34,6 +34,9 @@ enum ExpenseRecorder {
     ) throws -> CaptureOutcome {
         // Usually just the amount; `CaptureText` also finds it when the whole payment came.
         guard let parsed = CaptureText.amount(in: amountText) else { return .unreadable }
+        // The automation is alive, whatever happens to this payment after (a duplicate, or
+        // deleted later by hand).
+        WalletWatch.noteArrival(now)
 
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let sent = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
