@@ -22,6 +22,7 @@ struct TutorialArt: View {
             case .uncounted: uncounted(&c)
             case .categories: categories(&c)
             case .backup: backup(&c)
+            case .done: done(&c)
             }
         }
         .accessibilityHidden(true)
@@ -201,5 +202,20 @@ struct TutorialArt: View {
         shackle.addLine(to: CGPoint(x: 108, y: 72 - drop))
         padlock.stroke(shackle, with: .color(Theme.brass), style: artStroke(Theme.brass, ArtGeo.bold))
         label(&c, "Cada día", at: CGPoint(x: 100, y: 110), size: 10, color: Theme.muted, opacity: moneySpan(progress, 0.85, 1))
+    }
+
+    /// The end: a dashed ring, the brass one closing over it and a check, as «Mi dinero»'s «Listo».
+    private func done(_ c: inout GraphicsContext) {
+        let center = CGPoint(x: 100, y: 60), radius: CGFloat = 42
+        let circle = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+        c.stroke(Path(ellipseIn: circle), with: .color(Theme.outline), style: artStroke(Theme.outline, dash: ArtGeo.ring))
+        var ring = Path()
+        ring.addArc(center: center, radius: radius, startAngle: .degrees(-90), endAngle: .degrees(270), clockwise: false)
+        c.stroke(ring.trimmedPath(from: 0, to: moneySpan(progress, 0, 0.5)), with: .color(Theme.brass),
+                 style: artStroke(Theme.brass, ArtGeo.line))
+        var tick = Path()
+        tick.move(to: CGPoint(x: 82, y: 61)); tick.addLine(to: CGPoint(x: 95, y: 74)); tick.addLine(to: CGPoint(x: 120, y: 47))
+        c.stroke(tick.trimmedPath(from: 0, to: moneySpan(progress, 0.45, 0.8)), with: .color(Theme.brass),
+                 style: artStroke(Theme.brass, ArtGeo.bold))
     }
 }

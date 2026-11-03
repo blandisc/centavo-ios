@@ -1294,8 +1294,13 @@ final class FlowTests: XCTestCase {
             app.buttons["tutorial-siguiente"].tap()
             snap("tutorial-\(story)")
         }
+        XCTAssertEqual(app.buttons["tutorial-siguiente"].label, "Siguiente", "El respaldo ya no es la última")
+        // A tap on the right of the last story goes to the closing one.
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.45)).tap()
+        require(app.staticTexts["Ya sabes cómo funciona"], "Tocar a la derecha no llevó a la historia final")
+        snap("tutorial-8")
         XCTAssertEqual(app.buttons["tutorial-siguiente"].label, "Listo", "La última no dice «Listo»")
-        for _ in 1...6 { app.buttons["tutorial-anterior"].tap() }
+        for _ in 1...7 { app.buttons["tutorial-anterior"].tap() }
         require(app.staticTexts["Cuánto puedes gastar hoy"], "«Anterior» no regresó")
         app.buttons["tutorial-pruebalo"].tap()
         require(app.textFields["presupuesto-monto"], "«Pruébalo» no abrió el presupuesto")

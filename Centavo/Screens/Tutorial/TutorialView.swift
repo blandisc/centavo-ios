@@ -2,9 +2,10 @@ import CentavoCore
 import SwiftUI
 
 /// The stories of «Cómo funciona» (2026-11-01), in the order the app is learned: the figure,
-/// the boleto, what is left, how payments arrive, what doesn't count, where it goes, the backup.
+/// the boleto, what is left, how payments arrive, what doesn't count, where it goes, the backup;
+/// and a last one that closes them, like the end of a set of stories (2026-11-03).
 enum TutorialStory: Int, CaseIterable, Identifiable {
-    case figure, bar, leftover, wallet, uncounted, categories, backup
+    case figure, bar, leftover, wallet, uncounted, categories, backup, done
 
     var id: Int { rawValue }
 
@@ -17,6 +18,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         case .uncounted: "Lo que no es gasto"
         case .categories: "En qué se va"
         case .backup: "Tu respaldo"
+        case .done: "Ya sabes cómo funciona"
         }
     }
 
@@ -29,6 +31,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         case .uncounted: "Un pago a tu tarjeta o un traspaso: ábrelo, toca «Más detalles» y en «Tipo» elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
         case .categories: "Abajo ves tus categorías. Toca una para ver solo esos gastos."
         case .backup: "Elige una contraseña y una carpeta en Más › Ajustes › Respaldo diario, y agrega en Atajos la automatización «Respaldar Al día». Así cada noche se guarda una copia cerrada con tu contraseña."
+        case .done: "Mira tu cifra cada mañana y deja que los pagos se anoten solos. Estas historias siguen en «Más › Cómo funciona»."
         }
     }
 
@@ -38,7 +41,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         case .figure, .leftover: .budget
         case .wallet: .guide
         case .backup: .settings
-        case .bar, .uncounted, .categories: nil
+        case .bar, .uncounted, .categories, .done: nil
         }
     }
 
@@ -249,8 +252,10 @@ struct TutorialView: View {
         heldSince = holding ? AppClock.now : nil
     }
 
+    /// A tap past the last story closes them, as «Listo» does.
     private func tap(_ target: Int) {
         taps += 1
+        if target == stories.count { return dismiss() }
         go(target)
     }
 

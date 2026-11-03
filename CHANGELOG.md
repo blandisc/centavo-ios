@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **«Cómo funciona» termina con una historia de cierre** («Ya sabes cómo funciona»): un toque a la derecha en la última historia te lleva a ella, y otro toque te saca.
 ### Fixed
 - **Deslizar hacia arriba sobre «Cada día del mes»** ya mueve la pantalla; mantener el dedo y deslizar sigue leyendo los días.
 ### Fixed
