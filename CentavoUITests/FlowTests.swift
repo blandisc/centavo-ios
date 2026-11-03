@@ -877,6 +877,18 @@ final class FlowTests: XCTestCase {
 
     /// A finger on the month's barcode reads a day, and letting go on it shows only that day,
     /// the same as tapping it in the calendar (owner, 2026-10-29).
+    /// A swipe up that starts on the month's code scrolls the screen like anywhere else: the
+    /// hold-and-slide over it used to take the touch (2026-11-02).
+    func testDeslizarHaciaArribaSobreElCodigoMueveLaPantalla() {
+        let app = launch(demo: true, budget: true)
+        let code = require(app.descendants(matching: .any)["codigo-del-mes"].firstMatch, "No está el código del mes")
+        let before = code.frame.minY
+        code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.01, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)))
+        sleep(1)
+        XCTAssertLessThan(code.frame.minY, before - 50, "Deslizar hacia arriba sobre el código no movió la pantalla")
+    }
+
     func testElCodigoDelMesMuestraUnDia() {
         let app = launch(demo: true, budget: true)
         // The code heads the carousel's first page, in every view (2026-10-30).
@@ -988,12 +1000,7 @@ final class FlowTests: XCTestCase {
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
         ])
         let divider = app.descendants(matching: .any)["divisor-dia"].firstMatch
-        // With the largest text the month's code sits mid-screen, and a swipe that starts on it
-        // doesn't scroll (noted for the owner, 2026-11-02): from the lower part, as a thumb would.
-        for _ in 0..<12 where !divider.isHittable {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
-                .press(forDuration: 0.01, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
-        }
+        for _ in 0..<12 where !divider.isHittable { app.swipeUp() }
         require(divider, "No aparece el divisor del día con letra grande")
         let window = app.windows.firstMatch.frame
         let dividers = app.descendants(matching: .any).matching(identifier: "divisor-dia")

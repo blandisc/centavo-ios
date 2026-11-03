@@ -806,5 +806,11 @@ Pedido del dueño: que se abra «de manera más pulida hacia abajo» en la hoja 
 Pedido del dueño: «arregla las pruebas que están fallando en GitHub». Las pruebas del simulador (que corren al entrar a `main`) fallaban desde el 2026-10-31: 23 de 89.
 - **Un «hoy» fijo para la demostración** (`AppClock`, solo en DEBUG y solo con `-centavo-demo`): los gastos de ejemplo van del día 1 al 12 y solo se mostraban los que ya habían pasado; en los primeros días del mes faltaban casi todos y 18 pruebas fallaban por la fecha. La demostración vive el día 20 del mes en curso, con el reloj corriendo. Toda la app lee la hora de `AppClock.now` (fuera de la demostración es la del sistema), también «hace 1 h» y «hoy».
 - **Un error real que encontraron:** con la letra más grande, «Llevas $X de $Y · $Z/día» no se partía y empujaba la página fuera de la pantalla; ahora pasa a dos renglones.
-- **Pendiente para el dueño:** un deslizamiento hacia arriba que empieza sobre el código del mes («Cada día del mes») no mueve la pantalla; desde la cifra o la lista sí. Viene de cómo conviven los gestos del código (tocar un día, mantener y deslizar) con el del carrusel, que el dueño ajustó tres veces: no se tocó sin preguntar. La prueba con letra grande desliza desde la parte de abajo, como un pulgar.
 - **Pruebas al día con la app:** «Dilo en una frase» se espera a que se guarde el teclado (el botón está donde va «Siguiente»); la hoja de «No cuenta» se desplaza antes de buscar «Tipo»; la guía paso a paso se salta en iOS 27, donde «Configurar atajo» agrega el atajo armado.
+
+## 2026-11-02 · Deslizar hacia arriba sobre el código del mes mueve la pantalla
+Pedido del dueño: arreglar el error que encontraron las pruebas. Un deslizamiento hacia arriba que empezaba sobre «Cada día del mes» no movía la pantalla (desde la cifra o la lista sí).
+- **La causa:** el gesto de «mantener y deslizar» para leer los días (`LongPressGesture` seguido de `DragGesture` de SwiftUI) se quedaba con todo toque que empezara ahí.
+- **Ahora es el «mantener» del sistema** (`HoldAndSlide`, en Components): hasta que se mantiene el dedo, el toque es también de la pantalla y del carrusel; una vez que se mantiene, deslizar lee los días como antes. Tocar un día y deslizar de lado al calendario no cambian.
+- Prueba nueva: `testDeslizarHaciaArribaSobreElCodigoMueveLaPantalla`.
+
