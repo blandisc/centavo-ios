@@ -49,7 +49,7 @@ struct MonthCodeView: View {
                     if didScrub { didScrub = false; return }
                     pick(day(at: location.x))
                 }
-                .simultaneousGesture(scrub)
+                .gesture(scrub)
                 .sensoryFeedback(.selection, trigger: touched) { _, new in new != nil }
         }
         .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
@@ -155,26 +155,21 @@ struct MonthCodeView: View {
     // MARK: The finger
 
     /// Hold a moment, then slide: the day under the finger, and on letting go, that day picked.
-    private var scrub: some Gesture {
-        LongPressGesture(minimumDuration: Theme.Motion.scrubHold, maximumDistance: Theme.Size.scrubSlop)
-            .sequenced(before: DragGesture(minimumDistance: Theme.Space.none))
-            .onChanged { value in
-                switch value {
-                case .first:
-                    // A new touch: whatever the last one was, this one is a tap until it holds.
-                    didScrub = false
-                case .second(true, let drag):
-                    if !didScrub { didScrub = true; onScrubbing(true) }
-                    if let drag { touched = day(at: drag.location.x) }
-                default:
-                    break
-                }
-            }
-            .onEnded { value in
-                defer { touched = nil; onScrubbing(false) }
-                guard case .second(true, let drag?) = value else { return }
-                pick(day(at: drag.location.x))
-            }
+    /// UIKit's long press (`HoldAndSlide`): a swipe up that starts here still scrolls the screen.
+    private var scrub: HoldAndSlide {
+        HoldAndSlide(hold: Theme.Motion.scrubHold, slop: Theme.Size.scrubSlop) { location in
+            didScrub = true
+            onScrubbing(true)
+            touched = day(at: location.x)
+        } moved: { location in
+            touched = day(at: location.x)
+        } ended: { location in
+            defer { touched = nil; onScrubbing(false) }
+            guard let location else { return }
+            pick(day(at: location.x))
+            // The lift that ends a scrub is not also a tap; a later touch is a tap again.
+            Task { @MainActor in didScrub = false }
+        }
     }
 
     private func pick(_ day: Int?) {
