@@ -11,8 +11,11 @@ Centavo (en el iPhone se llama **Al día**; decisión del 2026-10-17): tracker d
 - El `.xcodeproj` se genera con `xcodegen generate`; nunca se versiona.
 
 ## Verificar
-`Tools/verify.sh` antes de terminar cualquier cambio Swift (`package` = solo el paquete; `app` = solo el build). Builds con `-jobs 4` y nunca en paralelo con otro build en la Mac.
-En un PR la CI corre solo «Pruebas y build» (build y pruebas unitarias); eso decide el merge. El simulador (flujos, zonas táctiles, capturas) corre solo al entrar a `main` o a mano, nunca en un PR (decisión del 2026-10-20). Antes de abrir un PR que toque pantallas o flujos, corre tú las pruebas de interfaz en el simulador local.
+Se trabaja como Orbital (decisión del dueño, 2026-11-02: «tú tardas demasiado»):
+- **Directo a `main`.** Sin rama ni PR: cambio → `Tools/verify.sh` (lint, `swift test` y build; unos minutos) → commit → push. La CI corre después, sin esperarla; si falla, se arregla en el siguiente commit.
+- **Simulador solo para lo que cambió:** las 2–4 pruebas de interfaz de esa pantalla, nunca la suite completa (~35 min). La suite completa corre sola en GitHub al entrar a `main`; se revisa su resultado al día siguiente, no se espera.
+- **Revisión independiente con un agente solo si puede perder o corromper datos** (guardado, respaldo, migraciones, «Mi dinero»). Textos, animaciones y pantallas, no.
+- Builds con `-jobs 4`, máximo 2 en la Mac sumando sesiones, y `-derivedDataPath /tmp/dd-centavo`.
 
 ## Diseño
 **Lectura obligatoria antes de cualquier trabajo de interfaz: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)** (tokens, componentes, receta de pantalla nueva, reglas «nunca», Dynamic Type). Las pantallas se arman solo con tokens de `Centavo/Theme/` y componentes de `Centavo/Components/`; `Tools/lint-design.sh` (en `verify.sh` y en la CI de cada PR) falla con cualquier número, tamaño de letra o color suelto.
@@ -27,7 +30,7 @@ La **estructura es nativa de Apple** (Human Interface Guidelines): `NavigationSt
 - **Minimalismo.** Antes de agregar una pantalla o un ajuste, pregunta si cabe en lo que ya existe.
 - **Componentes nativos** de SwiftUI y estilos del sistema (Dynamic Type, modo oscuro). Nada de tamaños de fuente fijos.
 - **Copy en es-MX**, sin suponer género.
-- Una rama por issue (`cen-NN-slug`) desde `main`, PR con `Closes CEN-NN`, squash-merge, borrar rama. Entrada en CHANGELOG para cambios visibles.
+- Commits directos a `main` con un mensaje que diga qué cambia para la persona. Entrada en CHANGELOG para cambios visibles.
 
 ## Tablero
 Multica, workspace **Centavo** (prefijo `CEN`). Usa `--workspace-id` o `multica workspace switch centavo` antes de crear issues. Estados: todo → in_progress → in_review → done.

@@ -814,3 +814,9 @@ Pedido del dueño: arreglar el error que encontraron las pruebas. Un deslizamien
 - **Ahora es el «mantener» del sistema** (`HoldAndSlide`, en Components): hasta que se mantiene el dedo, el toque es también de la pantalla y del carrusel; una vez que se mantiene, deslizar lee los días como antes. Tocar un día y deslizar de lado al calendario no cambian.
 - Prueba nueva: `testDeslizarHaciaArribaSobreElCodigoMueveLaPantalla`.
 
+## 2026-11-02 · Trabajar como Orbital: rápido y directo a `main`
+Pedido del dueño: «tú tardas demasiado… ve cómo trabaja Orbital y trabaja igual». Orbital hace commits directos a `main` (decenas al día, sin PR) y su CI no corre pruebas en el simulador. Centavo hacía, por cada cambio: rama, PR, esperar la CI (~4 min, a veces cancelada por falta de Macs en GitHub), una revisión con agente, pruebas en el simulador y a veces la suite completa (~35 min aquí, ~60 en GitHub).
+- **Directo a `main`** tras `Tools/verify.sh`; la CI corre después y no se espera. Reemplaza «Una rama por issue, PR, squash-merge» (2026-10-11) y «En un PR la CI decide el merge» (2026-10-20).
+- **En el simulador, solo las pruebas de lo que cambió.** La suite completa se queda en GitHub al entrar a `main`.
+- **Revisión con agente solo para cambios que pueden perder datos.**
+
