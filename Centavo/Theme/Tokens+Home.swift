@@ -87,8 +87,6 @@ extension Theme.Motion {
     static let revealIn: Animation = .easeOut(duration: 0.22).delay(0.2)
     static let revealOut: Animation = .easeIn(duration: revealOutSeconds)
     static let revealOutSeconds: Double = 0.12
-    /// The room closing once what it showed has faded (`revealOut`).
-    static let foldClosed: Animation = .smooth(duration: foldSeconds).delay(revealOutSeconds)
 }
 
 extension AnyTransition {

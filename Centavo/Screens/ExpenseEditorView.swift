@@ -45,6 +45,8 @@ struct ExpenseEditorView: View {
     @State private var showsDetails = false
     /// «Ver todas»: the whole category list instead of the short one.
     @State private var showsAllCategories = false
+    /// «Ver menos» fading the rest before their room closes.
+    @State private var fadingCategories = false
     @FocusState private var amountFocused: Bool
     @FocusState private var merchantFocused: Bool
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
@@ -430,8 +432,23 @@ struct ExpenseEditorView: View {
     }
 
     private var categorySection: some View {
-        Section {
-            categoryGrid
+        // Worked out once per drawing: every row below needs it.
+        let split = categorySplit
+        let fill = categoryFill(split)
+        let more = Array(split.rest.dropFirst(fill))
+        return Section {
+            // «Ver más» adds the rest as a row of its own, which the list slides in once, under the
+            // ones in view (which never move), and «Nueva» and «Ver más» ride down. Grown frame by
+            // frame inside one row, the whole form laid itself out again on every frame and
+            // stuttered (owner, 2026-11-04).
+            categoryGrid(split, fill: fill)
+                .categoryRow(top: Theme.Space.xl, bottom: Theme.Space.none)
+            if showsAllCategories, !more.isEmpty {
+                moreCategories(more)
+                    .categoryRow(top: Theme.Space.s, bottom: Theme.Space.none)
+            }
+            categoryActions(more: split.rest.count)
+                .categoryRow(top: Theme.Space.s, bottom: Theme.Space.xl)
         } header: {
             Text("Categoría").ticketCaption()
         } footer: {
@@ -610,83 +627,115 @@ struct ExpenseEditorView: View {
         .accessibilityIdentifier("comercios-sugeridos")
     }
 
-    /// The suggested one and the ones used most, then «Ver todas» for the rest; one tap picks
-    /// one, another tap clears it. «Nueva categoría» writes a new one.
-    private var categoryGrid: some View {
+    /// The suggested one and the ones used most first, the rest behind «Ver más».
+    private var categorySplit: (shown: [String], rest: [String]) {
         let offered = CategoryStyle.offered(known: Array(knownCategories.prefix(8)),
                                             custom: customCategories, current: category,
                                             hidden: UserCatalog.decodeNames(storedHidden))
-        let split = CategoryShortlist.split(offered: offered, mostUsed: knownCategories,
-                                            pinned: [suggestedCategory ?? ""] + pinnedCategories + [category])
-        // Every one is laid out, the rest hidden: «Ver más» opens the room under the ones in
-        // view, which never move, and the rest show row by row as the room reaches them; «Ver
-        // menos» fades them first and closes after (owner, 2026-11-02: it used to jump and zoom).
-        let names = split.shown + split.rest
-        return VStack(spacing: Theme.Space.s) {
-            RevealGrid(minimum: Theme.Size.categoryGridMinimum, spacing: Theme.Space.s,
-                       firstCount: split.shown.count, open: showsAllCategories ? 1 : 0) {
-                ForEach(Array(names.enumerated()), id: \.element) { index, name in
-                    let extra = index - split.shown.count
-                    let hidden = !showsAllCategories && extra >= 0
-                    // Hidden, only its room is kept (no button, nothing VoiceOver or a tap can
-                    // reach); shown, it fades in once the room opening downward reaches it.
-                    ZStack {
-                        CategoryTile(name: name, icon: CategoryStyle.icon(for: name, custom: customCategories),
-                                     color: colors.category(name), selected: false, isAction: false)
-                            .hidden()
-                        if !hidden {
-                            categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
-                                         selected: category == name, tint: colors.category(name)) {
-                                category = category == name ? "" : name
-                                if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
-                            }
-                            .transition(.asymmetric(
-                                insertion: .opacity.animation(Theme.Motion.animation(
-                                    Theme.Motion.tileIn(max(extra, 0), of: split.rest.count), reduceMotion: reduceMotion)),
-                                removal: .opacity.animation(Theme.Motion.animation(Theme.Motion.revealOut,
-                                                                                  reduceMotion: reduceMotion))))
-                        }
-                    }
-                }
-            }
-            .clipShape(Rectangle().inset(by: -Theme.Space.xs))
-            HStack(spacing: Theme.Space.s) {
-                Button { creating = .category } label: {
-                    LinkActionLabel("Nueva", systemImage: "plus", fillsWidth: false)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Nueva categoría")
-                .accessibilityIdentifier("categoria-Nueva categoría")
-                Spacer(minLength: Theme.Space.s)
-                if !split.rest.isEmpty {
-                    Button {
-                        // Opening, the room grows at once; closing, the rest fades first.
-                        let fold = showsAllCategories ? Theme.Motion.foldClosed : Theme.Motion.fold
-                        withAnimation(Theme.Motion.animation(fold, reduceMotion: reduceMotion)) {
-                            showsAllCategories.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: Theme.Space.xs) {
-                            // Swapped at once: blended while the button moves, both read as one blur.
-                            Text(showsAllCategories ? "Ver menos" : "Ver \(split.rest.count) más")
-                                .contentTransition(.identity)
-                            Image(systemName: "chevron.down")
-                                .rotationEffect(.degrees(showsAllCategories ? 180 : 0))
-                                .accessibilityHidden(true)
-                        }
-                        .font(.ticket(.footnoteStrong))
-                        .foregroundStyle(Theme.muted)
-                        .frame(minHeight: Theme.Size.tapTarget)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(showsAllCategories ? "Muestra solo las más usadas"
-                                       : "\(split.rest.count) categorías más")
-                    .accessibilityIdentifier("ver-todas-categorias")
-                }
+        return CategoryShortlist.split(offered: offered, mostUsed: knownCategories,
+                                       pinned: [suggestedCategory ?? ""] + pinnedCategories + [category])
+    }
+
+    /// How many fit side by side, measured from the grid: what of the rest fills the last row
+    /// of the ones in view.
+    @State private var categoryColumns = 1
+    private var categoryGridColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)]
+    }
+
+    /// How many of the rest fit in the last row of the ones in view: they fade in where they are,
+    /// and the others go in a row of their own.
+    private func categoryFill(_ split: (shown: [String], rest: [String])) -> Int {
+        let open = (categoryColumns - split.shown.count % categoryColumns) % categoryColumns
+        return min(open, split.rest.count)
+    }
+
+    /// The suggested one and the ones used most, then «Ver más» for the rest; one tap picks
+    /// one, another tap clears it.
+    private func categoryGrid(_ split: (shown: [String], rest: [String]), fill: Int) -> some View {
+        let names = split.shown + split.rest.prefix(fill)
+        return LazyVGrid(columns: categoryGridColumns, spacing: Theme.Space.s) {
+            ForEach(Array(names.enumerated()), id: \.element) { index, name in
+                let hidden = (!showsAllCategories || fadingCategories) && index >= split.shown.count
+                // Hidden, nothing VoiceOver or a tap can reach.
+                categoryButton(name)
+                    .opacity(hidden ? Theme.Opacity.hidden : Theme.Opacity.visible)
+                    .animation(Theme.Motion.animation(hidden ? Theme.Motion.revealOut : Theme.Motion.revealIn,
+                                                      reduceMotion: reduceMotion), value: hidden)
+                    .allowsHitTesting(!hidden)
+                    .accessibilityHidden(hidden)
             }
         }
-        .padding(.vertical, Theme.Space.xs)
+        .onGeometryChange(for: Int.self) { proxy in
+            Int((proxy.size.width + Theme.Space.s) / (Theme.Size.categoryGridMinimum + Theme.Space.s))
+        } action: { categoryColumns = max($0, 1) }
+    }
+
+    private func moreCategories(_ names: [String]) -> some View {
+        ArrivingRow(leaving: fadingCategories) {
+            LazyVGrid(columns: categoryGridColumns, spacing: Theme.Space.s) {
+                ForEach(names, id: \.self) { categoryButton($0) }
+            }
+        }
+    }
+
+    private func categoryButton(_ name: String) -> some View {
+        categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
+                     selected: category == name, tint: colors.category(name)) {
+            category = category == name ? "" : name
+            if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
+        }
+    }
+
+    /// «Nueva categoría» writes a new one; «Ver más» opens the rest. A row of their own under
+    /// the grid.
+    private func categoryActions(more count: Int) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            Button { creating = .category } label: {
+                LinkActionLabel("Nueva", systemImage: "plus", fillsWidth: false)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Nueva categoría")
+            .accessibilityIdentifier("categoria-Nueva categoría")
+            Spacer(minLength: Theme.Space.s)
+            if count > 0 {
+                Button {
+                    // Opening, the room opens at once and the rest shows once it is there; closing,
+                    // the rest fades first and the room closes after, so nothing draws over what moves.
+                    if showsAllCategories {
+                        withAnimation(Theme.Motion.animation(Theme.Motion.revealOut, reduceMotion: reduceMotion)) {
+                            fadingCategories = true
+                        } completion: {
+                            withAnimation(Theme.Motion.animation(Theme.Motion.fold, reduceMotion: reduceMotion)) {
+                                showsAllCategories = false
+                            }
+                            fadingCategories = false
+                        }
+                    } else {
+                        withAnimation(Theme.Motion.animation(Theme.Motion.fold, reduceMotion: reduceMotion)) {
+                            showsAllCategories = true
+                        }
+                    }
+                } label: {
+                    HStack(spacing: Theme.Space.xs) {
+                        // Swapped at once: blended while the button moves, both read as one blur.
+                        Text(showsAllCategories ? "Ver menos" : "Ver \(count) más")
+                            .contentTransition(.identity)
+                        Image(systemName: "chevron.down")
+                            .rotationEffect(.degrees(showsAllCategories ? 180 : 0))
+                            .accessibilityHidden(true)
+                    }
+                    .font(.ticket(.footnoteStrong))
+                    .foregroundStyle(Theme.muted)
+                    .frame(minHeight: Theme.Size.tapTarget)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(showsAllCategories ? "Muestra solo las más usadas"
+                                   : "\(count) categorías más")
+                .accessibilityIdentifier("ver-todas-categorias")
+            }
+        }
     }
 
     /// The cards and cash set up in «Pagos y categorías», plus any other a payment came
@@ -1010,5 +1059,31 @@ private struct PlaceMap: View {
         guard !seen.isEmpty else { return }
         expense.placeName = seen.joined(separator: ", ")
         try? context.save()
+    }
+}
+
+private extension View {
+    /// A row of the category section: no separator, the form's side margins, and the vertical
+    /// room given here so the grid's rows read as one.
+    func categoryRow(top: CGFloat, bottom: CGFloat) -> some View {
+        listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: top, leading: Theme.Space.xl, bottom: bottom, trailing: Theme.Space.xl))
+    }
+}
+
+/// A row the list slides in: what it holds shows once the room is there (`Theme.Motion.revealIn`),
+/// so it never draws over the rows still moving down, and hides while `leaving`.
+private struct ArrivingRow<Content: View>: View {
+    var leaving: Bool
+    @ViewBuilder var content: Content
+    @State private var arrived = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        content
+            .opacity(arrived && !leaving ? Theme.Opacity.visible : Theme.Opacity.hidden)
+            .onAppear {
+                withAnimation(Theme.Motion.animation(Theme.Motion.revealIn, reduceMotion: reduceMotion)) { arrived = true }
+            }
     }
 }
