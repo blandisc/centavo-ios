@@ -324,9 +324,12 @@ final class FlowTests: XCTestCase {
         let app = launch(demo: true)
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
-        let button = app.buttons["en-una-frase"]
-        for _ in 0..<4 where !isClear(button, app) { scrollForm(app) }
-        require(button, "No está «Dilo en una frase»").tap()
+        // The amount opens with the keyboard, and while it has it its row shows «Siguiente» in the
+        // button's place: move on to the merchant, as a person would.
+        app.textFields["comercio"].tap()
+        let button = require(app.buttons["en-una-frase"], "No está «Dilo en una frase»")
+        for _ in 0..<4 where !button.isHittable { app.swipeDown() }
+        button.tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
         sentence.typeText("230 de tacos ayer, en efectivo")

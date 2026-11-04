@@ -22,6 +22,16 @@ final class ScreenshotTests: XCTestCase {
         return app
     }
 
+    /// Types once the field has the keyboard: a tap that lands while the step is still settling
+    /// leaves it unfocused, and typing then fails on CI.
+    private func type(_ text: String, into field: XCUIElement) {
+        for _ in 0..<3 where (field.value(forKey: "hasKeyboardFocus") as? Bool) != true {
+            field.tap()
+            usleep(400_000)
+        }
+        field.typeText(text)
+    }
+
     private func snap(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
@@ -59,12 +69,9 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.textFields["fila-nombre"].waitForExistence(timeout: 5), "No abrió el paso 1")
         sleep(2)
         snap("46-paso-1")
-        app.textFields["fila-nombre"].tap()
-        app.textFields["fila-nombre"].typeText("Nu cajita")
-        app.textFields["fila-monto"].tap()
-        app.textFields["fila-monto"].typeText("185000")
-        app.textFields["fila-tasa"].tap()
-        app.textFields["fila-tasa"].typeText("10.5")
+        type("Nu cajita", into: app.textFields["fila-nombre"])
+        type("185000", into: app.textFields["fila-monto"])
+        type("10.5", into: app.textFields["fila-tasa"])
         snap("47-paso-1-llenando")
         app.buttons["fila-listo"].tap()
         sleep(1)
@@ -309,6 +316,9 @@ final class ScreenshotTests: XCTestCase {
     func testNoCuentaHoja() {
         let app = launch()
         uncountedRow(app).tap()
+        // On CI a tap that lands while the list is still settling after the swipes opens nothing:
+        // once more.
+        if !app.buttons["mas-detalles"].waitForExistence(timeout: 5) { uncountedRow(app).tap() }
         // «Tipo: No cuenta» opens «Más detalles» by itself; its rows are below the fold, and the
         // form only makes them once scrolled to.
         XCTAssertTrue(app.buttons["mas-detalles"].waitForExistence(timeout: 5), "No abrió el gasto")
