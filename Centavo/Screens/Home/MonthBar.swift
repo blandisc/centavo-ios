@@ -87,9 +87,12 @@ struct MonthBar: View {
             Button {
                 withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
             } label: {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
-                    VStack(alignment: .leading, spacing: Theme.Space.xxs) { spentKey; budgetKey }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    if showsExpected { expectedKey }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
+                        VStack(alignment: .leading, spacing: Theme.Space.xxs) { spentKey; budgetKey }
+                    }
                 }
                 .font(.ticket(.detail))
                 .frame(minHeight: Theme.Size.tapTarget)
@@ -249,13 +252,34 @@ struct MonthBar: View {
 
     // MARK: Words
 
+    /// Without the track, this month and within the budget, the line says where the month should
+    /// be by now, the figure the bar's rule used to carry (owner's choice B2, 2026-11-04).
+    private var showsExpected: Bool { !showsTrack && isCurrentMonth && !isOver }
+
+    /// «Llevas $3,000 y deberías llevar $2,600»: «podrías» while under it, where it is room to
+    /// spend and not a goal (owner's choice C1, the bar's rule).
+    private var expectedKey: some View {
+        WrapLayout(spacing: Theme.Space.xs) {
+            Text("Llevas").foregroundStyle(Theme.muted)
+            totalText
+            Text(pace.isAheadOfPace ? "y deberías llevar" : "y podrías llevar").foregroundStyle(Theme.muted)
+            Text(wholeMoney(pace.expectedShown))
+                .foregroundStyle(Theme.ink)
+                .contentTransition(.numericText())
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
     /// Its pieces wrap to a second line when they don't fit (the largest text sizes): kept on
-    /// one line, it pushed the whole page past the screen's edge.
+    /// one line, it pushed the whole page past the screen's edge. Under `expectedKey` it starts
+    /// at the budget: «de $8,000 · $250/día».
     private var spentKey: some View {
         WrapLayout(spacing: Theme.Space.xs) {
             if showsTrack { swatch(isOver ? Theme.danger : Theme.brass) }
-            Text("Llevas").foregroundStyle(Theme.muted)
-            totalText
+            if !showsExpected {
+                Text("Llevas").foregroundStyle(Theme.muted)
+                totalText
+            }
             // Past it, the budget goes right after what went: «Llevas $2,366 de $2,000». Without
             // the track there is no bar's end to carry it, so it always does.
             if isOver || !showsTrack {
