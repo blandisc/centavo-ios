@@ -22,9 +22,11 @@ final class ScreenshotTests: XCTestCase {
         return app
     }
 
-    /// Types once the field has the keyboard: a tap that lands while the step is still settling
-    /// leaves it unfocused, and typing then fails on CI.
-    private func type(_ text: String, into field: XCUIElement) {
+    /// Types once the field has the keyboard. On CI's smaller iPhone the field can sit at the
+    /// bottom edge, where a tap leaves it unfocused: it is brought up first.
+    private func type(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
+        let screen = app.windows.firstMatch.frame
+        for _ in 0..<3 where field.frame.maxY > screen.minY + screen.height * 0.6 { app.swipeUp() }
         for _ in 0..<3 where (field.value(forKey: "hasKeyboardFocus") as? Bool) != true {
             field.tap()
             usleep(400_000)
@@ -69,9 +71,9 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.textFields["fila-nombre"].waitForExistence(timeout: 5), "No abrió el paso 1")
         sleep(2)
         snap("46-paso-1")
-        type("Nu cajita", into: app.textFields["fila-nombre"])
-        type("185000", into: app.textFields["fila-monto"])
-        type("10.5", into: app.textFields["fila-tasa"])
+        type("Nu cajita", into: app.textFields["fila-nombre"], in: app)
+        type("185000", into: app.textFields["fila-monto"], in: app)
+        type("10.5", into: app.textFields["fila-tasa"], in: app)
         snap("47-paso-1-llenando")
         app.buttons["fila-listo"].tap()
         sleep(1)
@@ -316,12 +318,11 @@ final class ScreenshotTests: XCTestCase {
     func testNoCuentaHoja() {
         let app = launch()
         uncountedRow(app).tap()
-        // On CI a tap that lands while the list is still settling after the swipes opens nothing:
-        // once more.
-        if !app.buttons["mas-detalles"].waitForExistence(timeout: 5) { uncountedRow(app).tap() }
-        // «Tipo: No cuenta» opens «Más detalles» by itself; its rows are below the fold, and the
-        // form only makes them once scrolled to.
-        XCTAssertTrue(app.buttons["mas-detalles"].waitForExistence(timeout: 5), "No abrió el gasto")
+        XCTAssertTrue(app.textFields["monto"].waitForExistence(timeout: 5), "No abrió el gasto")
+        // «Tipo: No cuenta» opens «Más detalles» by itself; on CI's smaller iPhone even its row is
+        // below the fold, and the form only makes rows once scrolled to.
+        for _ in 0..<4 where !app.buttons["mas-detalles"].exists { app.swipeUp() }
+        XCTAssertTrue(app.buttons["mas-detalles"].waitForExistence(timeout: 5), "No está «Más detalles»")
         for _ in 0..<4 where !app.buttons["tipo"].exists { app.swipeUp() }
         XCTAssertTrue(app.buttons["tipo"].waitForExistence(timeout: 5), "No está «Tipo»")
         for _ in 0..<4 where !app.buttons["motivo"].isHittable { app.swipeUp() }
