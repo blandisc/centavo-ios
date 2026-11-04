@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **«Ver cuenta» se desdobla:** la cuenta baja desde su línea como una pestaña de papel mientras se abre el espacio, y al cerrar se dobla de regreso. Antes solo aparecía.
 ### Added
 - **«Cómo funciona» termina con una historia de cierre** («Ya sabes cómo funciona»): un toque a la derecha en la última historia te lleva a ella, y otro toque te saca.
 ### Fixed

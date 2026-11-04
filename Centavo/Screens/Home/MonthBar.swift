@@ -102,11 +102,11 @@ struct MonthBar: View {
 
 
             if showsSum {
-                // It unfolds in place, like «Para cerrar el mes»: the page grows and the sum fades
-                // in under the bar, no slide and no bounce (owner, 2026-10-29).
+                // It folds down from the line like a flap of paper while the page grows, and back
+                // up as it closes (owner's choice A3, 2026-11-04; it used to only fade in).
                 sum
                     .padding(.top, Theme.Space.s)
-                    .transition(.unfold)
+                    .transition(.flap)
             }
         }
         // Without the sentence the bar would sit flush under the figure; without the track the line

@@ -98,6 +98,33 @@ extension AnyTransition {
     }
 }
 
+extension Theme.Motion {
+    /// «Ver cuenta» folded up: nearly edge-on, hinged at its top (owner's choice A3, 2026-11-04).
+    static let flapAngle: Double = -88
+    /// How much of the folded sum still shows, so it reads as paper turning and not as a blink.
+    static let flapOpacity: Double = 0.2
+}
+
+extension AnyTransition {
+    /// The sum behind «Ver cuenta» (owner's choice A3, 2026-11-04): it unfolds down from its
+    /// line like a flap of paper while the room opens (`Theme.Motion.fold`), and folds back up
+    /// as it closes. One movement, no bounce.
+    static var flap: AnyTransition {
+        .modifier(active: Flap(folded: true), identity: Flap(folded: false))
+    }
+}
+
+private struct Flap: ViewModifier {
+    let folded: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .rotation3DEffect(.degrees(folded ? Theme.Motion.flapAngle : .zero), axis: (x: 1, y: 0, z: 0),
+                              anchor: .top)
+            .opacity(folded ? Theme.Motion.flapOpacity : Theme.Opacity.visible)
+    }
+}
+
 
 // The month's barcode under the budget bar (`MonthCodeView`).
 extension Theme.Size {
