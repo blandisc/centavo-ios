@@ -23,20 +23,29 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Types once the field has the keyboard. On CI's smaller iPhone the field can sit at the
-    /// bottom edge, or under the bar with «Listo» over the keyboard, where a tap lands on something
-    /// else: it is brought up, the keyboard is put away if it still covers it, and the tap aims
-    /// above the field's middle.
+    /// bottom edge, under the keyboard's bar, or (after a full swipe) under the top bar, and a tap
+    /// there lands on something else: the keyboard is put away («Ocultar teclado»), short drags
+    /// bring the field to the middle, and the tap aims above its middle.
     private func type(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
+        let hide = app.buttons["Ocultar teclado"]
+        if app.keyboards.firstMatch.exists, hide.exists { hide.tap(); usleep(400_000) }
         let screen = app.windows.firstMatch.frame
-        for _ in 0..<3 where field.frame.maxY > screen.minY + screen.height * 0.6 { app.swipeUp() }
-        let keyboard = app.keyboards.firstMatch
-        // The keyboard plus its bar: the bar is not part of the keyboard's frame.
-        if keyboard.exists, field.frame.maxY > keyboard.frame.minY - 80 { app.swipeDown() }
+        let top = screen.minY + screen.height * 0.25
+        let bottom = screen.minY + screen.height * 0.6
+        for _ in 0..<5 where field.frame.maxY > bottom { drag(app, from: 0.7, to: 0.5) }
+        for _ in 0..<5 where field.frame.minY < top { drag(app, from: 0.4, to: 0.6) }
         for _ in 0..<3 where (field.value(forKey: "hasKeyboardFocus") as? Bool) != true {
             field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
             usleep(400_000)
         }
         field.typeText(text)
+    }
+
+    /// A short vertical drag, a fifth of the screen: a full swipe scrolls too far.
+    private func drag(_ app: XCUIApplication, from start: CGFloat, to end: CGFloat) {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: start))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: end)))
+        usleep(300_000)
     }
 
     private func snap(_ name: String) {
