@@ -23,12 +23,17 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Types once the field has the keyboard. On CI's smaller iPhone the field can sit at the
-    /// bottom edge, where a tap leaves it unfocused: it is brought up first.
+    /// bottom edge, or under the bar with «Listo» over the keyboard, where a tap lands on something
+    /// else: it is brought up, the keyboard is put away if it still covers it, and the tap aims
+    /// above the field's middle.
     private func type(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
         let screen = app.windows.firstMatch.frame
         for _ in 0..<3 where field.frame.maxY > screen.minY + screen.height * 0.6 { app.swipeUp() }
+        let keyboard = app.keyboards.firstMatch
+        // The keyboard plus its bar: the bar is not part of the keyboard's frame.
+        if keyboard.exists, field.frame.maxY > keyboard.frame.minY - 80 { app.swipeDown() }
         for _ in 0..<3 where (field.value(forKey: "hasKeyboardFocus") as? Bool) != true {
-            field.tap()
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
             usleep(400_000)
         }
         field.typeText(text)
