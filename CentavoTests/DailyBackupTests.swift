@@ -189,7 +189,9 @@ final class DailyBackupTests: XCTestCase {
     }
 
     func testUndoBringsBackEveryField() throws {
-        let context = try container().mainContext
+        // Held for the whole test: a context whose container is gone traps on insert.
+        let store = try container()
+        let context = store.mainContext
         let expense = fullExpense()
         expense.maybeRepeated = true
         expense.fixedOf = "x"
