@@ -80,30 +80,40 @@ Se usa así: `.font(.ticket(.body))`. Nunca `.ticket(15, …)` ni `.font(.system
 
 Símbolos SF: `.font(Theme.Symbol.regular)` o `.font(Theme.Symbol.large)`.
 
+### Ritmo (regla, 2026-11-05)
+
+Una sola altura de renglón, una sola separación entre secciones y una sola curva, repetidas en toda la app:
+- **Renglón:** `Theme.Size.tapTarget` (44); `tallRow` (52) solo si el renglón lleva dos líneas.
+- **Separación entre bloques de una página:** `Theme.Space.xl` (24), siempre la misma.
+- **Curva:** 12 para todo lo que es tarjeta, campo, botón o ticket; 4 solo para barras y días; 28 para hojas.
+- **Espacios de 4 en 4:** 4, 8, 12, 16, 24, 32. No se agregan pasos intermedios.
+- **Excepciones con nombre**, nunca números sueltos: si una pieza no cabe con la escala (como las tarjetas de «En qué se va»), se crea un token propio que diga por qué.
+
 ### Espaciado (`Theme.Space`)
 
 | Token | pt | Uso típico |
 |---|---:|---|
 | `none` | 0 | Pegado |
-| `xxxs` | 2 | Líneas de un mismo bloque |
+| `xxxs` | 4 | Líneas de un mismo bloque |
 | `xxs` | 4 | Etiqueta y valor; filas apiladas con letra grande |
-| `xs` | 6 | Encabezado y su texto |
+| `xs` | 8 | Encabezado y su texto |
 | `s` | 8 | Elementos de una fila (el hueco chico por omisión) |
-| `sm` | 10 | Filas de una lista corta |
+| `sm` | 12 | Filas de una lista corta |
 | `m` | 12 | Ícono a texto; elementos de una tarjeta |
-| `ml` | 14 | Dentro de un ticket en blanco |
+| `ml` | 16 | Dentro de un ticket en blanco |
 | `l` | 16 | Dentro de una tarjeta o fila seleccionable |
-| `lx` | 18 | Alrededor del ticket de «Borrar» |
-| `xl` | 20 | Entre bloques de una página |
-| `xlx` | 22 | Dentro del ticket de lista vacía |
+| `lx` | 16 | Alrededor del ticket de «Borrar» |
+| `xl` | 24 | **La** separación entre bloques de una página |
+| `xlx` | 24 | Dentro del ticket de lista vacía |
 | `xxl` | 24 | Arriba y abajo de una página |
-| `xxxl` | 28 | Arriba de una hoja sin barra |
+| `xxxl` | 32 | Arriba de una hoja sin barra |
 | `screen` | 24 | **Margen izquierdo y derecho de toda pantalla** |
+| `tileLine` / `tileItem` | 2 / 6 | **Excepción:** dentro de una tarjeta de «En qué se va», que es demasiado chica para la escala y perdería su monto |
 | `outset` | −3 | Ajuste óptico (el «$» del héroe, un anillo por fuera) |
 
 ### Radios (`Theme.Radius`)
 
-`bar` 2 · `tile` 3 · `chip` 4 · `ticket` 6 · `control` 8 · `panel` 10 · `card` 12 · `sheet` 28. Los tickets son casi cuadrados: nunca tarjetas en forma de píldora.
+`bar`, `tile`, `chip` 4 (barras y días) · `ticket`, `control`, `panel`, `card` 12 (todo lo demás) · `sheet` 28 (la del sistema). Nunca tarjetas en forma de píldora.
 
 ### Tamaños (`Theme.Size`)
 

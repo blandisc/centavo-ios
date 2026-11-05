@@ -515,13 +515,13 @@ private struct MosaicTile: View {
     }
 
     private var nameRow: some View {
-        HStack(spacing: Theme.Space.xs) { icon; name }
+        HStack(spacing: Theme.Space.tileItem) { icon; name }
     }
 
     var body: some View {
         ViewThatFits(in: [.horizontal, .vertical]) {
             // Icon and name on top, amount and share below.
-            VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+            VStack(alignment: .leading, spacing: Theme.Space.tileLine) {
                 nameRow
                 Spacer(minLength: Theme.Space.xxs)
                 Text(amount)
@@ -537,7 +537,7 @@ private struct MosaicTile: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             // Short and wide: all on one line.
-            HStack(spacing: Theme.Space.xs) {
+            HStack(spacing: Theme.Space.tileItem) {
                 nameRow
                 Spacer(minLength: Theme.Space.xxs)
                 Text(amount)
@@ -555,7 +555,7 @@ private struct MosaicTile: View {
             // Tall and narrow: the name runs up the block, as on a book's spine.
             VStack(spacing: Theme.Space.none) {
                 icon
-                Spacer(minLength: Theme.Space.xs)
+                Spacer(minLength: Theme.Space.tileItem)
                 Sideways { name }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

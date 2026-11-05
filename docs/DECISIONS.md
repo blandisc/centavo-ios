@@ -820,3 +820,10 @@ Pedido del dueño: «tú tardas demasiado… ve cómo trabaja Orbital y trabaja 
 - **En el simulador, solo las pruebas de lo que cambió.** La suite completa se queda en GitHub al entrar a `main`.
 - **Revisión con agente solo para cambios que pueden perder datos.**
 
+
+## 2026-11-05 · Ritmo: una curva, una separación, un renglón
+Pedido del dueño: aplicar «Rhythm» a todo el sistema de diseño (opción R1a, tras ver capturas reales de antes y después).
+- **Curvas:** 12 para tarjetas, campos, botones y el boleto; 4 para barras y días; 28 para hojas. Se acaban las de 2, 3, 6, 8 y 10.
+- **Espacios de 4 en 4** (4, 8, 12, 16, 24, 32); 24 es la separación entre bloques.
+- **Excepción:** las tarjetas de «En qué se va» conservan su aire de antes (`tileLine`, `tileItem`); con la escala, Despensa y Salidas perdían su monto.
+- La regla vive en [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) («Ritmo»).

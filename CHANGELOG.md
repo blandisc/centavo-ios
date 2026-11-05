@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- **Toda la app con el mismo ritmo:** tarjetas, botones, campos y el boleto con la misma curva de esquina, y los espacios en una sola escala, así las pantallas se ven más parejas. Las tarjetas de «En qué se va» conservan su aire para seguir mostrando el monto.
 - **Vuelve «Deberías llevar»:** bajo el boleto, en un renglón, «Llevas $3,000 y deberías llevar $2,600 de $8,000» (o «podrías llevar» si vas abajo), con «Ver cuenta» debajo. Ya no se muestra el promedio por día.
 - **«Ver cuenta» se desdobla:** la cuenta baja desde su línea como una pestaña de papel mientras se abre el espacio, y al cerrar se dobla de regreso. Antes solo aparecía.
 ### Added

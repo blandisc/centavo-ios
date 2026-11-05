@@ -14,53 +14,59 @@ extension Theme {
     enum Space {
         /// Glued: a title and the line right under it.
         static let none: CGFloat = 0
-        /// 2 pt. Lines of one block (a merchant and its details).
-        static let xxxs: CGFloat = 2
+        /// 4 pt (rhythm: steps of 4). Lines of one block (a merchant and its details).
+        static let xxxs: CGFloat = 4
         /// 4 pt. A label and its value; stacked rows in large type.
         static let xxs: CGFloat = 4
-        /// 6 pt. A caption and the text it heads.
-        static let xs: CGFloat = 6
+        /// 8 pt. A caption and the text it heads.
+        static let xs: CGFloat = 8
         /// 8 pt. Items of a row; the default small gap.
         static let s: CGFloat = 8
-        /// 10 pt. Rows of a short list; a button bar's vertical padding.
-        static let sm: CGFloat = 10
+        /// 12 pt. Rows of a short list; a button bar's vertical padding.
+        static let sm: CGFloat = 12
         /// 12 pt. Icon to text; elements of a card.
         static let m: CGFloat = 12
-        /// 14 pt. Inside a blank ticket; between a block and its note.
-        static let ml: CGFloat = 14
+        /// 16 pt. Inside a blank ticket; between a block and its note.
+        static let ml: CGFloat = 16
         /// 16 pt. Inside a card or a selectable row.
         static let l: CGFloat = 16
-        /// 18 pt. Around the ticket in the delete sheet.
-        static let lx: CGFloat = 18
-        /// 20 pt. Between the blocks of a page.
-        static let xl: CGFloat = 20
-        /// 22 pt. Inside the empty-list ticket.
-        static let xlx: CGFloat = 22
+        /// 16 pt. Around the ticket in the delete sheet.
+        static let lx: CGFloat = 16
+        /// 24 pt. Between the blocks of a page: the one section gap.
+        static let xl: CGFloat = 24
+        /// 24 pt. Inside the empty-list ticket.
+        static let xlx: CGFloat = 24
         /// 24 pt. Screen margin (same as `Theme.horizontalPadding`) and page top/bottom.
         static let xxl: CGFloat = 24
-        /// 28 pt. Top of a sheet that has no navigation bar.
-        static let xxxl: CGFloat = 28
+        /// 32 pt. Top of a sheet that has no navigation bar.
+        static let xxxl: CGFloat = 32
         /// −3 pt. Optical outset: pulls the hero's «$» back to the caption's edge (its side
         /// bearing at that size, measured) or puts a ring just outside what it circles.
         static let outset: CGFloat = -3
+        /// 2 pt. Exception to the rhythm: lines inside a mosaic tile, which is too small for
+        /// the ladder and would lose its amount.
+        static let tileLine: CGFloat = 2
+        /// 6 pt. Exception to the rhythm: icon to name inside a mosaic tile.
+        static let tileItem: CGFloat = 6
         /// Left and right margin of every screen.
         static let screen: CGFloat = Theme.horizontalPadding
     }
 
-    /// Corner radii. Receipts are almost square: small radii, never pill-shaped cards.
+    /// Corner radii. Rhythm: one small radius (4) for bars and days, one radius (12) for every
+    /// card, control and ticket, and the system's for sheets. Never pill-shaped cards.
     enum Radius {
-        /// 2 pt. A legend swatch.
-        static let bar: CGFloat = 2
-        /// 3 pt. The month bar, its segments and a pulsing tile.
-        static let tile: CGFloat = 3
+        /// 4 pt. A legend swatch.
+        static let bar: CGFloat = 4
+        /// 4 pt. The month bar, its segments and a pulsing tile.
+        static let tile: CGFloat = 4
         /// 4 pt. A calendar day.
         static let chip: CGFloat = 4
-        /// 6 pt. The dashed blank ticket (`TicketOutline`).
-        static let ticket: CGFloat = 6
-        /// 8 pt. Icon tiles, category buttons, small controls.
-        static let control: CGFloat = 8
-        /// 10 pt. Panels: a note box, the swipe button, the map preview.
-        static let panel: CGFloat = 10
+        /// 12 pt. The dashed blank ticket (`TicketOutline`).
+        static let ticket: CGFloat = 12
+        /// 12 pt. Icon tiles, category buttons, small controls.
+        static let control: CGFloat = 12
+        /// 12 pt. Panels: a note box, the swipe button, the map preview.
+        static let panel: CGFloat = 12
         /// 12 pt. Selectable cards (`SelectableCard`).
         static let card: CGFloat = 12
         /// 28 pt. Top corners of a sheet sized to its content.
