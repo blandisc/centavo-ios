@@ -1665,7 +1665,7 @@ private struct LedgerRow: View {
     private var amountText: some View {
         let amount = ledgerAmount(for: expense, primary: primaryCurrency)
         return Text(amount)
-            .font(.ticket(.body))
+            .font(.ticket(isUncounted ? .body : .bodyStrong))
             .strikethrough(isUncounted, color: Theme.muted)
             .foregroundStyle(isUncounted ? Theme.muted : isRefund ? Theme.brass : Theme.ink)
             .lineLimit(1)
@@ -1679,7 +1679,6 @@ private struct LedgerRow: View {
         } amount: {
             amountText
         }
-        .overlay(alignment: .top) { if perforated { Perforation() } }
         .accessibilityElement(children: .combine)
     }
 }
@@ -1926,7 +1925,7 @@ private struct DayDivider: View {
                 }
             }
         }
-        .padding(.top, Theme.Space.ml)
+        .padding(.top, Theme.Space.xl)
         .padding(.bottom, Theme.Space.xxxs)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)

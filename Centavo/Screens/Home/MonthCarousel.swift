@@ -56,7 +56,7 @@ struct MonthCarousel: View {
             Text("Cada día del mes").ticketCaption()
                 .padding(.horizontal, Theme.Space.screen)
                 // The air the boleto had under the figure, now over the heading.
-                .padding(.top, Theme.Space.m)
+                .padding(.top, Theme.Space.xl)
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .top, spacing: Theme.Space.none) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxl) {

@@ -51,7 +51,7 @@ struct WhereItGoes: View {
     private var total: Decimal { shares.reduce(0) { $0 + $1.amount } - returned }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Group {
                 if typeSize.isAccessibilitySize {
                     // Side by side the total got cut («$2,3…»): the title goes above it.

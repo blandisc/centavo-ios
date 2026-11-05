@@ -121,20 +121,18 @@ struct BudgetPage: View {
 
     private var invitation: some View {
         Button(action: onSetBudget) {
-            VStack(spacing: Theme.Space.xs) {
-                Text("Fijar presupuesto")
+            // A second action: a link, not a box that outweighs the figure (visual weight).
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text("Fijar presupuesto ›")
                     .font(.ticket(.footnoteStrong))
                     .tracking(Theme.Tracking.action)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
                 Text("Para ver cuánto te queda")
                     .font(.ticket(.caption))
-                    .tracking(Theme.Tracking.detail)
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
-            .frame(maxWidth: .infinity, minHeight: barHeight)
-            .ticketOutline(.emphasis)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
