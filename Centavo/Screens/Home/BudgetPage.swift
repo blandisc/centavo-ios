@@ -31,9 +31,8 @@ struct BudgetPage: View {
     /// parte de abajo»); a budget with nothing spent yet draws it whole.
     var part = Part.all
     /// On the main screen the days are the boleto's, in the carousel: the bar keeps only its line
-    /// («Llevas $X de $Y · $Z/día», «Ver cuenta») and the sum (owner, 2026-10-30).
+    /// («Llevas $X y deberías llevar $Y de $Z», «Ver cuenta») and the sum (owner, 2026-10-30).
     var showsTrack = true
-    var averagePerDay: Decimal?
 
     enum Part {
         /// The bar (or the invitation to set a budget) and «Para cerrar el mes».
@@ -150,7 +149,7 @@ struct BudgetPage: View {
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         return MonthBar(pace: pace, isCurrentMonth: isCurrentMonth, money: money, wholeMoney: wholeMoney,
                         carriesTotal: isCurrentMonth && !isOver, outside: outside, entrance: entrance,
-                        showsTrack: showsTrack, averagePerDay: averagePerDay)
+                        showsTrack: showsTrack)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("presupuesto-ticket")
             .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver,

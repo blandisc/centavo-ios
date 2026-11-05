@@ -21,11 +21,9 @@ struct MonthBar: View {
     /// Remembers that the bar has drawn itself, so a rebuilt one is already drawn (`Entrance`).
     var entrance = Entrance()
     /// Without its track (owner, 2026-10-30): the days are drawn by the boleto in the carousel, and
-    /// this is the one line that stays while it swaps with the calendar: «Llevas $X de $Y · $Z/día»
-    /// and «Ver cuenta».
+    /// this is the one line that stays while it swaps with the calendar: «Llevas $X y deberías llevar
+    /// $Y de $Z» and «Ver cuenta» (owner, 2026-11-04: without the average a day).
     var showsTrack = true
-    /// What went a day on average, said after the budget when there is no track.
-    var averagePerDay: Decimal?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = Theme.Size.monthBarTrack
@@ -87,11 +85,12 @@ struct MonthBar: View {
             Button {
                 withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
             } label: {
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    if showsExpected { expectedKey }
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
-                        VStack(alignment: .leading, spacing: Theme.Space.xxs) { spentKey; budgetKey }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
+                    // «Ver cuenta» under the sentence, still at the end it opens from.
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        spentKey
+                        HStack { Spacer(minLength: Theme.Space.none); budgetKey }
                     }
                 }
                 .font(.ticket(.detail))
@@ -256,39 +255,26 @@ struct MonthBar: View {
     /// be by now, the figure the bar's rule used to carry (owner's choice B2, 2026-11-04).
     private var showsExpected: Bool { !showsTrack && isCurrentMonth && !isOver }
 
-    /// «Llevas $3,000 y deberías llevar $2,600»: «podrías» while under it, where it is room to
-    /// spend and not a goal (owner's choice C1, the bar's rule).
-    private var expectedKey: some View {
-        WrapLayout(spacing: Theme.Space.xs) {
-            Text("Llevas").foregroundStyle(Theme.muted)
-            totalText
-            Text(pace.isAheadOfPace ? "y deberías llevar" : "y podrías llevar").foregroundStyle(Theme.muted)
-            Text(wholeMoney(pace.expectedShown))
-                .foregroundStyle(Theme.ink)
-                .contentTransition(.numericText())
-        }
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
     /// Its pieces wrap to a second line when they don't fit (the largest text sizes): kept on
-    /// one line, it pushed the whole page past the screen's edge. Under `expectedKey` it starts
-    /// at the budget: «de $8,000 · $250/día».
+    /// one line, it pushed the whole page past the screen's edge. With `showsExpected`, «Llevas
+    /// $3,000 y deberías llevar $2,600 de $8,000» in one line: «podrías» while under it, where it is
+    /// room to spend and not a goal (owner's choices B2 and C1, 2026-11-04).
     private var spentKey: some View {
         WrapLayout(spacing: Theme.Space.xs) {
             if showsTrack { swatch(isOver ? Theme.danger : Theme.brass) }
-            if !showsExpected {
-                Text("Llevas").foregroundStyle(Theme.muted)
-                totalText
+            Text("Llevas").foregroundStyle(Theme.muted)
+            totalText
+            if showsExpected {
+                Text(pace.isAheadOfPace ? "y deberías llevar" : "y podrías llevar").foregroundStyle(Theme.muted)
+                Text(wholeMoney(pace.expectedShown))
+                    .foregroundStyle(Theme.ink)
+                    .contentTransition(.numericText())
             }
             // Past it, the budget goes right after what went: «Llevas $2,366 de $2,000». Without
             // the track there is no bar's end to carry it, so it always does.
             if isOver || !showsTrack {
                 Text("de").foregroundStyle(Theme.muted)
                 Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
-            }
-            if !showsTrack, let averagePerDay {
-                Separator()
-                Text("\(Text(wholeMoney(averagePerDay)).foregroundStyle(Theme.ink))/día").foregroundStyle(Theme.muted)
             }
         }
         .fixedSize(horizontal: false, vertical: true)

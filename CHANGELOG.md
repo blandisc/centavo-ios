@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Changed
-- **Vuelve «Deberías llevar»:** bajo el boleto, «Llevas $3,000 y deberías llevar $2,600» (o «podrías llevar» si vas abajo), y en el segundo renglón el presupuesto, el promedio por día y «Ver cuenta».
+- **Vuelve «Deberías llevar»:** bajo el boleto, en un renglón, «Llevas $3,000 y deberías llevar $2,600 de $8,000» (o «podrías llevar» si vas abajo), con «Ver cuenta» debajo. Ya no se muestra el promedio por día.
 - **«Ver cuenta» se desdobla:** la cuenta baja desde su línea como una pestaña de papel mientras se abre el espacio, y al cerrar se dobla de regreso. Antes solo aparecía.
 ### Added
 - **«Cómo funciona» termina con una historia de cierre** («Ya sabes cómo funciona»): un toque a la derecha en la última historia te lleva a ella, y otro toque te saca.

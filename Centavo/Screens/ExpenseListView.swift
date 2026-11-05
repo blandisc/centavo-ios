@@ -608,7 +608,7 @@ private struct HomeHeader: View {
                     .ticketRow()
             } else if searchCount == nil {
                 // Under the figure, the carousel in every view (owner, 2026-10-30): on the left the
-                // boleto with its line right under it («Llevas $X de $Y · $Z/día», «Ver cuenta»)
+                // boleto with its line right under it («Llevas $X y deberías llevar $Y de $Z», «Ver cuenta»)
                 // and «En qué se va» in Lista or Mosaico; on the right only the calendar.
                 MonthCarousel(
                     calendarModel: month.calendar,
@@ -633,8 +633,7 @@ private struct HomeHeader: View {
                                       month: viewed, entrance: entrance)
                         BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
                                    outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
-                                   currency: currency, now: now, part: .top, showsTrack: false,
-                                   averagePerDay: month.code.averagePerDay)
+                                   currency: currency, now: now, part: .top, showsTrack: false)
                     }),
                     now: now,
                     motion: model.carousel
