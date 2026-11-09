@@ -166,8 +166,10 @@ struct MonthBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // The 44 pt target reaches up into the gap over it, so the line sits close to the sentence.
+        // The 44 pt target reaches into the gaps over and under it, so the line sits close to the
+        // sentence and to «En qué se va» (owner, 2026-11-08).
         .padding(.top, -Theme.Space.s)
+        .padding(.bottom, -Theme.Space.m)
         .sensoryFeedback(.selection, trigger: showsSum)
         .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
         .accessibilityIdentifier("ver-cuenta")
