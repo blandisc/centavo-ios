@@ -61,7 +61,9 @@ struct MonthBar: View {
                 verdict(line)
                     .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
                     .animation(reduceMotion ? nil : Theme.Motion.Entrance.legend, value: shown)
-                    .padding(.bottom, isCurrentMonth ? Theme.Space.l : Theme.Space.s)
+                    // Over the track it leaves room for the bar's label; over «Llevas» it sits a
+                    // little closer, one sentence after another (owner, 2026-11-08).
+                    .padding(.bottom, isCurrentMonth && showsTrack ? Theme.Space.l : Theme.Space.s)
                     // It fades in place: sliding down from the top it crossed the figure above it.
                     .transition(.opacity)
             }
@@ -90,11 +92,11 @@ struct MonthBar: View {
 
 
             if showsSum {
-                // It folds down from the line like a flap of paper while the page grows, and back
-                // up as it closes (owner's choice A3, 2026-11-04; it used to only fade in).
+                // It comes out from under the tear line like a receipt while the page grows, and
+                // slides back under it as it closes (owner, 2026-11-08; before, a 3D flap).
                 sum
                     .padding(.top, Theme.Space.s)
-                    .transition(.flap)
+                    .transition(.printOut)
             }
         }
         // Without the sentence the bar would sit flush under the figure; without the track the line

@@ -2,9 +2,10 @@
 
 ## [Unreleased]
 ### Changed
-- **«La cuenta» se abre desde un corte de boleto:** bajo «Llevas…», una línea de puntitos con «cuenta ⌄» al centro; al tocarla, la cuenta baja desde ahí como el mismo papel, separada por los mismos puntitos. Reemplaza «Ver cuenta».
+- **«La cuenta» se abre desde un corte de boleto:** bajo «Llevas…», una línea de puntitos con «cuenta ⌄» al centro; al tocarla, la cuenta sale de debajo del corte como un recibo de la impresora, recta hacia abajo, y al cerrar regresa. Reemplaza «Ver cuenta» y la hoja que se doblaba hacia el frente.
+- **El ritmo y «Llevas…» más juntos** bajo el boleto.
 - **Vuelve el promedio por día, junto al ritmo:** «Vas $665 abajo del ritmo · $711/día».
-- **El widget mediano habla como la app:** bajo los días, los dos renglones de la pantalla («Vas $665 abajo del ritmo · $711/día» y «Llevas $4,977 y podrías llevar $5,642 de $24,180»), sin mayúsculas; los días que te pasaste llevan su tapita roja, y la cifra es un poco más chica para que quepa.
+- **El widget mediano habla como la app:** bajo los días, «Vas $665 abajo del ritmo · $711/día», sin mayúsculas, y el ritmo ya no va en la esquina; los días que te pasaste llevan su tapita roja.
 - **Toda la app con el mismo ritmo:** tarjetas, botones, campos y el boleto con la misma curva de esquina, y los espacios en una sola escala, así las pantallas se ven más parejas. Las tarjetas de «En qué se va» conservan su aire para seguir mostrando el monto.
 - **Vuelve «Deberías llevar»:** bajo el boleto, en un renglón, «Llevas $3,000 y deberías llevar $2,600 de $8,000» (o «podrías llevar» si vas abajo), con «Ver cuenta» debajo. Ya no se muestra el promedio por día.
 - **«Ver cuenta» se desdobla:** la cuenta baja desde su línea como una pestaña de papel mientras se abre el espacio, y al cerrar se dobla de regreso. Antes solo aparecía.

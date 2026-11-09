@@ -110,9 +110,7 @@ struct HoyView: View {
                     Caption(text: state.caption, color: ink.muted)
                         .accessibilityLabel(spoken)
                     HStack(alignment: .lastTextBaseline, spacing: Theme.Space.s) {
-                        // A little smaller with the boleto, so its two lines fit under it (W2, 2026-11-08).
-                        Figure(text: money.whole(state.figure), color: figureColor,
-                               style: hasDays ? .figure : .figureLarge)
+                        Figure(text: money.whole(state.figure), color: figureColor, style: .figureLarge)
                         if isOverBudget {
                             Verdict(state: state, money: money, ink: ink).fixedSize()
                         }
@@ -136,15 +134,17 @@ struct HoyView: View {
             if let pace = state.pace {
                 Group {
                     if let days = entry.month?.days {
-                        // As on the main screen: the boleto and its two lines under it, the rhythm
-                        // with the average a day and what went against what could have (W2, 2026-11-08).
+                        // As on the main screen: the boleto and, under it, the rhythm with the
+                        // average a day (owner, 2026-11-08: without «Llevas … y podrías llevar …»).
+                        // Past the budget, «Llevas $X de $Y» in its place.
                         DayTicket(days: days, pace: pace, ink: ink, height: Theme.Size.widgetTicketTall)
-                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                        Group {
                             if !isOverBudget, entry.staleNote == nil {
                                 Verdict(state: state, money: money, ink: ink,
                                         average: pace.spent / Decimal(max(pace.day, 1)))
+                            } else {
+                                dataLine(pace)
                             }
-                            dataLine(pace)
                         }
                         .padding(.top, Theme.Space.s)
                     } else {
@@ -197,16 +197,12 @@ struct HoyView: View {
         .padding(.bottom, Theme.Space.s)
     }
 
-    /// «Llevas $4,977 y podrías llevar $5,642 de $24,180», the main screen's line, in its words
-    /// (W2, 2026-11-08); past the budget «Llevas $24,518 de $24,180», what went in red.
+    /// «Llevas $24,518 de $24,180» under the boleto where there is no rhythm to say (past the
+    /// budget, or a stale snapshot); what went in red past the budget.
     private func dataLine(_ pace: BudgetPace) -> some View {
-        var line = Text("Llevas ").foregroundStyle(ink.muted)
+        (Text("Llevas ").foregroundStyle(ink.muted)
             + Text(money.whole(pace.spentShown)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
-        if !pace.isOverspent {
-            line = line + Text(pace.isAheadOfPace ? " y deberías llevar " : " y podrías llevar ").foregroundStyle(ink.muted)
-                + Text(money.whole(pace.expectedShown)).foregroundStyle(ink.primary)
-        }
-        return (line + Text(" de ").foregroundStyle(ink.muted)
+            + Text(" de ").foregroundStyle(ink.muted)
             + Text(money.whole(pace.budget)).foregroundStyle(ink.primary))
             .font(.widget(.verdict))
             .lineLimit(1)

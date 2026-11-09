@@ -98,30 +98,26 @@ extension AnyTransition {
     }
 }
 
-extension Theme.Motion {
-    /// «Ver cuenta» folded up: nearly edge-on, hinged at its top (owner's choice A3, 2026-11-04).
-    static let flapAngle: Double = -88
-    /// How much of the folded sum still shows, so it reads as paper turning and not as a blink.
-    static let flapOpacity: Double = 0.2
-}
-
 extension AnyTransition {
-    /// The sum behind «Ver cuenta» (owner's choice A3, 2026-11-04): it unfolds down from its
-    /// line like a flap of paper while the room opens (`Theme.Motion.fold`), and folds back up
-    /// as it closes. One movement, no bounce.
-    static var flap: AnyTransition {
-        .modifier(active: Flap(folded: true), identity: Flap(folded: false))
+    /// The sum behind the tear line (owner, 2026-11-08): it slides down out from under the cut
+    /// like a receipt coming out of the printer, its last line moving with the page below it
+    /// (`Theme.Motion.fold`), and slides back up under it as it closes. Straight down, no turn,
+    /// no fade, no bounce. It replaces the flap of 2026-11-04, which read as a sheet falling forward.
+    static var printOut: AnyTransition {
+        .modifier(active: PrintOut(tucked: true), identity: PrintOut(tucked: false))
     }
 }
 
-private struct Flap: ViewModifier {
-    let folded: Bool
+private struct PrintOut: ViewModifier {
+    let tucked: Bool
 
     func body(content: Content) -> some View {
         content
-            .rotation3DEffect(.degrees(folded ? Theme.Motion.flapAngle : .zero), axis: (x: 1, y: 0, z: 0),
-                              anchor: .top)
-            .opacity(folded ? Theme.Motion.flapOpacity : Theme.Opacity.visible)
+            .visualEffect { [tucked] effect, proxy in
+                effect.offset(y: tucked ? -proxy.size.height : .zero)
+            }
+            // Only what has come out from under the cut shows.
+            .clipped()
     }
 }
 
