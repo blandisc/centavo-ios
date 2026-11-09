@@ -827,3 +827,10 @@ Pedido del dueño: aplicar «Rhythm» a todo el sistema de diseño (opción R1a,
 - **Espacios de 4 en 4** (4, 8, 12, 16, 24, 32); 24 es la separación entre bloques.
 - **Excepción:** las tarjetas de «En qué se va» conservan su aire de antes (`tileLine`, `tileItem`); con la escala, Despensa y Salidas perdían su monto.
 - La regla vive en [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) («Ritmo»).
+
+## 2026-11-08 · El talón, el promedio junto al ritmo y el widget como la app
+Pedido del dueño: algo más creativo para «Ver cuenta», el promedio por día en el renglón del ritmo y widgets con el estilo de la pantalla. Eligió en el lienzo (https://claude.ai/artifact/B8MZLgZyzpLDnk7XXTULG8) P1, B1 y W2.
+- **P1 · Perforado fino:** sin la pista del mes, «la cuenta» se abre desde una línea de puntitos redondos con «cuenta ⌄» al centro (`Perforation(tear: true)`, `Dash.tear`). Queda abajo para que la cuenta baje desde el corte; abierta va sin panel, separada por los mismos puntitos. Sin muescas: en Hoy el boleto no tiene orilla visible. Reemplaza «Ver cuenta» bajo el boleto.
+- **B1 · Promedio junto al ritmo:** «Vas $665 abajo del ritmo · $711/día» (lo que llevas entre los días que van). El renglón de abajo no cambia. Revierte «sin el promedio por día» del 2026-11-04.
+- **W2 · El widget mediano con los dos renglones:** con el boleto, el ritmo sale de la esquina y va bajo los días con su promedio, y abajo «Llevas $X y podrías llevar $Y de $Z», sin mayúsculas; la cifra baja a `figure` para que quepa. Los días que se pasaron llevan tapita roja (`widgetCap`).
+

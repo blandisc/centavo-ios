@@ -154,6 +154,8 @@ extension Theme {
         static let ticket: [CGFloat] = [5, 4]
         /// The reserved part of the month bar (fixed expenses still to come).
         static let dotted: [CGFloat] = [3, 2]
+        /// The tear line under the boleto that opens «la cuenta»: round dots (owner's choice P1, 2026-11-08).
+        static let tear: [CGFloat] = [0, 6]
     }
 
     /// Opacities. Only for marks and fills; text uses `ink`/`muted`/`faint`, never a faded ink.

@@ -110,7 +110,9 @@ struct HoyView: View {
                     Caption(text: state.caption, color: ink.muted)
                         .accessibilityLabel(spoken)
                     HStack(alignment: .lastTextBaseline, spacing: Theme.Space.s) {
-                        Figure(text: money.whole(state.figure), color: figureColor, style: .figureLarge)
+                        // A little smaller with the boleto, so its two lines fit under it (W2, 2026-11-08).
+                        Figure(text: money.whole(state.figure), color: figureColor,
+                               style: hasDays ? .figure : .figureLarge)
                         if isOverBudget {
                             Verdict(state: state, money: money, ink: ink).fixedSize()
                         }
@@ -122,7 +124,8 @@ struct HoyView: View {
                     }
                 }
                 Spacer(minLength: Theme.Space.xxs)
-                if state.pace != nil, !isOverBudget, entry.staleNote == nil {
+                // With the boleto the rhythm goes under it, as on the main screen (W2).
+                if state.pace != nil, !isOverBudget, entry.staleNote == nil, !hasDays {
                     Verdict(state: state, money: money, ink: ink, twoLines: true)
                         .padding(.top, Theme.Space.xxxs)
                         .accessibilityHidden(true)
@@ -133,10 +136,17 @@ struct HoyView: View {
             if let pace = state.pace {
                 Group {
                     if let days = entry.month?.days {
-                        // As on the main screen (2026-10-30): the boleto and one line under it.
+                        // As on the main screen: the boleto and its two lines under it, the rhythm
+                        // with the average a day and what went against what could have (W2, 2026-11-08).
                         DayTicket(days: days, pace: pace, ink: ink, height: Theme.Size.widgetTicketTall)
-                        dataLine(pace)
-                            .padding(.top, Theme.Space.s)
+                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                            if !isOverBudget, entry.staleNote == nil {
+                                Verdict(state: state, money: money, ink: ink,
+                                        average: pace.spent / Decimal(max(pace.day, 1)))
+                            }
+                            dataLine(pace)
+                        }
+                        .padding(.top, Theme.Space.s)
                     } else {
                         if !pace.isOverspent {
                             annotation(pace)
@@ -153,6 +163,9 @@ struct HoyView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
+
+    /// The medium draws the app's boleto (the days are in the snapshot).
+    private var hasDays: Bool { entry.month?.days != nil }
 
     /// Past the budget, or fixed expenses past it: the verdict rides beside the figure.
     private var isOverBudget: Bool {
@@ -184,18 +197,18 @@ struct HoyView: View {
         .padding(.bottom, Theme.Space.s)
     }
 
-    /// «LLEVAS $24,518 DE $24,180 · $791/DÍA», the main screen's line; what went in red past the budget.
+    /// «Llevas $4,977 y podrías llevar $5,642 de $24,180», the main screen's line, in its words
+    /// (W2, 2026-11-08); past the budget «Llevas $24,518 de $24,180», what went in red.
     private func dataLine(_ pace: BudgetPace) -> some View {
-        let average = pace.spent / Decimal(max(pace.day, 1))
-        return (Text("Llevas ").foregroundStyle(ink.muted)
-            + Text(money.whole(pace.spent)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
-            + Text(" de ").foregroundStyle(ink.muted)
-            + Text(money.whole(pace.budget)).foregroundStyle(ink.primary)
-            + Text(" · ").foregroundStyle(ink.brass)
-            + Text(money.whole(average)).foregroundStyle(ink.primary)
-            + Text("/día").foregroundStyle(ink.muted))
-            .font(.widget(.key))
-            .textCase(.uppercase)
+        var line = Text("Llevas ").foregroundStyle(ink.muted)
+            + Text(money.whole(pace.spentShown)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
+        if !pace.isOverspent {
+            line = line + Text(pace.isAheadOfPace ? " y deberías llevar " : " y podrías llevar ").foregroundStyle(ink.muted)
+                + Text(money.whole(pace.expectedShown)).foregroundStyle(ink.primary)
+        }
+        return (line + Text(" de ").foregroundStyle(ink.muted)
+            + Text(money.whole(pace.budget)).foregroundStyle(ink.primary))
+            .font(.widget(.verdict))
             .lineLimit(1)
             .minimumScaleFactor(Theme.MinimumScale.figure)
     }

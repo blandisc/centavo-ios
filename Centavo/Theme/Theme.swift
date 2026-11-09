@@ -71,25 +71,33 @@ enum Theme {
     }
 }
 
-/// A dashed perforation line, drawn at the top of whatever it is attached to.
+/// A dashed perforation line, drawn at the top of whatever it is attached to. `tear` is the
+/// boleto's tear line: round dots, a little stronger, where «la cuenta» opens (P1, 2026-11-08).
 struct Perforation: View {
+    var tear = false
+
     var body: some View {
+        let width = tear ? Theme.Stroke.strong : Theme.Stroke.hairline
+        let pattern = tear ? Theme.Dash.tear : Theme.Dash.perforation
         Rectangle()
             .fill(.clear)
-            .frame(height: Theme.Stroke.hairline)
+            .frame(height: width)
             .overlay(
-                Line().stroke(Theme.hairline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline,
-                                                                 dash: Theme.Dash.perforation))
+                Line(dash: pattern).stroke(tear ? Theme.dimmed : Theme.hairline,
+                                           style: StrokeStyle(lineWidth: width, lineCap: tear ? .round : .butt,
+                                                              dash: pattern))
             )
             .accessibilityHidden(true)
     }
 
     /// Starts and ends on a dash, centered, so the line is as far from both edges.
     private struct Line: Shape {
+        let dash: [CGFloat]
+
         func path(in rect: CGRect) -> Path {
-            let dash = Theme.Dash.perforation.first ?? 0
-            let period = Theme.Dash.perforation.reduce(0, +)
-            let drawn = period > 0 ? max(((rect.width + period - dash) / period).rounded(.down) * period - (period - dash), 0)
+            let period = dash.reduce(0, +)
+            let first = dash.first ?? 0
+            let drawn = period > 0 ? max(((rect.width + period - first) / period).rounded(.down) * period - (period - first), 0)
                 : rect.width
             let start = rect.minX + (rect.width - drawn) / 2
             var path = Path()

@@ -164,6 +164,8 @@ struct Verdict: View {
     let ink: Ink
     /// The medium widget's top right corner says it in two lines: «Vas $376 abajo / del ritmo».
     var twoLines = false
+    /// What went a day on average, after the rhythm: «· $711/día», as on the main screen (B1, 2026-11-08).
+    var average: Decimal?
 
     var body: some View {
         if let content {
@@ -193,12 +195,23 @@ struct Verdict: View {
                 return Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(ink.muted)
                     + Text(money.whole(pace.expectedToDate)).foregroundStyle(ink.primary)
             }
-            if rhythm.magnitude < 1 { return Text("Vas al ritmo").foregroundStyle(ink.muted) }
+            if rhythm.magnitude < 1 { return Text("Vas al ritmo").foregroundStyle(ink.muted) + averageText(endsRhythm: false) }
             return Text("Vas ").foregroundStyle(ink.muted)
                 + Text("\(money.whole(rhythm.magnitude)) \(rhythm > 0 ? "abajo" : "arriba")")
                     .foregroundStyle(rhythm > 0 ? ink.good : ink.danger)
                 + Text(tail).foregroundStyle(ink.muted)
+                + averageText(endsRhythm: true)
         }
+    }
+
+    /// « del ritmo · $711/día» under the medium's boleto («del ritmo» only where the sentence still
+    /// needs it); nothing without `average`.
+    private func averageText(endsRhythm: Bool) -> Text {
+        guard let average else { return Text(verbatim: "") }
+        return Text(endsRhythm ? " del ritmo" : "").foregroundStyle(ink.muted)
+            + Text(" · ").foregroundStyle(ink.brass)
+            + Text(money.whole(average)).foregroundStyle(ink.primary)
+            + Text("/día").foregroundStyle(ink.muted)
     }
 }
 
@@ -298,6 +311,13 @@ struct DayTicket: View {
                                                                 dash: Theme.Dash.widgetReserved))
         } else if limit > 0, spent > limit {
             shape.fill(ink.danger).widgetAccentable()
+                // The red cap over the day, as on the main screen's boleto.
+                .overlay(alignment: .top) {
+                    Capsule().fill(ink.danger)
+                        .frame(height: Theme.Size.widgetCap)
+                        .offset(y: -(Theme.Size.widgetCap + Theme.Size.widgetStripGap))
+                        .widgetAccentable()
+                }
         } else {
             // How much of the day's limit went, held to the cell.
             let share = limit > 0 ? min(max(CGFloat(NSDecimalNumber(decimal: spent / limit).doubleValue), .zero), 1) : .zero

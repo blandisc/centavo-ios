@@ -608,7 +608,7 @@ private struct HomeHeader: View {
                     .ticketRow()
             } else if searchCount == nil {
                 // Under the figure, the carousel in every view (owner, 2026-10-30): on the left the
-                // boleto with its line right under it («Llevas $X y deberías llevar $Y de $Z», «Ver cuenta»)
+                // boleto with its line right under it («Llevas $X y deberías llevar $Y de $Z», the tear line «cuenta»)
                 // and «En qué se va» in Lista or Mosaico; on the right only the calendar.
                 MonthCarousel(
                     calendarModel: month.calendar,

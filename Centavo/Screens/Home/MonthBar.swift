@@ -22,7 +22,7 @@ struct MonthBar: View {
     var entrance = Entrance()
     /// Without its track (owner, 2026-10-30): the days are drawn by the boleto in the carousel, and
     /// this is the one line that stays while it swaps with the calendar: «Llevas $X y deberías llevar
-    /// $Y de $Z» and «Ver cuenta» (owner, 2026-11-04: without the average a day).
+    /// $Y de $Z», and under it the tear line that opens the sum (owner, 2026-11-08: P1).
     var showsTrack = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -78,29 +78,15 @@ struct MonthBar: View {
                 .accessibilityIdentifier("barra-del-mes")
             }
 
-            // Each figure where what it measures is: «Llevas» under the brass, «Presupuesto» at
-            // the bar's end, «Podrías llevar» over the rule (owner's choice, 2026-10-22).
-            // The whole line opens the sum too, 44 pt tall: the chevron alone was too small a
-            // target and was not even the button (owner, 2026-10-29).
-            Button {
-                withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
-            } label: {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
-                    // «Ver cuenta» under the sentence, still at the end it opens from.
-                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                        spentKey
-                        HStack { Spacer(minLength: Theme.Space.none); budgetKey }
-                    }
-                }
-                .font(.ticket(.detail))
-                .frame(minHeight: Theme.Size.tapTarget)
-                .contentShape(Rectangle())
+            if showsTrack {
+                keysButton
+            } else {
+                // Without the track, the line only says; the tear line under it opens the sum, and
+                // the sum unfolds from there (owner's choice P1, 2026-11-08).
+                spentKey
+                    .font(.ticket(.detail))
+                tearLine
             }
-            .buttonStyle(.plain)
-            .padding(.vertical, -Theme.Space.ml)
-            .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
-            .accessibilityIdentifier("ver-cuenta")
 
 
             if showsSum {
@@ -122,6 +108,61 @@ struct MonthBar: View {
         .onChange(of: drawn) { _, isDrawn in
             if isDrawn { entrance.barShown = true }
         }
+    }
+
+    /// The keys under the track: each figure where what it measures is, and the whole line opens the sum.
+    private var keysButton: some View {
+        // Each figure where what it measures is: «Llevas» under the brass, «Presupuesto» at
+        // the bar's end, «Podrías llevar» over the rule (owner's choice, 2026-10-22).
+        // The whole line opens the sum too, 44 pt tall: the chevron alone was too small a
+        // target and was not even the button (owner, 2026-10-29).
+        Button {
+            withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
+        } label: {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) { spentKey; Spacer(minLength: Theme.Space.s); budgetKey }
+                // «Ver cuenta» under the sentence, still at the end it opens from.
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    spentKey
+                    HStack { Spacer(minLength: Theme.Space.none); budgetKey }
+                }
+            }
+            .font(.ticket(.detail))
+            .frame(minHeight: Theme.Size.tapTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, -Theme.Space.ml)
+        .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
+        .accessibilityIdentifier("ver-cuenta")
+    }
+
+    /// The boleto's tear line: dots edge to edge and «cuenta» in the middle, the one place the
+    /// sum opens from when there is no track (owner's choice P1, 2026-11-08). 44 pt tall.
+    private var tearLine: some View {
+        Button {
+            withAnimation(reduceMotion ? nil : Theme.Motion.fold) { showsSum.toggle() }
+        } label: {
+            HStack(spacing: Theme.Space.m) {
+                Perforation(tear: true)
+                HStack(spacing: Theme.Space.xs) {
+                    Text("cuenta").foregroundStyle(Theme.brass)
+                    Image(systemName: "chevron.down")
+                        .foregroundStyle(Theme.faint)
+                        .rotationEffect(.degrees(showsSum ? 180 : 0))
+                        .accessibilityHidden(true)
+                }
+                .font(.ticket(.detail))
+                .fixedSize()
+                Perforation(tear: true)
+            }
+            .frame(minHeight: Theme.Size.tapTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: showsSum)
+        .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
+        .accessibilityIdentifier("ver-cuenta")
     }
 
     // MARK: The bar
@@ -284,7 +325,7 @@ struct MonthBar: View {
     private var budgetKeyText: Text {
         // Past it the hero already says how far («Te pasaste $366»), and «Llevas» carries the
         // budget: this end only opens the sum.
-        if isOver || !showsTrack { return Text(showsSum ? "Ocultar cuenta" : "Ver cuenta").foregroundStyle(Theme.brass) }
+        if isOver { return Text(showsSum ? "Ocultar cuenta" : "Ver cuenta").foregroundStyle(Theme.brass) }
         return Text("Presupuesto ").foregroundStyle(Theme.muted)
             + Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
     }
@@ -339,10 +380,20 @@ struct MonthBar: View {
             : ("Vas ", "\(wholeMoney(-rhythm)) arriba", " del ritmo", false)
     }
 
+    /// What went a day on average so far, after the rhythm: «· $711/día» (owner's choice B1,
+    /// 2026-11-08). Only with the rhythm, the sentence it is measured against.
+    private var averageText: Text? {
+        guard isCurrentMonth, !isOver, pace.rhythm != nil else { return nil }
+        return Text(" · ").foregroundStyle(Theme.brass)
+            + Text(wholeMoney(pace.spent / Decimal(max(pace.day, 1)))).foregroundStyle(Theme.ink)
+            + Text("/día").foregroundStyle(Theme.muted)
+    }
+
     private func verdict(_ line: Line) -> some View {
         (Text(line.before).foregroundStyle(Theme.muted)
             + Text(line.colored).foregroundStyle(line.good ? Theme.good : Theme.danger)
-            + Text(line.after).foregroundStyle(Theme.muted))
+            + Text(line.after).foregroundStyle(Theme.muted)
+            + (averageText ?? Text(verbatim: "")))
             .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("veredicto")
@@ -358,7 +409,7 @@ struct MonthBar: View {
             sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
             if days > 0, let excess = pace.fixedOverBudgetShown {
                 // Fixed expenses past the budget: nothing to cut into days (second audit).
-                Perforation()
+                Perforation(tear: !showsTrack)
                 sumLine("Presupuesto", wholeMoney(sum.budget))
                 // Whole, so the lines subtract to the peso: the fixed ones are the budget plus
                 // the excess, rounded up like it (independent review).
@@ -366,7 +417,7 @@ struct MonthBar: View {
                 sumLine(excess > 0 ? "= Tus fijos pasan por" : "= Para los días", wholeMoney(excess), strong: true)
             } else if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
-                Perforation()
+                Perforation(tear: !showsTrack)
                 sumLine("Presupuesto", wholeMoney(sum.budget))
                 sumLine("− Llevas antes de hoy", wholeMoney(sum.spentBeforeToday))
                 if pace.reserved > 0 {
@@ -378,10 +429,10 @@ struct MonthBar: View {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
                             wholeMoney(sum.variableToday.magnitude))
                 }
-                Perforation()
+                Perforation(tear: !showsTrack)
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
             } else if days > 0 {
-                Perforation()
+                Perforation(tear: !showsTrack)
                 if pace.fixedMonth > 0 {
                     sumLine("Presupuesto", wholeMoney(sum.budget))
                     sumLine("− Fijos del mes", wholeMoney(pace.fixedMonth))
@@ -396,20 +447,23 @@ struct MonthBar: View {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
                             wholeMoney(sum.variableToday.magnitude))
                 }
-                Perforation()
+                Perforation(tear: !showsTrack)
                 sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",
                         wholeMoney(pace.dailyAllowance.magnitude), strong: true)
             }
             if outside != 0 {
                 // Not part of the sum: what was spent but doesn't count, said apart.
-                Perforation()
+                Perforation(tear: !showsTrack)
                 sumLine("Fuera del presupuesto", wholeMoney(outside))
                     .accessibilityIdentifier("fuera-del-presupuesto")
             }
         }
         .font(.ticket(.detail))
-        .padding(Theme.Space.m)
-        .ticketPanel()
+        // Under the tear line it is the same paper, torn open: no panel, only its dots (P1).
+        .padding(showsTrack ? Theme.Space.m : Theme.Space.none)
+        .background {
+            if showsTrack { RoundedRectangle(cornerRadius: Theme.Radius.panel).fill(Theme.surface) }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("la-cuenta")
     }

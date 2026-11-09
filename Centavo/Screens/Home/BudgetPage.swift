@@ -31,7 +31,7 @@ struct BudgetPage: View {
     /// parte de abajo»); a budget with nothing spent yet draws it whole.
     var part = Part.all
     /// On the main screen the days are the boleto's, in the carousel: the bar keeps only its line
-    /// («Llevas $X y deberías llevar $Y de $Z», «Ver cuenta») and the sum (owner, 2026-10-30).
+    /// («Llevas $X y deberías llevar $Y de $Z», the tear line «cuenta») and the sum (owner, 2026-10-30).
     var showsTrack = true
 
     enum Part {
@@ -173,6 +173,7 @@ struct BudgetPage: View {
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
             if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
                 parts.append("Vas \(wholeMoney(rhythm.magnitude)) " + (rhythm > 0 ? "abajo" : "arriba") + " del ritmo.")
+                if !isOver { parts.append("En promedio, \(wholeMoney(pace.spent / Decimal(max(pace.day, 1)))) al día.") }
             }
             if !isOver, let excess = pace.fixedOverBudgetShown {
                 parts.append(excess > 0 ? "Tus fijos pasan el presupuesto por \(wholeMoney(excess))."

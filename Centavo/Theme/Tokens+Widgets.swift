@@ -97,6 +97,8 @@ extension Theme.Size {
     static let widgetTicket: CGFloat = 18
     /// …on the medium one, which has the room.
     static let widgetTicketTall: CGFloat = 24
+    /// The red cap over a day past its limit, as on the main screen's boleto (2026-11-08).
+    static let widgetCap: CGFloat = 2
     /// How much taller than the strip the «Podrías llevar» rule is, in all.
     static let widgetMarkExtra: CGFloat = 4
     /// Half of `todayMarkWidth`: centers the rule on its x.
