@@ -84,9 +84,12 @@ struct MonthBar: View {
                 keysButton
             } else {
                 // Without the track, the line only says; the tear line under it opens the sum, and
-                // the sum unfolds from there (owner's choice P1, 2026-11-08).
-                spentKey
-                    .font(.ticket(.detail))
+                // the sum unfolds from there (owner's choice P1, 2026-11-08). Within the budget
+                // this month «Llevas $X y podrías llevar $Y de $Z» lives in the sum (L3, same day).
+                if !showsExpected {
+                    spentKey
+                        .font(.ticket(.detail))
+                }
                 tearLine
             }
 
@@ -294,25 +297,17 @@ struct MonthBar: View {
 
     // MARK: Words
 
-    /// Without the track, this month and within the budget, the line says where the month should
-    /// be by now, the figure the bar's rule used to carry (owner's choice B2, 2026-11-04).
+    /// Without the track, this month and within the budget: no line under the rhythm, and the sum
+    /// opens with the rhythm's own account, where the month should be by now (L3, 2026-11-08).
     private var showsExpected: Bool { !showsTrack && isCurrentMonth && !isOver }
 
     /// Its pieces wrap to a second line when they don't fit (the largest text sizes): kept on
-    /// one line, it pushed the whole page past the screen's edge. With `showsExpected`, «Llevas
-    /// $3,000 y deberías llevar $2,600 de $8,000» in one line: «podrías» while under it, where it is
-    /// room to spend and not a goal (owner's choices B2 and C1, 2026-11-04).
+    /// one line, it pushed the whole page past the screen's edge.
     private var spentKey: some View {
         WrapLayout(spacing: Theme.Space.xs) {
             if showsTrack { swatch(isOver ? Theme.danger : Theme.brass) }
             Text("Llevas").foregroundStyle(Theme.muted)
             totalText
-            if showsExpected {
-                Text(pace.isAheadOfPace ? "y deberías llevar" : "y podrías llevar").foregroundStyle(Theme.muted)
-                Text(wholeMoney(pace.expectedShown))
-                    .foregroundStyle(Theme.ink)
-                    .contentTransition(.numericText())
-            }
             // Past it, the budget goes right after what went: «Llevas $2,366 de $2,000». Without
             // the track there is no bar's end to carry it, so it always does.
             if isOver || !showsTrack {
@@ -405,10 +400,25 @@ struct MonthBar: View {
     /// then the day's amount, what the days before left over or overspent, and today.
     private var sum: some View {
         let sum = pace.sum
+        // With «Repartir» the day's block starts from the budget and what went: the first block
+        // would say it twice right above it (L3).
+        let opensWithBudget = !(showsExpected && days > 0 && pace.fixedOverBudgetShown == nil && pace.mode == .spread)
         return VStack(spacing: Theme.Space.xs) {
-            sumLine("Presupuesto", wholeMoney(sum.budget))
-            sumLine("− Llevas", wholeMoney(sum.spent))
-            sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
+            if showsExpected {
+                // Where «Vas $665 abajo del ritmo» comes from, then where today's figure does (L3).
+                sumHeading("El ritmo")
+                sumLine(pace.isAheadOfPace ? "A hoy deberías llevar" : "A hoy podrías llevar", wholeMoney(pace.expectedShown))
+                sumLine("− Llevas", wholeMoney(pace.spentShown))
+                sumLine(pace.gapShown > 0 ? "= Vas abajo del ritmo" : pace.gapShown < 0 ? "= Vas arriba del ritmo" : "= Vas justo al ritmo",
+                        wholeMoney(pace.gapShown.magnitude), tint: pace.gapShown < 0 ? Theme.danger : Theme.good)
+                Perforation(tear: !showsTrack)
+                sumHeading("Hoy")
+            }
+            if opensWithBudget {
+                sumLine("Presupuesto", wholeMoney(sum.budget))
+                sumLine("− Llevas", wholeMoney(sum.spent))
+                sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
+            }
             if days > 0, let excess = pace.fixedOverBudgetShown {
                 // Fixed expenses past the budget: nothing to cut into days (second audit).
                 Perforation(tear: !showsTrack)
@@ -419,7 +429,7 @@ struct MonthBar: View {
                 sumLine(excess > 0 ? "= Tus fijos pasan por" : "= Para los días", wholeMoney(excess), strong: true)
             } else if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
-                Perforation(tear: !showsTrack)
+                if opensWithBudget { Perforation(tear: !showsTrack) }
                 sumLine("Presupuesto", wholeMoney(sum.budget))
                 sumLine("− Llevas antes de hoy", wholeMoney(sum.spentBeforeToday))
                 if pace.reserved > 0 {
@@ -470,13 +480,21 @@ struct MonthBar: View {
         .accessibilityIdentifier("la-cuenta")
     }
 
-    private func sumLine(_ label: String, _ value: String, strong: Bool = false) -> some View {
+    private func sumLine(_ label: String, _ value: String, strong: Bool = false, tint: Color? = nil) -> some View {
         HStack {
             Text(label).foregroundStyle(strong ? Theme.brass : Theme.muted)
             Spacer()
-            Text(value).foregroundStyle(strong ? Theme.brass : Theme.ink).monospacedDigit()
+            Text(value).foregroundStyle(tint ?? (strong ? Theme.brass : Theme.ink)).monospacedDigit()
         }
         .fontWeight(strong ? .semibold : .regular)
+    }
+
+    /// «EL RITMO», «HOY»: the two accounts in the sum, named like the page's block captions.
+    private func sumHeading(_ title: String) -> some View {
+        Text(title)
+            .ticketKey(Theme.faint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

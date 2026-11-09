@@ -3,7 +3,7 @@
 ## [Unreleased]
 ### Changed
 - **«La cuenta» se abre desde un corte de boleto:** bajo «Llevas…», una línea de puntitos con «cuenta ⌄» al centro; al tocarla, la cuenta sale de debajo del corte como un recibo de la impresora, recta hacia abajo, y al cerrar regresa. Reemplaza «Ver cuenta» y la hoja que se doblaba hacia el frente.
-- **El ritmo y «Llevas…» más juntos** bajo el boleto.
+- **«Llevas $X y podrías llevar $Y de $Z» se muda a la cuenta:** bajo los días solo queda el ritmo y el corte. Al abrir, la cuenta trae dos partes: «El ritmo» (podrías llevar − llevas = cuánto vas abajo o arriba) y «Hoy» (de dónde sale lo que puedes gastar). Pasado del presupuesto, «Llevas $X de $Y» sigue a la vista.
 - **Vuelve el promedio por día, junto al ritmo:** «Vas $665 abajo del ritmo · $711/día».
 - **El widget mediano habla como la app:** bajo los días, «Vas $665 abajo del ritmo · $711/día», sin mayúsculas, y el ritmo ya no va en la esquina; los días que te pasaste llevan su tapita roja.
 - **Toda la app con el mismo ritmo:** tarjetas, botones, campos y el boleto con la misma curva de esquina, y los espacios en una sola escala, así las pantallas se ven más parejas. Las tarjetas de «En qué se va» conservan su aire para seguir mostrando el monto.
