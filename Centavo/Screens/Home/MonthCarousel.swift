@@ -43,6 +43,18 @@ struct MonthCarousel: View {
 
     private let pageNames = ["Presupuesto", "Calendario"]
 
+    /// A page that changes height in place (the sum opening, «Mínima» in «···») eases with
+    /// `Theme.Motion.fold`, in a transaction of its own so the list under the carousel moves with
+    /// it. Animated only here, the list jumped to its end at once and, as the sum closed, slid
+    /// under what was still folding (owner, 2026-11-08). The first measure is not animated.
+    private func setHeight(_ height: CGFloat, of page: Int) {
+        guard heights[page] != nil, heights[page] != height, !reduceMotion else {
+            heights[page] = height
+            return
+        }
+        withAnimation(Theme.Motion.fold) { heights[page] = height }
+    }
+
     var body: some View { pages }
 
     private var calendarPage: some View {
@@ -74,7 +86,7 @@ struct MonthCarousel: View {
                 .padding(.vertical, Theme.Space.m)
                 .contentShape(Rectangle())
                 .fixedSize(horizontal: false, vertical: true)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[0] = $0 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { setHeight($0, of: 0) }
                 .frame(width: listWidth)
                 .modifier(PageFade(index: 0, motion: motion, reduceMotion: reduceMotion))
                 // Today's ring sits 3 pt outside its cell; the page margin leaves it room.
@@ -83,7 +95,7 @@ struct MonthCarousel: View {
                     .padding(.vertical, Theme.Space.m)
                     .contentShape(Rectangle())
                     .fixedSize(horizontal: false, vertical: true)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[1] = $0 }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { setHeight($0, of: 1) }
                     .frame(width: listWidth)
                     .modifier(PageFade(index: 1, motion: motion, reduceMotion: reduceMotion))
             }
@@ -105,8 +117,6 @@ struct MonthCarousel: View {
                     .padding(.top, -Theme.Size.monthCodeCardRoom)
                     .padding(.bottom, equalHeights ? -Theme.Space.xxl : Theme.Space.none)
             }
-            // A page that changes height in place (choosing «Mínima» in «···») eases too.
-            .animation(reduceMotion ? nil : Theme.Motion.restyle, value: heights)
             // A light tick when the pages land on the other one, like a ticket torn off.
             .sensoryFeedback(.selection, trigger: motion.landings)
 

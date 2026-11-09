@@ -12,6 +12,7 @@
 ### Added
 - **«Cómo funciona» termina con una historia de cierre** («Ya sabes cómo funciona»): un toque a la derecha en la última historia te lleva a ella, y otro toque te saca.
 ### Fixed
+- **La cuenta ya no se encima con la lista:** al abrir y al cerrar, «Wallet», «Hoy» y los pagos se mueven junto con la cuenta; antes brincaban de golpe y, al cerrar, la cuenta pasaba por encima de ellos.
 - **«Ver más» de categorías ya no se traba:** las demás llegan en un renglón propio que se abre de una vez, en lugar de que toda la hoja se reacomodara en cada cuadro de la animación. Las que ya ves siguen sin moverse.
 - **Deslizar hacia arriba sobre «Cada día del mes»** ya mueve la pantalla; mantener el dedo y deslizar sigue leyendo los días.
 ### Fixed
