@@ -252,6 +252,11 @@ extension Theme {
             static let annotation: Animation = .easeOut(duration: 0.4).delay(0.75)
             static let pace: Animation = .easeOut(duration: 0.4).delay(0.8)
             static let legend: Animation = .easeOut(duration: 0.4).delay(0.9)
+            /// «Cada día del mes» on Hoy: in almost at once, not after a bar that is not drawn
+            /// there (owner, 2026-11-08: it took 1.3 s).
+            static let code: Animation = .easeOut(duration: 0.3).delay(0.1)
+            /// The rhythm's sentence under it, right after.
+            static let codeLine: Animation = .easeOut(duration: 0.3).delay(0.25)
         }
 
         /// Runs `body` with no animation at all: a filter that swaps a list must not fade the old

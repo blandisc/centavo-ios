@@ -55,7 +55,7 @@ struct MonthCodeView: View {
         .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
         .onAppear {
             guard !drawn else { return }
-            withAnimation(reduceMotion ? nil : Theme.Motion.Entrance.legend) { drawn = true }
+            withAnimation(reduceMotion ? nil : Theme.Motion.Entrance.code) { drawn = true }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Gasto de cada día")

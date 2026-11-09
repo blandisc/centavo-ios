@@ -134,14 +134,13 @@ struct HoyView: View {
             if let pace = state.pace {
                 Group {
                     if let days = entry.month?.days {
-                        // As on the main screen: the boleto and, under it, the rhythm with the
-                        // average a day (owner, 2026-11-08: without «Llevas … y podrías llevar …»).
+                        // As on the main screen: the boleto and, under it, the rhythm alone (owner,
+                        // 2026-11-08: no «Llevas … y podrías llevar …» and no average a day).
                         // Past the budget, «Llevas $X de $Y» in its place.
                         DayTicket(days: days, pace: pace, ink: ink, height: Theme.Size.widgetTicketTall)
                         Group {
                             if !isOverBudget, entry.staleNote == nil {
-                                Verdict(state: state, money: money, ink: ink,
-                                        average: pace.spent / Decimal(max(pace.day, 1)))
+                                Verdict(state: state, money: money, ink: ink, endsWithRhythm: true)
                             } else {
                                 dataLine(pace)
                             }

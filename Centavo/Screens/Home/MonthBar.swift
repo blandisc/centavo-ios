@@ -60,10 +60,11 @@ struct MonthBar: View {
             if let line = verdictLine {
                 verdict(line)
                     .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
-                    .animation(reduceMotion ? nil : Theme.Motion.Entrance.legend, value: shown)
-                    // Over the track it leaves room for the bar's label; over «Llevas» it sits a
-                    // little closer, one sentence after another (owner, 2026-11-08).
-                    .padding(.bottom, isCurrentMonth && showsTrack ? Theme.Space.l : Theme.Space.s)
+                    .animation(reduceMotion ? nil : showsTrack ? Theme.Motion.Entrance.legend : Theme.Motion.Entrance.codeLine,
+                               value: shown)
+                    // Over the track it leaves room for the bar's label; right over the tear line
+                    // it sits close, the line's own height is room enough (owner, 2026-11-08).
+                    .padding(.bottom, isCurrentMonth && showsTrack ? Theme.Space.l : showsExpected ? Theme.Space.none : Theme.Space.s)
                     // It fades in place: sliding down from the top it crossed the figure above it.
                     .transition(.opacity)
             }
@@ -165,6 +166,8 @@ struct MonthBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // The 44 pt target reaches up into the gap over it, so the line sits close to the sentence.
+        .padding(.top, -Theme.Space.s)
         .sensoryFeedback(.selection, trigger: showsSum)
         .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
         .accessibilityIdentifier("ver-cuenta")
@@ -377,20 +380,10 @@ struct MonthBar: View {
             : ("Vas ", "\(wholeMoney(-rhythm)) arriba", " del ritmo", false)
     }
 
-    /// What went a day on average so far, after the rhythm: «· $711/día» (owner's choice B1,
-    /// 2026-11-08). Only with the rhythm, the sentence it is measured against.
-    private var averageText: Text? {
-        guard isCurrentMonth, !isOver, pace.rhythm != nil else { return nil }
-        return Text(" · ").foregroundStyle(Theme.brass)
-            + Text(wholeMoney(pace.spent / Decimal(max(pace.day, 1)))).foregroundStyle(Theme.ink)
-            + Text("/día").foregroundStyle(Theme.muted)
-    }
-
     private func verdict(_ line: Line) -> some View {
         (Text(line.before).foregroundStyle(Theme.muted)
             + Text(line.colored).foregroundStyle(line.good ? Theme.good : Theme.danger)
-            + Text(line.after).foregroundStyle(Theme.muted)
-            + (averageText ?? Text(verbatim: "")))
+            + Text(line.after).foregroundStyle(Theme.muted))
             .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("veredicto")

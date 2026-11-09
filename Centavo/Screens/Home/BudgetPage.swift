@@ -173,7 +173,6 @@ struct BudgetPage: View {
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
             if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
                 parts.append("Vas \(wholeMoney(rhythm.magnitude)) " + (rhythm > 0 ? "abajo" : "arriba") + " del ritmo.")
-                if !isOver { parts.append("En promedio, \(wholeMoney(pace.spent / Decimal(max(pace.day, 1)))) al día.") }
             }
             if !isOver, let excess = pace.fixedOverBudgetShown {
                 parts.append(excess > 0 ? "Tus fijos pasan el presupuesto por \(wholeMoney(excess))."
