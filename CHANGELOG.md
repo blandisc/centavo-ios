@@ -11,6 +11,7 @@
 ### Added
 - **«Cómo funciona» termina con una historia de cierre** («Ya sabes cómo funciona»): un toque a la derecha en la última historia te lleva a ella, y otro toque te saca.
 ### Fixed
+- **«Cada día del mes» sube y queda pegado a la cifra** de lo que puedes gastar hoy.
 - **«Cada día del mes» aparece más rápido:** llega junto con la cifra en vez de casi un segundo y medio después; el ritmo aparece justo después y «hoy» respira antes.
 - **El ritmo y «cuenta» más juntos,** y sin el promedio por día (ni en la app ni en el widget).
 - **La cuenta ya no se encima con la lista:** al abrir y al cerrar, «Wallet», «Hoy» y los pagos se mueven junto con la cuenta; antes brincaban de golpe y, al cerrar, la cuenta pasaba por encima de ellos.

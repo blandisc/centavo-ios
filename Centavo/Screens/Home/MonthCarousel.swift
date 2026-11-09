@@ -67,8 +67,8 @@ struct MonthCarousel: View {
             // turns into the calendar, and both start on the same line under it (owner, 2026-10-30).
             Text("Cada día del mes").ticketCaption()
                 .padding(.horizontal, Theme.Space.screen)
-                // The air the boleto had under the figure, now over the heading.
-                .padding(.top, Theme.Space.m)
+                // Right under the figure, only the hero row's own 8 pt between them (owner,
+                // 2026-11-08: «pégalo al número grande»; it had 12 pt more here).
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .top, spacing: Theme.Space.none) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxl) {
