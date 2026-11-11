@@ -37,6 +37,7 @@ final class HomeModel {
     static let searchPause = Duration.milliseconds(200)
 
     @ObservationIgnored private var monthMemo = Memo<MonthKey, HomeMonth>()
+    @ObservationIgnored private var numbersMemo = Memo<MonthKey, MonthNumbers>()
     @ObservationIgnored private var noteMemo = Memo<NoteKey, String?>()
     @ObservationIgnored private var searchMemo = Memo<SearchKey, HomeSearch>()
     @ObservationIgnored private var catalogMemo = Memo<[String], CategoryCatalog>()
@@ -54,10 +55,14 @@ final class HomeModel {
         // counter alone missed what iCloud or a restore merged after it moved.
         let key = MonthKey(inputs: inputs, rows: Self.lightPrint(rows), originals: Self.fixedPrint(originals),
                            revision: revision)
-        return monthMemo.value(for: key) { Self.makeMonth(inputs, rows: rows, originals: originals) }
+        // A tapped day or category only narrows the list: the month's numbers are the same, and
+        // are kept apart so the tap doesn't work all of them out again.
+        let whole = MonthKey(inputs: inputs.unfiltered, rows: key.rows, originals: key.originals, revision: revision)
+        let numbers = numbersMemo.value(for: whole) { Self.makeNumbers(inputs, rows: rows, originals: originals) }
+        return monthMemo.value(for: key) { Self.makeMonth(numbers, inputs: inputs, rows: rows) }
     }
 
-    private static func makeMonth(_ inputs: MonthInputs, rows: [Expense], originals: [Expense]) -> HomeMonth {
+    private static func makeNumbers(_ inputs: MonthInputs, rows: [Expense], originals: [Expense]) -> MonthNumbers {
         let primary = inputs.currency
         // What doesn't count is left out here, the same way Siri leaves it out (`MonthStatus`).
         let amounts = rows.map(\.asAmount)
@@ -66,12 +71,7 @@ final class HomeModel {
                                     originals: originals, plans: FixedPlan.decode(inputs.plans),
                                     primary: primary, month: inputs.viewed, now: inputs.now,
                                     mode: AllowanceMode(stored: inputs.mode))
-        let shown = rows.filter { expense in
-            (inputs.selectedDay.map { Calendar.current.component(.day, from: expense.date) == $0 } ?? true)
-                && (inputs.selectedCategory?.contains(expense.category) ?? true)
-        }
-        let filtered = inputs.selectedDay != nil || inputs.selectedCategory != nil
-        return HomeMonth(
+        return MonthNumbers(
             summary: summary,
             pace: pace,
             calendar: MonthCalendar.make(amounts, inMonthOf: inputs.viewed, primary: primary, today: inputs.now),
@@ -81,10 +81,28 @@ final class HomeModel {
             currencySwitch: inputs.isCurrent
                 ? CurrencySuggestion.switchTo(markers: rows.map(\.currencyMarker), primary: primary,
                                               offered: CurrencyPreference.offered)
-                : nil,
+                : nil
+        )
+    }
+
+    /// The month's numbers and its list, narrowed to the tapped day or category.
+    private static func makeMonth(_ numbers: MonthNumbers, inputs: MonthInputs, rows: [Expense]) -> HomeMonth {
+        let filtered = inputs.selectedDay != nil || inputs.selectedCategory != nil
+        let shown = !filtered ? rows : rows.filter { expense in
+            (inputs.selectedDay.map { Calendar.current.component(.day, from: expense.date) == $0 } ?? true)
+                && (inputs.selectedCategory?.contains(expense.category) ?? true)
+        }
+        return HomeMonth(
+            summary: numbers.summary,
+            pace: numbers.pace,
+            calendar: numbers.calendar,
+            code: numbers.code,
+            shares: numbers.shares,
+            returned: numbers.returned,
+            currencySwitch: numbers.currencySwitch,
             hasExpenses: !rows.isEmpty,
             shownCount: shown.count,
-            shownTotal: filtered ? DayGroup(day: inputs.viewed, items: shown).total(in: primary) : nil,
+            shownTotal: filtered ? DayGroup(day: inputs.viewed, items: shown).total(in: inputs.currency) : nil,
             groups: DayGroup.split(shown)
         )
     }
@@ -280,6 +298,12 @@ struct MonthInputs: Equatable {
     let mode: String
     let selectedDay: Int?
     let selectedCategory: CategoryShare?
+
+    /// The same month with nothing tapped: what its numbers depend on.
+    var unfiltered: MonthInputs {
+        MonthInputs(viewed: viewed, now: now, isCurrent: isCurrent, budget: budget, plans: plans,
+                    currency: currency, mode: mode, selectedDay: nil, selectedCategory: nil)
+    }
 }
 
 private struct MonthKey: Equatable {
@@ -309,6 +333,17 @@ private struct SearchKey: Equatable {
 struct StoreStamp: Equatable {
     let count: Int
     let newest: Date?
+}
+
+/// The month's numbers: what a tapped day or category doesn't change.
+private struct MonthNumbers {
+    let summary: MonthSummary
+    let pace: BudgetPace?
+    let calendar: MonthCalendar
+    let code: MonthCode
+    let shares: [CategoryShare]
+    let returned: Decimal
+    let currencySwitch: String?
 }
 
 /// The month on screen, worked out.

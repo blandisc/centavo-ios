@@ -89,7 +89,9 @@ struct SettingsView: View {
                         IconRow("Importar CSV", systemImage: "square.and.arrow.down") { EmptyView() }
                     }
                     NavigationLink {
-                        BackupSettingsView()
+                        // Made when it is opened: its first state reads the keychain and the
+                        // backup's folder, and a link builds its destination each time this draws.
+                        Deferred { BackupSettingsView() }
                     } label: {
                         IconRow("Respaldo diario", systemImage: "lock.doc") {
                             Text(backupText)

@@ -12,6 +12,7 @@
 - **«Hace 4 días»** en Ajustes, sin la mayúscula de más.
 - **Si un pago de Wallet llega sin monto,** «Hoy» lo avisa también con la automatización «Transacción».
 - **Los widgets se actualizan cuando algo cambió,** no en cada guardado ni cada vez que vuelves a la app.
+- **Más rápida al tocar un día o una categoría:** solo se rehace la lista, no todas las cuentas del mes.
 ### Changed
 - **Categorías sin hueco:** al anotar un gasto, el último renglón de categorías ya sale completo; antes quedaba un cuadro vacío abajo a la derecha que solo se llenaba al elegir una.
 - **«La cuenta» se abre desde un corte de boleto:** bajo «Llevas…», una línea de puntitos con «cuenta ⌄» al centro; al tocarla, la cuenta sale de debajo del corte como un recibo de la impresora, recta hacia abajo, y al cerrar regresa. Reemplaza «Ver cuenta» y la hoja que se doblaba hacia el frente.

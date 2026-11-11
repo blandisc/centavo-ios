@@ -280,6 +280,9 @@ enum ExpenseRecorder {
         var descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since },
                                                   sortBy: [SortDescriptor(\.date, order: .reverse)])
         descriptor.fetchLimit = memoryLimit
+        // Only what is read here: a capture has little time, and each whole row also carries the
+        // Wallet notice it came from.
+        descriptor.propertiesToFetch = [\.merchant, \.category, \.date, \.categorySource, \.displayName]
         guard let history = try? context.fetch(descriptor) else { return Remembered() }
         let key = UserCatalog.fold(merchant)
         let sameMerchant = history.filter { UserCatalog.fold($0.merchant) == key }

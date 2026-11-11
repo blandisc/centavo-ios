@@ -838,6 +838,8 @@ Pedido del dueño: una auditoría de arquitectura, código e interfaz para dejar
 - **«Borrar» ya no se ofrece** en una forma de pago que solo llegó en los pagos (no había qué borrar).
 - **VoiceOver en «Cada día del mes»** parte de hoy y no pasa a días que no llegan.
 - **Un pago ilegible por «Registrar gasto»** también se anota para «Hoy» (`UnreadNotice`), como el de la otra automatización.
+- **Velocidad (tanda 2, nada visible cambia):** tocar un día o una categoría ya no rehace los números del mes, solo la lista (`HomeModel`: `MonthNumbers` aparte de la lista filtrada); recordar la categoría de un comercio al capturar lee cinco datos de cada gasto y no la fila entera; «Respaldo» se arma al abrirse y no cada vez que se dibuja Ajustes (`Deferred`); el aviso del respaldo en «Hoy» se calcula fuera del hilo principal.
+- **Medido:** la versión Release compila (era la primera vez) y su código pesa 4.8 MB; la de desarrollo, 27.6 MB.
 - **CI:** compila Release y dice su peso; las pruebas de datos (`CentavoTests`) tienen su propio trabajo; el simulador corre en dos máquinas (capturas y flujos) y ya no se cancela con cada push. `verify.sh` usa `/tmp/dd-centavo` y espera por `xcodebuild` (máximo 2), no por cualquier compilación de Swift.
 
 ## 2026-11-08 · El talón, el promedio junto al ritmo y el widget como la app

@@ -882,7 +882,8 @@ private struct BackupWatch: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .task(id: now) { warning = DailyBackup.warning(now: now) }
+            // Off the main thread: it reads the keychain and asks iCloud about the newest file.
+            .task(id: now) { warning = await Task.detached { DailyBackup.warning(now: now) }.value }
             .onChange(of: settingsShown) { _, shown in if !shown { warning = DailyBackup.warning() } }
     }
 }
