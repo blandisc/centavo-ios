@@ -828,6 +828,18 @@ Pedido del dueño: aplicar «Rhythm» a todo el sistema de diseño (opción R1a,
 - **Excepción:** las tarjetas de «En qué se va» conservan su aire de antes (`tileLine`, `tileItem`); con la escala, Despensa y Salidas perdían su monto.
 - La regla vive en [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) («Ritmo»).
 
+## 2026-11-11 · Tercera auditoría: punta a punta
+Pedido del dueño: una auditoría de arquitectura, código e interfaz para dejar la app más ligera, más rápida y mejor armada. Reporte y decisiones pendientes: https://claude.ai/artifact/VCXfEzWnKd2LLUW8dWdF4P. Primera tanda (errores), sin cambios a la vista con letra normal:
+- **Reglas nuevas del repo:** el área de toque va dentro del botón (`.buttonStyle(.tapTarget)`; el lint falla con un `.frame` de 44 por fuera de un `Button`), y dos textos en un renglón se apilan con letra de accesibilidad (la fecha y el folio de «Hoy» se cortaban a «VIE 2… N.º 0…»; prueba `testLaFechaYElFolioConLetraDeAccesibilidadSeApilan`). La firma de las barras es un componente (`Signature`) que deja de crecer donde la barra.
+- **Los widgets se recargan solo si cambió lo que muestran** (`WidgetSnapshot.needsReload`): la foto del mes lleva su hora, así que el «no reescribir si es igual» nunca se cumplía y cada guardado, cada regreso y cada intent gastaba una recarga. Se sigue escribiendo siempre (para «Actualizado hace X») y se recarga con un cambio, un día nuevo o una hora de diferencia.
+- **Editar un gasto de 1,000 o más ya no reescribe su monto** si no se tocó (el campo lo reagrupaba a «1,234.13» y se leía como escrito de nuevo; 1,234.125 pasaba a 1,234.13).
+- **Guardados:** «Borra el último gasto» hace `rollback` si no guarda; la primera vez de «Mi dinero» no cambia de paso si el renglón no se guardó.
+- **La contraseña del respaldo se oculta** al salir de la app o de la pantalla.
+- **«Borrar» ya no se ofrece** en una forma de pago que solo llegó en los pagos (no había qué borrar).
+- **VoiceOver en «Cada día del mes»** parte de hoy y no pasa a días que no llegan.
+- **Un pago ilegible por «Registrar gasto»** también se anota para «Hoy» (`UnreadNotice`), como el de la otra automatización.
+- **CI:** compila Release y dice su peso; las pruebas de datos (`CentavoTests`) tienen su propio trabajo; el simulador corre en dos máquinas (capturas y flujos) y ya no se cancela con cada push. `verify.sh` usa `/tmp/dd-centavo` y espera por `xcodebuild` (máximo 2), no por cualquier compilación de Swift.
+
 ## 2026-11-08 · El talón, el promedio junto al ritmo y el widget como la app
 Pedido del dueño: algo más creativo para «Ver cuenta», el promedio por día en el renglón del ritmo y widgets con el estilo de la pantalla. Eligió en el lienzo (https://claude.ai/artifact/B8MZLgZyzpLDnk7XXTULG8) P1, B1 y W2.
 - **P1 · Perforado fino:** sin la pista del mes, «la cuenta» se abre desde una línea de puntitos redondos con «cuenta ⌄» al centro (`Perforation(tear: true)`, `Dash.tear`). Queda abajo para que la cuenta baje desde el corte; abierta va sin panel, separada por los mismos puntitos. Sin muescas: en Hoy el boleto no tiene orilla visible. Reemplaza «Ver cuenta» bajo el boleto.

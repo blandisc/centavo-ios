@@ -10,14 +10,14 @@ env:
   XCODEGEN_VERSION: "2.46.0"
   XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   verify:
     name: Pruebas y build
     runs-on: macos-latest
+    # A newer push makes this one pointless: cancel it.
+    concurrency:
+      group: ci-verify-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v5
 
@@ -52,19 +52,22 @@ jobs:
       - name: Generar el proyecto
         run: xcodegen generate
 
-      - name: Build de la app
+      # Release: the app as a person gets it. Debug is what the Mac builds all day; nothing else
+      # would notice a symbol that only exists under `#if DEBUG`, or how much the app weighs.
+      - name: Build de la app (Release)
         run: |
-          xcodebuild -project Centavo.xcodeproj -scheme Centavo \
-            -destination 'generic/platform=iOS' \
+          xcodebuild -project Centavo.xcodeproj -scheme Centavo -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build/dd \
             CODE_SIGNING_ALLOWED=NO -jobs 4 build
 
       # Lo que no se ve en el build: que la tipografía, el ícono y el modo oscuro
       # de verdad viajen dentro de la app.
       - name: Comprobar el contenido de la app
         run: |
-          app="$(find ~/Library/Developer/Xcode/DerivedData -type d -name 'Centavo.app' -path '*Build/Products*' | head -1)"
-          test -n "$app" || { echo "No encontré Centavo.app"; exit 1; }
-          echo "App: $app"
+          app="build/dd/Build/Products/Release-iphoneos/Centavo.app"
+          test -d "$app" || { echo "No encontré Centavo.app"; exit 1; }
+          echo "Peso de la app (Release, sin firmar):"
+          du -sh "$app" "$app/Centavo" "$app/PlugIns/CentavoWidgets.appex" "$app/Assets.car"
           for f in IBMPlexMono-Regular.ttf IBMPlexMono-Medium.ttf IBMPlexMono-SemiBold.ttf Assets.car PrivacyInfo.xcprivacy; do
             test -f "$app/$f" && echo "ok  $f" || { echo "FALTA $f"; exit 1; }
           done
@@ -75,15 +78,68 @@ jobs:
           plutil -p "$app/Info.plist" | grep -q 'ITSAppUsesNonExemptEncryption' || { echo "Falta la declaración de cifrado"; exit 1; }
           plutil -p "$app/PrivacyInfo.xcprivacy" | grep -q 'CA92.1' || { echo "Falta el motivo de UserDefaults"; exit 1; }
 
+  # Saving, capture, fixed expenses and the backup (CentavoTests): seconds of tests that need a
+  # simulator to run. Their own job, so their answer doesn't wait for the interface suite.
+  datos:
+    name: Pruebas de datos
+    runs-on: macos-latest
+    concurrency:
+      group: ci-datos-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Elegir el Xcode más nuevo
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Instalar xcodegen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Elegir el simulador
+        id: sim
+        run: echo "udid=$(Tools/ci-simulador.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Correr las pruebas de datos
+        run: |
+          xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:CentavoTests \
+            CODE_SIGNING_ALLOWED=NO -jobs 4
+
   # Corre la app en el simulador y le toma una captura a cada pantalla, para poder
   # revisar el diseño sin una Mac a la mano. No bloquea el PR: es para ver, no para aprobar.
-  # The simulator (flows, tap targets, screenshots) takes ~25 min, so a PR never waits for it:
-  # it runs on every push to main and by hand (owner's decision of 2026-10-20). The build and
-  # the unit tests above gate every PR.
+  # The simulator (flows, tap targets, screenshots) takes most of an hour in one piece, so it
+  # runs in two machines at once (the flows, and the rest) on every push to main and by hand
+  # (owner's decision of 2026-10-20). A run in progress is never cancelled by a newer push: the
+  # newer one waits its turn, so there is a whole result to look at every time.
   interfaz:
-    name: Capturas en simulador
+    name: Simulador · ${{ matrix.parte.nombre }}
     if: github.event_name != 'pull_request'
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        parte:
+          - nombre: capturas
+            artefacto: capturas
+            pruebas: "-skip-testing:CentavoUITests/FlowTests -skip-testing:CentavoTests"
+          - nombre: flujos
+            artefacto: capturas-flujos
+            pruebas: "-only-testing:CentavoUITests/FlowTests"
+    concurrency:
+      group: ci-interfaz-${{ matrix.parte.nombre }}-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
 
@@ -107,31 +163,16 @@ jobs:
 
       - name: Elegir el simulador
         id: sim
-        run: |
-          udid="$(xcrun simctl list devices available -j | python3 -c "
-          import json, sys
-          devices = json.load(sys.stdin)['devices']
-          best = None
-          for runtime in sorted(devices):
-              if 'iOS' not in runtime: continue
-              for d in devices[runtime]:
-                  if d['name'].startswith('iPhone') and d.get('isAvailable', True):
-                      if best is None or d['name'] == 'iPhone 16 Pro' or 'Pro' not in best[0]:
-                          best = (d['name'], d['udid'], runtime)
-          print(best[1])
-          ")"
-          echo "udid=$udid" >> "$GITHUB_OUTPUT"
-          xcrun simctl list devices available | head -40
-          # Boot it now so it is ready while the app compiles, instead of after.
-          xcrun simctl boot "$udid" || true
+        run: echo "udid=$(Tools/ci-simulador.sh)" >> "$GITHUB_OUTPUT"
 
-      # Everything runs: flows, audits, screenshots and the 5,000-expense timing. (Two
-      # simulators in parallel were tried: on these small runners the second one dropped out
-      # and nothing was gained.)
+      # Flows, audits, screenshots and the 5,000-expense timing, between the two machines.
+      # (Two simulators on one runner were tried: on these small runners the second one
+      # dropped out and nothing was gained.)
       - name: Correr las pruebas de interfaz
         run: |
           xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
             -destination "id=${{ steps.sim.outputs.udid }}" \
+            ${{ matrix.parte.pruebas }} \
             -resultBundlePath build/result.xcresult \
             CODE_SIGNING_ALLOWED=NO -jobs 4
 
@@ -144,6 +185,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: capturas
+          name: ${{ matrix.parte.artefacto }}
           path: build/capturas
           retention-days: 14

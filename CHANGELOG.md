@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **Con la letra más grande, la fecha y el número de pagos ya no se cortan** arriba de «Hoy»: cada uno va en su renglón. «al día.» y «mi dinero.» también se leen completos.
+- **Botones chicos más fáciles de tocar:** «Listo», «Quitar» y «Cancelar» en los renglones de «Mi dinero», «Sin cambio» en el corte, «Regresar» en las cuentas archivadas, la ✕ de un gasto fijo en la bienvenida y «Cerrar» en «Cómo funciona» responden en un área de 44 puntos; se ven igual.
+- **La contraseña del respaldo se oculta sola** al salir de la app.
+- **Editar un gasto de $1,000 o más** ya no puede cambiarle los centavos si no tocaste el monto.
+- **Primera vez de «Mi dinero»:** si un renglón no se pudo guardar, la pantalla se queda en ese paso con lo escrito.
+- **«Borrar» ya no aparece** en una forma de pago que solo llegó en tus pagos; antes se confirmaba y seguía ahí.
+- **Con VoiceOver,** «Cada día del mes» empieza en hoy y no pasa a días que todavía no llegan.
+- **«Hace 4 días»** en Ajustes, sin la mayúscula de más.
+- **Si un pago de Wallet llega sin monto,** «Hoy» lo avisa también con la automatización «Transacción».
+- **Los widgets se actualizan cuando algo cambió,** no en cada guardado ni cada vez que vuelves a la app.
 ### Changed
 - **Categorías sin hueco:** al anotar un gasto, el último renglón de categorías ya sale completo; antes quedaba un cuadro vacío abajo a la derecha que solo se llenaba al elegir una.
 - **«La cuenta» se abre desde un corte de boleto:** bajo «Llevas…», una línea de puntitos con «cuenta ⌄» al centro; al tocarla, la cuenta sale de debajo del corte como un recibo de la impresora, recta hacia abajo, y al cerrar regresa. Reemplaza «Ver cuenta» y la hoja que se doblaba hacia el frente.

@@ -61,8 +61,9 @@ struct MonthCodeView: View {
         .accessibilityLabel("Gasto de cada día")
         .accessibilityValue(spoken(shownDay ?? code.days.last { $0.kind == .today }?.number ?? code.days.count))
         .accessibilityAdjustableAction { direction in
-            let current = shownDay ?? code.days.count
-            let next = direction == .increment ? min(current + 1, code.days.count) : max(current - 1, 1)
+            let last = code.days.last { $0.kind != .future }?.number ?? code.days.count
+            let current = shownDay ?? code.days.last { $0.kind == .today }?.number ?? last
+            let next = direction == .increment ? min(current + 1, last) : max(current - 1, 1)
             onSelectDay(next)
         }
         .accessibilityIdentifier("codigo-del-mes")

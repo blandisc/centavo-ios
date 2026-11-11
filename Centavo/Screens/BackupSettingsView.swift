@@ -53,7 +53,12 @@ struct BackupSettingsView: View {
         .ticketBarTitle("Respaldo")
         // The check before «Cambiar contraseña» is for who's holding the phone now: leaving the
         // app closes the form, so coming back asks again.
-        .onChange(of: scenePhase) { _, phase in if phase == .background, changingPassword { cancelChanging() } }
+        .onChange(of: scenePhase) { _, phase in
+            // Shown after Face ID, it would stay in the app switcher's picture and be there on return.
+            if phase != .active { shownPassword = nil }
+            if phase == .background, changingPassword { cancelChanging() }
+        }
+        .onDisappear { shownPassword = nil }
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
             guard case .success(let url) = result else { return }
             do {

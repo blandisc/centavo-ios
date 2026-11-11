@@ -174,7 +174,7 @@ struct TutorialView: View {
                     .labelStyle(.iconOnly)
                     .font(.ticket(.bodyStrong))
                     .foregroundStyle(Theme.ink)
-                    .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
+                    .buttonStyle(.tapTarget)
                     .accessibilityIdentifier("tutorial-cerrar")
             }
         }

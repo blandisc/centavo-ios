@@ -10,9 +10,11 @@ if [[ "$mode" == all || "$mode" == package ]]; then
   (cd Packages/CentavoCore && swift test)
 fi
 if [[ "$mode" == all || "$mode" == app ]]; then
-  while pgrep -q swift-frontend; do echo "Esperando a que termine otro build…"; sleep 30; done
+  # At most 2 builds on the Mac, counting every session; one folder for every session of this
+  # project, so a build picks up what the last one compiled.
+  while [[ "$(pgrep -x xcodebuild | wc -l)" -ge 2 ]]; do echo "Esperando a que termine otro build…"; sleep 30; done
   xcodegen generate -q
   xcodebuild -project Centavo.xcodeproj -scheme Centavo -destination 'generic/platform=iOS' \
-    CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet build
+    -derivedDataPath "${CENTAVO_DERIVED_DATA:-/tmp/dd-centavo}" CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet build
 fi
 echo "verify: OK"

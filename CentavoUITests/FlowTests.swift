@@ -1003,6 +1003,22 @@ final class FlowTests: XCTestCase {
     /// With the largest text the day's divider in the list («HOY · 23 OCT  ——  $1,234») was cut
     /// to «HO…». In accessibility sizes the day gets its own lines and the total goes under it:
     /// every divider has to fit across the screen and carry the whole day and month.
+    /// With accessibility type the date and the folio at the top stack, each whole on its own
+    /// line (side by side they were cut to «VIE 2… N.º 0…»).
+    func testLaFechaYElFolioConLetraDeAccesibilidadSeApilan() {
+        let app = launch(demo: true, budget: true, extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+        let date = require(app.staticTexts["fecha-ticket"], "No está la fecha del ticket")
+        let folio = require(app.staticTexts["folio"], "No está el folio")
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThanOrEqual(folio.frame.minY, date.frame.maxY - 1, "El folio no bajó de renglón")
+        for element in [date, folio] {
+            XCTAssertLessThanOrEqual(element.frame.maxX, window.maxX + 0.5, "«\(element.label)» se sale de la pantalla")
+        }
+        snap("flujo-fecha-y-folio-letra-de-accesibilidad")
+    }
+
     func testElDivisorDelDiaConLetraDeAccesibilidadCabeCompleto() {
         let app = launch(demo: true, budget: true, extra: [
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",

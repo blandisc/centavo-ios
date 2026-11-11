@@ -36,6 +36,24 @@ private struct TicketProminent: ViewModifier {
     }
 }
 
+/// A quiet button (a word or a symbol) whose touch area is 44 pt even when what it shows is
+/// smaller. A `.frame` around a `Button` only gives it room: what answers the finger is its
+/// label, so the room goes inside (`Tools/lint-design.sh` catches the frame outside).
+///
+///     Button("Listo", action: done).buttonStyle(.tapTarget)
+struct TapTargetButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? Theme.Opacity.unselected : Theme.Opacity.visible)
+    }
+}
+
+extension ButtonStyle where Self == TapTargetButtonStyle {
+    static var tapTarget: TapTargetButtonStyle { TapTargetButtonStyle() }
+}
+
 /// The label of a full-width main action: uppercase, spaced, dark on brass, at least 44 pt.
 ///
 ///     Button(action: start) { PrimaryButtonLabel("Configurar ahora", systemImage: "wallet.pass") }

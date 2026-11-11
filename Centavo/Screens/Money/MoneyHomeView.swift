@@ -151,7 +151,7 @@ struct MoneyHomeView: View {
                             Button("Regresar") { unarchive(account) }
                                 .font(.ticket(.label))
                                 .foregroundStyle(Theme.brass)
-                                .buttonStyle(.borderless)
+                                .buttonStyle(.tapTarget)
                                 .accessibilityIdentifier("dinero-regresar-\(account.name)")
                         }
                         .listRowBackground(Theme.background)

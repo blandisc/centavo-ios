@@ -26,7 +26,8 @@ struct DeleteLastExpenseIntent: AppIntent {
                                             denyLabel: "Cancelar", denyAlternatives: ["No"], destructive: true)
         )
         context.delete(expense)
-        try context.save()
+        // The context is the screens' too: a delete left pending would go out with the next save.
+        do { try context.save() } catch { context.rollback(); throw error }
         return .result(dialog: "Listo, borré \(described).")
     }
 

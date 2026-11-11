@@ -46,6 +46,8 @@ struct LogExpenseIntent: AppIntent {
         case .unreadable:
             // Seen for real: the whole Wallet payment connected here arrives as just the
             // merchant's name. Say how to fix the automation, not only that it failed.
+            // Kept for «Hoy» too, like the notice automation does: Atajos may fail out of sight.
+            UnreadNotice.note(amount, always: true)
             throw $amount.needsValueError(
                 "No llegó un monto, llegó «\(amount)». En Atajos, toca la burbuja de «Importe» y elige «Importe» del pago de Wallet (no el pago completo)."
             )

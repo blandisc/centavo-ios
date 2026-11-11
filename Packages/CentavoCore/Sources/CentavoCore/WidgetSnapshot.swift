@@ -100,6 +100,22 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         return Int(elapsed / Self.freshFor)
     }
 
+    /// How often the widgets are told about a month that says the same: enough to keep
+    /// «Actualizado hace X» honest without spending a reload on every save and every return.
+    public static let reloadEvery: TimeInterval = 3_600
+
+    /// Whether the widgets must be reloaded when this replaces `old`: something they show
+    /// changed, the day did, or `old` is an hour old. The moment alone (`takenAt`, different in
+    /// every snapshot) is no reason: WidgetKit gives each app only so many reloads a day.
+    public func needsReload(replacing old: WidgetSnapshot?, calendar: Calendar = .current) -> Bool {
+        guard var same = old else { return true }
+        let before = same.takenAt
+        same.takenAt = takenAt
+        guard same == self else { return true }
+        return !calendar.isDate(takenAt, inSameDayAs: before)
+            || abs(takenAt.timeIntervalSince(before)) >= Self.reloadEvery
+    }
+
     /// The shared App Group's key.
     public static let key = "widgetSnapshot"
 

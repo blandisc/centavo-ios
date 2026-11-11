@@ -15,14 +15,15 @@ Se trabaja como Orbital (decisión del dueño, 2026-11-02: «tú tardas demasiad
 - **Directo a `main`.** Sin rama ni PR: cambio → `Tools/verify.sh` (lint, `swift test` y build; unos minutos) → commit → push. La CI corre después, sin esperarla; si falla, se arregla en el siguiente commit.
 - **Simulador solo para lo que cambió:** las 2–4 pruebas de interfaz de esa pantalla, nunca la suite completa (~35 min). La suite completa corre sola en GitHub al entrar a `main`; se revisa su resultado al día siguiente, no se espera.
 - **Revisión independiente con un agente solo si puede perder o corromper datos** (guardado, respaldo, migraciones, «Mi dinero»). Textos, animaciones y pantallas, no.
-- Builds con `-jobs 4`, máximo 2 en la Mac sumando sesiones, y `-derivedDataPath /tmp/dd-centavo`.
+- Builds con `-jobs 4`, máximo 2 en la Mac sumando sesiones, y `-derivedDataPath /tmp/dd-centavo` (`verify.sh` ya lo hace).
+- La CI tiene tres partes: «Pruebas y build» (compila la versión **Release** y dice cuánto pesa), «Pruebas de datos» (`CentavoTests`: guardado, captura, fijos y respaldo) y el simulador en dos máquinas (capturas y flujos), que no se cancela con un push nuevo.
 
 ## Diseño
 **Lectura obligatoria antes de cualquier trabajo de interfaz: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)** (tokens, componentes, receta de pantalla nueva, reglas «nunca», Dynamic Type). Las pantallas se arman solo con tokens de `Centavo/Theme/` y componentes de `Centavo/Components/`; `Tools/lint-design.sh` (en `verify.sh` y en la CI de cada PR) falla con cualquier número, tamaño de letra o color suelto.
 Estilo **«Noche ticket»** aprobado por el dueño: modo oscuro forzado, acento latón, tipografía de ticket (IBM Plex Mono). Colores, tipografía, espacios, radios, tamaños, opacidades y animaciones viven en `Centavo/Theme/`; nunca se escriben sueltos en una pantalla.
 La **estructura es nativa de Apple** (Human Interface Guidelines): `NavigationStack` con barra superior e inferior del sistema, `List` con `swipeActions`, `Form`, `Menu`, hojas y botones estándar. En iOS 26 eso es Liquid Glass sin código extra: **no lo tapes con piezas propias** (barras o botones hechos a mano). Lo que se viste (fondos, tipografía, colores) usa los tokens de `Theme`.
 - Cuidado: dentro de un `Button` el estilo jerárquico (`.primary`) sigue el acento; usa colores explícitos de `Theme`.
-- La referencia visual son las **capturas del simulador de la CI** (artefacto `capturas`). Los bocetos están en el lienzo: https://claude.ai/artifact/EuRdR9c1mQ4nNivNwQGVYN
+- La referencia visual son las **capturas del simulador de la CI** (artefacto `capturas`; las de los flujos, en `capturas-flujos`). Los bocetos están en el lienzo: https://claude.ai/artifact/EuRdR9c1mQ4nNivNwQGVYN
 - Si una petición de diseño puede leerse de dos maneras, **pregunta antes de cambiar lo aprobado**. Detalle en [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Reglas

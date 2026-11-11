@@ -72,8 +72,11 @@ enum WidgetBridge {
         else { return }
         let snapshot = TodayBudget.snapshot(budget: budget, rows: rows, originals: originals, plans: FixedPlan.saved,
                                             primary: CurrencyPreference.current, month: now, now: now)
-        guard let data = snapshot.encoded(), data != store.read() else { return }
+        guard let data = snapshot.encoded() else { return }
+        // Always written, so its moment is fresh for the widgets' own next reload; they are
+        // only told when what they show changed (`needsReload`).
+        let old = WidgetSnapshot.decode(store.read())
         store.write(data)
-        WidgetCenter.shared.reloadAllTimelines()
+        if snapshot.needsReload(replacing: old) { WidgetCenter.shared.reloadAllTimelines() }
     }
 }

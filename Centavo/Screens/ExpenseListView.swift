@@ -167,13 +167,8 @@ struct ExpenseListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    // The app's signature (2026-10-29): lowercase, bigger than a sheet's title,
-                    // with a brass full stop. «Al día. Punto.»
-                    Text("al día\(Text(".").foregroundStyle(Theme.brass))")
-                        .font(.ticket(.subheading))
-                        .foregroundStyle(Theme.ink)
-                        .accessibilityLabel("Al día")
-                        .accessibilityAddTraits(.isHeader)
+                    // «Al día. Punto.»
+                    Signature("al día", spoken: "Al día")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -776,7 +771,7 @@ private struct CurrencySuggestionRow: View {
                 .font(.ticket(.label))
                 .foregroundStyle(Theme.onBrass)
                 .ticketProminent()
-                .frame(minHeight: Theme.Size.tapTarget)
+                .frame(minHeight: Theme.Size.tapTarget) // ds-allow: botón prominente del sistema; su cápsula es el área de toque
                 .accessibilityIdentifier("sumar-en-moneda")
         }
         .padding(.horizontal, Theme.Space.ml)
@@ -931,7 +926,9 @@ private struct CountsStore: ViewModifier {
         content
             .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in recount() }
             // What iCloud brought in the background (it doesn't post `didSave` here).
-            .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in recount() }
+            .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
+                Task { @MainActor in recount() }
+            }
             .onChange(of: scenePhase) { _, phase in if phase == .active { recount() } }
             .onChange(of: newest, initial: true) { recount() }
             .onChange(of: oldest) { recount() }
@@ -1185,6 +1182,7 @@ private struct ReceiptHead: View {
     let date: Date
     let isCurrent: Bool
     let payments: Int
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var title: String {
         let style: Date.FormatStyle = isCurrent ? .dateTime.weekday(.abbreviated).day().month(.abbreviated)
@@ -1193,10 +1191,12 @@ private struct ReceiptHead: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+        // With accessibility type the date and the folio stack and wrap («VIE 2… N.º 0…» said nothing).
+        AdaptiveStack(alignment: .firstTextBaseline) {
             Text(title)
                 .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: Theme.Space.s)
+                .accessibilityIdentifier("fecha-ticket")
+            if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Space.s) }
             if payments > 0 {
                 Text("N.º \(Text(String(format: "%03d", payments)).foregroundStyle(Theme.brass))")
                     .monospacedDigit()
@@ -1208,7 +1208,7 @@ private struct ReceiptHead: View {
         .tracking(Theme.Tracking.label)
         .textCase(.uppercase)
         .foregroundStyle(Theme.ink)
-        .lineLimit(1)
+        .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
         .padding(.bottom, Theme.Space.s)
         .overlay(alignment: .bottom) { Perforation() }
     }

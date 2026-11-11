@@ -4,7 +4,7 @@
 
 - Código fuente: `Centavo/Theme/` (tokens) y `Centavo/Components/` (piezas reutilizables).
 - Catálogo visual: `Centavo/Components/DesignSystemCatalog.swift` (ábrelo en el lienzo de Xcode, `#Preview`).
-- Barandal automático: `Tools/lint-design.sh` (corre en `Tools/verify.sh` y en la CI de cada PR). **Falla** si escribes un número, un tamaño de letra o un color sueltos.
+- Barandal automático: `Tools/lint-design.sh` (corre en `Tools/verify.sh` y en la CI). **Falla** si escribes un número, un tamaño de letra o un color sueltos.
 - Decisiones de diseño: [DECISIONS.md](DECISIONS.md). Estilo aprobado por el dueño: no se cambia sin preguntar.
 
 ---
@@ -15,7 +15,7 @@
 2. **Lo que se viste usa tokens.** Fondo, colores, tipografía, espacios, radios, trazos, opacidades y animaciones salen de `Theme` y `TicketStyle`.
 3. **Modo oscuro forzado.** La app ya lo fuerza en `CentavoApp`; no uses `.preferredColorScheme` ni colores del sistema (`.primary`, `.red`, `Color.gray`…).
 4. **Dynamic Type siempre.** Todo texto escala (los roles de `TicketStyle` ya lo hacen). Lo que mide junto al texto (íconos, columnas, alturas de barra) va con `@ScaledMetric`. Con letra de accesibilidad, las filas se apilan; el texto se envuelve, no se encoge.
-5. **Toque mínimo de 44 pt** (`Theme.Size.tapTarget`) en todo lo que se toca.
+5. **Toque mínimo de 44 pt** (`Theme.Size.tapTarget`) en todo lo que se toca. El espacio va **dentro** del botón: un `.frame` por fuera de un `Button` le da lugar, pero el dedo solo responde sobre su etiqueta. Un botón de solo texto o de solo símbolo usa `.buttonStyle(.tapTarget)` (regla del 2026-11-11; el lint la revisa).
 6. **Copy en es-MX**, sin suponer género. Identificadores de accesibilidad en español (`"hoja-guardar"`).
 7. **Minimalismo.** Antes de agregar una pantalla, pregunta si cabe en una que ya existe.
 
@@ -159,6 +159,8 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `.ticketProminent(_:)` | **El único** estilo de botón prominente (Liquid Glass en iOS 26) | `Button { … } label: { PrimaryButtonLabel("Listo") }.ticketProminent()` |
 | `PrimaryButtonLabel` | Etiqueta de la acción principal a todo lo ancho | `PrimaryButtonLabel("Configurar ahora", systemImage: "wallet.pass")` |
 | `SecondaryButton` | La alternativa callada («Después») | `SecondaryButton("Después") { … }` |
+| `.buttonStyle(.tapTarget)` | Botón callado de una palabra o un símbolo («Listo», «Quitar», «Sin cambio», ✕): 44 pt de toque aunque se vea chico | `Button("Listo", action: done).buttonStyle(.tapTarget)` |
+| `Signature` | La firma de una barra de navegación («al día.», «mi dinero.»); deja de crecer donde dejan de crecer los botones de la barra | `Signature("al día", spoken: "Al día")` |
 | `LinkActionLabel` | Acción callada en latón dentro de una pantalla («Ajustar presupuesto», «Agregar gasto fijo», «Deshacer») | `Button(action: a) { LinkActionLabel("Agregar", systemImage: "plus") }.buttonStyle(.plain)` |
 | `DestructiveRowButton` | **La única** forma de borrar o quitar dentro de una hoja; luego se confirma | `DestructiveRowButton("Borrar gasto", identifier: "borrar-gasto") { … }` |
 | `TicketChip` | Toda sugerencia de un toque (comercios, fijos, ejemplos de búsqueda); `selected` la llena de latón | `TicketChip("Renta", systemImage: "plus") { … }` |
@@ -261,6 +263,7 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 | `.frame(width: 28)` en un ícono junto a texto | `@ScaledMetric` (crece con la letra) |
 | `.preferredColorScheme(.dark)` en un preview | `.ticketPreview()` |
 | Barras, pestañas o botones de sistema hechos a mano | Los nativos (`toolbar`, `TabView`, `Button`) |
+| `Button("Listo") { … }.frame(minHeight: Theme.Size.tapTarget)` | `.buttonStyle(.tapTarget)`, o el `.frame` dentro de la etiqueta |
 
 Lo que el lint no ve pero también está prohibido: colores con opacidad para texto (`Theme.ink.opacity(…)`), `.textCase(.uppercase)` + `tracking` a mano cuando existe `SectionLabel`/`ticketCaption()`, y copiar una pieza privada de otra pantalla (súbela a `Components/`).
 
@@ -271,7 +274,7 @@ Lo que el lint no ve pero también está prohibido: colores con opacidad para te
 ## 6. Dynamic Type y accesibilidad
 
 - **Prueba en AX5**: `-UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityXXXL` (ver `CentavoUITests/FlowTests.swift`). Toda pantalla nueva entra a una prueba así.
-- **Filas**: con `dynamicTypeSize.isAccessibilitySize`, apila (`AdaptiveStack`) en vez de cortar. `ViewThatFits` para elegir entre una versión ancha y una angosta.
+- **Filas**: con `dynamicTypeSize.isAccessibilitySize`, apila (`AdaptiveStack`) en vez de cortar. Dos textos en un mismo renglón (fecha y folio, etiqueta y cifra) nunca llevan `lineLimit(1)` sin apilarse con letra de accesibilidad. `ViewThatFits` para elegir entre una versión ancha y una angosta.
 - **`lineLimit`**: deja crecer (2–3 líneas) los nombres; `lineLimit(1)` solo para cifras con `Theme.MinimumScale.figure`.
 - **Medidas junto al texto** (íconos, columnas, barras): `@ScaledMetric(relativeTo:)` con base en `Theme.Size`.
 - **VoiceOver**: `.accessibilityElement(children: .combine)` en filas, `.accessibilityAddTraits(.isHeader)` en títulos, `.accessibilityHidden(true)` en adornos, `.isSelected` en opciones elegidas.

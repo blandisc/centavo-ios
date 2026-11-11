@@ -287,7 +287,7 @@ struct MoneyOnboardingView: View {
                     .tracking(Theme.Tracking.label)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
-                    .frame(minHeight: Theme.Size.tapTarget)
+                    .buttonStyle(.tapTarget)
                     .accessibilityIdentifier("recorrido-saltar")
             }
         }
@@ -315,7 +315,8 @@ struct MoneyOnboardingView: View {
     private func next() {
         if page == .done { step = MoneyStep.finished; return }
         if open == Self.draftID {
-            if draft.isComplete(mainCurrency: mainCurrency) { save(nil) }
+            // A row that couldn't be saved stays open where it is, with what was written.
+            if draft.isComplete(mainCurrency: mainCurrency) { guard save(nil) else { return } }
             else if draft.hasContent { confirmingLeave = true; return }
         }
         go(to: page.following)
@@ -352,8 +353,9 @@ struct MoneyOnboardingView: View {
         }
     }
 
-    private func save(_ account: MoneyAccount?) {
-        guard let balance = draft.balance, draft.isComplete(mainCurrency: mainCurrency) else { return }
+    @discardableResult
+    private func save(_ account: MoneyAccount?) -> Bool {
+        guard let balance = draft.balance, draft.isComplete(mainCurrency: mainCurrency) else { return false }
         do {
             if let account {
                 account.name = draft.trimmedName
@@ -368,8 +370,10 @@ struct MoneyOnboardingView: View {
                 try MoneyStore.add(new, balance: balance, rate: draft.exchange, in: context, mainCurrency: mainCurrency)
             }
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
+            return true
         } catch {
             problem = "Intenta otra vez."
+            return false
         }
     }
 
@@ -785,6 +789,7 @@ struct MoneyRowEditor: View {
                     .tracking(Theme.Tracking.label)
                     .textCase(.uppercase)
                     .foregroundStyle(isNew && removeTitle == nil ? Theme.muted : Theme.danger)
+                    .buttonStyle(.tapTarget)
                 Spacer()
                 Button("Listo", action: done)
                     .font(.ticket(.label))
@@ -792,6 +797,7 @@ struct MoneyRowEditor: View {
                     .textCase(.uppercase)
                     .foregroundStyle(complete ? Theme.brass : Theme.faint)
                     .disabled(!complete)
+                    .buttonStyle(.tapTarget)
                     .accessibilityIdentifier("fila-listo")
             }
             .frame(minHeight: Theme.Size.tapTarget)

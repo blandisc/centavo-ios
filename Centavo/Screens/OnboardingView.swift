@@ -88,10 +88,7 @@ struct OnboardingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("al día\(Text(".").foregroundStyle(Theme.brass))")
-                        .font(.ticket(.subheading))
-                        .foregroundStyle(Theme.ink)
-                        .accessibilityLabel("Al día")
+                    Signature("al día", spoken: "Al día")
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     if page > 0 && page < pages - 1 {
@@ -516,7 +513,7 @@ struct OnboardingView: View {
             }
             .labelStyle(.iconOnly)
             .foregroundStyle(Theme.faint)
-            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
+            .buttonStyle(.tapTarget)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, Theme.Space.xxs)

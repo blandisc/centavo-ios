@@ -141,7 +141,8 @@ struct SettingsView: View {
         guard DailyBackup.isSetUp else { return "Sin configurar" }
         guard let last = DailyBackup.lastBackup else { return "Sin respaldo" }
         if AppClock.isToday(last) { return "Hoy" }
-        return AppClock.relative(last, locale: Locale(identifier: "es_MX")).capitalized
+        let text = AppClock.relative(last, locale: Locale(identifier: "es_MX"))
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 
     private var healthText: String {

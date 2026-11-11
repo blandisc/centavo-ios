@@ -819,8 +819,10 @@ struct ExpenseEditorView: View {
         isRefund = expense.amount < 0
         counts = !expense.isUncounted
         reason = expense.reason ?? .reimbursed
-        amountText = expense.amount.magnitude
-            .formatted(.number.precision(.fractionLength(2)).grouping(.never))
+        // Grouped as the field itself writes it («1,234.13»): compared as loaded, the field's own
+        // regrouping read as a retyped amount from 1,000 up and rewrote 1,234.125 as 1,234.13.
+        amountText = AmountTyping.grouped(expense.amount.magnitude
+            .formatted(.number.precision(.fractionLength(2)).grouping(.never)))
         loadedAmountText = amountText
         merchant = expense.merchant
         repeatsMonthly = expense.repeatsMonthly == true

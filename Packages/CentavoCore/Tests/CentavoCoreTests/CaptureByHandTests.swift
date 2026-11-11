@@ -21,6 +21,14 @@ import Testing
         #expect(AmountTyping.grouped("1234567890123") == "123,456,789,012")
     }
 
+    /// The edit sheet compares what it loaded with what the field shows: grouping what is
+    /// already grouped must change nothing, or an untouched amount reads as typed again.
+    @Test(arguments: ["1234.13", "1234567.89", "999.00", "0.50", "1000.00"])
+    func groupingTwiceChangesNothing(text: String) {
+        let once = AmountTyping.grouped(text)
+        #expect(AmountTyping.grouped(once) == once)
+    }
+
     @Test func whatIsShownReadsBackTheSame() {
         #expect(AmountParser.parse(AmountTyping.grouped("1234567.89"))?.value == Decimal(string: "1234567.89"))
     }

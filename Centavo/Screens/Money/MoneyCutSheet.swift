@@ -175,7 +175,7 @@ struct MoneyCutSheet: View {
                 }
                 .font(.ticket(.label))
                 .foregroundStyle(Theme.brass)
-                .buttonStyle(.borderless)
+                .buttonStyle(.tapTarget)
             }
         }
     }
@@ -253,7 +253,7 @@ struct MoneyCutSheet: View {
                 Button("Sin cambio") { keep(entry) }
                     .font(.ticket(.label))
                     .foregroundStyle(Theme.brass)
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.tapTarget)
                     .accessibilityIdentifier("corte-sin-cambio-\(account.name)")
             }
         }

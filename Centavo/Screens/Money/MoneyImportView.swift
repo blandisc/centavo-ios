@@ -218,6 +218,7 @@ struct MoneyImportView: View {
         }
             .font(.ticket(.label))
             .foregroundStyle(Theme.muted)
+            .buttonStyle(.tapTarget)
             .frame(maxWidth: .infinity)
     }
 

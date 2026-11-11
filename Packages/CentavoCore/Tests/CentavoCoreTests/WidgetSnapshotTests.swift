@@ -51,6 +51,27 @@ import Testing
         #expect(snapshot.daysOld(at: Self.date(10, 30)) == nil)
     }
 
+    /// Every snapshot carries its own moment: that alone must not cost a widget reload.
+    @Test func theSameMonthAMomentLaterDoesNotReloadTheWidgets() {
+        var later = snapshot
+        later.takenAt = Self.date(11, 1, hour: 20).addingTimeInterval(120)
+        #expect(!later.needsReload(replacing: snapshot, calendar: Self.calendar))
+    }
+
+    @Test func aPaymentANewDayOrAnHourReloadTheWidgets() {
+        #expect(snapshot.needsReload(replacing: nil, calendar: Self.calendar))
+        var paid = snapshot
+        paid.takenAt = Self.date(11, 1, hour: 20).addingTimeInterval(120)
+        paid.spent += 89
+        #expect(paid.needsReload(replacing: snapshot, calendar: Self.calendar))
+        var anHourOn = snapshot
+        anHourOn.takenAt = Self.date(11, 1, hour: 21)
+        #expect(anHourOn.needsReload(replacing: snapshot, calendar: Self.calendar))
+        var nextDay = snapshot
+        nextDay.takenAt = Self.date(11, 1, hour: 20).addingTimeInterval(4.5 * 3_600)
+        #expect(nextDay.needsReload(replacing: snapshot, calendar: Self.calendar))
+    }
+
     @Test func noBudgetNoPace() {
         var none = snapshot
         none.budget = nil

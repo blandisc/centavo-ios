@@ -204,7 +204,10 @@ struct CatalogSettingsView: View {
                     LabeledIconSheet(title: "Forma de pago",
                                      prompt: "BBVA, Nu, Efectivo…", icons: UserCatalog.sourceIcons,
                                      taken: sources.map(\.name), initial: source,
-                                     onDelete: source.map { item in { remove(item) } },
+                                     // One that only arrived in payments isn't in the list: nothing to delete.
+                                     onDelete: source.flatMap { item in
+                                         sources.contains { UserCatalog.same($0.name, item.name) } ? { remove(item) } : nil
+                                     },
                                      isDefault: source.map { UserCatalog.same($0.name, defaultSource) }
                                         ?? sources.isEmpty,
                                      onSetDefault: setDefault, colorKind: .source,

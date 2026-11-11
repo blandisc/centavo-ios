@@ -242,11 +242,7 @@ struct MoneyLockedView: View {
 /// «mi dinero.», the tab's signature, like «al día.» on «Hoy».
 struct MoneySignature: View {
     var body: some View {
-        Text("mi dinero\(Text(".").foregroundStyle(Theme.brass))")
-            .font(.ticket(.subheading))
-            .foregroundStyle(Theme.ink)
-            .accessibilityLabel("Mi dinero")
-            .accessibilityAddTraits(.isHeader)
+        Signature("mi dinero", spoken: "Mi dinero")
     }
 }
 

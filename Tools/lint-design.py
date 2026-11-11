@@ -141,10 +141,42 @@ def numeric_violation(code: str):
     return None
 
 
+def owner_of_chain(codes, index):
+    """The statement a modifier line belongs to: walks up over the modifiers before it
+    (and over the blocks they close) and returns that statement's first line."""
+    j = index - 1
+    while j >= 0:
+        line = codes[j].strip()
+        if not line:
+            return ""
+        if line[0] in "})":
+            # A block or call ends here: back to the line that opens it.
+            depth = 0
+            while j >= 0:
+                for c in reversed(codes[j]):
+                    if c in "})":
+                        depth += 1
+                    elif c in "{(":
+                        depth -= 1
+                if depth <= 0:
+                    break
+                j -= 1
+            line = codes[j].strip() if j >= 0 else ""
+        if not line.startswith("."):
+            return line
+        j -= 1
+    return ""
+
+
+TAP_FRAME_RE = re.compile(r"^\.frame\([^)]*\bmin(?:Width|Height):\s*Theme\.Size\.tapTarget")
+BUTTON_RE = re.compile(r"^(?:Button|Link|ShareLink|Menu)\s*[({]")
+
+
 def lint_file(path: Path):
     problems, allows = [], []
     drawing = path in DRAWINGS
     lines = path.read_text(encoding="utf-8").splitlines()
+    codes = [strip_strings(strip_comment(line)) for line in lines]
     in_block_comment = False
     for n, raw in enumerate(lines, 1):
         stripped = raw.strip()
@@ -167,6 +199,11 @@ def lint_file(path: Path):
                 continue
             if regex.search(code):
                 found.append((rule_id, message))
+        # A frame around a button gives it room, not a bigger touch area: only its label is.
+        if TAP_FRAME_RE.match(code.strip()) and BUTTON_RE.match(owner_of_chain(codes, n - 1)):
+            found.append(("tap-target-outside",
+                          "el área de toque no crece con un .frame por fuera del botón: usa "
+                          ".buttonStyle(.tapTarget) o pon el .frame dentro de su etiqueta"))
         if not drawing:
             name = numeric_violation(code)
             if name:
