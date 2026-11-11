@@ -447,7 +447,7 @@ struct ExpenseEditorView: View {
                 moreCategories(more)
                     .categoryRow(top: Theme.Space.s, bottom: Theme.Space.none)
             }
-            categoryActions(more: split.rest.count)
+            categoryActions(more: more.count)
                 .categoryRow(top: Theme.Space.s, bottom: Theme.Space.xl)
         } header: {
             Text("Categoría").ticketCaption()
@@ -643,8 +643,8 @@ struct ExpenseEditorView: View {
         [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)]
     }
 
-    /// How many of the rest fit in the last row of the ones in view: they fade in where they are,
-    /// and the others go in a row of their own.
+    /// How many of the rest fit in the last row of the ones in view: they show there from the
+    /// start, and the others go in a row of their own behind «Ver más».
     private func categoryFill(_ split: (shown: [String], rest: [String])) -> Int {
         let open = (categoryColumns - split.shown.count % categoryColumns) % categoryColumns
         return min(open, split.rest.count)
@@ -655,16 +655,9 @@ struct ExpenseEditorView: View {
     private func categoryGrid(_ split: (shown: [String], rest: [String]), fill: Int) -> some View {
         let names = split.shown + split.rest.prefix(fill)
         return LazyVGrid(columns: categoryGridColumns, spacing: Theme.Space.s) {
-            ForEach(Array(names.enumerated()), id: \.element) { index, name in
-                let hidden = (!showsAllCategories || fadingCategories) && index >= split.shown.count
-                // Hidden, nothing VoiceOver or a tap can reach.
-                categoryButton(name)
-                    .opacity(hidden ? Theme.Opacity.hidden : Theme.Opacity.visible)
-                    .animation(Theme.Motion.animation(hidden ? Theme.Motion.revealOut : Theme.Motion.revealIn,
-                                                      reduceMotion: reduceMotion), value: hidden)
-                    .allowsHitTesting(!hidden)
-                    .accessibilityHidden(hidden)
-            }
+            // The last row is always full: what of the rest fits there shows from the start, so no
+            // square is left empty until a category is picked (owner, 2026-11-11).
+            ForEach(names, id: \.self) { categoryButton($0) }
         }
         .onGeometryChange(for: Int.self) { proxy in
             Int((proxy.size.width + Theme.Space.s) / (Theme.Size.categoryGridMinimum + Theme.Space.s))

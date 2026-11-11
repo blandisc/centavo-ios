@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- **Categorías sin hueco:** al anotar un gasto, el último renglón de categorías ya sale completo; antes quedaba un cuadro vacío abajo a la derecha que solo se llenaba al elegir una.
 - **«La cuenta» se abre desde un corte de boleto:** bajo «Llevas…», una línea de puntitos con «cuenta ⌄» al centro; al tocarla, la cuenta sale de debajo del corte como un recibo de la impresora, recta hacia abajo, y al cerrar regresa. Reemplaza «Ver cuenta» y la hoja que se doblaba hacia el frente.
 - **«Llevas $X y podrías llevar $Y de $Z» se muda a la cuenta:** bajo los días solo queda el ritmo y el corte. Al abrir, la cuenta trae dos partes: «El ritmo» (podrías llevar − llevas = cuánto vas abajo o arriba) y «Hoy» (de dónde sale lo que puedes gastar). Pasado del presupuesto, «Llevas $X de $Y» sigue a la vista.
 - **El widget mediano habla como la app:** bajo los días, «Vas $665 abajo del ritmo», sin mayúsculas, y el ritmo ya no va en la esquina; los días que te pasaste llevan su tapita roja.
