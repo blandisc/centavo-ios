@@ -16,8 +16,8 @@ enum TicketButtonKind {
 }
 
 extension View {
-    /// The system's prominent button in the app's color: Liquid Glass on iOS 26, a filled
-    /// capsule before. Apply it to a `Button` or a `Link`; it is the only prominent style the
+    /// The system's prominent button in the app's color, in Liquid Glass. Apply it to a `Button`
+    /// or a `Link`; it is the only prominent style the
     /// app uses (never `.borderedProminent` by hand: it would skip the glass).
     func ticketProminent(_ kind: TicketButtonKind = .primary) -> some View {
         modifier(TicketProminent(kind: kind))
@@ -28,11 +28,7 @@ private struct TicketProminent: ViewModifier {
     let kind: TicketButtonKind
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.buttonStyle(.glassProminent).tint(kind.tint)
-        } else {
-            content.buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(kind.tint)
-        }
+        content.buttonStyle(.glassProminent).tint(kind.tint)
     }
 }
 

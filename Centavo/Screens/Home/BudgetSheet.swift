@@ -22,6 +22,7 @@ struct BudgetSheet: View {
     @State private var text = ""
     @State private var mode = AllowanceMode.carry
     @State private var confirmingRemoval = false
+    @State private var askingDiscard = false
     @FocusState private var focused: Bool
 
     private var amount: Decimal? {
@@ -87,7 +88,9 @@ struct BudgetSheet: View {
             .ticketBarTitle("Tu presupuesto")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+                    Button("Cancelar") {
+                        if changed { askingDiscard = true } else { dismiss() }
+                    }
                         .font(.ticket(.footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
@@ -101,23 +104,22 @@ struct BudgetSheet: View {
         }
         // Taking the budget off empties the boleto and the day's amount: asked first (audit
         // 2026-11-02), like every other delete.
-        .confirmationDialog("¿Quitar el presupuesto?", isPresented: $confirmingRemoval,
-                            titleVisibility: .visible) {
-            Button("Quitar", role: .destructive) {
-                stored = ""
-                dismiss()
-            }
-            Button("Conservar", role: .cancel) {}
-        } message: {
-            Text("La pantalla principal deja de decir cuánto puedes gastar al día. Tus gastos no se tocan.")
+        .confirmsRemoval(isPresented: $confirmingRemoval, question: {
+            TicketQuestion(title: "¿Quitar el presupuesto?",
+                           note: "La pantalla principal deja de decir cuánto puedes gastar al día. Tus gastos no se tocan.",
+                           verb: "Quitar")
+        }) {
+            stored = ""
+            dismiss()
         }
         .presentationDetents([.large])
         .presentationBackground(Theme.background)
-        // A typed number is not thrown away by a stray swipe down.
-        .interactiveDismissDisabled(changed)
+        // A typed number is not thrown away by a stray swipe down: «¿Descartar cambios?»
+        // (owner, 2026-11-11), also on «Cancelar».
+        .confirmsDiscard(hasChanges: changed, isAsking: $askingDiscard) { dismiss() }
         .onAppear {
             if let current = BudgetStore.amount(from: stored) {
-                text = current.formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
+                text = current.formatted(.number.precision(.fractionLength(0...2)).grouping(.never).locale(AmountTyping.written))
             }
             mode = AllowanceMode(stored: storedMode)
             focused = BudgetStore.amount(from: stored) == nil

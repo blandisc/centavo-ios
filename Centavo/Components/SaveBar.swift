@@ -48,12 +48,8 @@ private struct SaveBarPlacement: ViewModifier {
     let bar: SaveBar
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            // A bar of the system's own: what scrolls under it fades, as under any toolbar.
-            content.safeAreaBar(edge: .bottom) { bar }
-        } else {
-            content.safeAreaInset(edge: .bottom) { bar.background(Theme.background) }
-        }
+        // A bar of the system's own: what scrolls under it fades, as under any toolbar.
+        content.safeAreaBar(edge: .bottom) { bar }
     }
 }
 

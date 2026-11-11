@@ -2,8 +2,9 @@ import CentavoCore
 import SwiftUI
 
 /// The swipeable middle of the main screen, in every view (owner, 2026-10-30): on the left the
-/// month's barcode with «En qué se va» under it (Lista or Mosaico; alone in Mínima), on the right
-/// the calendar. The bar stays above, out of the carousel.
+/// boleto with its line and «En qué se va» under it (Lista or Mosaico; alone in Mínima), on the
+/// right the calendar. Each page keeps its own height (2026-10-29: «En qué se va» is much shorter
+/// than the calendar, and matching them left a hole under it).
 struct MonthCarousel: View {
     let calendarModel: MonthCalendar
     var selectedDay: Int?
@@ -20,15 +21,10 @@ struct MonthCarousel: View {
     var onSelectCategory: (CategoryShare?) -> Void = { _ in }
     /// What of the screen's entrance has played (`Entrance`).
     var entrance = Entrance()
-    /// Whether both pages are as tall as the taller one: true while «En qué se va» fills the
-    /// budget page, which is about as tall as the calendar, so a swipe moves nothing below. A
-    /// short budget page (no chart) keeps its own height, or it would leave a hole above the list.
-    var equalHeights = false
     let onSetBudget: () -> Void
     var currency = CurrencyPreference.fallback
-    /// At the top of the first page: the month's barcode.
+    /// At the top of the first page: the boleto and the month's line.
     var budgetHeader: AnyView?
-    var now = AppClock.now
 
     /// Where the pages stand; the swipe over the whole top of the screen moves it.
     let motion: CarouselMotion
@@ -77,7 +73,7 @@ struct MonthCarousel: View {
                         BudgetPage(spent: spent, pace: pace, isCurrentMonth: isCurrentMonth, outside: outside,
                                    shares: shares, returned: returned, note: note, selectedCategory: selectedCategory,
                                    onSelectCategory: onSelectCategory, entrance: entrance, onSetBudget: onSetBudget,
-                                   currency: currency, now: now, part: .bottom)
+                                   part: .bottom)
                     }
                 }
                 .padding(.horizontal, Theme.Space.screen)
@@ -108,14 +104,13 @@ struct MonthCarousel: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { motion.width = $0 }
             // The height and the fading edge follow the pages frame by frame. They read them in a
             // modifier of their own, so each frame redraws them and not the pages.
-            .modifier(CarouselFold(motion: motion, heights: heights, equalHeights: equalHeights))
+            .modifier(CarouselFold(motion: motion, heights: heights))
             // Keeps the other page out at the sides, and the list out below while the height
             // moves. Room over the top for the boleto's day card, which rises over the line above
-            // (2026-10-30), and below for a pressed mosaic block, which iOS lifts a little larger.
+            // (2026-10-30).
             .mask {
                 Rectangle()
                     .padding(.top, -Theme.Size.monthCodeCardRoom)
-                    .padding(.bottom, equalHeights ? -Theme.Space.xxl : Theme.Space.none)
             }
             // A light tick when the pages land on the other one, like a ticket torn off.
             .sensoryFeedback(.selection, trigger: motion.landings)
@@ -169,10 +164,9 @@ private struct CarouselFold: ViewModifier {
     let motion: CarouselMotion
     /// Each page's own height.
     let heights: [Int: CGFloat]
-    let equalHeights: Bool
 
-    /// Pages of different heights (no «En qué se va»): the carousel's height is the one between
-    /// them that the swipe has reached, so the calendar comes out like a ticket from the printer,
+    /// The pages have different heights: the carousel's is the one between them that the swipe
+    /// has reached, so the calendar comes out like a ticket from the printer,
     /// row by row with the finger, and is whole the moment it lands. An eased height that ran on
     /// its own clock ended after the page and left the last row cut for a moment (owner, 2026-10-26).
     private var height: CGFloat? {
@@ -182,35 +176,24 @@ private struct CarouselFold: ViewModifier {
 
     /// How much of the bottom edge fades while the height moves: none at rest, the most halfway.
     private var fold: CGFloat {
-        equalHeights ? Theme.Space.none : Theme.Size.carouselFold * max(min(motion.progress, 1 - motion.progress), 0) * 2
+        Theme.Size.carouselFold * max(min(motion.progress, 1 - motion.progress), 0) * 2
     }
 
     func body(content: Content) -> some View {
         content
-            // With both pages about as tall, the row of pages is as tall as the taller one by itself
-            // and the carousel takes that: no height measured and set back, which on the owner's
-            // iPhone settled on the calendar's and cut «En qué se va». Otherwise each page keeps
-            // its own height and the carousel goes from one to the other with the swipe.
-            .frame(height: equalHeights ? nil : height, alignment: .top)
+            // Each page keeps its own height and the carousel goes from one to the other with
+            // the swipe.
+            .frame(height: height, alignment: .top)
             // While it grows or shrinks, the bottom edge fades like paper coming out, not a cut (the
             // owner preferred it to a perforated edge).
             .mask(alignment: .top) {
-                if equalHeights {
-                    // Nothing moves; room above and below for a pressed mosaic block to lift (see
-                    // below). Not to the sides: in landscape the next page showed there, in the
-                    // strip kept clear for the Dynamic Island.
+                VStack(spacing: Theme.Space.none) {
                     Rectangle()
-                        .padding(.top, -Theme.Size.monthCodeCardRoom)
-                        .padding(.bottom, -Theme.Space.xxl)
-                } else {
-                    VStack(spacing: Theme.Space.none) {
-                        Rectangle()
-                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                            .frame(height: fold)
-                    }
-                    // Room over the top for the boleto's day card (2026-10-30).
-                    .padding(.top, -Theme.Size.monthCodeCardRoom)
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: fold)
                 }
+                // Room over the top for the boleto's day card (2026-10-30).
+                .padding(.top, -Theme.Size.monthCodeCardRoom)
             }
     }
 }

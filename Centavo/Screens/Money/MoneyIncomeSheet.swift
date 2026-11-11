@@ -16,6 +16,7 @@ struct MoneyIncomeSheet: View {
     @State private var currency = ""
     @State private var amount = ""
     @State private var confirmingRemove = false
+    @State private var askingDiscard = false
     @State private var problem: String?
 
     private var isNew: Bool { income == nil }
@@ -32,12 +33,24 @@ struct MoneyIncomeSheet: View {
             return !(name + institution + amount).trimmingCharacters(in: .whitespaces).isEmpty
                 || (!currency.isEmpty && currency != mainCurrency)
         }
+        // By what it reads, not how it is written: the field puts the thousands in.
         return name != income.name || institution != (income.institution ?? "")
-            || amount != BackupNumber.text(income.amount) || (!currency.isEmpty && currency != income.currency)
+            || parsedAmount != income.amount || (!currency.isEmpty && currency != income.currency)
     }
     private var parsedAmount: Decimal? { MoneyAmount.read(amount) }
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && (parsedAmount ?? 0) > 0
+    }
+
+    /// What «Guardar» will save, or the first thing still missing (owner, 2026-11-11).
+    private var saveSummary: String {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "Falta el nombre" }
+        if amount.trimmingCharacters(in: .whitespaces).isEmpty { return "Falta cuánto te entra" }
+        guard let value = parsedAmount else { return "El monto no se lee" }
+        guard value > 0 else { return "El monto debe ser mayor que cero" }
+        let code = currency.isEmpty ? mainCurrency : currency
+        return "\(trimmed) · \(formatMoney(value, isoCode: code, label: code, main: mainCurrency)) al mes"
     }
 
     var body: some View {
@@ -63,6 +76,7 @@ struct MoneyIncomeSheet: View {
                         .font(.ticket(.field))
                         .keyboardType(.decimalPad)
                         .foregroundStyle(Theme.ink)
+                        .groupsMoney($amount)
                         .accessibilityIdentifier("ingreso-monto")
                 } header: {
                     Text("Cuánto te entra al mes").ticketCaption()
@@ -83,32 +97,32 @@ struct MoneyIncomeSheet: View {
             }
             .ticketForm()
             .foregroundStyle(Theme.ink)
+            .moneySheetKeyboard()
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(isNew ? "Nuevo ingreso" : "Ingreso")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }.font(.ticket(.footnoteStrong))
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save)
-                        .font(.ticket(.footnoteStrong))
-                        .disabled(!canSave)
-                        .accessibilityIdentifier("ingreso-guardar")
+                    Button("Cancelar") {
+                        if hasChanges { askingDiscard = true } else { dismiss() }
+                    }
+                    .font(.ticket(.footnoteStrong))
                 }
             }
-            .alert("¿Quitar \(name)?", isPresented: $confirmingRemove) {
-                Button("Cancelar", role: .cancel) {}
-                Button("Quitar", role: .destructive, action: remove)
-            } message: {
-                Text("Deja de contar como lo que te entra al mes.")
-            }
+            // «Guardar» at the bottom with what it saves, as in the sheets of «Hoy» (2026-11-11).
+            .saveBar(saveSummary, enabled: canSave, identifier: "ingreso-guardar", action: save)
+            // The one way to ask before something goes away (owner, 2026-11-11).
+            .confirmsRemoval(isPresented: $confirmingRemove, question: {
+                TicketQuestion(title: "¿Quitar este ingreso?", name: income?.name ?? name,
+                               note: "Deja de contar como lo que te entra al mes.", verb: "Quitar")
+            }, onConfirm: remove)
             .alert("No se guardó el ingreso", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text(problem ?? "") }
             .onAppear(perform: load)
-            .onMoneyCovered { confirmingRemove = false; problem = nil }
+            .onMoneyCovered { confirmingRemove = false; askingDiscard = false; problem = nil }
         }
-        .interactiveDismissDisabled(hasChanges)
+        // «¿Descartar cambios?» on «Cancelar» and on swiping down, with something typed.
+        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
     }
 
     private func load() {
@@ -117,7 +131,7 @@ struct MoneyIncomeSheet: View {
         guard let income else { return }
         name = income.name
         institution = income.institution ?? ""
-        amount = BackupNumber.text(income.amount)
+        amount = MoneyTyping.groupedText(income.amount)
     }
 
     private func save() {

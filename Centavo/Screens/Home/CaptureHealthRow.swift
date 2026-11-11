@@ -7,8 +7,6 @@ struct CaptureHealthRow: View {
     let health: CaptureHealth
     /// A notice that arrived without an amount after the last capture (see `UnreadNotice`).
     var unread: String?
-    /// A small note under the «Hoy» divider instead of a row of its own.
-    var compact = false
     let openGuide: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = Theme.Size.glyph
@@ -43,7 +41,7 @@ struct CaptureHealthRow: View {
     }
 
     var body: some View {
-        if needsAttention && !compact { attention } else { quiet }
+        if needsAttention { attention } else { quiet }
     }
 
     private var attention: some View {
@@ -81,25 +79,23 @@ struct CaptureHealthRow: View {
     private var quiet: some View {
         Button(action: openGuide) {
             HStack(spacing: Theme.Space.s) {
-                Image(systemName: needsAttention ? "exclamationmark.circle" : "wave.3.right")
+                Image(systemName: "wave.3.right")
                     .imageScale(.small)
                     // The width of a day divider's dash, so «Wallet» starts where «HOY» does.
                     .frame(width: glyphWidth, alignment: .leading)
                 Text(text)
-                    .font(.ticket(compact ? .micro : .caption))
-                    .tracking(compact ? Theme.Tracking.compactLabel : Theme.Tracking.label)
+                    .font(.ticket(.caption))
+                    .tracking(Theme.Tracking.label)
                     .textCase(.uppercase)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: Theme.Space.none)
             }
-            .foregroundStyle(needsAttention ? Theme.brass : Theme.muted)
-            // Compact, it lines up with the divider's words, past its brass dash.
-            .padding(.leading, compact ? Theme.Space.xlx : Theme.Space.none)
-            .frame(maxWidth: .infinity, minHeight: compact ? Theme.Size.compactRow : Theme.Size.tapTarget, alignment: .leading)
+            .foregroundStyle(Theme.muted)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
             .contentShape(Rectangle())
             // Still 44 pt to tap, but it takes only its line: the rest overlaps the air above
             // and below instead of adding a band of empty space (owner, 2026-10-22).
-            .padding(.vertical, compact ? Theme.Space.none : Theme.Space.tuck)
+            .padding(.vertical, Theme.Space.tuck)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("salud-captura")

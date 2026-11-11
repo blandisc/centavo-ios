@@ -5,7 +5,8 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// The only screen: a month's total, a swipeable calendar/budget, then that month's payments.
+/// «Hoy», the first of the app's two tabs (`RootView`): the month's figure, a swipeable
+/// boleto/calendar, then that month's payments.
 ///
 /// The look is the approved "Noche ticket" (dark, brass, receipt type). The structure is
 /// Apple's: a real navigation bar and bottom bar (Liquid Glass on iOS 26), a `List` with
@@ -207,12 +208,10 @@ struct ExpenseListView: View {
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
                 }
-                // Search lives down here with the months, as a button that opens into a field
-                // (iOS 26), not as a bar across the top of the ticket.
-                if #available(iOS 26, *) {
-                    ToolbarSpacer(.flexible, placement: .bottomBar)
-                    DefaultToolbarItem(kind: .search, placement: .bottomBar)
-                }
+                // Search lives down here, as a button that opens into a field, not as a bar
+                // across the top of the ticket.
+                ToolbarSpacer(.flexible, placement: .bottomBar)
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
             }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
             // The widgets' «+» and «Fijar presupuesto» (`centavo://anotar`, `centavo://presupuesto`).
@@ -479,10 +478,6 @@ private struct HomeContent: View, Equatable {
                     month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
-                    // Each page keeps its own height: with the bar out of the carousel, «En qué
-                    // se va» is much shorter than the calendar and matching them left a hole
-                    // under it (2026-10-29).
-                    equalHeights: false,
                     showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
                     health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
                     backupWarning: isCurrent ? settings.backupWarning : nil,
@@ -524,7 +519,6 @@ private struct HomeHeader: View {
     let note: String?
     let selectedDay: Int?
     let selectedCategory: CategoryShare?
-    let equalHeights: Bool
     let showsCapture: Bool
     let health: CaptureHealth
     let unread: String?
@@ -591,20 +585,12 @@ private struct HomeHeader: View {
                         .ticketRow(bottom: Theme.Space.xl)
                 }
             }
-            if storeIsEmpty {
-                // A budget with nothing spent yet still has its days to show.
-                if let pace {
-                    BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
-                               entrance: entrance, onSetBudget: actions.setBudget)
-                        .ticketRow(bottom: Theme.Space.xl)
-                }
-                EmptyTicket(hasBudget: pace != nil, onAdd: actions.add,
-                            onBudget: actions.setBudget, onSetup: actions.setup)
-                    .ticketRow()
-            } else if searchCount == nil {
-                // Under the figure, the carousel in every view (owner, 2026-10-30): on the left the
-                // boleto with its line right under it («Llevas $X y deberías llevar $Y de $Z», the tear line «cuenta»)
-                // and «En qué se va» in Lista or Mosaico; on the right only the calendar.
+            // Under the figure, the carousel in every view (owner, 2026-10-30): on the left the
+            // boleto with its line right under it (the rhythm, the tear line «cuenta») and «En qué
+            // se va» in Lista or Mosaico; on the right only the calendar. A budget with nothing
+            // written down yet has it too, empty: its days to come dashed, today outlined, the
+            // same as any other day of the month (owner, 2026-11-11).
+            if storeIsEmpty ? pace != nil : searchCount == nil {
                 MonthCarousel(
                     calendarModel: month.calendar,
                     selectedDay: selectedDay,
@@ -619,7 +605,6 @@ private struct HomeHeader: View {
                     selectedCategory: selectedCategory,
                     onSelectCategory: actions.selectCategory,
                     entrance: entrance,
-                    equalHeights: equalHeights,
                     onSetBudget: actions.setBudget,
                     currency: currency,
                     budgetHeader: AnyView(VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -628,15 +613,19 @@ private struct HomeHeader: View {
                                       month: viewed, entrance: entrance)
                         BudgetPage(spent: summary.primary, pace: pace, isCurrentMonth: isCurrent,
                                    outside: summary.outside, entrance: entrance, onSetBudget: actions.setBudget,
-                                   currency: currency, now: now, part: .top, showsTrack: false)
+                                   part: .top)
                     }),
-                    now: now,
                     motion: model.carousel
                 )
                 // Edge to edge: each page keeps its own margin, so a swipe shows a gap
                 // between them instead of two pages touching.
                 .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
-
+            }
+            if storeIsEmpty {
+                EmptyTicket(hasBudget: pace != nil, onAdd: actions.add,
+                            onBudget: actions.setBudget, onSetup: actions.setup)
+                    .ticketRow()
+            } else if searchCount == nil {
                 // The Wallet line stays between the carousel and the list, not under «Hoy»:
                 // it is about the capture, not about today's expenses (owner, 2026-10-21).
                 if showsCapture {
@@ -805,8 +794,7 @@ private struct CatalogsSheet: ViewModifier {
     }
 }
 
-/// The search: a button in the bottom bar that opens into a field on iOS 26; on older
-/// systems, the usual field under the title.
+/// The search: a button in the bottom bar that opens into a field.
 ///
 /// The words reach the list (`settle`) once typing pauses (`HomeModel.searchPause`), so a
 /// search over every month runs once per word and not once per letter; clearing it is at once.
@@ -817,7 +805,9 @@ private struct BottomSearch: ViewModifier {
     private let prompt = "Comercio, mes o monto…"
 
     func body(content: Content) -> some View {
-        searchable(content)
+        content
+            .searchable(text: $text, prompt: prompt)
+            .searchToolbarBehavior(.minimize)
             .task(id: text) {
                 let typed = text
                 if !typed.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -826,17 +816,6 @@ private struct BottomSearch: ViewModifier {
                 }
                 settle(typed)
             }
-    }
-
-    @ViewBuilder private func searchable(_ content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content
-                .searchable(text: $text, prompt: prompt)
-                .searchToolbarBehavior(.minimize)
-        } else {
-            content.searchable(text: $text, placement: .navigationBarDrawer(displayMode: .automatic),
-                               prompt: prompt)
-        }
     }
 }
 
@@ -1749,20 +1728,7 @@ private struct UndoBar: View {
                 .accessibilityIdentifier(identifier)
         }
         .padding(.horizontal, Theme.Space.l)
-        .modifier(UndoBarSurface())
-    }
-}
-
-/// Liquid Glass where the system has it (iOS 26+), the ticket's surface before that.
-private struct UndoBarSurface: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.glassEffect(.regular, in: Capsule())
-        } else {
-            content
-                .background(Theme.surface, in: Capsule())
-                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: Theme.Stroke.hairline) }
-        }
+        .glassEffect(.regular, in: Capsule())
     }
 }
 

@@ -15,7 +15,16 @@ struct BackupIntent: AppIntent {
             UserDefaults.standard.set(AppClock.now, forKey: DailyBackup.failedKey)
             throw CaptureError.storeUnavailable
         }
-        try await DailyBackup.runNow(in: container.mainContext)
-        return .result(dialog: "Respaldo guardado.")
+        do {
+            try await DailyBackup.runNow(in: container.mainContext)
+        } catch DailyBackup.Failure.busy {
+            // «Respaldar ahora» is writing it this very moment: nothing to do, nothing failed.
+            return .result(dialog: "Ya se está guardando un respaldo.")
+        }
+        // Written apart (this phone has less than the backup in the folder): said here too.
+        let dialog: IntentDialog = DailyBackup.aside == nil
+            ? "Respaldo guardado."
+            : "Respaldo guardado aparte. Revísalo en Ajustes de Al día."
+        return .result(dialog: dialog)
     }
 }

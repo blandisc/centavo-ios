@@ -20,6 +20,11 @@ struct BackupSettingsView: View {
 
     @State private var last = DailyBackup.lastBackup
     @State private var cloud = DailyBackup.cloudState()
+    /// The last backup was written apart (this phone had less than the one in the folder).
+    @State private var aside = DailyBackup.aside
+    @State private var confirmingTrust = false
+    /// How many expenses this phone has when «Este iPhone es el bueno» is tapped.
+    @State private var countNow: Int?
     /// The folder picked is only on this phone: said once, when it's picked.
     @State private var localFolder = false
     @State private var working = false
@@ -56,6 +61,8 @@ struct BackupSettingsView: View {
         .onChange(of: scenePhase) { _, phase in
             // Shown after Face ID, it would stay in the app switcher's picture and be there on return.
             if phase != .active { shownPassword = nil }
+            // The nightly run may have happened while the app was away.
+            if phase == .active { aside = DailyBackup.aside }
             if phase == .background, changingPassword { cancelChanging() }
         }
         .onDisappear { shownPassword = nil }
@@ -64,6 +71,7 @@ struct BackupSettingsView: View {
             do {
                 try DailyBackup.choose(folder: url)
                 folderName = DailyBackup.folderName
+                aside = DailyBackup.aside
                 localFolder = !DailyBackup.isInCloud(url)
             } catch {
                 fail("No se pudo usar esa carpeta", "Elige otra.")
@@ -104,7 +112,10 @@ struct BackupSettingsView: View {
         } message: {
             Text("Si pierdes el iPhone, el respaldo se pierde con él. Elige una carpeta dentro de iCloud Drive.")
         }
-        .onAppear { cloud = DailyBackup.cloudState() }
+        .onAppear {
+            cloud = DailyBackup.cloudState()
+            aside = DailyBackup.aside
+        }
         .alert(problemTitle, isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button("Aceptar", role: .cancel) { problem = nil }
         } message: {
@@ -202,10 +213,47 @@ struct BackupSettingsView: View {
             }
             .disabled(!hasPassword || folderName == nil || working)
             .accessibilityIdentifier("respaldo-ahora")
+            if let aside {
+                NoteText(Self.asideText(aside), color: Theme.ink)
+                    .padding(.vertical, Theme.Space.xxs)
+                    .accessibilityIdentifier("respaldo-aparte")
+                trustButton
+            }
         } footer: {
-            HintText(lastText)
+            HintText(aside == nil ? lastText : lastText + "\n" + Self.asideHint)
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// «Este iPhone es el bueno»: asks, checks it's the owner, and writes the daily file from
+    /// this phone even with less. The dialog is this screen's own for now.
+    private var trustButton: some View {
+        Button {
+            countNow = try? context.fetchCount(FetchDescriptor<Expense>())
+            confirmingTrust = true
+        } label: {
+            IconRow("Este iPhone es el bueno", systemImage: "iphone") { EmptyView() }
+        }
+        .disabled(working)
+        .accessibilityIdentifier("respaldo-este-iphone")
+        .confirmationDialog("¿Respaldar desde este iPhone?", isPresented: $confirmingTrust, titleVisibility: .visible) {
+            Button("Este iPhone es el bueno") { Task { await trustThisPhone() } }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text(Self.trustQuestion(expenses: countNow))
+        }
+    }
+
+    static func asideText(_ aside: BackupAsideNote, now: Date = AppClock.now) -> String {
+        aside.message(now: now) + " Ese respaldo sigue en tu carpeta, sin cambios."
+    }
+
+    static let asideHint = "Si lo que hay en este iPhone es lo correcto (por ejemplo, borraste gastos repetidos), toca «Este iPhone es el bueno» y el respaldo de cada día volverá a salir de aquí. Si aquí falta algo, restaura el respaldo anterior."
+
+    /// `expenses`: what this phone has right now, which may no longer be what the note said.
+    static func trustQuestion(expenses: Int?) -> String {
+        let has = expenses.map { "Este iPhone tiene ahora " + count($0, "gasto", "gastos") + ". " } ?? ""
+        return has + "El respaldo de hoy se guardará con lo que hay en este iPhone, aunque tenga menos. El respaldo que tenía más no se borra: queda guardado con «reemplazado» en el nombre."
     }
 
     private var dailySection: some View {
@@ -307,6 +355,7 @@ struct BackupSettingsView: View {
 
     /// The file is locked and written off the main thread: the screen keeps moving meanwhile.
     private func backUpNow() {
+        guard !working else { return }
         working = true
         Task {
             defer { working = false }
@@ -314,9 +363,34 @@ struct BackupSettingsView: View {
                 last = try await DailyBackup.runNow(in: context)
                 cloud = DailyBackup.cloudState()
             } catch {
-                fail("No se pudo respaldar", message(for: error))
+                failBackup(error)
             }
+            aside = DailyBackup.aside
         }
+    }
+
+    /// A backup that did nothing because another one is being written isn't a problem to show.
+    private func failBackup(_ error: Error) {
+        if case DailyBackup.Failure.busy = error { return }
+        fail("No se pudo respaldar", message(for: error))
+    }
+
+    /// After the dialog: the owner first, like «Cambiar contraseña» and restoring. Whoever holds
+    /// the phone shouldn't be able to make a phone with less the backup of every day.
+    private func trustThisPhone() async {
+        guard !working else { return }
+        guard await OwnerCheck.confirm(reason: "Para respaldar desde este iPhone aunque tenga menos.") else { return }
+        // Again: «Respaldar ahora» may have been tapped while Face ID was asking.
+        guard !working else { return }
+        working = true
+        defer { working = false }
+        do {
+            last = try await DailyBackup.runNow(in: context, trustingThisPhone: true)
+            cloud = DailyBackup.cloudState()
+        } catch {
+            failBackup(error)
+        }
+        aside = DailyBackup.aside
     }
 
     private func open(_ url: URL, password: String?, typed: Bool = false) {
@@ -353,6 +427,7 @@ struct BackupSettingsView: View {
                 }
                 try DailyBackup.restore(payload, into: context.container)
                 restored = payload.summary
+                aside = DailyBackup.aside
             } catch {
                 fail("No se pudo restaurar", message(for: error))
             }

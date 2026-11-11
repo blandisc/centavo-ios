@@ -51,7 +51,13 @@ struct MoneyOnboardingView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Theme.background.ignoresSafeArea())
-            .safeAreaInset(edge: .bottom) { if !typing { actions } }
+            // The step's button has its own floor (owner, 2026-11-11): a bar of the system's
+            // own, as `saveBar`, so what scrolls under it fades instead of mixing with it, and
+            // no tab bar under it.
+            .safeAreaBar(edge: .bottom) { if !typing { actions } }
+            // A solid floor, not a soft fade: the step's button never mixes with the list under it.
+            .scrollEdgeEffectStyle(.hard, for: .bottom)
+            .hidesTabsForMoneyStep()
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in typing = true }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in typing = false }
             .navigationBarTitleDisplayMode(.inline)
@@ -83,18 +89,16 @@ struct MoneyOnboardingView: View {
             } message: {
                 Text("Si continúas, ese renglón no se guarda.")
             }
-            .alert("¿Quitar \(removing?.name ?? "")?",
-                   isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
-                Button("Cancelar", role: .cancel) { removing = nil }
-                Button("Quitar", role: .destructive) {
-                    if let removing { remove(removing) }
-                    removing = nil
-                }
-            } message: {
-                Text(removing.map(MoneyStore.hasHistory) ?? false
-                     ? "Tiene cortes pasados: se archiva y esos cortes la conservan."
-                     : "Se borra con su saldo.")
-            }
+            // The one way to ask before something goes away (owner, 2026-11-11).
+            .confirmsRemoval(of: $removing, question: { account in
+                TicketQuestion(title: "¿Quitar este renglón?", name: account.name,
+                               detail: [subtitle(for: account), figure(for: account)].compactMap { $0 }
+                                   .filter { !$0.isEmpty }.joined(separator: " · "),
+                               note: MoneyStore.hasHistory(account)
+                                   ? "Tiene cortes pasados: se archiva y esos cortes la conservan."
+                                   : "Se borra con su saldo.",
+                               verb: "Quitar")
+            }) { account in remove(account) }
             .onMoneyCovered { confirmingLeave = false; removing = nil; problem = nil }
             .onAppear(perform: arrive)
         }
@@ -141,25 +145,24 @@ struct MoneyOnboardingView: View {
                 }
             }
             if open == Self.draftID {
-                MoneyRow(title: draft.name.isEmpty ? "Nueva · \(draft.subtype.name.lowercased())" : draft.name,
+                MoneyRow(title: draft.name.isEmpty ? draft.subtype.newTitle : draft.name,
                          subtitle: draft.subtype.short, swatch: Theme.brass, figure: nil, isOpen: true,
                          toggle: { withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil } }) {
                     MoneyRowEditor(draft: $draft, mainCurrency: mainCurrency, isNew: true,
                                    done: { save(nil) }, remove: { withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil } })
                 }
             }
+            // Its own phrase for each kind (2026-11-11): «Agregar» glued to the kind's name gave
+            // «Agregar me deben».
             Button { startNew(chosen) } label: {
-                Text("＋ Agregar \(rows.isEmpty ? chosen.name.lowercased() : "otra")")
-                    .font(.ticket(.label))
-                    .tracking(Theme.Tracking.label)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.brass)
-                    .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
+                LinkActionLabel(chosen.addTitle, systemImage: "plus")
+                    .padding(.horizontal, Theme.Space.sm)
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.Radius.card)
                             .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
                     }
             }
+            .buttonStyle(.plain)
             .accessibilityIdentifier("recorrido-agregar")
         }
     }
@@ -293,7 +296,6 @@ struct MoneyOnboardingView: View {
         }
         .padding(.horizontal, Theme.Space.screen)
         .padding(.vertical, Theme.Space.s)
-        .background(Theme.background.opacity(Theme.Opacity.paceAhead))
     }
 
     // MARK: Actions
@@ -540,12 +542,55 @@ struct MoneyKindCard: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(subtype.name): \(subtype.meaning(compact: false))")
         .accessibilityAddTraits(isChosen ? .isSelected : [])
-        .accessibilityHint("Agrega una nueva")
+        .accessibilityHint(subtype.addHint)
         .accessibilityIdentifier("tipo-\(subtype.rawValue)")
     }
 }
 
 extension MoneySubtype {
+    /// «Agregar…» for this kind, its own phrase (2026-11-11): never «Agregar» + the kind's
+    /// name, which gave «Agregar me deben» and «Agregar otros».
+    var addTitle: String {
+        switch self {
+        case .account: "Agregar una cuenta"
+        case .investment: "Agregar una inversión"
+        case .card: "Agregar una tarjeta"
+        case .loan: "Agregar un préstamo"
+        case .other: "Agregar otra deuda"
+        case .lent: "Agregar algo que te deben"
+        case .coming: "Agregar un pago por caer"
+        case .income: "Agregar un ingreso"
+        }
+    }
+
+    /// The title of a new row before it has a name.
+    var newTitle: String {
+        switch self {
+        case .account: "Cuenta nueva"
+        case .investment: "Inversión nueva"
+        case .card: "Tarjeta nueva"
+        case .loan: "Préstamo nuevo"
+        case .other: "Deuda nueva"
+        case .lent: "Algo que te deben"
+        case .coming: "Pago por caer"
+        case .income: "Ingreso nuevo"
+        }
+    }
+
+    /// What tapping the kind's card does, for VoiceOver, agreeing with the kind.
+    var addHint: String {
+        switch self {
+        case .account: "Agrega una cuenta nueva"
+        case .investment: "Agrega una inversión nueva"
+        case .card: "Agrega una tarjeta nueva"
+        case .loan: "Agrega un préstamo nuevo"
+        case .other: "Agrega otra deuda"
+        case .lent: "Agrega algo que te deben"
+        case .coming: "Agrega un pago por caer"
+        case .income: "Agrega un ingreso nuevo"
+        }
+    }
+
     func meaning(compact: Bool) -> String {
         switch self {
         case .account: "Dinero tuyo hoy, que puedes usar."
@@ -702,7 +747,8 @@ struct MoneyRowDraft {
         name = account.name
         institution = account.institution ?? ""
         currency = account.currency
-        amount = balance.map { BackupNumber.text($0) } ?? ""
+        // As the field writes it: thousands with commas, the sign of an overdrawn account kept.
+        amount = MoneyTyping.groupedText(balance)
         rate = account.yearlyRate.map { BackupNumber.text($0) } ?? ""
         exchangeText = exchange.map { BackupNumber.text($0) } ?? ""
     }
@@ -762,7 +808,9 @@ struct MoneyRowEditor: View {
                 TextField(draft.subtype.amountQuestion, text: $draft.amount,
                           prompt: Text(MoneyCurrency.symbol(draft.currency) + "0").foregroundStyle(Theme.faint))
                     .keyboardType(.decimalPad)
-                    .groupsThousands($draft.amount)
+                    // The rule of «Mi dinero» (`groupsMoney`): an overdrawn account being
+                    // corrected keeps its minus sign.
+                    .groupsMoney($draft.amount)
                     .accessibilityIdentifier("fila-monto")
             }
             if asksExchange && draft.currency != mainCurrency {

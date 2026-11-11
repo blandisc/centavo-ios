@@ -38,14 +38,25 @@ enum RecurringExpenses {
         // Every device must keep the same one, or each keeps its own, deletes the other and
         // the charge is gone: the tie is broken by the copy's own id, which travels with it.
         let ordered = copies.sorted { ($0.date, $0.fixedID ?? "") < ($1.date, $1.fixedID ?? "") }
+        // A fixed expense that was stopped («Dejar de repetir») and its copies stand in for
+        // nothing: counted as legacy, they made another fixed expense with the same merchant and
+        // amount skip its charge of that period for good (2026-11-11).
+        let stopped = FixedCopies.stoppedIDs(copies.map { (fixedID: $0.fixedID, fixedOf: $0.fixedOf) })
         for copy in ordered {
-            guard let of = copy.fixedOf, ids.contains(of) else { legacy.append(copy); continue }
-            if existing.insert(key(of, copy.date)).inserted { continue }
-            context.delete(copy)
-            changed = true
+            switch FixedCopies.kind(fixedOf: copy.fixedOf, active: ids, stopped: stopped) {
+            case .legacy:
+                legacy.append(copy)
+            case .stopped:
+                continue
+            case .of(let of):
+                if existing.insert(key(of, copy.date)).inserted { continue }
+                context.delete(copy)
+                changed = true
+            }
         }
-        // Copies from before ids (or from an original whose id came from another device) are
-        // matched by merchant, amount and period, each one used up by a single original.
+        // Copies from before ids, or with an id no original here has (two devices each gave the
+        // same old original its own id and the other's won), are matched by merchant, amount and
+        // period, each one used up by a single original.
         func period(_ date: Date, byDay: Bool) -> String {
             let parts = calendar.dateComponents([.year, .month, .day], from: date)
             return "\(parts.year ?? 0)-\(parts.month ?? 0)" + (byDay ? "-\(parts.day ?? 0)" : "")

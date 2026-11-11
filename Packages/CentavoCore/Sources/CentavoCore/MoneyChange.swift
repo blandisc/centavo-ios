@@ -126,4 +126,71 @@ public enum MoneyTyping {
         guard let value else { return "" }
         return value < 0 ? "−" + text(-value) : text(value)
     }
+
+    // MARK: Thousands while typing (2026-11-11)
+
+    /// A saved balance or movement back in its field as the field writes it: thousands with
+    /// commas, cents with two digits, «−» before what is below zero («−1,500», «12,000.50»).
+    /// It reads back to the same amount. A figure with more than cents comes back plain, so
+    /// nothing is trimmed off it.
+    public static func groupedText(_ value: Decimal?) -> String {
+        guard let value else { return "" }
+        var plain = text(value < 0 ? -value : value)
+        guard let fraction = fractionDigits(of: plain), fraction <= 2 else { return signedText(value) }
+        if fraction == 1 { plain += "0" }
+        return (value < 0 ? "−" : "") + AmountTyping.grouped(plain)
+    }
+
+    /// What an amount's field of «Mi dinero» shows after it changed from `old` to `new`: the
+    /// thousands put in as in the expense sheet («12500» → «12,500»), with two differences that
+    /// protect what is saved. The minus sign in front stays (an overdrawn account, «−300» taken
+    /// out of an investment). And only what is plainly a number is rewritten: something pasted
+    /// that reads becomes its amount, and what doesn't read («1.234,56», «12 mil») stays as it
+    /// was written, to be said, never trimmed into another figure.
+    ///
+    /// - Parameter decimalSeparator: the key the decimal pad has. Where it is «,», the comma
+    ///   just typed is the decimal point; the commas already there are thousands.
+    public static func typed(_ new: String, was old: String, decimalSeparator: String = ".") -> String {
+        var text = new
+        // Digits typed fast reach here together («1,850» → «1,85000»): still typed, not pasted.
+        let appended = new.hasPrefix(old) ? new.dropFirst(old.count) : Substring("")
+        let typedFast = appended.count > 1 && appended.allSatisfy { $0.isASCII && $0.isNumber }
+        if new.count > old.count + 1, !typedFast {
+            // Pasted, or put there whole: read with the rule of «Mi dinero», then written.
+            // What is already written the field's way stays as it is.
+            let body = new.hasPrefix("-") || new.hasPrefix("−") ? String(new.dropFirst()) : new
+            if isPlainNumber(body), AmountTyping.grouped(body) == body { return new }
+            guard case .value(let value) = signedReading(new) else { return new }
+            return groupedText(value)
+        }
+        if decimalSeparator == ",", new.count == old.count + 1, new.hasPrefix(old), new.hasSuffix(",") {
+            text = String(new.dropLast()) + "."
+        }
+        let negative = text.hasPrefix("-") || text.hasPrefix("−")
+        let body = negative ? String(text.dropFirst()) : text
+        guard isPlainNumber(body) else { return text }
+        if let fraction = fractionDigits(of: body), fraction > 2 {
+            // A third decimal typed at the end is not typed at all; anywhere else it stays, unread.
+            return new.hasPrefix(old) && new.count > old.count ? old : text
+        }
+        return (negative ? String(text.prefix(1)) : "") + AmountTyping.grouped(body)
+    }
+
+    /// Digits, commas before the point and at most one point: nothing else.
+    private static func isPlainNumber(_ text: String) -> Bool {
+        var pointSeen = false
+        for character in text {
+            if character.isASCII, character.isNumber { continue }
+            if character == ",", !pointSeen { continue }
+            if character == ".", !pointSeen { pointSeen = true; continue }
+            return false
+        }
+        return true
+    }
+
+    /// How many digits follow the point; 0 without one.
+    private static func fractionDigits(of text: String) -> Int? {
+        guard let point = text.firstIndex(of: ".") else { return 0 }
+        return text[text.index(after: point)...].count
+    }
 }

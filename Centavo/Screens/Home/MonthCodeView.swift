@@ -18,8 +18,8 @@ struct MonthCodeView: View {
     let wholeMoney: (Decimal) -> String
     /// The viewed month, to name a day («MIÉ 28 OCT»).
     let month: Date
-    /// The screen's entrance: the code comes in after the bar has drawn itself, the way its
-    /// legend does, and not again when the row is rebuilt.
+    /// The screen's entrance: the boleto comes in once when the app opens, and not again when
+    /// the row is rebuilt.
     var entrance = Entrance()
 
     @State private var drawn = false
@@ -215,13 +215,6 @@ struct MonthCodeView: View {
         let amount = wholeMoney(day.input.total)
         let payments = day.input.payments == 1 ? "1 pago" : "\(day.input.payments) pagos"
         return "\(title(number)): \(amount), \(payments)"
-    }
-}
-
-/// The brass dot between two figures, like the ones in the list.
-struct Separator: View {
-    var body: some View {
-        Text("·").foregroundStyle(Theme.brass).accessibilityHidden(true)
     }
 }
 

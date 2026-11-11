@@ -10,6 +10,9 @@ struct LabeledIconSheet: View {
     var initial: LabeledIcon?
     /// Shown as «Borrar» when editing one that exists.
     var onDelete: (() -> Void)?
+    /// What «Borrar» asks first, when the caller knows more than the name (how many expenses
+    /// have it); without it, the name and that the expenses don't change.
+    var deleteQuestion: TicketQuestion?
     /// A card or cash: whether it starts as the one already chosen when writing by hand.
     var isDefault = false
     /// With it, the sheet offers «Usar por defecto»; called after `onSave` with the saved name.
@@ -30,6 +33,8 @@ struct LabeledIconSheet: View {
     @State private var usesByDefault = false
     @State private var color = 0
     @State private var confirmingDelete = false
+    /// «Cancelar» or a swipe down with something changed: «¿Descartar cambios?».
+    @State private var askingDiscard = false
     @State private var saveFailed = false
     /// How it opened (`snapshot`), to tell whether anything changed.
     @State private var loaded: [String]?
@@ -118,20 +123,10 @@ struct LabeledIconSheet: View {
                 }
                 .listRowBackground(Theme.surface)
 
-                if initial != nil, let onDelete {
+                if initial != nil, onDelete != nil {
                     Section {
                         DestructiveRowButton("Borrar", identifier: "borrar-etiqueta") {
                             confirmingDelete = true
-                        }
-                        .confirmationDialog("¿Borrar «\(initial?.name ?? "")»?", isPresented: $confirmingDelete,
-                                            titleVisibility: .visible) {
-                            Button("Borrar", role: .destructive) {
-                                onDelete()
-                                dismiss()
-                            }
-                            Button("Conservar", role: .cancel) {}
-                        } message: {
-                            Text("Los gastos que ya la tienen no cambian.")
                         }
                     } footer: {
                         HintText("Los gastos que ya la tienen no cambian.")
@@ -165,14 +160,25 @@ struct LabeledIconSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                        .font(.ticket(.footnote))
+                    Button("Cancelar") {
+                        if hasChanges { askingDiscard = true } else { dismiss() }
+                    }
+                    .font(.ticket(.footnote))
                 }
             }
             .alert("No se guardó", isPresented: $saveFailed) {
                 Button("Aceptar", role: .cancel) {}
             } message: {
                 Text("Al día no pudo cambiar el nombre en tus gastos; nada cambió. Intenta otra vez.")
+            }
+            .confirmsRemoval(isPresented: $confirmingDelete, question: {
+                deleteQuestion ?? TicketQuestion(
+                    title: colorKind == .source ? "¿Borrar esta forma de pago?" : "¿Borrar esta categoría?",
+                    name: initial?.name ?? "",
+                    note: "Los gastos que ya la tienen no cambian.")
+            }) {
+                onDelete?()
+                dismiss()
             }
         }
         .presentationDetents([.large])
@@ -186,8 +192,8 @@ struct LabeledIconSheet: View {
             nameFocused = initial == nil
             loaded = snapshot
         }
-        // A stray swipe down must not throw away a name, an icon or a color just picked.
-        .interactiveDismissDisabled(hasChanges)
+        // «Cancelar» or a swipe down ask before throwing away a name, an icon or a color just picked.
+        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
     }
 
     /// What can be changed here, as it is now.

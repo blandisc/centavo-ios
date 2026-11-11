@@ -20,6 +20,9 @@ enum DailyBackup {
     static let failedKey = "respaldo.fallo"
     /// The newest file's name, to ask iCloud whether it went up.
     static let fileKey = "respaldo.archivo"
+    /// The last backup went apart, and why (`BackupAsideNote.stored`), until a daily one is
+    /// written again (2026-11-11). Like the others, it belongs to this phone.
+    static let asideKey = "respaldo.aparte"
 
     enum Failure: Error, CustomLocalizedStringResourceConvertible, Equatable {
         case noPassword, passwordUnavailable, noFolder, folderGone, notWritten, moneyUnreadable, unreadable(BackupError)
@@ -29,6 +32,13 @@ enum DailyBackup {
         case moneyNotReady
         /// Restoring: the expenses failed after «Mi dinero» changed, and it couldn't go back.
         case halfRestored
+        /// «Este iPhone es el bueno»: the backup that had more couldn't be kept under another name.
+        case oldNotKept
+        /// «Este iPhone es el bueno»: the new file wasn't written, and the file of the day stayed
+        /// under the name it was kept with (a half-written one was in the way of its own).
+        case notWrittenOldKept(String)
+        /// Another backup is being written right now: this one did nothing.
+        case busy
 
         var localizedStringResource: LocalizedStringResource {
             switch self {
@@ -39,6 +49,9 @@ enum DailyBackup {
             case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó en tu carpeta."
             case .noFolder: "Primero elige la carpeta del respaldo en Ajustes de Al día."
             case .folderGone: "La carpeta del respaldo ya no está. Elígela otra vez en Ajustes de Al día."
+            case .oldNotKept: "No se pudo conservar el respaldo que tenía más, así que no se cambió nada. Abre la carpeta en Archivos, espera a que ese archivo termine de bajar de iCloud e intenta otra vez."
+            case .notWrittenOldKept(let name): "No se pudo guardar el respaldo en la carpeta. El respaldo de hoy que ya tenías no se perdió: quedó en tu carpeta como «\(name)». Revisa que haya espacio e intenta otra vez."
+            case .busy: "Ya se está guardando un respaldo. Espera un momento."
             case .notWritten: "No se pudo guardar el respaldo en la carpeta. Revisa que siga ahí y que haya espacio."
             case .moneyUnreadable: "Se guardaron tus gastos, pero no «Mi dinero»: no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez."
             case .unreadable(.wrongPassword): "La contraseña no abre este respaldo."
@@ -61,6 +74,14 @@ enum DailyBackup {
 
     static var lastFailure: Date? { UserDefaults.standard.object(forKey: failedKey) as? Date }
 
+    /// The last backup was written apart instead of taking the day's name, and why; `nil` while
+    /// the last one is a daily file.
+    static var aside: BackupAsideNote? {
+        BackupAsideNote(stored: UserDefaults.standard.string(forKey: asideKey))
+    }
+
+    static let asideWarning = "Tu último respaldo se guardó aparte. Revísalo en Más › Ajustes › Respaldo diario."
+
     /// Three days without a backup (or none yet, once it's set up) is worth a line.
     static func isOverdue(now: Date = AppClock.now) -> Bool {
         guard let lastBackup else { return true }
@@ -70,6 +91,12 @@ enum DailyBackup {
     /// What «Hoy» says, quietly, once the backup is set up: nothing while it's fine.
     static func warning(now: Date = AppClock.now) -> String? {
         guard isSetUp else { return nil }
+        return notice(now: now)
+    }
+
+    /// What there is to say once it's set up, in order of urgency. Apart from `warning` so it
+    /// can be tried without a password in the Keychain.
+    static func notice(now: Date = AppClock.now) -> String? {
         if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
             return "El último respaldo no se pudo hacer. Revísalo en Más › Ajustes › Respaldo diario."
         }
@@ -79,6 +106,9 @@ enum DailyBackup {
         if BackupCloud.isStuck(cloudState(), writtenAt: lastBackup, now: now) {
             return "El último respaldo no ha subido a iCloud; puede que no haya espacio. Revísalo en Más › Ajustes › Respaldo diario."
         }
+        // Saved, but not as the file of the day: it stays said until the person looks at it or
+        // a daily file is written again. Last, so it never hides the three above.
+        if aside != nil { return asideWarning }
         return nil
     }
 
@@ -116,6 +146,13 @@ enum DailyBackup {
 
     /// Remembers a folder the person picked, so the app can write there tomorrow without asking.
     static func choose(folder url: URL) throws {
+        try remember(folder: url)
+        // «Aparte» was said about the other folder's backups (2026-11-11).
+        UserDefaults.standard.removeObject(forKey: asideKey)
+    }
+
+    /// The bookmark alone: also to refresh one that went stale, which is the same folder.
+    private static func remember(folder url: URL) throws {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let bookmark = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
@@ -130,7 +167,7 @@ enum DailyBackup {
                                  bookmarkDataIsStale: &stale) else { throw Failure.folderGone }
         // A folder sent to the trash still resolves: writing there would look fine and be lost.
         if isTrashed(url) { throw Failure.folderGone }
-        if stale { try? choose(folder: url) }
+        if stale { try? remember(folder: url) }
         return url
     }
 
@@ -146,8 +183,18 @@ enum DailyBackup {
     /// The expenses and «Mi dinero» are read here, on the main actor; locking the file (600,000
     /// rounds of PBKDF2), writing it and reading it back run apart, so «Respaldar ahora» doesn't
     /// freeze the screen (2026-11-02, second audit).
+    ///
+    /// A file written apart still counts as the day's backup (it's whole, and checked), and is
+    /// noted in `asideKey` so the screen and «Hoy» say it. `trustingThisPhone`: «Este iPhone es
+    /// el bueno», asked by the person, writes the daily file even with less.
     @MainActor @discardableResult
-    static func runNow(in context: ModelContext, now: Date = AppClock.now) async throws -> Date {
+    static func runNow(in context: ModelContext, now: Date = AppClock.now,
+                       trustingThisPhone: Bool = false) async throws -> Date {
+        // One at a time (the 21:00 automation while «Respaldar ahora» is tapped, or two taps):
+        // the second one writes nothing and isn't a failed night.
+        guard !isRunning else { throw Failure.busy }
+        isRunning = true
+        defer { isRunning = false }
         do {
             let password = try BackupPassword.current()
             let payload: BackupPayload
@@ -164,15 +211,37 @@ enum DailyBackup {
                 }
                 throw Failure.moneyUnreadable
             }
-            let name = try await apart { try writeToday(payload, password: password, now: now) }
-            UserDefaults.standard.set(now, forKey: lastKey)
-            UserDefaults.standard.set(name, forKey: fileKey)
-            UserDefaults.standard.removeObject(forKey: failedKey)
+            let written = try await apart {
+                try writeToday(payload, password: password, now: now, trustingThisPhone: trustingThisPhone)
+            }
+            record(written, at: now)
             return now
         } catch {
             UserDefaults.standard.set(now, forKey: failedKey)
             throw error
         }
+    }
+
+    /// A run is writing right now (`runNow`).
+    @MainActor static var isRunning = false
+
+    /// What a run that worked leaves on this phone: when, which file, and whether it went apart.
+    /// A daily file clears the note of the one before.
+    static func record(_ written: Written, at now: Date, defaults: UserDefaults = .standard) {
+        defaults.set(now, forKey: lastKey)
+        defaults.set(written.name, forKey: fileKey)
+        defaults.removeObject(forKey: failedKey)
+        if let stored = written.aside?.stored {
+            defaults.set(stored, forKey: asideKey)
+        } else {
+            defaults.removeObject(forKey: asideKey)
+        }
+    }
+
+    /// The file a run wrote, and why it went apart when it did.
+    struct Written: Equatable, Sendable {
+        var name: String
+        var aside: BackupAsideNote?
     }
 
     /// Heavy work off the main thread.
@@ -189,8 +258,16 @@ enum DailyBackup {
     }
 
     /// Today's file, unless that would put less over what today's file, or the newest backup in
-    /// the folder, already has (`BackupPlan`). Returns the name written.
-    static func writeToday(_ payload: BackupPayload, password: String, now: Date) throws -> String {
+    /// the folder, already has (`BackupPlan`). Returns the name written and, apart, why.
+    ///
+    /// `trustingThisPhone` («Este iPhone es el bueno», 2026-11-11): what would go apart takes
+    /// today's name. The backup that had more is first kept as «al-dia-reemplazado-…», a name no
+    /// cleanup touches (an apart name would be trimmed with the other apart files, and it may be
+    /// the only copy of what this phone no longer has): the file of the day renamed, the newest
+    /// daily file of another day copied. If it can't be kept nothing is written, and if the
+    /// write fails everything goes back. Nothing is trimmed that night.
+    static func writeToday(_ payload: BackupPayload, password: String, now: Date,
+                           trustingThisPhone: Bool = false) throws -> Written {
         try inFolder { folder in
             let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? []
             // A file only in iCloud, not on this phone yet, shows as «.name.icloud».
@@ -204,28 +281,94 @@ enum DailyBackup {
             let today = state(of: daily)
             let newestName = BackupRetention.newestDaily(present, now: now)
             let newest = newestName == daily ? today : state(of: newestName)
-            let plan = BackupPlan.decide(expenses: payload.expenses.count, hasMoney: payload.money?.hasContent ?? false,
+            let hasMoney = payload.money?.hasContent ?? false
+            let reason = BackupPlan.aside(expenses: payload.expenses.count, hasMoney: hasMoney, today: today, newest: newest)
+            let plan = BackupPlan.decide(expenses: payload.expenses.count, hasMoney: hasMoney,
                                          today: today, newest: newest,
-                                         folderHasBackups: present.contains(where: BackupRetention.isBackupFile))
+                                         folderHasBackups: present.contains(where: BackupRetention.isBackupFile),
+                                         trustingThisPhone: trustingThisPhone)
+            // In iCloud, nothing is trimmed until the last file made it up (iCloud full).
+            let previous = UserDefaults.standard.string(forKey: fileKey)
+                .flatMap { cloudState(of: folder.appending(path: $0)) }
+            let mayTrim = !payload.expenses.isEmpty
+                && BackupCloud.mayTrim(folderInCloud: isInCloud(folder), previous: previous)
             switch plan {
             case .newPhone:
                 throw Failure.newPhone
             case .aside:
-                // The day's file, or the newest, had much more: this one goes apart, nothing trimmed.
+                // The day's file, or the newest, had much more: this one goes apart, and no daily
+                // file is trimmed. Of the apart ones only the newest few stay.
                 let name = BackupRetention.asideName(for: now)
                 try writeChecked(payload, password: password, named: name, in: folder)
-                return name
+                if mayTrim {
+                    remove(BackupRetention.asidesToDelete(names, keeping: name, now: now), from: folder)
+                }
+                // `reason` is never `nil` when the plan is `.aside` (the same function decides both).
+                let compared = (reason?.source ?? .today) == .today ? daily : newestName
+                return Written(name: name, aside: BackupAsideNote(reason ?? .unreadable, comparedWith: compared, file: name))
             case .daily, .dailyKeepingOld:
-                // In iCloud, nothing is trimmed until the last file made it up (iCloud full).
-                let previous = UserDefaults.standard.string(forKey: fileKey)
-                    .flatMap { cloudState(of: folder.appending(path: $0)) }
-                let trims = plan == .daily && !payload.expenses.isEmpty
-                    && BackupCloud.mayTrim(folderInCloud: isInCloud(folder), previous: previous)
-                try writeChecked(payload, password: password, named: daily, in: folder)
-                if trims { trim(folder, now: now) }
-                return daily
+                // «Este iPhone es el bueno»: the backup that had more is kept for good as
+                // «reemplazado». The file of the day is renamed (its name is about to be written
+                // over); the newest daily file, of another day, is copied (it stays where it is,
+                // but the daily cleanup would drop it some thirty backups later).
+                var moved: String?, copied: String?
+                if trustingThisPhone, let reason {
+                    let kept = BackupRetention.replacedName(for: now)
+                    if reason.source == .today, present.contains(daily) {
+                        guard move(daily, to: kept, in: folder) else { throw Failure.oldNotKept }
+                        moved = kept
+                    } else if reason.source == .newest, let newestName, newestName != daily {
+                        guard copyChecked(newestName, to: kept, in: folder) else { throw Failure.oldNotKept }
+                        copied = kept
+                    }
+                }
+                do {
+                    try writeChecked(payload, password: password, named: daily, in: folder)
+                } catch {
+                    // Nothing changed: the copy goes (its original is where it was) and the file
+                    // of the day gets its name back. If a half-written one is in the way, it
+                    // stays as «reemplazado», never lost, and the message says where.
+                    if let copied { remove([copied], from: folder) }
+                    if let moved, !move(moved, to: daily, in: folder) { throw Failure.notWrittenOldKept(moved) }
+                    throw error
+                }
+                if plan == .daily && mayTrim {
+                    remove(BackupRetention.toDelete(Array(Set(names).union([daily])), now: now), from: folder)
+                }
+                return Written(name: daily, aside: nil)
             }
         }
+    }
+
+    /// Copies a file under another name and reads the copy back: only one that comes back byte
+    /// for byte counts. Never over a file that's already there.
+    private static func copyChecked(_ name: String, to other: String, in folder: URL) -> Bool {
+        let target = folder.appending(path: other)
+        guard !FileManager.default.fileExists(atPath: target.path(percentEncoded: false)),
+              let data = coordinatedRead(folder.appending(path: name)) else { return false }
+        var coordination: NSError?
+        var wrote = false
+        NSFileCoordinator().coordinate(writingItemAt: target, options: .forReplacing, error: &coordination) { url in
+            wrote = (try? data.write(to: url, options: .atomic)) != nil
+        }
+        guard coordination == nil, wrote, coordinatedRead(target) == data else {
+            remove([other], from: folder)
+            return false
+        }
+        return true
+    }
+
+    /// Never over a file that's already there.
+    private static func move(_ name: String, to other: String, in folder: URL) -> Bool {
+        let from = folder.appending(path: name), to = folder.appending(path: other)
+        var coordination: NSError?
+        var moved = false
+        NSFileCoordinator().coordinate(writingItemAt: from, options: .forMoving, writingItemAt: to,
+                                       options: .forReplacing, error: &coordination) { source, target in
+            guard !FileManager.default.fileExists(atPath: target.path(percentEncoded: false)) else { return }
+            moved = (try? FileManager.default.moveItem(at: source, to: target)) != nil
+        }
+        return coordination == nil && moved
     }
 
     /// «.al-dia-2026-11-01.aldia.icloud» (in iCloud, not downloaded) is «al-dia-2026-11-01.aldia».
@@ -343,10 +486,10 @@ enum DailyBackup {
         return coordination == nil ? data : nil
     }
 
-    /// The last 30 days and the newest of each month stay (`BackupRetention`).
-    private static func trim(_ folder: URL, now: Date) {
-        guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)) else { return }
-        for old in BackupRetention.toDelete(names, now: now) {
+    /// Deletes files the cleanup picked (`BackupRetention.toDelete`, `asidesToDelete`), through
+    /// the coordinator.
+    private static func remove(_ names: [String], from folder: URL) {
+        for old in names {
             var coordination: NSError?
             NSFileCoordinator().coordinate(writingItemAt: folder.appending(path: old), options: .forDeleting,
                                            error: &coordination) { url in
@@ -632,6 +775,8 @@ enum DailyBackup {
             throw error
         }
         Settings.restore(payload.settings)
+        // «Aparte» compared the data that was just replaced (2026-11-11): the next backup says.
+        UserDefaults.standard.removeObject(forKey: asideKey)
         WidgetBridge.refreshAfterIntent()
     }
 

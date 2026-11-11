@@ -1,10 +1,9 @@
 import CentavoCore
 import SwiftUI
 
-/// First page of the carousel, what the main screen opens on: the budget as a blank ticket that fills up as the month is spent.
-///
-/// Brass is what you have spent, the white line is where an even spend would be today,
-/// and what is still dashed is what remains.
+/// What goes with the boleto on the carousel's first page, in two halves (`Part`): right under
+/// it the month's line and its sum (`MonthBar`), or the invitation to set a budget; and below,
+/// «En qué se va» and the month's note.
 struct BudgetPage: View {
     let spent: MoneyTotal
     let pace: BudgetPace?
@@ -21,25 +20,17 @@ struct BudgetPage: View {
     /// The category whose expenses the list shows, if one was tapped in the mosaic.
     var selectedCategory: CategoryShare?
     var onSelectCategory: (CategoryShare?) -> Void = { _ in }
-    /// What of the screen's entrance has played (`Entrance`), handed to the month bar.
+    /// What of the screen's entrance has played (`Entrance`), handed to the month's line.
     var entrance = Entrance()
     let onSetBudget: () -> Void
-    var currency = CurrencyPreference.fallback
-    var now = AppClock.now
-    /// Which half to draw. On the main screen the bar stays put over the carousel and only
-    /// «En qué se va» swipes with the calendar (owner, 2026-10-29: «que lo que cambie sea la
-    /// parte de abajo»); a budget with nothing spent yet draws it whole.
-    var part = Part.all
-    /// On the main screen the days are the boleto's, in the carousel: the bar keeps only its line
-    /// («Llevas $X y deberías llevar $Y de $Z», the tear line «cuenta») and the sum (owner, 2026-10-30).
-    var showsTrack = true
+    /// Which half to draw: the screen puts the boleto between the two.
+    let part: Part
 
     enum Part {
-        /// The bar (or the invitation to set a budget) and «Para cerrar el mes».
+        /// The month's line and its sum, or the invitation to set a budget.
         case top
         /// «En qué se va» and the month's note.
         case bottom
-        case all
     }
 
     /// Whether `.bottom` has anything to draw.
@@ -48,9 +39,6 @@ struct BudgetPage: View {
     }
 
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = Theme.Size.budgetBar
-    /// The big figure's point size at the current Dynamic Type setting, to estimate its width.
-    @ScaledMetric(relativeTo: .title2) private var figureSize: CGFloat = Theme.Size.figureText
-    @State private var barWidth: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(WhereItGoesStyle.key) private var storedStyle = WhereItGoesStyle.bar.rawValue
 
@@ -70,17 +58,15 @@ struct BudgetPage: View {
     }
 
     var body: some View {
-        // What was spent is already the big total right above; this page only says how it
-        // measures against the budget.
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-            if part != .bottom {
+            switch part {
+            case .top:
                 if let pace {
                     ticket(pace)
                 } else {
                     invitation
                 }
-            }
-            if part != .top {
+            case .bottom:
                 if !shares.isEmpty, storedStyle != WhereItGoesStyle.hidden.rawValue {
                     whereItGoes
                         .transition(.opacity)
@@ -148,8 +134,7 @@ struct BudgetPage: View {
         // A month where more came back than went out is 0 %, not "-5 %".
         let share = max(0, NSDecimalNumber(decimal: pace.spent / pace.budget).doubleValue)
         return MonthBar(pace: pace, isCurrentMonth: isCurrentMonth, money: money, wholeMoney: wholeMoney,
-                        carriesTotal: isCurrentMonth && !isOver, outside: outside, entrance: entrance,
-                        showsTrack: showsTrack)
+                        outside: outside, entrance: entrance)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("presupuesto-ticket")
             .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver,
@@ -184,20 +169,5 @@ struct BudgetPage: View {
         }
         if outside != 0 { parts.append("Fuera del presupuesto, \(money(outside)).") }
         return parts.joined(separator: " ")
-    }
-
-    private func remainingBlock(_ label: String, _ amount: String,
-                                alignment: HorizontalAlignment = .trailing) -> some View {
-        VStack(alignment: alignment, spacing: Theme.Space.xxs) {
-            Text(label).ticketKey()
-            Text(amount)
-                .contentTransition(.numericText())
-                .font(.ticket(.figure))
-                .tracking(Theme.Tracking.figure)
-                .foregroundStyle(Theme.ink)
-                // A huge figure shrinks instead of widening the page (it shifted the carousel).
-                .lineLimit(1)
-                .minimumScaleFactor(Theme.MinimumScale.figure)
-        }
     }
 }

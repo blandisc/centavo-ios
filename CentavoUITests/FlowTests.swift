@@ -115,10 +115,14 @@ final class FlowTests: XCTestCase {
     /// under the glass of «OCT 2026»; a swipe there hits the bar instead of the row. The
     /// app is fine: SwipeToDelete still works on a row you can actually touch.
     private func uncoverListRow(_ app: XCUIApplication, _ element: XCUIElement) {
-        let bar = app.toolbars.firstMatch
+        let window = app.windows.firstMatch.frame
+        // What covers the bottom of the list: the tab bar, or the bottom toolbar (iOS 27 reports
+        // the toolbar as the whole screen: only one that starts in the lower half counts).
+        let bottom = [app.tabBars.firstMatch, app.toolbars.firstMatch]
+            .filter { $0.exists && $0.frame.minY > window.midY }.map(\.frame.minY).min()
         for _ in 0..<8 {
             guard element.exists else { return }
-            let limit = bar.exists ? bar.frame.minY : app.windows.firstMatch.frame.maxY
+            let limit = bottom ?? window.maxY
             if element.frame.maxY <= limit { return }
             let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
             start.press(forDuration: 0.05,

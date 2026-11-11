@@ -1,15 +1,15 @@
 import CentavoCore
 import SwiftUI
 
-/// The main screen's view, chosen in «Ajustes › Vista» (2026-10-29): «En qué se va» as a list or
-/// a mosaic, with the calendar and the month's barcode a swipe away; or the minimal one, with
-/// only the figure, the bar and the expenses.
+/// The main screen's view, chosen in the «Más» menu, under «Vista» (2026-10-30): «En qué se va»
+/// as a list or a mosaic under the boleto, or the minimal one, with the boleto alone. The
+/// calendar is a swipe away in all three.
 enum WhereItGoesStyle: String, CaseIterable, Identifiable {
     /// «Lista»: one bar split by category, with a line per category under it.
     case bar
     /// One block per category, as big as what was spent there; tapping one filters the list.
     case mosaic
-    /// «Mínima»: no carousel, no calendar, no barcode. The raw value is the old «No mostrar».
+    /// «Mínima»: the carousel without «En qué se va». The raw value is the old «No mostrar».
     case hidden
 
     static let key = "whereItGoesStyle"

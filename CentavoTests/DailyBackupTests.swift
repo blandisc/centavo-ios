@@ -212,3 +212,257 @@ final class DailyBackupTests: XCTestCase {
         XCTAssertNil(DailyBackup.Settings.setting(Data()))
     }
 }
+
+/// Respaldos «aparte» (2026-11-11), de punta a punta contra una carpeta temporal: queda dicho
+/// por qué se apartó, «Este iPhone es el bueno» deja un diario normal y solo se quedan 5 aparte.
+/// Escriben con `writeToday` y `record`, que es lo que hace `runNow`, para no tocar la
+/// contraseña que el simulador tenga en su llavero.
+@MainActor
+final class DailyBackupAsideTests: XCTestCase {
+    private let password = "prueba-clave"
+    private let keys = [DailyBackup.folderKey, DailyBackup.folderNameKey, DailyBackup.lastKey,
+                        DailyBackup.failedKey, DailyBackup.fileKey, DailyBackup.asideKey]
+    private var saved: [String: Any] = [:]
+    private var folder: URL!
+
+    override func setUpWithError() throws {
+        let defaults = UserDefaults.standard
+        saved = [:]
+        for key in keys {
+            saved[key] = defaults.object(forKey: key)
+            defaults.removeObject(forKey: key)
+        }
+        folder = FileManager.default.temporaryDirectory.appending(path: "respaldo-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try DailyBackup.choose(folder: folder)
+    }
+
+    override func tearDown() {
+        let defaults = UserDefaults.standard
+        for key in keys {
+            if let value = saved[key] { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
+        }
+        try? FileManager.default.removeItem(at: folder)
+    }
+
+    private func at(_ day: Int, _ hour: Int, _ minute: Int = 0) -> Date {
+        BackupRetention.calendar().date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour, minute: minute))!
+    }
+
+    private func payload(_ count: Int, money: BackupMoney? = nil, at date: Date) -> BackupPayload {
+        let expenses = (0..<count).map { BackupExpense(amount: 10, date: date.addingTimeInterval(Double(-$0)), merchant: "Gasto \($0)") }
+        return BackupPayload(createdAt: date, writtenBy: "prueba", expenses: expenses, settings: [:], money: money)
+    }
+
+    /// What `runNow` does once it has the payload and the password.
+    @discardableResult
+    private func backUp(_ count: Int, money: BackupMoney? = nil, at date: Date,
+                        trustingThisPhone: Bool = false) throws -> DailyBackup.Written {
+        let written = try DailyBackup.writeToday(payload(count, money: money, at: date), password: password, now: date,
+                                                 trustingThisPhone: trustingThisPhone)
+        DailyBackup.record(written, at: date)
+        return written
+    }
+
+    private func names() throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)).sorted()
+    }
+
+    private func count(in name: String) throws -> Int {
+        try DailyBackup.read(folder.appending(path: name), password: password).expenses.count
+    }
+
+    /// Backed up in the morning, one repeated expense deleted in the afternoon: the night's
+    /// file goes apart, the morning's stays, and it's said why, on the screen and in «Hoy».
+    func testFewerThanTodaysFileGoesApartAndSaysWhy() throws {
+        let daily = BackupRetention.fileName(for: at(10, 9))
+        XCTAssertEqual(try backUp(8, at: at(10, 9)), DailyBackup.Written(name: daily, aside: nil))
+        XCTAssertNil(DailyBackup.aside)
+        XCTAssertNil(DailyBackup.notice(now: at(10, 9)))
+
+        let written = try backUp(7, at: at(10, 21))
+        let apart = BackupRetention.asideName(for: at(10, 21))
+        XCTAssertEqual(written.name, apart)
+        let note = try XCTUnwrap(DailyBackup.aside)
+        XCTAssertEqual(note, written.aside)
+        XCTAssertEqual(note.kind, .fewer)
+        XCTAssertEqual(note.here, 7)
+        XCTAssertEqual(note.there, 8)
+        XCTAssertEqual(note.day, "2026-11-10")
+        XCTAssertEqual(note.file, apart)
+        XCTAssertEqual(note.message(now: at(10, 21)),
+                       "Tu último respaldo se guardó aparte: este iPhone tiene menos gastos (7) que el respaldo del 10 nov (8).")
+        XCTAssertEqual(DailyBackup.notice(now: at(10, 21)), DailyBackup.asideWarning)
+        XCTAssertEqual(DailyBackup.lastBackup, at(10, 21), "Aparte también es un respaldo: está completo y comprobado")
+        XCTAssertEqual(try names(), [daily, apart].sorted())
+        XCTAssertEqual(try count(in: daily), 8, "El de la mañana no se tocó")
+        XCTAssertEqual(try count(in: apart), 7)
+    }
+
+    /// «Este iPhone es el bueno»: the daily file is written from this phone, the one it replaces
+    /// is kept under another name, the note goes and the next nights are normal.
+    func testThisPhoneIsTheGoodOneLeavesANormalDaily() throws {
+        let daily = BackupRetention.fileName(for: at(10, 9))
+        try backUp(8, at: at(10, 9))
+        try backUp(7, at: at(10, 21))
+        XCTAssertNotNil(DailyBackup.aside)
+
+        let written = try backUp(7, at: at(10, 21, 5), trustingThisPhone: true)
+        XCTAssertEqual(written, DailyBackup.Written(name: daily, aside: nil))
+        XCTAssertNil(DailyBackup.aside, "La marca se limpia")
+        XCTAssertNil(DailyBackup.notice(now: at(10, 21, 5)))
+        XCTAssertEqual(try count(in: daily), 7)
+        let replaced = BackupRetention.replacedName(for: at(10, 21, 5))
+        XCTAssertEqual(try count(in: replaced), 8, "El archivo reemplazado se conserva, con otro nombre")
+        XCTAssertEqual(try names(), [daily, BackupRetention.asideName(for: at(10, 21)), replaced].sorted())
+
+        // The next nights compare with the new daily file: normal again, even with one less.
+        let next = BackupRetention.fileName(for: at(11, 21))
+        XCTAssertEqual(try backUp(6, at: at(11, 21)), DailyBackup.Written(name: next, aside: nil))
+        XCTAssertNil(DailyBackup.aside)
+        XCTAssertEqual(try count(in: next), 6)
+        XCTAssertEqual(try count(in: replaced), 8)
+    }
+
+    /// Far fewer than the newest daily file, of another day (an old backup was restored): apart
+    /// every night until the person says this phone is right; then nothing has to be renamed.
+    func testFarFewerThanTheNewestGoesApartUntilThisPhoneIsTrusted() throws {
+        let yesterday = BackupRetention.fileName(for: at(9, 21))
+        try backUp(20, at: at(9, 21))
+        let written = try backUp(4, at: at(10, 21))
+        XCTAssertEqual(written.aside?.kind, .fewer)
+        XCTAssertEqual(written.aside?.there, 20)
+        XCTAssertEqual(written.aside?.day, "2026-11-09")
+        XCTAssertEqual(DailyBackup.aside?.message(now: at(10, 21)),
+                       "Tu último respaldo se guardó aparte: este iPhone tiene menos gastos (4) que el respaldo del 9 nov (20).")
+
+        let today = BackupRetention.fileName(for: at(10, 21))
+        XCTAssertEqual(try backUp(4, at: at(10, 21, 5), trustingThisPhone: true).name, today)
+        XCTAssertNil(DailyBackup.aside)
+        XCTAssertEqual(try count(in: yesterday), 20, "El de ayer sigue igual")
+        // The daily cleanup would drop yesterday's some thirty backups later: a copy of it stays
+        // for good under a name no cleanup touches.
+        let replaced = BackupRetention.replacedName(for: at(10, 21, 5))
+        XCTAssertEqual(try Data(contentsOf: folder.appending(path: replaced)),
+                       try Data(contentsOf: folder.appending(path: yesterday)), "Copia byte por byte del que tenía más")
+        XCTAssertEqual(try count(in: replaced), 20)
+        XCTAssertEqual(try count(in: today), 4)
+        XCTAssertEqual(try backUp(4, at: at(11, 21)).aside, nil, "La noche siguiente ya es normal")
+        XCTAssertEqual(try names().filter { $0.contains("reemplazado") }, [replaced], "Y no se copia otra vez")
+    }
+
+    /// The copy of the backup that had more can't be made (its name is taken): nothing is
+    /// written, the mark stays and the folder is as it was.
+    func testIfTheBackupWithMoreCannotBeKeptNothingIsWritten() throws {
+        try backUp(20, at: at(9, 21))
+        try backUp(4, at: at(10, 21))
+        let taken = BackupRetention.replacedName(for: at(10, 21, 5))
+        try Data("x".utf8).write(to: folder.appending(path: taken))
+        let before = try names()
+        XCTAssertThrowsError(try backUp(4, at: at(10, 21, 5), trustingThisPhone: true)) { error in
+            XCTAssertEqual(error as? DailyBackup.Failure, .oldNotKept)
+        }
+        XCTAssertEqual(try names(), before)
+        XCTAssertNotNil(DailyBackup.aside)
+    }
+
+    /// Five apart files dated after «now» (a clock set back, another device ahead): the one
+    /// just written is never the one deleted, and «Último respaldo» points at a file that's there.
+    func testTheApartFileJustWrittenIsNeverDeleted() throws {
+        let later = (11...15).map { BackupRetention.asideName(for: at($0, 21)) }
+        for name in later { try Data("x".utf8).write(to: folder.appending(path: name)) }
+        try backUp(8, at: at(10, 9))
+        let written = try backUp(7, at: at(10, 21))
+        XCTAssertTrue(try names().contains(written.name))
+        XCTAssertEqual(UserDefaults.standard.string(forKey: DailyBackup.fileKey), written.name)
+        XCTAssertEqual(try count(in: written.name), 7)
+        XCTAssertEqual(try names().filter { BackupRetention.asideStamp(of: $0) != nil }.count, 5)
+    }
+
+    /// The mark was about the backups of the folder and the data there was: choosing another
+    /// folder, or restoring, clears it.
+    func testChoosingAFolderOrRestoringClearsTheMark() throws {
+        try backUp(8, at: at(10, 9))
+        try backUp(7, at: at(10, 21))
+        XCTAssertNotNil(DailyBackup.aside)
+        try DailyBackup.choose(folder: folder)
+        XCTAssertNil(DailyBackup.aside, "Otra carpeta: la marca ya no dice nada")
+
+        try backUp(6, at: at(10, 21, 5))
+        XCTAssertNotNil(DailyBackup.aside)
+        let store = try ModelContainer(for: Expense.self,
+                                       configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        let file = BackupPayload(createdAt: at(10, 9), writtenBy: "prueba",
+                                 expenses: [BackupExpense(amount: 89, date: at(10, 9), merchant: "Oxxo")],
+                                 settings: DailyBackup.Settings.current())
+        try DailyBackup.restore(file, into: store, money: nil)
+        XCTAssertNil(DailyBackup.aside, "Restaurar cambia lo que hay en el iPhone")
+    }
+
+    /// A second run while one is writing does nothing: no file, and not a failed night.
+    func testASecondRunAtTheSameTimeDoesNothing() async throws {
+        let store = try ModelContainer(for: Expense.self,
+                                       configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        DailyBackup.isRunning = true
+        defer { DailyBackup.isRunning = false }
+        do {
+            try await DailyBackup.runNow(in: store.mainContext, now: at(10, 21))
+            XCTFail("La segunda corrida no debe escribir")
+        } catch {
+            XCTAssertEqual(error as? DailyBackup.Failure, .busy)
+        }
+        XCTAssertTrue(DailyBackup.isRunning, "No apaga la bandera de la corrida que sí está escribiendo")
+        XCTAssertNil(DailyBackup.lastFailure)
+        XCTAssertNil(DailyBackup.lastBackup)
+        XCTAssertEqual(try names(), [])
+    }
+
+    /// Only the newest five apart files stay; nothing else in the folder is touched.
+    func testOnlyTheNewestFiveApartFilesStay() throws {
+        let old = (1...7).map { BackupRetention.asideName(for: at($0, 21)) }
+        let others = [BackupRetention.partialName(for: at(1, 21)), BackupRetention.safetyName(for: at(1, 21)),
+                      BackupRetention.replacedName(for: at(1, 21)), "al-dia-aparte-2569-10-01T210000.aldia", "foto.jpg"]
+        for name in old + others { try Data("x".utf8).write(to: folder.appending(path: name)) }
+
+        let daily = BackupRetention.fileName(for: at(10, 9))
+        try backUp(8, at: at(10, 9))
+        try backUp(7, at: at(10, 21))
+        let kept = Array(old.suffix(4)) + [BackupRetention.asideName(for: at(10, 21))]
+        XCTAssertEqual(try names(), (kept + others + [daily]).sorted())
+    }
+
+    /// With no expenses on the phone nothing is ever deleted, apart files included.
+    func testWithNoExpensesNoApartFileIsDeleted() throws {
+        let old = (1...7).map { BackupRetention.asideName(for: at($0, 21)) }
+        for name in old { try Data("x".utf8).write(to: folder.appending(path: name)) }
+        try backUp(8, at: at(10, 9))
+        let money = BackupMoney(accounts: [.init(id: "a", name: "Nu", kind: "cuenta", currency: "MXN", yearlyRate: nil,
+                                                 order: 0, archived: false, createdAt: at(1, 9))], cuts: [])
+        XCTAssertEqual(try backUp(0, money: money, at: at(10, 21)).aside?.kind, .fewer)
+        XCTAssertTrue(try names().filter { old.contains($0) }.count == 7)
+    }
+
+    /// The daily file of today has «Mi dinero» and this phone doesn't: apart, and it says so.
+    func testWithoutMiDineroGoesApartAndSaysSo() throws {
+        let money = BackupMoney(accounts: [.init(id: "a", name: "Nu", kind: "cuenta", currency: "MXN", yearlyRate: nil,
+                                                 order: 0, archived: false, createdAt: at(1, 9))], cuts: [])
+        try backUp(8, money: money, at: at(10, 9))
+        XCTAssertEqual(try backUp(8, at: at(10, 21)).aside?.kind, .noMoney)
+        XCTAssertEqual(DailyBackup.aside?.message(now: at(10, 21)),
+                       "Tu último respaldo se guardó aparte: este iPhone no tiene «Mi dinero» y el respaldo del 10 nov sí.")
+    }
+
+    /// The file of the day was locked with another password: apart; trusting this phone keeps
+    /// that file, unopened, under its other name.
+    func testAFileOfTheDayThatDoesNotOpenIsKeptWhenReplaced() throws {
+        let daily = BackupRetention.fileName(for: at(10, 9))
+        let foreign = try BackupSeal.seal(payload(50, at: at(10, 9)), password: "otra-clave", rounds: 1_000)
+        try foreign.write(to: folder.appending(path: daily))
+        XCTAssertEqual(try backUp(8, at: at(10, 21)).aside?.kind, .unreadable)
+        XCTAssertEqual(try backUp(8, at: at(10, 21, 5), trustingThisPhone: true).name, daily)
+        XCTAssertNil(DailyBackup.aside)
+        XCTAssertEqual(try count(in: daily), 8)
+        let kept = try Data(contentsOf: folder.appending(path: BackupRetention.replacedName(for: at(10, 21, 5))))
+        XCTAssertEqual(kept, foreign, "El archivo que no abría se conserva byte por byte")
+    }
+}

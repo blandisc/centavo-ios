@@ -208,6 +208,7 @@ struct CatalogSettingsView: View {
                                      onDelete: source.flatMap { item in
                                          sources.contains { UserCatalog.same($0.name, item.name) } ? { remove(item) } : nil
                                      },
+                                     deleteQuestion: source.map { removalQuestion(.source($0)) },
                                      isDefault: source.map { UserCatalog.same($0.name, defaultSource) }
                                         ?? sources.isEmpty,
                                      onSetDefault: setDefault, colorKind: .source,
@@ -225,6 +226,7 @@ struct CatalogSettingsView: View {
                                      taken: categories.map(\.name) + CategoryStyle.common.map(\.name),
                                      initial: category,
                                      onDelete: category.map { item in { removeCategory(item) } },
+                                     deleteQuestion: category.map { removalQuestion(.category($0)) },
                                      colorKind: .category, siblings: allCategories.map(\.name), commit: { saved in
                         var list = categories
                         if let category, let index = list.firstIndex(of: category) {
@@ -239,18 +241,12 @@ struct CatalogSettingsView: View {
                     }, onSave: { _ in })
                 }
             }
-            .confirmationDialog(confirmationTitle, isPresented: confirmingBinding, titleVisibility: .visible,
-                                presenting: confirmingRemoval) { item in
-                Button("Borrar", role: .destructive) {
-                    switch item {
-                    case .source(let source?): remove(source)
-                    case .category(let category?): removeCategory(category)
-                    default: break
-                    }
+            .confirmsRemoval(of: $confirmingRemoval, question: removalQuestion) { item in
+                switch item {
+                case .source(let source?): remove(source)
+                case .category(let category?): removeCategory(category)
+                default: break
                 }
-                Button("Conservar", role: .cancel) {}
-            } message: { _ in
-                Text("Los gastos que ya la tienen no cambian.")
             }
             .onAppear { used = UsedNames.read(in: context) }
             // A payment that lands, or iCloud, while it is open.
@@ -297,15 +293,32 @@ struct CatalogSettingsView: View {
         return true
     }
 
-    private var confirmationTitle: String {
-        switch confirmingRemoval {
-        case .source(let item?), .category(let item?): "¿Borrar «\(item.name)»?"
-        default: ""
+    /// What «Borrar» asks first. Deleting never touches the expenses, so one that expenses
+    /// still have does not leave the screen: a card comes back as one that «llegó en tus pagos»,
+    /// a category as one already used. Said before, with how many, so it does not look like
+    /// the delete failed (owner, 2026-11-11).
+    private func removalQuestion(_ item: Editing) -> TicketQuestion {
+        switch item {
+        case .source(let source):
+            let count = used.count(card: source?.name ?? "")
+            return TicketQuestion(
+                title: "¿Borrar esta forma de pago?", name: source?.name,
+                detail: count > 0 ? Self.haveIt(count) : nil,
+                note: count > 0 ? "Seguirá en la lista porque llegó en tus pagos. Tus gastos no cambian."
+                    : "Los gastos que ya la tienen no cambian.")
+        case .category(let category):
+            let count = used.count(category: category?.name ?? "")
+            return TicketQuestion(
+                title: "¿Borrar esta categoría?", name: category?.name,
+                detail: count > 0 ? Self.haveIt(count) : nil,
+                note: count > 0 ? "Seguirá en la lista porque tus gastos la usan. Tus gastos no cambian."
+                    : "Los gastos que ya la tienen no cambian.")
         }
     }
 
-    private var confirmingBinding: Binding<Bool> {
-        Binding(get: { confirmingRemoval != nil }, set: { if !$0 { confirmingRemoval = nil } })
+    /// «1 gasto la tiene», «12 gastos la tienen».
+    static func haveIt(_ count: Int) -> String {
+        count == 1 ? "1 gasto la tiene" : "\(count.formatted(.number.locale(Locale(identifier: "es_MX")))) gastos la tienen"
     }
 
     /// «Usar por defecto» in the card's sheet: on makes it the one already chosen; off on the
@@ -351,13 +364,31 @@ struct CatalogSettingsView: View {
 /// Only those fields are read from the store.
 private struct UsedNames {
     var categories: [String] = []
+    /// One per expense that has a card, so they can be counted too.
     var cards: [String] = []
+    /// How many expenses have each category, by its name as the app compares them.
+    var categoryCounts: [String: Int] = [:]
+
+    /// How many expenses have this card, compared as everywhere (case, accents and spaces don't count).
+    func count(card name: String) -> Int {
+        cards.filter { UserCatalog.same($0, name) }.count
+    }
+
+    func count(category name: String) -> Int {
+        categoryCounts.reduce(0) { $0 + (UserCatalog.same($1.key, name) ? $1.value : 0) }
+    }
 
     static func read(in context: ModelContext) -> UsedNames {
         var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
         descriptor.propertiesToFetch = [\.category, \.card, \.date]
         let rows = (try? context.fetch(descriptor)) ?? []
         let history = rows.map { CategorizedExpense(merchant: "", category: $0.category, date: $0.date) }
-        return UsedNames(categories: CategoryMemory.known(in: history), cards: rows.compactMap(\.card))
+        var counts: [String: Int] = [:]
+        for row in rows {
+            guard let category = row.category, !category.isEmpty else { continue }
+            counts[category, default: 0] += 1
+        }
+        return UsedNames(categories: CategoryMemory.known(in: history), cards: rows.compactMap(\.card),
+                         categoryCounts: counts)
     }
 }

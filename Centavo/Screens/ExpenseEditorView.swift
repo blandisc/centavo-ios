@@ -39,6 +39,8 @@ struct ExpenseEditorView: View {
     @State private var rule = RepeatRule.monthly
     @State private var confirmingDelete: Expense?
     @State private var confirmingStop = false
+    /// «Cancelar» or a swipe down with something changed: «¿Descartar cambios?».
+    @State private var askingDiscard = false
     /// A save that didn't go through: said, and the sheet stays open with what was typed.
     @State private var saveProblem: String?
     /// «Más detalles»: open by itself when the expense has something set there.
@@ -252,9 +254,11 @@ struct ExpenseEditorView: View {
             .ticketBarTitle(expense == nil ? "Nuevo gasto" : "Editar gasto")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                        .font(.ticket(.footnote))
-                        .accessibilityIdentifier("hoja-cancelar")
+                    Button("Cancelar") {
+                        if hasChanges { askingDiscard = true } else { dismiss() }
+                    }
+                    .font(.ticket(.footnote))
+                    .accessibilityIdentifier("hoja-cancelar")
                 }
             }
             .saveBar(saveSummary, enabled: canSave, action: save)
@@ -269,13 +273,12 @@ struct ExpenseEditorView: View {
             } message: {
                 Text("Cuánto, dónde, qué día y cómo pagaste: «230 de tacos ayer, en efectivo». Revisa lo que se llenó antes de guardar.")
             }
-            .confirmationDialog("¿Dejar de repetir «\(expense?.displayName ?? expense?.merchant ?? "")»?",
-                                isPresented: $confirmingStop, titleVisibility: .visible) {
-                Button("Dejar de repetir", role: .destructive) { stopRepeating() }
-                Button("Conservar", role: .cancel) {}
-            } message: {
-                Text("Lo ya anotado se queda; el siguiente ya no llega.")
-            }
+            .confirmsRemoval(isPresented: $confirmingStop, question: {
+                TicketQuestion(title: "¿Dejar de repetir este gasto fijo?",
+                               name: expense?.displayName ?? expense?.merchant ?? "",
+                               note: "Lo ya anotado se queda; el siguiente ya no llega.",
+                               verb: "Dejar de repetir")
+            }, onConfirm: stopRepeating)
             .confirmsDelete(of: $confirmingDelete, primaryCurrency: CurrencyPreference.current,
                             undoable: onDelete != nil) { expense in
                 if let onDelete {
@@ -313,8 +316,8 @@ struct ExpenseEditorView: View {
                 }
             }
         }
-        // Swiping the sheet away must not throw away what was typed.
-        .interactiveDismissDisabled(hasChanges)
+        // Swiping the sheet away, or «Cancelar», must not throw away what was typed: they ask.
+        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
         .onChange(of: merchant) { _, new in
             refreshMerchant(new)
             // Change the merchant and the category you last used for it fills in,
@@ -822,7 +825,7 @@ struct ExpenseEditorView: View {
         // Grouped as the field itself writes it («1,234.13»): compared as loaded, the field's own
         // regrouping read as a retyped amount from 1,000 up and rewrote 1,234.125 as 1,234.13.
         amountText = AmountTyping.grouped(expense.amount.magnitude
-            .formatted(.number.precision(.fractionLength(2)).grouping(.never)))
+            .formatted(.number.precision(.fractionLength(2)).grouping(.never).locale(AmountTyping.written)))
         loadedAmountText = amountText
         merchant = expense.merchant
         repeatsMonthly = expense.repeatsMonthly == true

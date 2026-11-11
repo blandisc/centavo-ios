@@ -25,6 +25,10 @@ struct MoneyCutSheet: View {
     /// The month already has a cut made on this date: «¿Reemplazar…?» before anything goes.
     @State private var replacing: Date?
     @FocusState private var focus: UUID?
+    /// The movement and the exchange rate being typed: «N sin revisar» can take the cursor there.
+    @FocusState private var movementFocus: UUID?
+    @FocusState private var rateFocus: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The cut this one starts from: the same month's (being redone) or the one before. Never a
     /// later month's, when the cut is for the month that just ended.
@@ -33,6 +37,15 @@ struct MoneyCutSheet: View {
     private var entries: [MoneyEntry] {
         (draft.entries ?? []).filter { $0.account != nil }
             .sorted { ($0.account?.order ?? 0, $0.account?.createdAt ?? AppClock.now) < ($1.account?.order ?? 0, $1.account?.createdAt ?? AppClock.now) }
+    }
+
+    /// The entries in the order the sheet shows them, section by section.
+    private var shown: [MoneyEntry] {
+        rows(of: [.account, .investment]) + rows(of: [.receivable]) + rows(of: [.debt])
+    }
+
+    private func rows(of kinds: [MoneyKind]) -> [MoneyEntry] {
+        entries.filter { kinds.contains($0.account?.kind ?? .account) }
     }
 
     private var foreign: [String] {
@@ -50,6 +63,7 @@ struct MoneyCutSheet: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             Form {
                 // No income yet (none imported): the cut asks for it (2026-11-01). Optional.
                 if incomes.isEmpty {
@@ -93,10 +107,24 @@ struct MoneyCutSheet: View {
                     Button("Cerrar") { dismiss() }.font(.ticket(.footnoteStrong))
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(pending == 0 ? "Guardar" : "\(pending) sin revisar", action: save)
-                        .font(.ticket(.footnoteStrong))
-                        .disabled(pending > 0)
-                        .accessibilityIdentifier("corte-guardar")
+                    if pending == 0 {
+                        Button("Guardar", action: save)
+                            .font(.ticket(.footnoteStrong))
+                            .accessibilityIdentifier("corte-guardar")
+                    } else {
+                        // Not a dead «Guardar»: it takes you to what is left (owner, 2026-11-11).
+                        Button { goToPending(proxy) } label: {
+                            HStack(spacing: Theme.Space.xxs) {
+                                Text("\(pending) sin revisar")
+                                Image(systemName: "arrow.down").accessibilityHidden(true)
+                            }
+                            .font(.ticket(.footnoteStrong))
+                            .frame(minHeight: Theme.Size.tapTarget)
+                            .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel("\(pending) sin revisar. Ir al siguiente")
+                        .accessibilityIdentifier("corte-pendientes")
+                    }
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     if let id = focus, let entry = entries.first(where: { $0.account?.id == id }) {
@@ -106,19 +134,21 @@ struct MoneyCutSheet: View {
                     Button("Siguiente") { focus = nextPending(after: focus) }.font(.ticket(.footnoteStrong))
                 }
             }
-            .alert("¿Descartar el corte?", isPresented: $confirmingDiscard) {
-                Button("Cancelar", role: .cancel) {}
-                Button("Descartar", role: .destructive) {
-                    // A failure is said, and the sheet stays (second audit, 2026-11-02).
-                    do {
-                        try MoneyStore.discard(draft, in: context)
-                        dismiss()
-                    } catch {
-                        context.rollback()
-                        problem = "No se descartó el corte"
-                    }
+            // The one way to ask before something goes away (owner, 2026-11-11).
+            .confirmsRemoval(isPresented: $confirmingDiscard, question: {
+                TicketQuestion(title: "¿Descartar el corte?", name: "Corte de \(MoneyHead.fullMonthName(draft.month))",
+                               note: "Se borra lo que escribiste en este corte. Tus cortes pasados no cambian.",
+                               verb: "Descartar")
+            }) {
+                // A failure is said, and the sheet stays (second audit, 2026-11-02).
+                do {
+                    try MoneyStore.discard(draft, in: context)
+                    dismiss()
+                } catch {
+                    context.rollback()
+                    problem = "No se descartó el corte"
                 }
-            } message: { Text("Se borra lo que escribiste en este corte. Tus cortes pasados no cambian.") }
+            }
             .alert("¿Reemplazar el corte de \(MoneyHead.fullMonthName(draft.month))?",
                    isPresented: Binding(get: { replacing != nil }, set: { if !$0 { replacing = nil } })) {
                 Button("Cancelar", role: .cancel) {}
@@ -133,6 +163,7 @@ struct MoneyCutSheet: View {
             .onAppear(perform: load)
             .onChange(of: ratesReviewed) { _, now in draft.reviewedRates = MoneyWords.encodeCodes(now) }
             .onMoneyCovered { confirmingDiscard = false; problem = nil; replacing = nil }
+            }
         }
     }
 
@@ -165,6 +196,7 @@ struct MoneyCutSheet: View {
                 .font(.ticket(.field))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
+                .focused($rateFocus, equals: code)
                 .accessibilityIdentifier("corte-cambio-\(code)")
             if let before, !ratesReviewed.contains(code) {
                 Button(typedSince != nil ? "Usar ese" : "Sin cambio") {
@@ -182,10 +214,10 @@ struct MoneyCutSheet: View {
 
     @ViewBuilder
     private func section(_ title: String, kinds: [MoneyKind]) -> some View {
-        let rows = entries.filter { kinds.contains($0.account?.kind ?? .account) }
-        if !rows.isEmpty {
+        let group = rows(of: kinds)
+        if !group.isEmpty {
             Section {
-                ForEach(rows) { entry in row(entry) }
+                ForEach(group) { entry in row(entry) }
             } header: {
                 Text(title).ticketCaption()
             }
@@ -196,6 +228,36 @@ struct MoneyCutSheet: View {
     private func row(_ entry: MoneyEntry) -> some View {
         let account = entry.account!
         let before = previous?.shownEntry(for: account)?.balance
+        let separator = Locale.current.decimalSeparator ?? "."
+        // Thousands while typing (2026-11-11). The model is given what the field will show, in
+        // the same step: the text is only rewritten afterwards (`groupsMoney`), and until then
+        // «1,2345» would not read.
+        let balanceText = Binding(
+            get: { typed[account.id] ?? "" },
+            set: { text in
+                let shown = MoneyTyping.typed(text, was: typed[account.id] ?? "", decimalSeparator: separator)
+                typed[account.id] = text
+                switch MoneyTyping.reading(shown) {
+                case .value(let value):
+                    entry.balance = value
+                    entry.reviewed = true
+                case .empty, .unreadable:
+                    // What doesn't read waits, marked: never the last amount that read.
+                    entry.reviewed = false
+                }
+            })
+        let movementText = Binding(
+            get: { movements[account.id] ?? "" },
+            set: { text in
+                let shown = MoneyTyping.typed(text, was: movements[account.id] ?? "", decimalSeparator: separator)
+                movements[account.id] = text
+                if case .value(let value) = MoneyTyping.signedReading(shown) {
+                    entry.movement = value
+                } else {
+                    entry.movement = nil
+                }
+            })
+        let state = hint(for: entry, account: account, before: before)
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
@@ -203,47 +265,31 @@ struct MoneyCutSheet: View {
                         .font(.ticket(.bodyMedium))
                         .tracking(Theme.Tracking.name)
                         .textCase(.uppercase)
-                    Text(hint(for: entry, account: account, before: before))
+                    Text(state.shown)
                         .font(.ticket(.hint))
                         .foregroundStyle(MoneyTyping.reading(typed[account.id] ?? "") == .unreadable ? Theme.danger
                                          : entry.reviewed ? Theme.good : Theme.muted)
+                        // «✓ escrito» is read as «Escrito», without the mark.
+                        .accessibilityLabel(state.spoken)
                 }
                 Spacer(minLength: Theme.Space.s)
-                TextField(account.name, text: Binding(
-                    get: { typed[account.id] ?? "" },
-                    set: { text in
-                        typed[account.id] = text
-                        switch MoneyTyping.reading(text) {
-                        case .value(let value):
-                            entry.balance = value
-                            entry.reviewed = true
-                        case .empty, .unreadable:
-                            // What doesn't read waits, marked: never the last amount that read.
-                            entry.reviewed = false
-                        }
-                    }),
+                TextField(account.name, text: balanceText,
                     prompt: Text(before.map { formatMoney($0, isoCode: account.currency, label: account.currency, main: draft.mainCurrency) } ?? "0.00")
                         .foregroundStyle(Theme.faint))
                     .font(.ticket(.field))
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .focused($focus, equals: account.id)
+                    .groupsMoney(balanceText)
                     .accessibilityIdentifier("corte-saldo-\(account.name)")
             }
             if account.kind == .investment {
-                TextField("¿Metiste o sacaste?", text: Binding(
-                    get: { movements[account.id] ?? "" },
-                    set: { text in
-                        movements[account.id] = text
-                        if case .value(let value) = MoneyTyping.signedReading(text) {
-                            entry.movement = value
-                        } else {
-                            entry.movement = nil
-                        }
-                    }),
+                TextField("¿Metiste o sacaste?", text: movementText,
                     prompt: Text("¿Metiste o sacaste? (−300 si sacaste)").foregroundStyle(Theme.faint))
                     .font(.ticket(.detail))
                     .keyboardType(.numbersAndPunctuation)
+                    .focused($movementFocus, equals: account.id)
+                    .groupsMoney(movementText)
                 if MoneyTyping.signedReading(movements[account.id] ?? "") == .unreadable {
                     Text("No se lee: escribe solo el número, como −300.")
                         .font(.ticket(.hint)).foregroundStyle(Theme.danger)
@@ -259,16 +305,24 @@ struct MoneyCutSheet: View {
         }
     }
 
-    private func hint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> String {
+    /// The line under an account's name, as it is shown and as VoiceOver says it: a looked-at
+    /// line shows «✓ escrito» and is read «Escrito» (2026-11-11).
+    private func hint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> (shown: String, spoken: String) {
+        if entry.reviewed, MoneyTyping.reading(typed[account.id] ?? "") != .unreadable {
+            let word = switch typed[account.id] {
+            case .some(""): "sin cambio"
+            case .some: "escrito"
+            case .none: "revisado"
+            }
+            return ("✓ \(word)", word.prefix(1).uppercased() + String(word.dropFirst()))
+        }
+        let text = waitingHint(for: entry, account: account, before: before)
+        return (text, text)
+    }
+
+    private func waitingHint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> String {
         if MoneyTyping.reading(typed[account.id] ?? "") == .unreadable {
             return "no se lee: escribe solo el número, como 12500.50"
-        }
-        if entry.reviewed {
-            switch typed[account.id] {
-            case .some(""): return "✓ sin cambio"
-            case .some: return "✓ escrito"
-            case .none: return "✓ revisado"
-            }
         }
         guard let before else { return "nueva" }
         var text = "antes \(formatMoney(before, isoCode: account.currency, label: account.currency, main: draft.mainCurrency))"
@@ -294,8 +348,9 @@ struct MoneyCutSheet: View {
         }
         for entry in entries {
             guard let account = entry.account else { continue }
-            if typed[account.id] == nil, entry.reviewed { typed[account.id] = MoneyTyping.text(entry.balance) }
-            if movements[account.id] == nil, entry.movement != nil { movements[account.id] = MoneyTyping.signedText(entry.movement) }
+            // As the fields write them (thousands with commas): they read back to the same amount.
+            if typed[account.id] == nil, entry.reviewed { typed[account.id] = MoneyTyping.groupedText(entry.balance) }
+            if movements[account.id] == nil, entry.movement != nil { movements[account.id] = MoneyTyping.groupedText(entry.movement) }
         }
     }
 
@@ -308,11 +363,39 @@ struct MoneyCutSheet: View {
         focus = nextPending(after: account.id)
     }
 
+    /// The next line still waiting, in the order of the sheet, going round.
     private func nextPending(after id: UUID?) -> UUID? {
-        let ids = entries.compactMap(\.account?.id)
+        let ids = shown.compactMap(\.account?.id)
         let start = id.flatMap { ids.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
         let pendingIDs = Set(entries.filter { !$0.reviewed }.compactMap(\.account?.id))
         return (ids[start...] + ids[..<start]).first { pendingIDs.contains($0) && $0 != id }
+    }
+
+    /// «N sin revisar»: the list moves to the first thing left, from the top of the sheet (an
+    /// exchange rate, then a balance, then a movement that doesn't read), and the cursor goes
+    /// there. With the cursor already on a balance, to the next one waiting.
+    private func goToPending(_ proxy: ScrollViewProxy) {
+        if let code = foreign.first(where: { !ratesReviewed.contains($0) }) {
+            reveal(code, with: proxy) { rateFocus = code }
+        } else if let id = nextPending(after: focus) ?? focus,
+                  let entry = shown.first(where: { $0.account?.id == id }), !entry.reviewed {
+            reveal(entry.id, with: proxy) { focus = id }
+        } else if let entry = shown.first(where: { entry in
+            entry.account.map { MoneyTyping.signedReading(movements[$0.id] ?? "") == .unreadable } ?? false
+        }), let id = entry.account?.id {
+            reveal(entry.id, with: proxy) { movementFocus = id }
+        }
+    }
+
+    /// A row off screen has no field yet to take the cursor: the list gets there first.
+    private func reveal<ID: Hashable>(_ row: ID, with proxy: ScrollViewProxy, then takeCursor: @escaping @MainActor () -> Void) {
+        withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) {
+            proxy.scrollTo(row, anchor: .center)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Theme.Motion.Money.pendingReveal))
+            takeCursor()
+        }
     }
 
     private func save() { save(replacing: false) }

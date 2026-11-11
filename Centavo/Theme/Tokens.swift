@@ -243,17 +243,9 @@ extension Theme {
         /// A tap that opens or closes a detail; it settles without a bounce.
         static let toggle: Animation = .spring(duration: 0.45, bounce: 0)
 
-        /// The month bar drawing itself when the screen opens, in order.
+        /// The boleto and its line coming in when the screen opens, in order.
         enum Entrance {
-            static let fill: Animation = .spring(duration: 0.9, bounce: 0).delay(0.1)
-            static let refill: Animation = .spring(duration: 0.6, bounce: 0)
-            static let markers: Animation = .easeOut(duration: 0.3).delay(0.5)
-            static let today: Animation = .easeOut(duration: 0.35).delay(0.7)
-            static let annotation: Animation = .easeOut(duration: 0.4).delay(0.75)
-            static let pace: Animation = .easeOut(duration: 0.4).delay(0.8)
-            static let legend: Animation = .easeOut(duration: 0.4).delay(0.9)
-            /// «Cada día del mes» on Hoy: in almost at once, not after a bar that is not drawn
-            /// there (owner, 2026-11-08: it took 1.3 s).
+            /// «Cada día del mes» on Hoy: in almost at once (owner, 2026-11-08: it took 1.3 s).
             static let code: Animation = .easeOut(duration: 0.3).delay(0.1)
             /// The rhythm's sentence under it, right after.
             static let codeLine: Animation = .easeOut(duration: 0.3).delay(0.25)

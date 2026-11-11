@@ -62,6 +62,9 @@ extension Theme.Motion {
             /// Each half of a breath (down, or back up).
             static let breathSeconds: Double = 1.4
         }
+        /// «N sin revisar» in the cut: the list reaches the pending row before the cursor goes
+        /// to its field (a row off screen has no field yet), in seconds.
+        static let pendingReveal: Double = 0.35
         /// The final figure starts counting once the ring has mostly closed.
         static let countUpDelay: Double = 0.9
     }

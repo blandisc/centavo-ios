@@ -3,6 +3,11 @@ import Foundation
 /// An amount as it is being typed, with its thousands put in for you: "8000" shows as
 /// "8,000" and "1234567.5" as "1,234,567.5". `AmountParser` reads the result back as is.
 public enum AmountTyping {
+    /// How an amount is written into a field before `grouped` takes it: a point for the
+    /// decimals whatever the iPhone's region. Formatted with the region's own, «1234,50»
+    /// (Spain, Argentina, Germany…) lost its comma here and showed as 123,450.
+    public static let written = Locale(identifier: "en_US_POSIX")
+
     /// - Parameter decimalSeparator: the one the keyboard types. A region that writes "8,5"
     ///   gives a "," key on the decimal pad; it is read as the decimal point.
     public static func grouped(_ text: String, decimalSeparator: String = ".") -> String {

@@ -85,4 +85,75 @@ import Testing
         #expect(MoneyTyping.signedReading("−300") == .value(-300))
         #expect(MoneyTyping.signedReading("-abc") == .unreadable)
     }
+
+    // MARK: Miles con coma al escribir (2026-11-11)
+
+    /// Types `keys` one at a time, as the field does.
+    private static func typing(_ keys: String, from start: String = "", separator: String = ".") -> String {
+        keys.reduce(start) { MoneyTyping.typed($0 + String($1), was: $0, decimalSeparator: separator) }
+    }
+
+    @Test func thousandsGoInWhileABalanceIsTyped() {
+        #expect(Self.typing("185000") == "185,000")
+        #expect(Self.typing("12500.5") == "12,500.5")
+        #expect(Self.typing("1234567.89") == "1,234,567.89")
+        #expect(Self.typing(".5") == "0.5")
+        #expect(Self.typing("12.345") == "12.34", "El tercer decimal no se escribe")
+        // Borrar un dígito reacomoda las comas.
+        #expect(MoneyTyping.typed("12,50", was: "12,500") == "1,250")
+        #expect(MoneyTyping.typed("", was: "5") == "")
+        // Digits typed fast arrive together: still typed («1,85000» stayed like that on screen).
+        #expect(MoneyTyping.typed("1,85000", was: "1,850") == "185,000")
+        #expect(MoneyTyping.typed("185000", was: "") == "185,000")
+        #expect(MoneyTyping.typed("−1,50000", was: "−1,500") == "−150,000")
+        #expect(MoneyTyping.typed("1.234", was: "1.2") == "1.2")
+        // Donde el teclado trae «,», la coma recién escrita es el punto decimal.
+        #expect(Self.typing("1234,5", separator: ",") == "1,234.5")
+    }
+
+    @Test func theSignStaysWhileTyping() {
+        #expect(Self.typing("−300") == "−300")
+        #expect(Self.typing("-12500") == "-12,500")
+        #expect(Self.typing("−") == "−")
+        // Un saldo en números rojos que se corrige no pierde el signo.
+        #expect(MoneyTyping.typed("−1,5000", was: "−1,500") == "−15,000")
+        #expect(MoneyTyping.signedReading(Self.typing("−12500.50")) == .value(Decimal(string: "-12500.5")!))
+    }
+
+    @Test func whatIsTypedWithCommasReadsTheSame() {
+        for plain in ["0", "7", "999", "1000", "12500", "185000.00", "1234567.8", "0.05", "999999999999"] {
+            let shown = Self.typing(plain)
+            #expect(MoneyTyping.reading(shown) == MoneyTyping.reading(plain), "\(plain) → \(shown)")
+            #expect(MoneyTyping.signedReading("−" + shown) == MoneyTyping.signedReading("−" + plain))
+            // Lo que el campo ya escribió no cambia al volver a pasar.
+            #expect(MoneyTyping.typed(shown, was: plain) == shown)
+        }
+    }
+
+    @Test func somethingPastedIsReadNotTrimmed() {
+        #expect(MoneyTyping.typed("$1,234.5", was: "") == "1,234.50")
+        #expect(MoneyTyping.typed("12500", was: "") == "12,500")
+        #expect(MoneyTyping.typed("7,5", was: "") == "7.50", "Una coma sola antes de uno o dos dígitos es decimal")
+        #expect(MoneyTyping.typed("-1500", was: "") == "−1,500")
+        // Lo que no se lee se queda como está, para decirlo: nunca recortado a otra cifra.
+        #expect(MoneyTyping.typed("1.234,56", was: "") == "1.234,56")
+        #expect(MoneyTyping.reading(MoneyTyping.typed("1.234,56", was: "")) == .unreadable)
+        #expect(MoneyTyping.typed("12 mil", was: "") == "12 mil")
+        #expect(MoneyTyping.typed("18.125", was: "") == "18.125")
+        // Y sigue sin leerse si se le escribe algo más.
+        #expect(MoneyTyping.typed("1.234,560", was: "1.234,56") == "1.234,560")
+    }
+
+    @Test func aSavedBalanceComesBackWithItsThousands() {
+        #expect(MoneyTyping.groupedText(12_000) == "12,000")
+        #expect(MoneyTyping.groupedText(Decimal(string: "12000.5")!) == "12,000.50")
+        #expect(MoneyTyping.groupedText(-300) == "−300")
+        #expect(MoneyTyping.groupedText(Decimal(string: "-1500.25")!) == "−1,500.25")
+        #expect(MoneyTyping.groupedText(nil) == "")
+        #expect(MoneyTyping.groupedText(Decimal(string: "0.125")!) == "0.125", "Más de centavos no se recorta")
+        for value in [Decimal(0), 7, 12_000, Decimal(string: "185000.5")!, Decimal(string: "-1500.25")!] {
+            #expect(MoneyTyping.signedReading(MoneyTyping.groupedText(value)) == .value(value))
+            #expect(MoneyTyping.reading(MoneyTyping.groupedText(value)) == .value(value))
+        }
+    }
 }

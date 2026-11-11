@@ -23,6 +23,7 @@ struct MoneyAccountSheet: View {
     @State private var rate = ""
     @State private var exchange = ""
     @State private var confirmingArchive = false
+    @State private var askingDiscard = false
     @State private var problem: String?
 
     private var isNew: Bool { account == nil }
@@ -65,6 +66,21 @@ struct MoneyAccountSheet: View {
         if !rate.isEmpty && parsedRate == nil { return false }
         guard isNew else { return true }
         return parsedBalance != nil && (!isForeign || (parsedExchange ?? 0) > 0)
+    }
+
+    /// What «Guardar» will save, or the first thing still missing (owner, 2026-11-11), in the
+    /// order `canSave` asks for it.
+    private var saveSummary: String {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "Falta el nombre" }
+        if !rate.isEmpty && parsedRate == nil { return "La tasa no se lee" }
+        guard isNew else { return [trimmed, institutionOrNil].compactMap { $0 }.joined(separator: " · ") }
+        guard let value = parsedBalance else {
+            if !balance.trimmingCharacters(in: .whitespaces).isEmpty { return "El saldo no se lee" }
+            return kind == .debt ? "Falta cuánto debes" : "Falta el saldo"
+        }
+        if isForeign && (parsedExchange ?? 0) <= 0 { return "Falta el tipo de cambio" }
+        return "\(trimmed) · \(formatMoney(value, isoCode: currency, label: currency, main: mainCurrency))"
     }
 
     var body: some View {
@@ -127,6 +143,7 @@ struct MoneyAccountSheet: View {
                 if isNew {
                     Section {
                         amountField(balanceTitle, text: $balance, identifier: "cuenta-saldo")
+                            .groupsMoney($balance)
                         if isForeign {
                             amountField("1 \(currency) = \(mainCurrency)", text: $exchange, identifier: "cuenta-cambio")
                         }
@@ -164,32 +181,33 @@ struct MoneyAccountSheet: View {
             }
             .ticketForm()
             .foregroundStyle(Theme.ink)
+            .moneySheetKeyboard()
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(isNew ? "Nueva cuenta" : "Cuenta")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }.font(.ticket(.footnoteStrong))
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save)
-                        .font(.ticket(.footnoteStrong))
-                        .disabled(!canSave)
-                        .accessibilityIdentifier("cuenta-guardar")
+                    Button("Cancelar") {
+                        if hasChanges { askingDiscard = true } else { dismiss() }
+                    }
+                    .font(.ticket(.footnoteStrong))
                 }
             }
-            .alert("¿Archivar \(name)?", isPresented: $confirmingArchive) {
-                Button("Cancelar", role: .cancel) {}
-                Button("Archivar", role: .destructive, action: archive)
-            } message: {
-                Text("Deja de sumar en tu patrimonio y de salir en los próximos cortes; los cortes pasados la conservan. La puedes regresar desde «Archivadas».")
-            }
+            // «Guardar» at the bottom with what it saves, as in the sheets of «Hoy» (2026-11-11).
+            .saveBar(saveSummary, enabled: canSave, identifier: "cuenta-guardar", action: save)
+            // The one way to ask before something goes away (owner, 2026-11-11).
+            .confirmsRemoval(isPresented: $confirmingArchive, question: {
+                TicketQuestion(title: "¿Archivar esta cuenta?", name: account?.name ?? name,
+                               note: "Deja de sumar en tu patrimonio y de salir en los próximos cortes; los cortes pasados la conservan. La puedes regresar desde «Archivadas».",
+                               verb: "Archivar")
+            }, onConfirm: archive)
             .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
             } message: { Text("Intenta otra vez.") }
             .onAppear(perform: load)
-            .onMoneyCovered { confirmingArchive = false; problem = nil }
+            .onMoneyCovered { confirmingArchive = false; askingDiscard = false; problem = nil }
         }
-        .interactiveDismissDisabled(hasChanges)
+        // «¿Descartar cambios?» on «Cancelar» and on swiping down, with something typed.
+        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
     }
 
     private var kindPicker: some View {

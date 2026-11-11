@@ -29,6 +29,18 @@ import Testing
         #expect(AmountTyping.grouped(once) == once)
     }
 
+    /// An amount put into a field by the app (editing an expense, the budget) is written with
+    /// a point whatever the region: with a comma it showed a hundred times bigger.
+    @Test func anAmountLoadedIntoAFieldIsTheSameInARegionWithDecimalComma() {
+        let amount = Decimal(string: "1234.5")!
+        let text = amount.formatted(.number.precision(.fractionLength(2)).grouping(.never).locale(AmountTyping.written))
+        #expect(text == "1234.50")
+        #expect(AmountTyping.grouped(text) == "1,234.50")
+        // What the region's own format would have given, and why it can't be used.
+        let spanish = amount.formatted(.number.precision(.fractionLength(2)).grouping(.never).locale(Locale(identifier: "es_ES")))
+        #expect(AmountTyping.grouped(spanish) != "1,234.50")
+    }
+
     @Test func whatIsShownReadsBackTheSame() {
         #expect(AmountParser.parse(AmountTyping.grouped("1234567.89"))?.value == Decimal(string: "1234567.89"))
     }

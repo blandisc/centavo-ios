@@ -3,7 +3,9 @@ import PackageDescription
 
 let package = Package(
     name: "CentavoCore",
-    platforms: [.iOS(.v18), .macOS(.v15)],
+    // The app runs from iOS 26 (owner, 2026-11-11). This tools version has no `.v26`, so it is
+    // written out; macOS stays for `swift test` on the Mac.
+    platforms: [.iOS("26.0"), .macOS(.v15)],
     products: [
         .library(name: "CentavoCore", targets: ["CentavoCore"]),
     ],

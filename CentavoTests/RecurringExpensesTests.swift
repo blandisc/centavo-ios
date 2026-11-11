@@ -225,6 +225,81 @@ final class RecurringExpensesTests: XCTestCase {
         XCTAssertEqual(try all().filter { $0.isRepeat == true }.map(\.fixedID), ["a"])
     }
 
+    /// Netflix on the 5th is stopped on Nov 10, and that day another Netflix charge of the same
+    /// amount (Oct 20) is marked as fixed. The old one's copy of Nov 5 was taken for the new
+    /// one's charge of Nov 20, which was then never logged (2026-11-11).
+    func testTheCopiesOfAStoppedOneDoNotStandInForAnother() throws {
+        let old = Expense(amount: 299, currencyMarker: "MXN", merchant: "Netflix", date: at(10, 5))
+        old.repeatsMonthly = true
+        old.repeatsThrough = old.date
+        context.insert(old)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(11, 10)), 1, "El del 5 de noviembre")
+        RecurringExpenses.stopRepeating(old)
+
+        let new = Expense(amount: 299, currencyMarker: "MXN", merchant: "Netflix", date: at(10, 20))
+        context.insert(new)
+        new.repeatsMonthly = true
+        new.repeatDay = 20
+        new.repeatsThrough = RecurringExpenses.repeatsThrough(for: new.date, rule: .monthly, day: 20, wasRepeating: false,
+                                                              current: nil, now: at(11, 10), calendar: calendar)
+        try context.save()
+
+        let later = at(11, 20).addingTimeInterval(3600)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: later), 1, "El cobro del 20 de noviembre se anota")
+        let ofTheNewOne = try all().filter { $0.isRepeat == true && $0.fixedOf == new.fixedID }
+        XCTAssertEqual(ofTheNewOne.map(\.date), [at(11, 20)])
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: later), 0)
+        XCTAssertEqual(try all().count, 4, "Los dos de octubre, el 5 y el 20 de noviembre")
+    }
+
+    /// The stopped one itself (now a copy of itself) doesn't stand in for another either.
+    func testAStoppedOneDoesNotStandInForAnother() throws {
+        let old = Expense(amount: 8_000, currencyMarker: "MXN", merchant: "Renta", date: at(11, 5))
+        old.repeatsMonthly = true
+        old.repeatsThrough = old.date
+        context.insert(old)
+        try RecurringExpenses.logDue(in: context, now: at(11, 6))
+        RecurringExpenses.stopRepeating(old)
+
+        let new = Expense(amount: 8_000, currencyMarker: "MXN", merchant: "Renta", date: at(10, 20))
+        new.repeatsMonthly = true
+        new.repeatsThrough = new.date
+        context.insert(new)
+        try context.save()
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(11, 21)), 1)
+        XCTAssertEqual(try all().filter { $0.fixedOf == new.fixedID }.map(\.date), [at(11, 20)])
+    }
+
+    /// Stopping one of two fixed expenses that look the same leaves the other logging as before.
+    func testStoppingOneOfTwoAlikeLeavesTheOtherLogging() throws {
+        var schools: [Expense] = []
+        for _ in 0..<2 {
+            let school = Expense(amount: 5_000, currencyMarker: "MXN", merchant: "Colegio", date: at(8, 5))
+            school.repeatsMonthly = true
+            school.repeatsThrough = school.date
+            context.insert(school)
+            schools.append(school)
+        }
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(9, 30)), 2)
+        RecurringExpenses.stopRepeating(schools[0])
+        try context.save()
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 1, "Octubre, solo del que sigue")
+        XCTAssertEqual(try all().filter { $0.fixedOf == schools[1].fixedID }.map(\.date), [at(9, 5), at(10, 5)])
+    }
+
+    /// A copy whose id no original here has (two devices each gave the same old original an id,
+    /// and the other's won) still counts: the charge isn't logged a second time.
+    func testACopyWithAnIDNobodyHereKnowsStillCounts() throws {
+        _ = addNetflix()
+        let orphan = Expense(amount: 219, currencyMarker: "MXN", merchant: "Netflix", date: at(9, 24))
+        orphan.isRepeat = true
+        orphan.fixedOf = "el-id-que-perdio"
+        orphan.fixedID = "copia"
+        context.insert(orphan)
+        XCTAssertEqual(try RecurringExpenses.logDue(in: context, now: at(10, 30)), 1, "Solo octubre")
+        XCTAssertEqual(try all().filter { $0.isRepeat == true }.map(\.date), [at(9, 24), at(10, 24)])
+    }
+
     /// A plan two devices started is one fixed expense: the same id, one copy a month.
     func testAPlanStartedTwiceLogsOnce() throws {
         let plan = FixedPlan(merchant: "Gym", amount: "500", currency: "MXN", category: nil, rule: nil, firstDate: at(8, 10))

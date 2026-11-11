@@ -315,9 +315,46 @@ public enum BackupRetention {
         "\(prefix)antes-de-restaurar-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
     }
 
-    /// A backup that would have replaced today's file with less (`BackupPlan.aside`). Never trimmed.
+    /// A backup that would have replaced today's file with less (`BackupPlan.aside`). The daily
+    /// cleanup never touches it; of these only the newest few stay (`asidesToDelete`).
     public static func asideName(for date: Date, timeZone: TimeZone = .current) -> String {
         "\(prefix)aparte-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
+    }
+
+    /// The backup that had more (the file of the day, or a copy of the newest daily one) as it
+    /// was before «Este iPhone es el bueno» (2026-11-11). Never trimmed: it only appears when
+    /// the person asks for it.
+    public static func replacedName(for date: Date, timeZone: TimeZone = .current) -> String {
+        "\(prefix)reemplazado-\(stamp(date, timeZone: timeZone, withTime: true)).\(fileExtension)"
+    }
+
+    public static let asidePrefix = "al-dia-aparte-"
+    /// How many apart files stay: the newest ones.
+    public static let asideKept = 5
+
+    /// «2026-03-07T210500» in an apart file's name, or `nil` for any other file.
+    public static func asideStamp(of name: String) -> String? {
+        guard name.hasPrefix(asidePrefix), name.hasSuffix(".\(fileExtension)") else { return nil }
+        let stamp = name.dropFirst(asidePrefix.count).dropLast(fileExtension.count + 1)
+        let halves = stamp.split(separator: "T", omittingEmptySubsequences: false)
+        guard stamp.count == 17, halves.count == 2, halves[1].count == 6, halves[1].allSatisfy(\.isNumber),
+              day(of: "\(prefix)\(halves[0]).\(fileExtension)") != nil else { return nil }
+        return String(stamp)
+    }
+
+    /// The apart files to delete: all but the newest five, by the date and time in their names
+    /// (2026-11-11: a phone that stays «apart» wrote one every night, without end). Names with
+    /// an impossible year are left alone and don't count, as with the daily ones; «solo-gastos»,
+    /// «antes-de-restaurar» and «reemplazado» are never apart files.
+    ///
+    /// `keeping`: the one just written. It always stays and takes one of the five places, even
+    /// when five others carry a later date (a clock set back, another device ahead): deleting
+    /// it would leave «Último respaldo» pointing at a file that's gone.
+    public static func asidesToDelete(_ names: [String], keeping: String? = nil, now: Date = .now) -> [String] {
+        let asides = names.compactMap { name in asideStamp(of: name).map { (name: name, stamp: $0) } }
+            .filter { isPlausible($0.stamp, now: now) && $0.name != keeping }
+            .sorted { ($0.stamp, $0.name) > ($1.stamp, $1.name) }
+        return asides.dropFirst(keeping == nil ? asideKept : asideKept - 1).map(\.name)
     }
 
     /// Any file Al día wrote: daily, apart, or before a restore.

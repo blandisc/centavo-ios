@@ -1,24 +1,12 @@
 import SwiftUI
 
-// Chart and geometry values of the main screen (month bar, «En qué se va», calendar, carousel).
+// Chart and geometry values of the main screen (boleto, «En qué se va», calendar, carousel).
 
 extension Theme.Size {
-    /// Scaled. Height of the month bar's track.
-    static let monthBarTrack: CGFloat = 20
-    /// Gap between the pieces of the month bar.
-    static let monthBarGap: CGFloat = 3
-    /// Gap between two days' cells of the month bar (it is cut by days, 2026-10-29).
+    /// Gap between two days' cells of the boleto, and of the empty screen's strip of days.
     static let monthBarCellGap: CGFloat = 2
-    /// The narrowest a day tile of the month bar may be drawn.
-    static let minimumDayTile: CGFloat = 2
     /// Bars start this tall and grow to full: the full scale.
     static let barFullScale: CGFloat = 1
-    /// How much taller than the track the «today» mark is, in all.
-    static let todayMarkExtra: CGFloat = 8
-    /// How far the «today» mark sticks out above the track.
-    static let todayMarkInset: CGFloat = 4
-    /// Half of `todayMarkWidth`: centers the mark on its x.
-    static let todayMarkHalf: CGFloat = 1
     /// Distance between the hatch's diagonal lines.
     static let hatchSpacing: CGFloat = 5
 
@@ -31,7 +19,9 @@ extension Theme.Size {
     static let shareIconColumn: CGFloat = 14
     /// Scaled. Least width of the share column under the bar.
     static let sharePercentColumn: CGFloat = 40
-    /// Scaled. Least height of a category line under the bar.
+    /// Scaled. Least height of a category line under the bar. 29 pt on purpose, not the 44 pt
+    /// of a row that is tapped (owner's decision, 2026-11-11): five lines fit without scrolling
+    /// and they sit flush against each other, so a touch near a line still lands on its category.
     static let shareRow: CGFloat = 29
     /// Scaled. Height of «En qué se va», the bar's and the mosaic's the same, so choosing one or the
     /// other in «Más» moves nothing below it: the bar (10) and its gap (12) over five lines of 29.
@@ -49,8 +39,6 @@ extension Theme.Size {
     static let budgetBar: CGFloat = 84
     /// The tallest the budget page's blank ticket may grow with Dynamic Type.
     static let budgetBarMaxHeight: CGFloat = 132
-    /// Scaled. The big figure's point size, to estimate its width.
-    static let figureText: CGFloat = 22
 
     /// The most of the carousel's bottom edge that fades while its height follows a swipe
     /// (halfway through it; none at rest).
@@ -122,7 +110,7 @@ private struct PrintOut: ViewModifier {
 }
 
 
-// The month's barcode under the budget bar (`MonthCodeView`).
+// The boleto (`MonthCodeView`).
 extension Theme.Size {
     /// Scaled. Height of the boleto's cells: what a day may spend.
     static let monthCode: CGFloat = 34
@@ -164,7 +152,7 @@ extension Theme.Motion {
     /// it rests at full (`breathes`).
     static let todayBreaths = 3
     static let todayBreathSeconds: Double = 0.8
-    /// The boleto's entrance (`Entrance.legend`: 0.9 s late, 0.4 s long) is over before today
+    /// The boleto's entrance (`Entrance.code`: 0.1 s late, 0.3 s long) is over before today
     /// starts breathing.
     static let todayBreathAfter: Double = 0.5
 }

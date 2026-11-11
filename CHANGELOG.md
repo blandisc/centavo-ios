@@ -1,6 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **«¿Descartar cambios?»:** al tocar «Cancelar» o deslizar hacia abajo una hoja con algo escrito (un gasto, un gasto fijo, una categoría, el presupuesto, una cuenta o un ingreso), Al día pregunta antes de perderlo.
+- **Borrar, quitar, archivar o dejar de repetir se pregunta siempre igual:** la misma hoja que sube desde abajo, con el nombre de lo que se va y «Conservar».
+- **Al borrar una forma de pago o una categoría que todavía tiene gastos,** la confirmación dice cuántos son y que seguirá en la lista.
+- **«Guardar» abajo en «Mi dinero»:** en «Cuenta» e «Ingreso» va abajo, junto a un resumen de lo que se guarda o de lo que falta.
+- **La primera vez de «Mi dinero» y la revisión desde Excel:** el botón de abajo ya no se mezcla con la lista y las pestañas se esconden durante esos pasos. Los botones dicen «Agregar una cuenta», «Agregar un préstamo», «Agregar algo que te deben»…
+- **Los saldos de «Mi dinero» ponen las comas de los miles** mientras escribes, también en el corte.
+- **En el corte, «3 sin revisar» se toca** y te lleva al siguiente renglón pendiente.
+- **Con presupuesto y sin gastos todavía,** «Hoy» muestra el boleto del mes («Cada día del mes») en lugar de la barra de antes: el día 1 se ve igual que cualquier otro.
+- **Respaldo guardado «aparte»:** si tu último respaldo se guardó aparte porque este iPhone tiene menos que el de la carpeta, Al día lo dice (en «Respaldo diario» y en «Hoy») y explica por qué. «Este iPhone es el bueno» hace que el respaldo de cada día vuelva a salir de aquí; el archivo que reemplaza se conserva con otro nombre. De los «aparte» solo se guardan los 5 más nuevos.
+- **Al día funciona desde iOS 26.**
+### Fixed
+- **En un iPhone que escribe los decimales con coma** (España, Argentina, Alemania…), al editar un gasto o el presupuesto el monto ya no se ve cien veces mayor.
+- **Gastos fijos:** un fijo ya no se salta un cobro porque otro igual, ya detenido, tenía uno ese mismo mes.
 ### Fixed
 - **Con la letra más grande, la fecha y el número de pagos ya no se cortan** arriba de «Hoy»: cada uno va en su renglón. «al día.» y «mi dinero.» también se leen completos.
 - **Botones chicos más fáciles de tocar:** «Listo», «Quitar» y «Cancelar» en los renglones de «Mi dinero», «Sin cambio» en el corte, «Regresar» en las cuentas archivadas, la ✕ de un gasto fijo en la bienvenida y «Cerrar» en «Cómo funciona» responden en un área de 44 puntos; se ven igual.

@@ -50,7 +50,12 @@ struct MoneyImportView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom) { if !rows.isEmpty { saveBar } }
+        // The review's button has its own floor (owner, 2026-11-11): a bar of the system's own,
+        // as `saveBar`, so the rows fade under it instead of mixing with it, and no tab bar.
+        .safeAreaBar(edge: .bottom) { if !rows.isEmpty { saveBar } }
+        // A solid floor, not a soft fade: the step's button never mixes with the list under it.
+        .scrollEdgeEffectStyle(.hard, for: .bottom)
+        .hidesTabsForMoneyStep()
         .navigationBarTitleDisplayMode(.inline)
         .ticketBarTitle("Desde tu Excel")
         .navigationBarBackButtonHidden(changed)
@@ -200,18 +205,15 @@ struct MoneyImportView: View {
         ForEach(MoneyImportRow.Place.allCases, id: \.self) { place in
             group(place.title, rows: rows.filter { $0.placed == place })
         }
+        // A row can be of any kind: «un renglón», not «otra» (2026-11-11).
         Button(action: addRow) {
-            Label("Agregar otra", systemImage: "plus")
-                .font(.ticket(.label))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
-                .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
+            LinkActionLabel("Agregar un renglón", systemImage: "plus")
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.Radius.card)
                         .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
                 }
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier("importar-agregar")
         Button("Pegar otra respuesta") {
             if changed { confirmingRestart = true } else { restart() }
@@ -328,7 +330,6 @@ struct MoneyImportView: View {
         }
         .padding(.horizontal, Theme.Space.screen)
         .padding(.vertical, Theme.Space.s)
-        .background(Theme.background.opacity(Theme.Opacity.paceAhead))
     }
 
     // MARK: Actions
@@ -486,7 +487,7 @@ struct MoneyImportRow: Identifiable {
                                   currency: line.currency)
         draft.name = line.name
         draft.institution = line.institution
-        draft.amount = line.amount.map { BackupNumber.text($0) } ?? ""
+        draft.amount = MoneyTyping.groupedText(line.amount)
         draft.rate = line.yearlyRate.map { BackupNumber.text($0) } ?? ""
         self.draft = draft
         problems = line.problems

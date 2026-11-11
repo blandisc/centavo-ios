@@ -120,20 +120,21 @@ struct FixedExpensesView: View {
                         .accessibilityIdentifier("hoja-listo")
                 }
             }
-            .confirmationDialog(confirming.map { item in
-                                    item.original != nil ? "¿Dejar de repetir «\(item.name)»?" : "¿Borrar «\(item.name)»?"
-                                } ?? "",
-                                isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
-                                titleVisibility: .visible, presenting: confirming) { item in
+            .confirmsRemoval(of: $confirming, question: { item in
+                let running = item.original != nil
+                return TicketQuestion(title: running ? "¿Dejar de repetir este gasto fijo?" : "¿Borrar este gasto fijo?",
+                                      figure: money(item.amount, item.currency),
+                                      name: item.name,
+                                      detail: item.ruleText,
+                                      note: running ? "Lo ya anotado se queda; los siguientes ya no llegan."
+                                        : "Todavía no se anota nada; ya no empezará.",
+                                      verb: running ? "Dejar de repetir" : "Borrar")
+            }) { item in
                 if let original = item.original {
-                    Button("Dejar de repetir", role: .destructive) { stop(original) }
+                    stop(original)
                 } else if let plan = item.plan {
-                    Button("Borrar", role: .destructive) { remove(plan) }
+                    remove(plan)
                 }
-                Button("Conservar", role: .cancel) {}
-            } message: { item in
-                Text(item.original != nil ? "Lo ya anotado se queda; los siguientes ya no llegan."
-                     : "Todavía no se anota nada; ya no empezará.")
             }
             .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
                 Button("Aceptar", role: .cancel) {}
@@ -295,6 +296,8 @@ struct FixedPlanSheet: View {
     /// Once a category is picked by hand, the name no longer changes it.
     @State private var pickedCategory = false
     @State private var card = ""
+    /// «Cancelar» or a swipe down with something changed: «¿Descartar cambios?».
+    @State private var askingDiscard = false
     /// Read once when the sheet opens, not a live query of every expense.
     @State private var pastExpenses: [CategorizedExpense] = []
     @State private var knownCategories: [String] = []
@@ -325,7 +328,7 @@ struct FixedPlanSheet: View {
     private let initialName: String
     private let editing: FixedPlan?
 
-    /// Something typed or picked: a stray swipe down must not throw it away.
+    /// Something typed or picked: «Cancelar» or a swipe down ask before throwing it away.
     private var hasChanges: Bool {
         if let editing {
             return amountText != editing.amount || merchant != editing.merchant || card != (editing.card ?? "")
@@ -439,9 +442,11 @@ struct FixedPlanSheet: View {
             .ticketBarTitle(editing == nil ? "Nuevo gasto fijo" : "Gasto fijo")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                        .font(.ticket(.footnote))
-                        .accessibilityIdentifier("hoja-cancelar")
+                    Button("Cancelar") {
+                        if hasChanges { askingDiscard = true } else { dismiss() }
+                    }
+                    .font(.ticket(.footnote))
+                    .accessibilityIdentifier("hoja-cancelar")
                 }
             }
             .saveBar(amount == nil ? "Falta el monto" : name.isEmpty ? "Falta qué es"
@@ -458,7 +463,7 @@ struct FixedPlanSheet: View {
                                                      hidden: UserCatalog.notAutoAssigned) ?? ""
             }
         }
-        .interactiveDismissDisabled(hasChanges)
+        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
     }
 
     private func load() {
