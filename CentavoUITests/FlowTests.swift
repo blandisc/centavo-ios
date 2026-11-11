@@ -261,7 +261,10 @@ final class FlowTests: XCTestCase {
         snap("flujo-sumar-en-pesos")
         app.buttons["sumar-en-moneda"].tap()
         require(app.buttons["Así está bien"], "No preguntó por el presupuesto").tap()
-        expectTotal(app, "$300.00", "No quedó sumando en pesos")
+        // Within the budget «Hoy» no longer shows «Llevas…» (2026-11-08): the ticket says the total.
+        let ticket = app.otherElements.matching(NSPredicate(
+            format: "identifier == 'presupuesto-ticket' AND label CONTAINS 'Has gastado $300.00'")).firstMatch
+        require(ticket, "No quedó sumando en pesos")
         XCTAssertFalse(app.staticTexts["otras-monedas"].exists, "Los pesos siguen aparte")
         XCTAssertFalse(app.buttons["sumar-en-moneda"].exists, "La sugerencia no se fue")
     }
@@ -482,10 +485,12 @@ final class FlowTests: XCTestCase {
         let app = launch()
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
-        // The button sits where «Siguiente» goes while the number pad is up: out of the way first.
-        let button = app.buttons["en-una-frase"]
-        for _ in 0..<4 where !isClear(button, app) { scrollForm(app) }
-        require(button, "No está «Dilo en una frase»").tap()
+        // The amount opens with the keyboard, and while it has it its row shows «Siguiente» in the
+        // button's place: move on to the merchant, as a person would.
+        app.textFields["comercio"].tap()
+        let button = require(app.buttons["en-una-frase"], "No está «Dilo en una frase»")
+        for _ in 0..<4 where !button.isHittable { app.swipeDown() }
+        button.tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
         sentence.typeText("tacos ayer")
