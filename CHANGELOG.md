@@ -18,6 +18,7 @@
 - **Bienvenida:** los días del calendario son más altos, las sugerencias de presupuesto van arriba del campo y los títulos son preguntas. En «Cómo funciona», el título ya no brinca entre historias.
 - **La app se queda en vertical.**
 ### Fixed
+- **Al escribir el comercio en un iPhone más chico,** las sugerencias ya no quedan tapadas por «Guardar»: la hoja sube sola.
 - **Con letra muy grande,** los días del calendario vuelven a ser cuadros y sus números ya no se enciman.
 - **«Menos devoluciones» ya no se corta** bajo «En qué se va», y la barra de abajo ya no se tiñe con el mosaico.
 - **La palomita de «sin cambio»** ya es una palomita, no una raíz cuadrada.

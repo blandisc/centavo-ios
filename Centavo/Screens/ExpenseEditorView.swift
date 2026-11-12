@@ -219,6 +219,7 @@ struct ExpenseEditorView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { form in
             Form {
                 amountSection
                 merchantSection
@@ -279,6 +280,10 @@ struct ExpenseEditorView: View {
                 }
             }
             .ticketForm()
+            // On a smaller iPhone, with the keyboard up, the merchant's suggestions ended under
+            // «Guardar» and a tap on one landed on the bar (found on iOS 26, 2026-11-12): the
+            // form brings the merchant to the top, so they are always in view.
+            .onChange(of: merchantFocused) { _, focused in if focused { reveal(merchant: form) } }
             // The number pad has no key to close it and covers half the sheet: scrolling down to
             // the categories or the card closes it.
             .scrollDismissesKeyboard(.immediately)
@@ -325,6 +330,7 @@ struct ExpenseEditorView: View {
                     context.delete(expense)
                     if persist() { dismiss() }
                 }
+            }
             }
         }
         .onAppear(perform: load)
@@ -452,6 +458,7 @@ struct ExpenseEditorView: View {
                 .textInputAutocapitalization(.words)
                 .focused($merchantFocused)
                 .submitLabel(.done)
+                .id(Self.merchantRow)
             if merchantFocused, !merchantMatches.isEmpty {
                 merchantSuggestions
             }
@@ -829,6 +836,20 @@ struct ExpenseEditorView: View {
     }
 
     /// The merchant's matches and remembered category, once per change of «Comercio».
+    private static let merchantRow = "comercio-renglon"
+    /// The keyboard's rise: the form is moved once it is up, or the system's own scroll undoes it.
+    private static let keyboardRise = Duration.milliseconds(350)
+
+    private func reveal(merchant form: ScrollViewProxy) {
+        Task { @MainActor in
+            try? await Task.sleep(for: Self.keyboardRise)
+            guard merchantFocused else { return }
+            withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+                form.scrollTo(Self.merchantRow, anchor: .top)
+            }
+        }
+    }
+
     private func refreshMerchant(_ typed: String) {
         let rules = CategoryRules(stored: storedRules)
         merchantMatches = MerchantSuggestions.matches(for: typed, history: pastExpenses)
