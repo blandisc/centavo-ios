@@ -15,6 +15,7 @@ Se trabaja como Orbital (decisión del dueño, 2026-11-02: «tú tardas demasiad
 - **Directo a `main`.** Sin rama ni PR: cambio → `Tools/verify.sh` (lint, `swift test` y build; unos minutos) → commit → push. La CI corre después, sin esperarla; si falla, se arregla en el siguiente commit.
 - **Simulador solo para lo que cambió:** las 2–4 pruebas de interfaz de esa pantalla, nunca la suite completa (~35 min). La suite completa corre sola en GitHub al entrar a `main`; se revisa su resultado al día siguiente, no se espera.
 - **Revisión independiente con un agente solo si puede perder o corromper datos** (guardado, respaldo, migraciones, «Mi dinero»). Textos, animaciones y pantallas, no.
+- **La CI compila con un Xcode más viejo y más lento para revisar tipos:** una cadena larga de modificadores que aquí compila allá falla. `verify.sh` falla si una expresión tarda más de 300 ms en revisarse; se parte en etapas (`let` intermedios, vistas o modificadores propios) antes de subir.
 - Builds con `-jobs 4`, máximo 2 en la Mac sumando sesiones, y `-derivedDataPath /tmp/dd-centavo` (`verify.sh` ya lo hace).
 - La CI tiene tres partes: «Pruebas y build» (compila la versión **Release** y dice cuánto pesa), «Pruebas de datos» (`CentavoTests`: guardado, captura, fijos y respaldo) y el simulador en dos máquinas (capturas y flujos), que no se cancela con un push nuevo.
 

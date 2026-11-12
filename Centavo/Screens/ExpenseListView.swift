@@ -142,7 +142,8 @@ struct ExpenseListView: View {
         let lastCapture = WalletWatch.lastCapture(stored: walletArrival, newestInStore: latestCaptures.first?.date)
 
         NavigationStack {
-            HomeContent(
+            // In stages: as one chain, the CI's compiler gave up type-checking it in reasonable time.
+            let content = HomeContent(
                 model: model, viewed: viewed, now: now, isCurrent: isCurrent,
                 storeIsEmpty: newestRows.isEmpty,
                 stamp: StoreStamp(count: storeCount, newest: newestRows.first?.date),
@@ -185,6 +186,7 @@ struct ExpenseListView: View {
             .onChange(of: storedMode) { _, mode in
                 if Store.syncsBudget { BudgetSync.push(mode, for: AllowanceMode.key) }
             }
+            let withBars = content
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     // «Al día. Punto.»
@@ -264,6 +266,7 @@ struct ExpenseListView: View {
                 .receive(on: DispatchQueue.main)) { _ in reloadPending() }
             .onChange(of: now) { _, _ in reloadPending() }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
+            let withSheets = withBars
             .sheet(isPresented: $showingBudget) {
                 BudgetSheet(stored: $storedBudget, storedMode: $storedMode, currency: primaryCurrency) { budget, mode in
                     // This month, asked of the store: only its rows and the fixed expenses.
@@ -298,6 +301,7 @@ struct ExpenseListView: View {
             .modifier(Feedback(expenseCount: storeCount, newest: newestRows.first?.date))
             .overlay(alignment: .bottom) { undoOverlay }
             .modifier(KeepsTime(now: $now, context: context))
+            withSheets
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
             .modifier(BackupWatch(warning: $backupWarning, now: now, settingsShown: showingSettings))

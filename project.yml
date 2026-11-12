@@ -15,6 +15,11 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     # Drops code nothing calls from the binary.
     DEAD_CODE_STRIPPING: YES
+    # The CI's Xcode is older and slower at type-checking than the Mac's: a long chain of
+    # modifiers that builds here can fail there («unable to type-check this expression in
+    # reasonable time»). Any expression over 300 ms is warned about, and `Tools/verify.sh` fails
+    # on that warning, so it is split before it is pushed.
+    OTHER_SWIFT_FLAGS: "$(inherited) -Xfrontend -warn-long-expression-type-checking=300"
 targets:
   Centavo:
     type: application

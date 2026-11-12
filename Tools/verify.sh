@@ -14,7 +14,16 @@ if [[ "$mode" == all || "$mode" == app ]]; then
   # project, so a build picks up what the last one compiled.
   while [[ "$(pgrep -x xcodebuild | wc -l)" -ge 2 ]]; do echo "Esperando a que termine otro build…"; sleep 30; done
   xcodegen generate -q
+  log="$(mktemp -t centavo-verify)"
   xcodebuild -project Centavo.xcodeproj -scheme Centavo -destination 'generic/platform=iOS' \
-    -derivedDataPath "${CENTAVO_DERIVED_DATA:-/tmp/dd-centavo}" CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet build
+    -derivedDataPath "${CENTAVO_DERIVED_DATA:-/tmp/dd-centavo}" CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet build 2>&1 | tee "$log"
+  # An expression the Mac type-checks slowly is one the CI's older compiler gives up on
+  # (project.yml, OTHER_SWIFT_FLAGS): split it into stages before pushing.
+  if grep -q "to type-check (limit" "$log"; then
+    echo "verify: una expresión tarda demasiado en revisarse de tipo; pártela en etapas (la CI no la compila):"
+    grep -B3 "to type-check (limit" "$log" | grep -E "\.swift:[0-9]+" | sort -u
+    rm -f "$log"; exit 1
+  fi
+  rm -f "$log"
 fi
 echo "verify: OK"
