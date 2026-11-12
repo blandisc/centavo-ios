@@ -46,6 +46,14 @@ extension Theme.Size {
 
     /// How far the page dots shift toward the dot's side to look centered.
     static let pageDotShift: CGFloat = 3
+
+    /// Scaled. Height of «Menos devoluciones», the line under «En qué se va»: the chart gives
+    /// it up, with the gap over it, so the page is as tall with money returned as without.
+    static let shareReturnedLine: CGFloat = 16
+
+    /// How much of the paper fades out over the bottom bar of «Hoy», so the tabs' glass floats
+    /// on dark and not on the mosaic's colors.
+    static let bottomFade: CGFloat = 40
 }
 
 extension Theme.Opacity {
@@ -135,8 +143,10 @@ extension Theme.Size {
     static let monthCodeCardRoom: CGFloat = 140
     /// How far the day card's shadow spreads.
     static let monthCodeGlow: CGFloat = 6
-    /// Width of the card a day opens while the finger is on it.
-    static let monthCodeCard: CGFloat = 210
+    /// Width of the card a day opens while the finger is on it: wide enough for the day and its
+    /// amount on one line and its sentence on the next, so the card is two lines tall and stays
+    /// under the hero's figure (2026-11-11; it was 210 and four lines, over the figure).
+    static let monthCodeCard: CGFloat = 300
 }
 
 extension Theme.Opacity {

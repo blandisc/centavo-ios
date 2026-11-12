@@ -163,18 +163,22 @@ public enum MoneyImport {
     /// The marks an amount may carry: a symbol or a three-letter code. «k», «mil», «M» are not money.
     private static let markers: Set<String> = ["$", "MX$", "US$", "USD$", "€", "£", "¥", "CA$", "C$"]
 
+    /// Short, so the row of the review stays in one line («12k», «25 mil»; owner, 2026-11-11:
+    /// it was «El monto «25 mil» no es un número: escríbelo completo, como 25000.»).
+    static let unreadableAmount = "Escribe el monto completo, como 25000."
+
     private static func read(amount raw: String, into line: inout Line, column: String) {
         guard !raw.isEmpty else { line.problems.append("Le falta el monto."); return }
         // The format asks for a decimal point: «18.125» is eighteen and a bit, never 18,125.
         guard let parsed = AmountParser.parsePointDecimal(raw) else {
-            line.problems.append("El monto «\(raw)» no es un número: escríbelo completo, como 25000.")
+            line.problems.append(unreadableAmount)
             return
         }
         if let marker = parsed.currencyMarker {
             let clean = marker.trimmingCharacters(in: .whitespaces)
             let isCode = clean.count == 3 && clean.allSatisfy(\.isUppercase) && knownCurrency(clean)
             guard markers.contains(clean) || isCode else {
-                line.problems.append("El monto «\(raw)» no es un número: escríbelo completo, como 25000.")
+                line.problems.append(unreadableAmount)
                 return
             }
             // A code or an unmistakable symbol beside the number says the currency.

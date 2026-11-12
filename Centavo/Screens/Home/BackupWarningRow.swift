@@ -11,16 +11,18 @@ struct BackupWarningRow: View {
     var body: some View {
         Button(action: open) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Image(systemName: "exclamationmark.triangle")
+                // The mark in brass, the words in ink (owner, 2026-11-11): as every warning.
+                Image(systemName: WarningText.symbol)
                     .imageScale(.small)
+                    .foregroundStyle(Theme.brass)
                     .frame(width: glyphWidth, alignment: .leading)
                 Text(text)
                     .font(.ticket(.detail))
+                    .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: Theme.Space.none)
             }
-            .foregroundStyle(Theme.brass)
             .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
             .contentShape(Rectangle())
         }

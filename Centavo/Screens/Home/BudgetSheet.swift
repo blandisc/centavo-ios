@@ -7,7 +7,9 @@ import SwiftUI
 /// From top to bottom: the amount, what it gives a day while it is typed, then «Lo que no
 /// gastas un día» with the two rules, the drawing of the one chosen and who it suits. The
 /// same whatever the month looks like: it is where the budget is set, not a way out of
-/// having spent too much. «Guardar» is up in the bar, where the number pad can't cover it.
+/// having spent too much. «Guardar» is at the bottom with its summary, as in every sheet that
+/// saves (`saveBar`, owner 2026-11-11): the bar rides above the number pad, which is why it had
+/// been moved up to the top in 2.0.
 struct BudgetSheet: View {
     @Binding var stored: String
     /// `AllowanceMode`'s raw value; empty until one is chosen.
@@ -94,13 +96,8 @@ struct BudgetSheet: View {
                         .font(.ticket(.footnote))
                         .accessibilityIdentifier("hoja-cancelar")
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: save)
-                        .font(.ticket(.footnoteStrong))
-                        .disabled(amount == nil)
-                        .accessibilityIdentifier("hoja-guardar")
-                }
             }
+            .saveBar(summary, enabled: amount != nil, action: save)
         }
         // Taking the budget off empties the boleto and the day's amount: asked first (audit
         // 2026-11-02), like every other delete.
@@ -126,6 +123,13 @@ struct BudgetSheet: View {
             mode = AllowanceMode(stored: storedMode)
             focused = BudgetStore.amount(from: stored) == nil
         }
+    }
+
+    /// «$8,000 al mes · $267 por día», beside «Guardar»: what is about to be saved.
+    private var summary: String {
+        guard let amount else { return "Falta el monto" }
+        guard let pace = pace(amount, .carry) else { return "\(whole(amount)) al mes" }
+        return "\(whole(amount)) al mes · \(whole(max(pace.dailyBase, 0))) por día"
     }
 
     /// What the number gives, while it is typed: a day's amount and what the month carries.

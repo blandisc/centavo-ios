@@ -58,8 +58,10 @@ struct MoneyOnboardingView: View {
             // A solid floor, not a soft fade: the step's button never mixes with the list under it.
             .scrollEdgeEffectStyle(.hard, for: .bottom)
             .hidesTabsForMoneyStep()
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in typing = true }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in typing = false }
+            // While typing, the keyboard's bar instead: the whole width, stuck to the keyboard,
+            // so «Ocultar teclado» no longer floats over the field being filled (2026-11-11).
+            .keyboardBar()
+            .tracksKeyboard($typing)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) { MoneySignature() }
@@ -68,13 +70,6 @@ struct MoneyOnboardingView: View {
                         Button("Anterior", systemImage: "chevron.left", action: back)
                             .accessibilityIdentifier("recorrido-anterior")
                     }
-                }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Ocultar teclado") {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                    .font(.ticket(.footnoteStrong))
                 }
             }
             .alert("No se guardó la cuenta", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
@@ -131,9 +126,7 @@ struct MoneyOnboardingView: View {
             }
         }
         if !worth.missingRates.isEmpty {
-            Text("Falta el tipo de cambio de \(worth.missingRates.sorted().joined(separator: ", ")): esas cuentas no se suman todavía.")
-                .font(.ticket(.detail))
-                .foregroundStyle(Theme.brass)
+            WarningText("Falta el tipo de cambio de \(worth.missingRates.sorted().joined(separator: ", ")): esas cuentas no se suman todavía.")
         }
         VStack(spacing: Theme.Space.s) {
             ForEach(rows) { account in
@@ -253,7 +246,7 @@ struct MoneyOnboardingView: View {
             .foregroundStyle(Theme.ink)
             if sameCurrency, let budget, budget > 0 {
                 let left = total - budget
-                Text(left > 0 ? "Con tu presupuesto de \(money(budget, mainCurrency)), debes ahorrar \(Text(money(left, mainCurrency)).foregroundStyle(Theme.brass)) al mes."
+                Text(left > 0 ? "Con tu presupuesto de \(money(budget, mainCurrency)), debes ahorrar \(Text(money(left, mainCurrency)).foregroundStyle(Theme.ink)) al mes."
                      : left == 0 ? "Tu presupuesto de \(money(budget, mainCurrency)) es todo lo que te entra: no queda para ahorrar."
                      : "Tu presupuesto de \(money(budget, mainCurrency)) es mayor que lo que te entra.")
                     .font(.ticket(.callout))
@@ -278,12 +271,18 @@ struct MoneyOnboardingView: View {
 
     // MARK: Bottom
 
+    /// Why the step can't go on yet, said beside its button, as «Falta el monto» beside «Guardar».
+    private var missing: String? { page == .have && rows.isEmpty ? "Falta una cuenta" : nil }
+
     private var actions: some View {
         VStack(spacing: Theme.Space.s) {
-            Button(action: next) { PrimaryButtonLabel(page.next) }
-                .ticketProminent()
-                .disabled(page == .have && rows.isEmpty)
-                .accessibilityIdentifier("recorrido-siguiente")
+            if let missing {
+                waitingBar(missing)
+            } else {
+                Button(action: next) { PrimaryButtonLabel(page.next) }
+                    .ticketProminent()
+                    .accessibilityIdentifier("recorrido-siguiente")
+            }
             if let skip = page.skip, rows.isEmpty {
                 Button(skip, action: next)
                     .font(.ticket(.label))
@@ -296,6 +295,33 @@ struct MoneyOnboardingView: View {
         }
         .padding(.horizontal, Theme.Space.screen)
         .padding(.vertical, Theme.Space.s)
+        .moneyStepFloor()
+    }
+
+    /// The step's button while it can't be used (owner, 2026-11-11): solid grey, not glass, so
+    /// nothing behind it reads through, with its reason on the left.
+    private func waitingBar(_ reason: String) -> some View {
+        AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.xs) {
+            Text(reason)
+                .font(.ticket(.detail))
+                .foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: next) {
+                Text("Paso \(page.following.rawValue)")
+                    .font(.ticket(.button))
+                    .tracking(Theme.Tracking.action)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.muted)
+                    .padding(.horizontal, Theme.Space.xl)
+                    .frame(minHeight: Theme.Size.tapTarget)
+                    .background(Theme.raised, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(true)
+            .accessibilityLabel(page.next)
+            .accessibilityHint(reason)
+            .accessibilityIdentifier("recorrido-siguiente")
+        }
     }
 
     // MARK: Actions
@@ -672,6 +698,9 @@ struct MoneyRow<Editor: View>: View {
     let swatch: Color
     let figure: String?
     let isOpen: Bool
+    /// The line under the name says what is wrong (a row of the Excel to look at): it gets the
+    /// warning mark in front and goes in ink.
+    var warns = false
     let toggle: () -> Void
     @ViewBuilder let editor: () -> Editor
 
@@ -689,11 +718,21 @@ struct MoneyRow<Editor: View>: View {
                             .textCase(.uppercase)
                             .foregroundStyle(Theme.ink)
                             .lineLimit(2)
-                        Text(subtitle).font(.ticket(.hint)).foregroundStyle(Theme.muted)
+                            .multilineTextAlignment(.leading)
+                        if !subtitle.isEmpty, warns {
+                            WarningText(subtitle, style: .hint)
+                                .multilineTextAlignment(.leading)
+                        } else if !subtitle.isEmpty {
+                            // As long as it needs: the card grows with it.
+                            Text(subtitle).font(.ticket(.hint)).foregroundStyle(Theme.muted)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     Spacer(minLength: Theme.Space.s)
                     if let figure {
                         Text(figure).font(.ticket(.headline)).foregroundStyle(Theme.ink).monospacedDigit()
+                            .fixedSize()
                     }
                     Image(systemName: "chevron.right")
                         .font(.ticket(.footnote))
@@ -702,6 +741,9 @@ struct MoneyRow<Editor: View>: View {
                         .accessibilityHidden(true)
                 }
                 .padding(.horizontal, Theme.Space.m)
+                // At least a two-line row, never a fixed height (owner, 2026-11-11): with a
+                // long second line or larger type the card grows, always with this air.
+                .padding(.vertical, Theme.Space.sm)
                 .frame(minHeight: Theme.Size.tallRow)
                 .contentShape(Rectangle())
             }

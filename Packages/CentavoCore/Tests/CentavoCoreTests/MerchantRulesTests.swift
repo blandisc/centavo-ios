@@ -247,6 +247,31 @@ import Testing
         #expect(change == nil)
     }
 
+    @Test mutating func theListSplitsIntoNamedAndOnlyCategory() {
+        learn("XYZ*1234 CDMX", as: "Tacos Pepe", "Comida")
+        learn("Oxxo", as: "Oxxo", "Despensa")
+        learn("CLIP*CAFE 02", as: "Café Río", "Café")
+        learn("Farmacia", as: "Farmacia", "")
+        let sections = MerchantRules.sections(MerchantRules.list(renames: renames, categories: categories))
+        // Each group keeps the list's order: the newest first.
+        #expect(sections.named.map(\.sent) == ["clip*cafe 02", "xyz*1234 cdmx"])
+        #expect(sections.categoryOnly.map(\.sent) == ["farmacia", "oxxo"])
+        #expect(!sections.isEmpty)
+        #expect(MerchantRules.sections([]).isEmpty)
+    }
+
+    @Test(arguments: [("taq", ["clip*mx taq guero"]), ("GÜERO", ["clip*mx taq guero"]),
+                      ("taqueria", ["clip*mx taq guero"]), ("  comida ", ["clip*mx taq guero", "fonda"]),
+                      ("categoria", ["farmacia"]), ("nada de esto", []),
+                      ("", ["clip*mx taq guero", "farmacia", "fonda"])])
+    mutating func searchLooksAtTheTextTheNameAndTheCategory(query: String, found: [String]) {
+        learn("CLIP*MX TAQ GUERO", as: "Taquería El Güero", "Comida")
+        learn("Fonda", as: "Fonda", "Comida")
+        learn("Farmacia", as: "Farmacia", "")
+        let rules = MerchantRules.list(renames: renames, categories: categories)
+        #expect(MerchantRules.matching(rules, query: query).map(\.sent).sorted() == found)
+    }
+
     @Test mutating func theTextsOfAMerchantIncludeWhatIsRenamedToIt() {
         learn("OXXO 1234", as: "Oxxo", "Despensa")
         learn("OXXO 5678", as: "Oxxo", "Despensa", chose: false)

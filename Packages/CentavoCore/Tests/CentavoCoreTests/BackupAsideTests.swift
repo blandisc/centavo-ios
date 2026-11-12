@@ -101,19 +101,22 @@ struct BackupAsideTests {
 
     // MARK: Lo que dice la pantalla
 
-    @Test("La nota dice cuántos gastos hay aquí y allá, y de qué día es el otro respaldo")
-    func theNoteInPlainWords() {
+    @Test("El motivo, en un renglón corto: cuántos hay aquí y allá, o qué falta")
+    func theReasonInOneLine() {
         let now = mx(2026, 11, 11)
         let note = BackupAsideNote(.fewer(than: .newest, here: 118, there: 131),
-                                   comparedWith: "al-dia-2026-11-10.aldia", file: "al-dia-aparte-2026-11-11T210000.aldia")
-        #expect(note.message(now: now, timeZone: mexico)
-                == "Tu último respaldo se guardó aparte: este iPhone tiene menos gastos (118) que el respaldo del 10 nov (131).")
+                                   comparedWith: "al-dia-2026-11-10.aldia", file: "x")
+        #expect(note.reason(now: now, timeZone: mexico) == "Este iPhone tiene 118 gastos; el respaldo del 10 nov, 131.")
+        let one = BackupAsideNote(.fewer(than: .today, here: 1, there: 9), comparedWith: nil, file: "x")
+        #expect(one.reason(now: now, timeZone: mexico) == "Este iPhone tiene 1 gasto; el respaldo anterior, 9.")
+        var uncounted = note
+        uncounted.here = nil
+        #expect(uncounted.reason(now: now, timeZone: mexico) == "Este iPhone tiene menos gastos que el respaldo del 10 nov.")
         let money = BackupAsideNote(.noMoney(than: .today), comparedWith: "al-dia-2026-11-11.aldia", file: "x")
-        #expect(money.message(now: now, timeZone: mexico)
-                == "Tu último respaldo se guardó aparte: este iPhone no tiene «Mi dinero» y el respaldo del 11 nov sí.")
+        #expect(money.reason(now: now, timeZone: mexico) == "Este iPhone no tiene «Mi dinero»; el respaldo del 11 nov, sí.")
         let locked = BackupAsideNote(.unreadable, comparedWith: "al-dia-2026-11-11.aldia", file: "x")
-        #expect(locked.message(now: now, timeZone: mexico)
-                == "Tu último respaldo se guardó aparte: el respaldo del 11 nov no se pudo abrir para compararlo. Puede tener otra contraseña o no haber bajado de iCloud.")
+        #expect(locked.reason(now: now, timeZone: mexico)
+                == "El respaldo del 11 nov no se pudo abrir para compararlo: tiene otra contraseña o no ha bajado de iCloud.")
     }
 
     @Test("Un respaldo de otro año lleva su año; sin día conocido no se inventa una fecha")

@@ -25,5 +25,10 @@ if [[ "$mode" == all || "$mode" == app ]]; then
     rm -f "$log"; exit 1
   fi
   rm -f "$log"
+  # The tests too: they are compiled only when they run, so one that no longer builds was found
+  # out by the CI (2026-11-11).
+  xcodebuild build-for-testing -project Centavo.xcodeproj -scheme Centavo \
+    -destination 'generic/platform=iOS Simulator' \
+    -derivedDataPath "${CENTAVO_DERIVED_DATA:-/tmp/dd-centavo}" CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet
 fi
 echo "verify: OK"

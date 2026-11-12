@@ -118,7 +118,9 @@ struct DesignSystemCatalog: View {
                     HintText("Pista: puedes cambiarlo después.")
                     NoteText("Nota que explica.")
                     NoteText("Ya tienes uno con ese nombre.", color: Theme.danger)
+                    WarningText("Falta el tipo de cambio de EUR.")
                     Text("Encabezado de sección").ticketCaption()
+                    TicketHead(title: "jue 29 de oct", number: 42, spoken: "42 pagos este mes")
                 }
 
                 section("Campos y filas") {
@@ -126,6 +128,10 @@ struct DesignSystemCatalog: View {
                     TicketTextField("Comercio", text: $name, prompt: "Oxxo, Uber…")
                     IconRow("BBVA", systemImage: "creditcard")
                     Toggle(isOn: $toggle) { SectionLabel("Se repite") }.tint(Theme.brass)
+                    TicketMenuPicker("Tipo", selection: $toggle, value: toggle ? "No cuenta" : "Gasto") {
+                        Text("Gasto").tag(false)
+                        Text("No cuenta").tag(true)
+                    }
                     AdaptiveStack {
                         Text("Hoy · 23 oct").font(.ticket(.microStrong)).foregroundStyle(Theme.brass)
                         Text("$1,234.50").font(.ticket(.micro)).foregroundStyle(Theme.muted)
@@ -136,6 +142,8 @@ struct DesignSystemCatalog: View {
             .padding(.vertical, Theme.Space.xxl)
         }
         .background(Theme.background.ignoresSafeArea())
+        // Tap a field: the one bar over the keyboard, with «Ocultar teclado».
+        .keyboardBar()
     }
 
     private func section<Content: View>(_ title: String,

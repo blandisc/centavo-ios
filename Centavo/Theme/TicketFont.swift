@@ -15,6 +15,20 @@ enum TicketFont {
         CTFontManagerRegisterFontURLs(urls as CFArray, .process, true, nil)
     }
 
+    /// Called once at launch, after `register()`. A segmented choice («Se acumula | Se reparte»,
+    /// «Semana | Quincena | Mes») is the system's control and SwiftUI gives no way to set its
+    /// typeface: it is dressed through UIKit, at the size of `.footnote` (13, the system's own
+    /// for a segment, which does not grow with Dynamic Type either). Menu choices use
+    /// `TicketMenuPicker`; dates stay the system's (owner, 2026-11-11).
+    @MainActor static func dressSegmentedControls() {
+        let size = TicketStyle.footnote.size
+        guard let regular = UIFont(name: postScriptName(for: .regular), size: size),
+              let strong = UIFont(name: postScriptName(for: .medium), size: size) else { return }
+        let segments = UISegmentedControl.appearance()
+        segments.setTitleTextAttributes([.font: regular], for: .normal)
+        segments.setTitleTextAttributes([.font: strong], for: .selected)
+    }
+
     private static func postScriptName(for weight: Font.Weight) -> String {
         switch weight {
         case .semibold, .bold, .heavy, .black: "IBMPlexMono-SemiBold"

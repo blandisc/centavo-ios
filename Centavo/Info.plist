@@ -8,6 +8,13 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- Upright only (owner, 2026-11-11): on its side the tab bar floated over the mosaic and
+	     the list did not fit, and nothing reads better that way. Here and not as an
+	     INFOPLIST_KEY in project.yml, like the background modes below. -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
 	<!-- The shared Keychain group for the widgets' snapshot (WidgetSnapshotStore). -->
 	<key>CentavoKeychainGroup</key>
 	<string>$(AppIdentifierPrefix)com.blandisc.centavo.shared</string>

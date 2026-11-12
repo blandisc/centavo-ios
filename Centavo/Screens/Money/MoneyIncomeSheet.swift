@@ -60,7 +60,7 @@ struct MoneyIncomeSheet: View {
                     TicketTextField("Nombre", text: $name, prompt: "Sueldo, renta que cobras…", identifier: "ingreso-nombre")
                     TicketTextField("De dónde", text: $institution, prompt: "De dónde · opcional (tu empresa…)",
                                     identifier: "ingreso-institucion")
-                    Picker(selection: $currency) {
+                    TicketMenuPicker("Moneda", selection: $currency, value: MoneyCurrency.name(currency.isEmpty ? mainCurrency : currency)) {
                         ForEach(currencies, id: \.self) { Text(MoneyCurrency.name($0)).tag($0) }
                     } label: {
                         Text("Moneda").font(.ticket(.body)).foregroundStyle(Theme.ink)

@@ -30,6 +30,14 @@ extension View {
     func hidesTabsForMoneyStep() -> some View {
         modifier(HidesTabsForMoneyStep())
     }
+
+    /// The floor under a step's button (owner, 2026-11-11): the paper itself, down to the
+    /// screen's edge, so the list ends above the button and nothing shows half-way behind it.
+    /// For what goes in a `safeAreaBar`.
+    func moneyStepFloor() -> some View {
+        frame(maxWidth: .infinity)
+            .background { Theme.background.ignoresSafeArea(edges: .bottom) }
+    }
 }
 
 private struct GroupsMoney: ViewModifier {

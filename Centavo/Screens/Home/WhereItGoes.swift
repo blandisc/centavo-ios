@@ -47,8 +47,14 @@ struct WhereItGoes: View {
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.categoryColorsKey) private var storedColors = ""
     @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .footnote) private var returnedLine: CGFloat = Theme.Size.shareReturnedLine
 
     private var total: Decimal { shares.reduce(0) { $0 + $1.amount } - returned }
+
+    /// What the chart gives up for «Menos devoluciones»: the line and the gap over it. The page
+    /// is then as tall with money returned as without, so the line is never left half under the
+    /// carousel's edge while its height catches up (2026-11-11: seen cut right after a refund).
+    private var reserved: CGFloat { returned > 0 ? returnedLine + Theme.Space.sm : Theme.Space.none }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
@@ -87,9 +93,9 @@ struct WhereItGoes: View {
             .accessibilityElement(children: .combine)
             switch style {
             case .bar:
-                ShareBarChart(lines: lines, money: money, selected: selected, onSelect: onSelect)
+                ShareBarChart(lines: lines, money: money, reserved: reserved, selected: selected, onSelect: onSelect)
             case .mosaic:
-                ShareMosaicChart(lines: lines, money: money, selected: selected, onSelect: onSelect)
+                ShareMosaicChart(lines: lines, money: money, reserved: reserved, selected: selected, onSelect: onSelect)
             case .hidden:
                 EmptyView()
             }
@@ -105,6 +111,8 @@ struct WhereItGoes: View {
                 }
                 .font(.ticket(.detail))
                 .foregroundStyle(Theme.muted)
+                // The height the chart left for it (`reserved`); taller if the type asks for it.
+                .frame(minHeight: returnedLine)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("en-que-se-va-devoluciones")
             }
@@ -157,6 +165,8 @@ private struct CategoryLine: Identifiable {
 private struct ShareBarChart: View {
     let lines: [CategoryLine]
     let money: (Decimal) -> String
+    /// Height given up for the line under the chart (`WhereItGoes.reserved`).
+    var reserved: CGFloat = Theme.Space.none
     /// Tapping a line shows only its expenses in the list, as a block of the mosaic does.
     let selected: CategoryShare?
     let onSelect: (CategoryShare?) -> Void
@@ -200,7 +210,8 @@ private struct ShareBarChart: View {
             }
         }
         // As tall as the mosaic, however many categories there are.
-        .frame(minHeight: min(scaledHeight, Theme.Size.shareChartMaxHeight), alignment: .top)
+        .frame(minHeight: max(min(scaledHeight, Theme.Size.shareChartMaxHeight) - reserved, Theme.Space.none),
+               alignment: .top)
     }
 }
 
@@ -301,6 +312,8 @@ private struct ShareBarLine: View {
 private struct ShareMosaicChart: View {
     let lines: [CategoryLine]
     let money: (Decimal) -> String
+    /// Height given up for the line under the chart (`WhereItGoes.reserved`).
+    var reserved: CGFloat = Theme.Space.none
     let selected: CategoryShare?
     let onSelect: (CategoryShare?) -> Void
 
@@ -309,7 +322,7 @@ private struct ShareMosaicChart: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Grows a little with the text, but stays a part of the screen.
-    private var height: CGFloat { min(scaledHeight, Theme.Size.shareChartMaxHeight) }
+    private var height: CGFloat { max(min(scaledHeight, Theme.Size.shareChartMaxHeight) - reserved, Theme.Space.none) }
 
     private func isSelected(_ line: CategoryLine) -> Bool {
         selected.map { line.share.isSameLine(as: $0) } ?? false
@@ -388,7 +401,7 @@ private struct MosaicTileDress: ViewModifier {
             // Pressed and held, a block shows all of it: its name in full, its amount and its share,
             // which the block may have had no room for.
             .contextMenu {
-                Button(isSelected ? "Ver todo el mes" : "Ver sus gastos",
+                Button(isSelected ? "Quitar filtro" : "Ver sus gastos",
                        systemImage: isSelected ? "xmark" : "list.bullet", action: onToggle)
             } preview: {
                 MosaicDetail(line: line, amount: money(line.share.amount))

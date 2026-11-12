@@ -257,7 +257,7 @@ final class ScreenshotTests: XCTestCase {
     func testFijarPresupuesto() {
         let app = launch()
         app.buttons["Más"].tap()
-        app.buttons["Presupuesto del mes"].tap()
+        budgetMenuItem(app).tap()
         sleep(1)
         snap("08-fijar-presupuesto")
     }

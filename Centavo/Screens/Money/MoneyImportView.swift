@@ -39,6 +39,8 @@ struct MoneyImportView: View {
     /// The pasteboard's count right after pasting: if nothing else was copied since, what was
     /// pasted (the person's finances) is cleared from it on saving.
     @State private var pastedAt: Int?
+    /// The keyboard is up: the keyboard's bar takes the bottom, and «Guardar» waits.
+    @State private var typing = false
 
     var body: some View {
         ScrollView {
@@ -52,7 +54,10 @@ struct MoneyImportView: View {
         .background(Theme.background.ignoresSafeArea())
         // The review's button has its own floor (owner, 2026-11-11): a bar of the system's own,
         // as `saveBar`, so the rows fade under it instead of mixing with it, and no tab bar.
-        .safeAreaBar(edge: .bottom) { if !rows.isEmpty { saveBar } }
+        // While typing it steps aside for the keyboard's bar: never two bars over the keyboard.
+        .safeAreaBar(edge: .bottom) { if !rows.isEmpty, !typing { saveBar } }
+        .keyboardBar()
+        .tracksKeyboard($typing)
         // A solid floor, not a soft fade: the step's button never mixes with the list under it.
         .scrollEdgeEffectStyle(.hard, for: .bottom)
         .hidesTabsForMoneyStep()
@@ -65,13 +70,6 @@ struct MoneyImportView: View {
                     Button("Salir") { confirmingLeave = true }
                         .accessibilityIdentifier("importar-salir")
                 }
-            }
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Ocultar teclado") {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                }
-                .font(.ticket(.footnoteStrong))
             }
         }
         .fileImporter(isPresented: $choosingFile,
@@ -117,29 +115,8 @@ struct MoneyImportView: View {
         .ticketProminent()
         .accessibilityIdentifier("importar-copiar")
         step(2, "Pégalas en tu IA con tu Excel", "ChatGPT, Claude, Gemini o la que uses. Adjunta tu archivo.")
-        step(3, "Trae lo que te devuelva", "Copia su respuesta y pégala, o súbela si te dio un archivo.")
-        // The system's Paste button sizes itself (UIKit underneath): left at its own size, alone on
-        // its line. Beside a button that stretches, the two kept re-laying out without end.
-        PasteButton(payloadType: String.self) { texts in
-            guard let text = texts.first else { return }
-            Task { @MainActor in
-                pastedAt = UIPasteboard.general.changeCount
-                load(text)
-            }
-        }
-        .tint(Theme.brass)
-        .labelStyle(.titleAndIcon)
-        .fixedSize()
-        .accessibilityIdentifier("importar-pegar")
-        Button { choosingFile = true } label: {
-            Label("O sube el archivo que te dio", systemImage: "doc.badge.plus")
-                .font(.ticket(.label))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
-                .frame(minHeight: Theme.Size.tapTarget)
-        }
-        .accessibilityIdentifier("importar-archivo")
+        step(3, "Trae lo que te devuelva", "Copia su respuesta y pégala aquí.")
+        pasteStep
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-centavo-importar-ejemplo") {
             Button("Usar ejemplo") { load(MoneyDemo.importSample) }
@@ -148,6 +125,40 @@ struct MoneyImportView: View {
                 .accessibilityIdentifier("importar-ejemplo")
         }
         #endif
+    }
+
+    /// Step 3's two ways in (owner, 2026-11-11): pasting is the main one, in brass and in the
+    /// shape of «Copiar instrucciones»; the file is the quiet alternative under it.
+    private var pasteStep: some View {
+        VStack(spacing: Theme.Space.xs) {
+            // The system's Paste button (no permission prompt) sizes itself (UIKit underneath):
+            // left at its own size, alone and centered on its line. Beside a button that
+            // stretches, the two kept re-laying out without end.
+            PasteButton(payloadType: String.self) { texts in
+                guard let text = texts.first else { return }
+                Task { @MainActor in
+                    pastedAt = UIPasteboard.general.changeCount
+                    load(text)
+                }
+            }
+            .tint(Theme.brass)
+            .labelStyle(.titleAndIcon)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+            .fixedSize()
+            .accessibilityIdentifier("importar-pegar")
+            Button { choosingFile = true } label: {
+                Text("o sube el archivo que te dio")
+                    .font(.ticket(.footnote))
+                    .foregroundStyle(Theme.brass)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("importar-archivo")
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func step(_ number: Int, _ title: String, _ detail: String) -> some View {
@@ -184,9 +195,7 @@ struct MoneyImportView: View {
                 .font(.ticket(.pageTitle))
                 .foregroundStyle(Theme.ink)
                 .accessibilityAddTraits(.isHeader)
-            Text("\(ready.count == 1 ? "1 lista" : "\(ready.count) listas") · \(waiting.count) por revisar")
-                .font(.ticket(.detail))
-                .foregroundStyle(waiting.isEmpty ? Theme.muted : Theme.brass)
+            reviewSummary
                 .accessibilityIdentifier("importar-resumen")
             Text("Toca un renglón para corregirlo. Nada se guarda hasta que lo confirmes.")
                 .font(.ticket(.detail))
@@ -237,12 +246,11 @@ struct MoneyImportView: View {
                             .font(.ticket(.field))
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
-                            .foregroundStyle(rate(for: code) == nil ? Theme.brass : Theme.ink)
+                            .foregroundStyle(Theme.ink)
                             .accessibilityIdentifier("importar-cambio-\(code)")
                     }
                     if let choices = rateChoices[code], choices.count > 1 {
-                        Text("Tu Excel trae \(choices.count) distintos. ¿Cuál se usa?")
-                            .font(.ticket(.detail)).foregroundStyle(Theme.brass)
+                        WarningText("Tu Excel trae \(choices.count) distintos. ¿Cuál se usa?")
                         HStack(spacing: Theme.Space.xs) {
                             ForEach(choices, id: \.self) { value in
                                 TicketChip(BackupNumber.text(value), selected: rateTexts[code] == BackupNumber.text(value)) {
@@ -252,7 +260,7 @@ struct MoneyImportView: View {
                             }
                         }
                     } else if rate(for: code) == nil {
-                        Text("Escríbelo: tu Excel no lo traía.").font(.ticket(.detail)).foregroundStyle(Theme.brass)
+                        WarningText("Escríbelo: tu Excel no lo traía.")
                     }
                 }
                 .padding(Theme.Space.m)
@@ -284,15 +292,14 @@ struct MoneyImportView: View {
             MoneyRow(title: row.wrappedValue.draft.trimmedName.isEmpty ? "Sin nombre" : row.wrappedValue.draft.trimmedName,
                      subtitle: row.wrappedValue.subtitle(main: mainCurrency),
                      swatch: needs ? Theme.brass : Theme.categories[Int(UInt(bitPattern: id.hashValue) % UInt(Theme.categories.count))],
-                     figure: row.wrappedValue.figure(main: mainCurrency), isOpen: isOpen,
+                     figure: row.wrappedValue.figure(main: mainCurrency), isOpen: isOpen, warns: needs,
                      toggle: { withAnimation(motion) { open = isOpen ? nil : id } }) {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Picker("Qué es", selection: row.draft.subtype) {
+                    TicketMenuPicker("Qué es", selection: row.draft.subtype, value: row.wrappedValue.draft.subtype.name) {
                         ForEach(MoneyImportRow.kinds, id: \.self) { Text($0.name).tag($0) }
+                    } label: {
+                        Text("Qué es").font(.ticket(.body)).foregroundStyle(Theme.ink)
                     }
-                    .pickerStyle(.menu)
-                    .tint(Theme.brass)
-                    .font(.ticket(.body))
                     MoneyRowEditor(draft: row.draft, mainCurrency: mainCurrency, isNew: true, asksExchange: false,
                                    done: { confirm(id) }, remove: { removeRow(id) }, removeTitle: "Quitar")
                 }
@@ -309,6 +316,17 @@ struct MoneyImportView: View {
         }
     }
 
+    /// «9 listas · 1 por revisar»: with something to look at it warns (the mark in front, the
+    /// words in ink; owner, 2026-11-11); with nothing, it only informs.
+    @ViewBuilder private var reviewSummary: some View {
+        let text = "\(ready.count == 1 ? "1 lista" : "\(ready.count) listas") · \(waiting.count) por revisar"
+        if waiting.isEmpty {
+            Text(text).font(.ticket(.detail)).foregroundStyle(Theme.muted)
+        } else {
+            WarningText(text)
+        }
+    }
+
     // MARK: The bar
 
     private var saveBar: some View {
@@ -320,8 +338,7 @@ struct MoneyImportView: View {
             .disabled(ready.isEmpty || !missingRates.isEmpty)
             .accessibilityIdentifier("importar-guardar")
             if !missingRates.isEmpty {
-                Text("Falta el tipo de cambio de \(missingRates.joined(separator: ", ")).")
-                    .font(.ticket(.detail)).foregroundStyle(Theme.brass)
+                WarningText("Falta el tipo de cambio de \(missingRates.joined(separator: ", ")).")
             } else if let left = MoneyWords.waitingLeftOut(waiting.count) {
                 Text(left)
                     .font(.ticket(.detail)).foregroundStyle(Theme.muted)
@@ -330,6 +347,7 @@ struct MoneyImportView: View {
         }
         .padding(.horizontal, Theme.Space.screen)
         .padding(.vertical, Theme.Space.s)
+        .moneyStepFloor()
     }
 
     // MARK: Actions

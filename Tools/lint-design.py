@@ -3,7 +3,9 @@
 
 Fails (exit 1) when a view writes a value that must come from the design system:
 numbers in layout modifiers, fixed font sizes, literal or system colors, hand-made
-prominent buttons, aggressive minimumScaleFactor… See docs/DESIGN_SYSTEM.md.
+prominent buttons, aggressive minimumScaleFactor, a menu `Picker` in the system's typeface
+(use `TicketMenuPicker`), the system's keyboard toolbar (use `.keyboardBar`)… See
+docs/DESIGN_SYSTEM.md.
 
 Usage: Tools/lint-design.sh [--quiet] [--summary] [files…]
 (no files = every .swift under Centavo/Screens, Centavo/Components, Centavo/App and CentavoWidgets)
@@ -75,6 +77,9 @@ RULES = [
      "botón gris del sistema: usa TicketChip (sugerencias) o SecondaryButton", False),
     ("color-scheme", re.compile(r"\.preferredColorScheme\("),
      "esquema de color a mano: la app ya fuerza el oscuro; en #Preview usa .ticketPreview()",
+     False),
+    ("system-keyboard-bar", re.compile(r"placement:\s*\.keyboard\b"),
+     "barra de teclado del sistema (en iOS 26 flota sobre lo que se llena): usa .keyboardBar { … }",
      False),
     ("scaled-metric-number", re.compile(r"@ScaledMetric[^=]*=\s*-?\d"),
      "@ScaledMetric con número: usa un valor de Theme.Size como base", False),
@@ -172,6 +177,39 @@ TAP_FRAME_RE = re.compile(r"^\.frame\([^)]*\bmin(?:Width|Height):\s*Theme\.Size\
 BUTTON_RE = re.compile(r"^(?:Button|Link|ShareLink|Menu)\s*[({]")
 
 
+# A menu choice writes its value in the system's typeface: `TicketMenuPicker` does not (2026-11-11).
+MENU_PICKER_FILE = APP / "Components" / "TicketMenuPicker.swift"
+PICKER_RE = re.compile(r"(?<![\w.])Picker\s*\(")
+PICKER_STYLE_RE = re.compile(r"\.pickerStyle\(\s*\.(\w+)")
+MENU_OPEN_RE = re.compile(r"(?<![\w.])Menu\s*(?:\([^{]*\))?\s*\{\s*$")
+MENU_PICKER_MESSAGE = ("selector de menú con la letra del sistema: usa TicketMenuPicker "
+                       "(o dale .pickerStyle(.segmented) / .inline)")
+
+
+def system_menu_picker(codes, index):
+    """True when the `Picker(` on this line ends up as the system's menu: it says `.menu`, or
+    it says no style and is not the content of a `Menu { … }` (in a form, no style is a menu)."""
+    depth = 0
+    j = index
+    while j < len(codes):
+        line = codes[j]
+        if j > index and depth <= 0 and not line.strip().startswith("."):
+            break
+        style = PICKER_STYLE_RE.search(line)
+        if style and depth <= 0:
+            return style.group(1) == "menu"
+        for c in line[PICKER_RE.search(line).start():] if j == index else line:
+            if c in "({[":
+                depth += 1
+            elif c in ")}]":
+                depth -= 1
+        j += 1
+    k = index - 1
+    while k >= 0 and not codes[k].strip():
+        k -= 1
+    return not (k >= 0 and MENU_OPEN_RE.search(codes[k]))
+
+
 def lint_file(path: Path):
     problems, allows = [], []
     drawing = path in DRAWINGS
@@ -204,6 +242,9 @@ def lint_file(path: Path):
             found.append(("tap-target-outside",
                           "el área de toque no crece con un .frame por fuera del botón: usa "
                           ".buttonStyle(.tapTarget) o pon el .frame dentro de su etiqueta"))
+        if not drawing and path != MENU_PICKER_FILE and PICKER_RE.search(code) \
+                and system_menu_picker(codes, n - 1):
+            found.append(("system-menu-picker", MENU_PICKER_MESSAGE))
         if not drawing:
             name = numeric_violation(code)
             if name:

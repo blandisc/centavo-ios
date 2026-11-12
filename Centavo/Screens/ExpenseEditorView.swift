@@ -388,11 +388,12 @@ struct ExpenseEditorView: View {
                             .contentShape(Rectangle())
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("siguiente-teclado")
-                    } else if expense == nil {
-                        sentenceButton
                     }
                 }
             }
+            // In words and always in view on a new expense (owner, 2026-11-11): as an icon beside
+            // the amount, hidden while the keyboard was up, hardly anyone found it.
+            if expense == nil { sentenceButton }
         } header: {
             Text("Monto").ticketCaption()
         } footer: {
@@ -434,18 +435,13 @@ struct ExpenseEditorView: View {
         .accessibilityIdentifier("moneda")
     }
 
-    /// The whole expense in one sentence, written or dictated.
+    /// The whole expense in one sentence, written or dictated: a row of its own under the amount.
     private var sentenceButton: some View {
         Button { askingSentence = true } label: {
-            Image(systemName: "text.bubble")
-                .font(Theme.Symbol.regular)
-                .foregroundStyle(Theme.brass)
-                .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget)
-                .contentShape(Rectangle())
+            LinkActionLabel("Dilo en una frase", systemImage: "text.bubble", alignment: .leading)
         }
         .buttonStyle(.borderless)
         .disabled(readingSentence)
-        .accessibilityLabel("Dilo en una frase")
         .accessibilityHint("«230 de tacos ayer, en efectivo» llena el monto, el comercio, el día y cómo pagaste.")
         .accessibilityIdentifier("en-una-frase")
     }
@@ -533,7 +529,7 @@ struct ExpenseEditorView: View {
         } footer: {
             if paymentSources.isEmpty {
                 HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto "
-                     + "en «Más › Pagos y categorías» ya vendrá elegida.")
+                     + "en «Más › Categorías» ya vendrá elegida.")
             }
         }
         .listRowBackground(Theme.surface)
@@ -573,34 +569,15 @@ struct ExpenseEditorView: View {
 
             if showsDetails {
                 // A menu on the whole row, like the currency: the picker's own menu opened only
-                // from its value at the far end.
-                Menu {
-                    Picker("Tipo", selection: kind) {
-                        ForEach(Kind.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                } label: {
-                    HStack {
-                        SectionLabel("Tipo")
-                        Spacer(minLength: Theme.Space.s)
-                        Text(kind.wrappedValue.title)
-                            .font(.ticket(.body))
-                            .foregroundStyle(Theme.brass)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .foregroundStyle(Theme.faint)
-                            .accessibilityHidden(true)
-                    }
-                    .frame(minHeight: Theme.Size.tapTarget)
-                    .contentShape(Rectangle())
+                // from its value at the far end, and wrote it in the iPhone's typeface.
+                TicketMenuPicker("Tipo", selection: kind, value: kind.wrappedValue.title) {
+                    ForEach(Kind.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .accessibilityIdentifier("tipo")
                 if !counts {
-                    Picker(selection: $reason) {
+                    TicketMenuPicker("Motivo", selection: $reason, value: reason.title) {
                         ForEach(UncountedReason.allCases) { Text($0.title).tag($0) }
-                    } label: {
-                        SectionLabel("Motivo")
                     }
-                    .pickerStyle(.menu)
-                    .tint(Theme.brass)
                     .accessibilityIdentifier("motivo")
                 }
                 DatePicker(selection: $date, in: ...AppClock.now) {

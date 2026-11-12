@@ -6,9 +6,8 @@ extension Theme.Space {
 }
 
 extension Theme.Size {
-    /// The narrowest a tile of «Pagos y categorías» gets: four across on an iPhone.
-    static let catalogTile: CGFloat = 76
-    /// Scaled. The height of every tile there: a symbol and two lines of name.
+    /// Scaled. The height of every tile of «Pagos y categorías» (as wide as the expense sheet's,
+    /// `categoryGridMinimum`: three across): a symbol and two lines of name.
     static let catalogTileHeight: CGFloat = 78
 }
 

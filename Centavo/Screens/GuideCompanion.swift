@@ -524,9 +524,10 @@ struct CompanionCard: View {
             stage
             // The window waits on these (`watchHolds`): say how to go on.
             if !page.isResult && !isLast {
+                // A hint, not a button: in ink (brass is for what is touched; owner, 2026-11-11).
                 Text("Al terminar, toca \(Image(systemName: "play.fill"))")
                     .font(Theme.Companion.tag)
-                    .foregroundStyle(Theme.brass)
+                    .foregroundStyle(Theme.ink)
             }
         }
         .padding(Theme.Space.l)

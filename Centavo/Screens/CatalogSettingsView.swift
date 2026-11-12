@@ -95,18 +95,40 @@ struct CatalogSettingsView: View {
         return folded.contains("efectivo") || folded.contains("cash") ? "banknote" : "creditcard"
     }
 
-    /// «3 comercios», beside the way into «Lo que recuerdo».
+    /// Beside the way into «Lo que recuerdo»: how many have a name of the owner's («3 con
+    /// nombre»), or with none named, how many it remembers at all.
     private var rememberedText: String {
-        let count = MerchantRules.list(renames: MerchantRenames(stored: storedRenames),
-                                       categories: CategoryRules(stored: storedRules)).count
-        switch count {
+        let sections = MerchantRules.sections(MerchantRules.list(renames: MerchantRenames(stored: storedRenames),
+                                                                 categories: CategoryRules(stored: storedRules)))
+        let mexico = Locale(identifier: "es_MX")
+        if !sections.named.isEmpty { return "\(sections.named.count.formatted(.number.locale(mexico))) con nombre" }
+        switch sections.categoryOnly.count {
         case 0: return "Nada aún"
         case 1: return "1 comercio"
-        default: return "\(count.formatted(.number.locale(Locale(identifier: "es_MX")))) comercios"
+        default: return "\(sections.categoryOnly.count.formatted(.number.locale(mexico))) comercios"
         }
     }
 
-    private let columns = [GridItem(.adaptive(minimum: Theme.Size.catalogTile), spacing: Theme.Space.s)]
+    /// Three across on an iPhone, the same grid as the expense sheet (owner, 2026-11-11): at
+    /// four, «Suscripciones» did not fit and came out in smaller letters than the rest.
+    private let columns = [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)]
+
+    /// Under the ways of paying: with none, what to add; with some, only the marks that are on
+    /// screen get their line (owner, 2026-11-11: it explained ★ and ))) to an empty square).
+    @ViewBuilder private var sourcesFooter: some View {
+        let hasDefault = sources.contains { UserCatalog.same($0.name, defaultSource) }
+        let star = Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano.")
+        let wave = Text("\(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono.")
+        if sources.isEmpty && detectedCards.isEmpty {
+            HintText("Agrega tus formas de pago (BBVA, Nu, efectivo…).")
+        } else if hasDefault && !detectedCards.isEmpty {
+            HintText(Text("\(star) \(wave)"))
+        } else if hasDefault {
+            HintText(star)
+        } else if !detectedCards.isEmpty {
+            HintText(wave)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -159,7 +181,7 @@ struct CatalogSettingsView: View {
                 } header: {
                     Text("Formas de pago").ticketCaption()
                 } footer: {
-                    HintText(Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano. \(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono."))
+                    sourcesFooter
                 }
                 .listRowBackground(Theme.surface)
 

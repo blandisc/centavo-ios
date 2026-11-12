@@ -35,7 +35,7 @@ Todos los valores son puntos al tamaño de letra predeterminado.
 | `Theme.ink` | Texto principal |
 | `Theme.muted` | Texto secundario (6.5:1) |
 | `Theme.faint` | Texto más callado: pistas, *placeholders* (5.2:1) |
-| `Theme.brass` | El único acento: acción principal, selección, cifra héroe |
+| `Theme.brass` | El único acento, y solo para tres cosas: lo que se toca, lo que está elegido y la cifra principal (más los dígitos del folio y las marcas). Lo que solo informa va en `ink`/`muted`; lo que avisa, con `WarningText` (regla del 2026-11-11) |
 | `Theme.brassMid` / `Theme.brassLow` | Latón atenuado para gráficas (nunca texto) |
 | `Theme.onBrass` | Texto sobre latón |
 | `Theme.hairline` | Perforación y bordes finos |
@@ -161,6 +161,10 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `SecondaryButton` | La alternativa callada («Después») | `SecondaryButton("Después") { … }` |
 | `.buttonStyle(.tapTarget)` | Botón callado de una palabra o un símbolo («Listo», «Quitar», «Sin cambio», ✕): 44 pt de toque aunque se vea chico | `Button("Listo", action: done).buttonStyle(.tapTarget)` |
 | `Signature` | La firma de una barra de navegación («al día.», «mi dinero.»); deja de crecer donde dejan de crecer los botones de la barra | `Signature("al día", spoken: "Al día")` |
+| `TicketMenuPicker` | **Todo** selector de menú dentro de un formulario: el valor va en la letra del ticket y en latón, y todo el renglón abre el menú. Nunca `Picker` con `.pickerStyle(.menu)` (el lint lo revisa). Fechas y segmentados siguen siendo del sistema | `TicketMenuPicker("Motivo", selection: $reason, value: reason.title) { ForEach(UncountedReason.allCases) { Text($0.title).tag($0) } }` |
+| `.keyboardBar { … }` | **La única** barra sobre el teclado: a todo lo ancho, con fondo, pegada al teclado, con «Ocultar teclado» a la derecha. Nunca `ToolbarItemGroup(placement: .keyboard)` (el lint lo revisa). `tracksKeyboard(_:)` avisa para apartar otra barra de abajo | `.keyboardBar { Button("Sin cambio") { keep() }; Button("Siguiente") { next() } }` |
+| `WarningText` | Lo que avisa: triángulo en latón delante y texto en `ink`. `WarningText.inline(_:)` dentro de un renglón | `WarningText("Falta el tipo de cambio de EUR.")` |
+| `TicketHead` | La cabecera del ticket sobre su perforación: el día y el folio con dígitos en latón; se apila con letra de accesibilidad. La usan «Hoy» y «Mi dinero» | `TicketHead(title: TicketHead.day(now), number: 42, spoken: "42 pagos este mes", titleIdentifier: "fecha-ticket", folioIdentifier: "folio")` |
 | `LinkActionLabel` | Acción callada en latón dentro de una pantalla («Ajustar presupuesto», «Agregar gasto fijo», «Deshacer») | `Button(action: a) { LinkActionLabel("Agregar", systemImage: "plus") }.buttonStyle(.plain)` |
 | `DestructiveRowButton` | **La única** forma de borrar o quitar dentro de una hoja; luego se confirma | `DestructiveRowButton("Borrar gasto", identifier: "borrar-gasto") { … }` |
 | `TicketChip` | Toda sugerencia de un toque (comercios, fijos, ejemplos de búsqueda); `selected` la llena de latón | `TicketChip("Renta", systemImage: "plus") { … }` |
@@ -265,6 +269,10 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 | `.frame(width: 28)` en un ícono junto a texto | `@ScaledMetric` (crece con la letra) |
 | `.preferredColorScheme(.dark)` en un preview | `.ticketPreview()` |
 | Barras, pestañas o botones de sistema hechos a mano | Los nativos (`toolbar`, `TabView`, `Button`) |
+| `Picker(…).pickerStyle(.menu)` | `TicketMenuPicker` |
+| `ToolbarItemGroup(placement: .keyboard)` (en iOS 26 flota como pastillas y tapa lo que se llena) | `.keyboardBar { … }` |
+| Texto en latón que ni se toca ni está elegido ni es la cifra principal | `ink`/`muted`; si avisa, `WarningText` |
+| «✓» escrito en la letra del ticket | El símbolo `checkmark` del sistema |
 | `Button("Listo") { … }.frame(minHeight: Theme.Size.tapTarget)` | `.buttonStyle(.tapTarget)`, o el `.frame` dentro de la etiqueta |
 
 Lo que el lint no ve pero también está prohibido: colores con opacidad para texto (`Theme.ink.opacity(…)`), `.textCase(.uppercase)` + `tracking` a mano cuando existe `SectionLabel`/`ticketCaption()`, y copiar una pieza privada de otra pantalla (súbela a `Components/`).

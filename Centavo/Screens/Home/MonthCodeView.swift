@@ -188,11 +188,17 @@ struct MonthCodeView: View {
     @ViewBuilder private var card: some View {
         if let shownDay, let day = code.days.first(where: { $0.number == shownDay }) {
             let center = width * (CGFloat(shownDay) - 0.5) / CGFloat(max(code.days.count, 1))
-            let half = Theme.Size.monthCodeCard / 2
-            let left = min(max(center - half, Theme.Space.none), max(width - Theme.Size.monthCodeCard, Theme.Space.none))
+            // Never wider than the boleto itself.
+            let cardWidth = min(Theme.Size.monthCodeCard, width)
+            let left = min(max(center - cardWidth / 2, Theme.Space.none), max(width - cardWidth, Theme.Space.none))
             DayCard(day: day, title: title(shownDay), limit: code.limitPerDay, wholeMoney: wholeMoney)
-                .frame(width: Theme.Size.monthCodeCard, alignment: .leading)
-                .offset(x: left, y: -(height + Theme.Space.s))
+                .frame(width: cardWidth, alignment: .leading)
+                // As tall as what it says: the overlay offers it the boleto's height, and its
+                // last line was cut to «$43 arriba de tu cifra p…».
+                .fixedSize(horizontal: false, vertical: true)
+                // Right over the boleto, on «Cada día del mes»: it stays under the hero's figure,
+                // which is what is looked at most (owner, 2026-11-11).
+                .offset(x: left, y: -(height + Theme.Size.monthBarCellGap))
                 .allowsHitTesting(false)
                 .transition(.opacity)
         }
@@ -218,47 +224,60 @@ struct MonthCodeView: View {
     }
 }
 
-/// One day under the finger: what went, how many payments, the biggest, and against the limit.
+/// One day under the finger, in two lines so it stays under the hero's figure: the day and what
+/// went; then how many payments, the biggest, and how far from the day's limit, in a sentence
+/// that wraps instead of being cut (owner, 2026-11-11).
 private struct DayCard: View {
     let day: MonthCode.Day
     let title: String
     let limit: Decimal?
     let wholeMoney: (Decimal) -> String
 
+    private var hasPayments: Bool { day.kind != .future && day.input.payments > 0 }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-            Text(title)
-                .font(.ticket(.microStrong))
-                .tracking(Theme.Tracking.label)
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.brass)
-            if day.kind == .future {
-                Text("Todavía no llega.").font(.ticket(.detail)).foregroundStyle(Theme.muted)
-            } else if day.input.payments == 0 {
-                Text(wholeMoney(0)).font(.ticket(.headline)).foregroundStyle(Theme.ink)
-                Text("Día sin gastos").font(.ticket(.detail)).foregroundStyle(Theme.good)
-            } else {
-                Text(wholeMoney(day.input.total))
-                    .font(.ticket(.headline))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.ink)
-                Text(details)
-                    .font(.ticket(.detail))
-                    .foregroundStyle(Theme.muted)
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(title)
+                    .font(.ticket(.microStrong))
+                    .tracking(Theme.Tracking.label)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.brass)
                     .fixedSize(horizontal: false, vertical: true)
-                if let limit {
-                    let over = day.input.variable - limit
-                    Text(over > 0 ? "\(wholeMoney(over)) arriba de tu cifra por día" : "\(wholeMoney(-over)) abajo de tu cifra por día")
-                        .font(.ticket(.detail))
-                        .foregroundStyle(over > 0 ? Theme.danger : Theme.good)
+                Spacer(minLength: Theme.Space.none)
+                if day.kind != .future {
+                    Text(wholeMoney(hasPayments ? day.input.total : 0))
+                        .font(.ticket(.label))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
             }
+            sentence
+                .font(.ticket(.detail))
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(Theme.Space.sm)
+        .padding(.horizontal, Theme.Space.sm)
+        .padding(.vertical, Theme.Space.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay { RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.dimmed) }
         .shadow(color: Theme.background, radius: Theme.Size.monthCodeGlow)
+    }
+
+    /// «1 pago · $43 arriba del tope del día»: only the judgement in color.
+    private var sentence: Text {
+        if day.kind == .future { return Text("Todavía no llega.").foregroundStyle(Theme.muted) }
+        guard hasPayments else { return Text("Día sin gastos").foregroundStyle(Theme.good) }
+        let said = Text(details).foregroundStyle(Theme.muted)
+        guard let limit else { return said }
+        let over = day.input.variable - limit
+        let judged = Text(over > 0 ? "\(wholeMoney(over)) arriba del tope del día"
+                                   : "\(wholeMoney(-over)) abajo del tope del día")
+            .foregroundStyle(over > 0 ? Theme.danger : Theme.good)
+        // A no-break space before the dot: a wrapped line never starts with «·».
+        return Text("\(said)\(Text("\u{00A0}· ").foregroundStyle(Theme.muted))\(judged)")
     }
 
     private var details: String {

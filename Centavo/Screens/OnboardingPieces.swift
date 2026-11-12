@@ -301,7 +301,9 @@ struct WelcomeFixedCalendar: View {
                     Text("\(day)")
                         .font(.ticket(.micro))
                         .foregroundStyle(isStamped ? Theme.onBrass : day == chosen ? Theme.brass : Theme.muted)
-                        .frame(maxWidth: .infinity, minHeight: Theme.Size.compactRow)
+                        // A whole touch target tall: at 28 pt the finger landed on the day above
+                        // or below (UX review, 2026-11-11).
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
                         .background {
                             RoundedRectangle(cornerRadius: Theme.Radius.tile)
                                 .fill(isStamped ? Theme.brass : .clear)

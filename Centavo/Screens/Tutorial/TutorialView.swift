@@ -99,8 +99,11 @@ struct TutorialView: View {
                 // What doesn't fit (a big text size, a small phone) scrolls, and a drag there is
                 // the scroll's: the buttons move. The ZStack keeps the crossfade in one place.
                 ViewThatFits(in: .vertical) {
+                    // From the top, never centred: a longer text or a «Pruébalo» made the
+                    // story taller, and its title sat on a different line in each one (UX
+                    // review, 2026-11-11). The drawing's box is one height, so the title is too.
                     ZStack { storyContent }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .contentShape(Rectangle())
                         .gesture(press(width: proxy.size.width))
                     ScrollView { ZStack { storyContent } }

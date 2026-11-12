@@ -160,10 +160,15 @@ final class MerchantRulesTests: XCTestCase {
         for item in backfill.pending(in: [one, two]) { MerchantBackfill.apply(item.change, to: item.expense) }
         // What the sheets do when the save fails.
         context.rollback()
-        XCTAssertEqual(one.merchant, "XYZ*1234 CDMX")
-        XCTAssertNil(one.category)
-        XCTAssertEqual(two.merchant, "XYZ*1234 CDMX")
-        XCTAssertEqual(two.category, "Otros")
+        // What is kept, read again from the store: nothing of what was rolled back got there.
+        // (Not the objects in memory: iOS 27 puts their old values back on `rollback()`, iOS 26
+        // leaves the edited ones there until they are fetched again; found by the CI, 2026-11-11.)
+        let kept = try ModelContext(container).fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date)]))
+        XCTAssertEqual(kept.map(\.merchant), ["XYZ*1234 CDMX", "XYZ*1234 CDMX"])
+        XCTAssertEqual(Set(kept.map(\.category)), [nil, "Otros"])
+        try context.save()
+        let after = try ModelContext(container).fetch(FetchDescriptor<Expense>())
+        XCTAssertEqual(Set(after.map(\.merchant)), ["XYZ*1234 CDMX"], "Un guardado posterior no debe llevarse lo revertido")
     }
 
     // MARK: The words on the screen

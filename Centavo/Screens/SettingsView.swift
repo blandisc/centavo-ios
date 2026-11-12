@@ -28,12 +28,13 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker(selection: Binding(get: { currency }, set: setCurrency)) {
+                    TicketMenuPicker("Moneda principal", selection: Binding(get: { currency }, set: setCurrency),
+                                     value: CurrencyPreference.name(currency)) {
                         ForEach(CurrencyPreference.offered, id: \.self) { code in
                             Text(CurrencyPreference.name(code)).tag(code)
                         }
                     } label: {
-                        IconRow("Moneda principal", systemImage: "dollarsign.circle") { EmptyView() }
+                        IconRow("Moneda principal", systemImage: "dollarsign.circle")
                     }
                 } header: {
                     Text("Moneda").ticketCaption()
@@ -46,9 +47,13 @@ struct SettingsView: View {
                 Section {
                     Button(action: openGuide) {
                         IconRow("Configurar atajo", systemImage: "wallet.pass") {
-                            Text(healthText)
-                                .font(.ticket(.detail))
-                                .foregroundStyle(health.isRecent ? Theme.muted : Theme.brass)
+                            if health.isRecent || ignoresWallet {
+                                Text(healthText)
+                                    .font(.ticket(.detail))
+                                    .foregroundStyle(Theme.muted)
+                            } else {
+                                WarningText(healthText)
+                            }
                         }
                     }
                     .accessibilityIdentifier("ajustes-configurar-atajo")

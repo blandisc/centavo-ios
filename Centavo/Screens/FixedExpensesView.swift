@@ -147,7 +147,7 @@ struct FixedExpensesView: View {
     }
 
     /// The same row as the month's list: the category's tile, the name, the amount, and under
-    /// it how it repeats and when it comes next (brass while it is still to come this month).
+    /// it how it repeats and when it comes next (ink while it is still to come this month; it only informs, so never brass).
     private func row(_ item: FixedItem) -> some View {
         let category = (item.original?.category ?? item.plan?.category).flatMap { $0.isEmpty ? nil : $0 }
         let colors = CatalogColors(categories: storedCategoryColors, sources: "")
@@ -162,7 +162,7 @@ struct FixedExpensesView: View {
                          + next.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
                             .locale(Locale(identifier: "es_MX"))))
                         .font(.ticket(.hint))
-                        .foregroundStyle(item.coming.isEmpty ? Theme.muted : Theme.brass)
+                        .foregroundStyle(item.coming.isEmpty ? Theme.muted : Theme.ink)
                 }
             }
         } amount: {
@@ -221,7 +221,7 @@ struct FixedExpensesView: View {
             HStack {
                 summaryFigure("Ya cobrado", money(arrived, primary))
                 Spacer()
-                summaryFigure("Por venir", money(coming, primary), brass: true)
+                summaryFigure("Por venir", money(coming, primary), trailing: true)
             }
             NoteText("Lo que está por venir ya se apartó de «Hoy puedes gastar».", color: Theme.faint)
         }
@@ -245,12 +245,12 @@ struct FixedExpensesView: View {
         .scrollClipDisabled()
     }
 
-    private func summaryFigure(_ label: String, _ amount: String, brass: Bool = false) -> some View {
-        VStack(alignment: brass ? .trailing : .leading, spacing: Theme.Space.xxxs) {
+    private func summaryFigure(_ label: String, _ amount: String, trailing: Bool = false) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: Theme.Space.xxxs) {
             Text(label).ticketKey()
             Text(amount)
                 .font(.ticket(.headline))
-                .foregroundStyle(brass ? Theme.brass : Theme.ink)
+                .foregroundStyle(Theme.ink)
         }
     }
 
@@ -390,28 +390,21 @@ struct FixedPlanSheet: View {
                 .listRowBackground(Theme.surface)
 
                 Section {
-                    Picker(selection: categoryChoice) {
+                    TicketMenuPicker("Categoría", selection: categoryChoice,
+                                     value: categoryChoice.wrappedValue.isEmpty ? "Sin categoría" : categoryChoice.wrappedValue) {
                         Text("Sin categoría").tag("")
                         ForEach(categories, id: \.self) { name in
                             Label(name, systemImage: CategoryStyle.icon(for: name, custom: customCategories)).tag(name)
                         }
-                    } label: {
-                        SectionLabel("Categoría")
                     }
-                    .pickerStyle(.menu)
-                    .tint(Theme.brass)
                     .accessibilityIdentifier("fijo-categoria")
-                    Picker(selection: $card) {
+                    TicketMenuPicker("Forma de pago", selection: $card, value: card.isEmpty ? "Sin especificar" : card) {
                         Text("Sin especificar").tag("")
                         ForEach(PaymentChoices.names(sources: sources, known: knownCards, current: card),
                                 id: \.self) { name in
                             Label(name, systemImage: PaymentChoices.icon(for: name, sources: sources)).tag(name)
                         }
-                    } label: {
-                        SectionLabel("Forma de pago")
                     }
-                    .pickerStyle(.menu)
-                    .tint(Theme.brass)
                     .accessibilityIdentifier("fijo-tarjeta")
                 } header: {
                     Text("Opcional").ticketCaption()

@@ -61,6 +61,40 @@ struct NoteText: View {
     }
 }
 
+/// A line that warns («Falta el tipo de cambio de EUR.», «1 por revisar»): the warning triangle
+/// in brass in front, the words in ink. Brass is for what is touched, what is chosen and the
+/// main figure; what only informs goes in `ink` or `muted`, and what warns is told apart by
+/// this mark, not by painting its words (owner, 2026-11-11).
+struct WarningText: View {
+    let text: String
+    var style: TicketStyle = .detail
+
+    init(_ text: String, style: TicketStyle = .detail) {
+        self.text = text
+        self.style = style
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+            Image(systemName: Self.symbol)
+                .imageScale(.small)
+                .foregroundStyle(Theme.brass)
+                .accessibilityHidden(true)
+            Text(text)
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.ticket(style))
+    }
+
+    static let symbol = "exclamationmark.triangle"
+
+    /// The same, for a warning that is one part of a longer line (the row's «¿Repetida?»).
+    static func inline(_ text: String) -> Text {
+        Text("\(Text(Image(systemName: symbol)).foregroundStyle(Theme.brass)) \(text)").foregroundStyle(Theme.ink)
+    }
+}
+
 /// A form row led by a symbol: «💳 BBVA». The symbol's column grows with the text, so names
 /// stay lined up at every text size; in accessibility sizes the row still fits because the
 /// name wraps.
@@ -136,6 +170,7 @@ struct AdaptiveStack<Content: View>: View {
         } footer: {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 HintText("Toca una para cambiarla o borrarla.")
+                WarningText("Falta el tipo de cambio de EUR.")
                 NoteText("Ya tienes uno con ese nombre.", color: Theme.danger)
             }
         }

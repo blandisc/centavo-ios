@@ -90,7 +90,7 @@ struct BudgetPage: View {
     /// «Nota · Comida va 40 % arriba de lo normal…», the last line of the ticket.
     private func noteLine(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("Nota").ticketKey(Theme.brass)
+            Text("Nota").ticketKey()
             Text(text)
                 .font(.ticket(.detail))
                 .foregroundStyle(Theme.ink)

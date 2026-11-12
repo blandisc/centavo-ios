@@ -5,6 +5,8 @@ import SwiftUI
 /// The month's cut (2026-10-31, decision 1 A): one sheet with every account. Each line waits
 /// for a balance typed or «Sin cambio»; nothing is taken as an answer without being looked at,
 /// and «Guardar» says how many are left. The yield is only a hint. Leaving keeps the draft.
+/// The balance before is written under the name, not as the field's example (owner,
+/// 2026-11-11: it reopens that detail of decision 1 A, the same number showed twice).
 struct MoneyCutSheet: View {
     @Bindable var draft: MoneyCut
 
@@ -29,6 +31,7 @@ struct MoneyCutSheet: View {
     @FocusState private var movementFocus: UUID?
     @FocusState private var rateFocus: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// The cut this one starts from: the same month's (being redone) or the one before. Never a
     /// later month's, when the cut is for the month that just ended.
@@ -126,13 +129,16 @@ struct MoneyCutSheet: View {
                         .accessibilityIdentifier("corte-pendientes")
                     }
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    if let id = focus, let entry = entries.first(where: { $0.account?.id == id }) {
-                        Button("Sin cambio") { keep(entry) }.font(.ticket(.footnoteStrong))
-                    }
-                    Spacer()
-                    Button("Siguiente") { focus = nextPending(after: focus) }.font(.ticket(.footnoteStrong))
+            }
+            // One bar stuck to the keyboard (owner, 2026-11-11): the system's floated as loose
+            // capsules, over the «Sin cambio» of the row being filled.
+            .keyboardBar {
+                if let id = focus, let entry = entries.first(where: { $0.account?.id == id }) {
+                    Button("Sin cambio") { keep(entry) }
+                        .accessibilityIdentifier("corte-teclado-sin-cambio")
                 }
+                Button("Siguiente") { focus = nextPending(after: focus) }
+                    .accessibilityIdentifier("corte-teclado-siguiente")
             }
             // The one way to ask before something goes away (owner, 2026-11-11).
             .confirmsRemoval(isPresented: $confirmingDiscard, question: {
@@ -225,9 +231,36 @@ struct MoneyCutSheet: View {
         }
     }
 
+    /// One account of the cut, in two lines (owner, 2026-11-11; it was three, some 124 pt tall):
+    /// the name and the field, and under them what it had before and «Sin cambio», which sits
+    /// under the field. The field asks for the balance instead of repeating the one before,
+    /// which is already written under the name; once kept as it was, it shows that balance.
     private func row(_ entry: MoneyEntry) -> some View {
         let account = entry.account!
         let before = previous?.shownEntry(for: account)?.balance
+        let offersKeep = !entry.reviewed && before != nil
+        let isInvestment = account.kind == .investment
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            AdaptiveStack(spacing: Theme.Space.s, stackedSpacing: Theme.Space.xxs, alignment: .firstTextBaseline) {
+                Text(account.name)
+                    .font(.ticket(.bodyMedium))
+                    .tracking(Theme.Tracking.name)
+                    .textCase(.uppercase)
+                balanceField(entry, account: account)
+            }
+            AdaptiveStack(spacing: Theme.Space.s, stackedSpacing: Theme.Space.none, alignment: .top) {
+                stateLine(entry, account: account, before: before)
+                if offersKeep { keepButton(entry, account: account) }
+            }
+            if isInvestment { movementField(entry, account: account) }
+        }
+        .padding(.top, Theme.Space.sm)
+        // «Sin cambio» brings its own 44 pt down to the row's edge: no more air under it.
+        .padding(.bottom, offersKeep && !isInvestment ? Theme.Space.none : Theme.Space.sm)
+        .listRowInsets(.vertical, Theme.Space.none)
+    }
+
+    private func balanceField(_ entry: MoneyEntry, account: MoneyAccount) -> some View {
         let separator = Locale.current.decimalSeparator ?? "."
         // Thousands while typing (2026-11-11). The model is given what the field will show, in
         // the same step: the text is only rewritten afterwards (`groupsMoney`), and until then
@@ -246,6 +279,53 @@ struct MoneyCutSheet: View {
                     entry.reviewed = false
                 }
             })
+        // Kept as it was: the balance that stays, in ink. Waiting: what to do, faint.
+        let kept = entry.reviewed && (typed[account.id] ?? "").isEmpty
+        let prompt = kept
+            ? Text(formatMoney(entry.balance, isoCode: account.currency, label: account.currency, main: draft.mainCurrency))
+                .foregroundStyle(Theme.ink)
+            : Text("Escribe el saldo").foregroundStyle(Theme.faint)
+        return TextField(account.name, text: balanceText, prompt: prompt)
+            .font(.ticket(.field))
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(typeSize.isAccessibilitySize ? .leading : .trailing)
+            .focused($focus, equals: account.id)
+            .groupsMoney(balanceText)
+            .accessibilityIdentifier("corte-saldo-\(account.name)")
+    }
+
+    /// The line under the name: what it had before, or that it was already looked at, with the
+    /// system's checkmark (the ticket's typeface has none: «✓» came out as a square root).
+    private func stateLine(_ entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> some View {
+        let state = hint(for: entry, account: account, before: before)
+        let unreadable = MoneyTyping.reading(typed[account.id] ?? "") == .unreadable
+        let text = state.done ? Text("\(Image(systemName: "checkmark")) \(state.shown)") : Text(state.shown)
+        return text
+            .font(.ticket(.hint))
+            .foregroundStyle(unreadable ? Theme.danger : entry.reviewed ? Theme.good : Theme.muted)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // «✓ escrito» is read as «Escrito», without the mark.
+            .accessibilityLabel(state.spoken)
+    }
+
+    /// «Sin cambio», under the field. Its 44 pt go inside the label, from its words down.
+    private func keepButton(_ entry: MoneyEntry, account: MoneyAccount) -> some View {
+        Button { keep(entry) } label: {
+            Text("Sin cambio")
+                .font(.ticket(.label))
+                .foregroundStyle(Theme.brass)
+                .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget,
+                       alignment: typeSize.isAccessibilitySize ? .leading : .topTrailing)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("corte-sin-cambio-\(account.name)")
+    }
+
+    @ViewBuilder
+    private func movementField(_ entry: MoneyEntry, account: MoneyAccount) -> some View {
+        let separator = Locale.current.decimalSeparator ?? "."
         let movementText = Binding(
             get: { movements[account.id] ?? "" },
             set: { text in
@@ -257,67 +337,31 @@ struct MoneyCutSheet: View {
                     entry.movement = nil
                 }
             })
-        let state = hint(for: entry, account: account, before: before)
-        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-                    Text(account.name)
-                        .font(.ticket(.bodyMedium))
-                        .tracking(Theme.Tracking.name)
-                        .textCase(.uppercase)
-                    Text(state.shown)
-                        .font(.ticket(.hint))
-                        .foregroundStyle(MoneyTyping.reading(typed[account.id] ?? "") == .unreadable ? Theme.danger
-                                         : entry.reviewed ? Theme.good : Theme.muted)
-                        // «✓ escrito» is read as «Escrito», without the mark.
-                        .accessibilityLabel(state.spoken)
-                }
-                Spacer(minLength: Theme.Space.s)
-                TextField(account.name, text: balanceText,
-                    prompt: Text(before.map { formatMoney($0, isoCode: account.currency, label: account.currency, main: draft.mainCurrency) } ?? "0.00")
-                        .foregroundStyle(Theme.faint))
-                    .font(.ticket(.field))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .focused($focus, equals: account.id)
-                    .groupsMoney(balanceText)
-                    .accessibilityIdentifier("corte-saldo-\(account.name)")
-            }
-            if account.kind == .investment {
-                TextField("¿Metiste o sacaste?", text: movementText,
-                    prompt: Text("¿Metiste o sacaste? (−300 si sacaste)").foregroundStyle(Theme.faint))
-                    .font(.ticket(.detail))
-                    .keyboardType(.numbersAndPunctuation)
-                    .focused($movementFocus, equals: account.id)
-                    .groupsMoney(movementText)
-                if MoneyTyping.signedReading(movements[account.id] ?? "") == .unreadable {
-                    Text("No se lee: escribe solo el número, como −300.")
-                        .font(.ticket(.hint)).foregroundStyle(Theme.danger)
-                }
-            }
-            if !entry.reviewed, before != nil {
-                Button("Sin cambio") { keep(entry) }
-                    .font(.ticket(.label))
-                    .foregroundStyle(Theme.brass)
-                    .buttonStyle(.tapTarget)
-                    .accessibilityIdentifier("corte-sin-cambio-\(account.name)")
-            }
+        TextField("¿Metiste o sacaste?", text: movementText,
+            prompt: Text("¿Metiste o sacaste? (−300 si sacaste)").foregroundStyle(Theme.faint))
+            .font(.ticket(.detail))
+            .keyboardType(.numbersAndPunctuation)
+            .focused($movementFocus, equals: account.id)
+            .groupsMoney(movementText)
+        if MoneyTyping.signedReading(movements[account.id] ?? "") == .unreadable {
+            Text("No se lee: escribe solo el número, como −300.")
+                .font(.ticket(.hint)).foregroundStyle(Theme.danger)
         }
     }
 
     /// The line under an account's name, as it is shown and as VoiceOver says it: a looked-at
-    /// line shows «✓ escrito» and is read «Escrito» (2026-11-11).
-    private func hint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> (shown: String, spoken: String) {
+    /// line shows a checkmark and «escrito», and is read «Escrito» (2026-11-11).
+    private func hint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> (shown: String, done: Bool, spoken: String) {
         if entry.reviewed, MoneyTyping.reading(typed[account.id] ?? "") != .unreadable {
             let word = switch typed[account.id] {
             case .some(""): "sin cambio"
             case .some: "escrito"
             case .none: "revisado"
             }
-            return ("✓ \(word)", word.prefix(1).uppercased() + String(word.dropFirst()))
+            return (word, true, word.prefix(1).uppercased() + String(word.dropFirst()))
         }
         let text = waitingHint(for: entry, account: account, before: before)
-        return (text, text)
+        return (text, false, text)
     }
 
     private func waitingHint(for entry: MoneyEntry, account: MoneyAccount, before: Decimal?) -> String {

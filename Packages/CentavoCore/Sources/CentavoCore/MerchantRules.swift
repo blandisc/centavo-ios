@@ -83,6 +83,31 @@ public enum MerchantRules {
         return rules
     }
 
+    /// The list in the two groups «Lo que recuerdo» shows (owner, 2026-11-11): the merchants the
+    /// owner gave a name to, and the ones with only a category remembered. Each keeps its order.
+    public struct Sections: Equatable, Sendable {
+        public var named: [MerchantRule]
+        public var categoryOnly: [MerchantRule]
+
+        public var isEmpty: Bool { named.isEmpty && categoryOnly.isEmpty }
+    }
+
+    public static func sections(_ rules: [MerchantRule]) -> Sections {
+        Sections(named: rules.filter { $0.name != nil }, categoryOnly: rules.filter { $0.name == nil })
+    }
+
+    /// The rules a search finds: `query` anywhere in the text it arrives as, the name given or
+    /// the category. Case, accents and spaces around don't count; a blank search finds all.
+    public static func matching(_ rules: [MerchantRule], query: String) -> [MerchantRule] {
+        let wanted = MerchantKey.normalized(query)
+        guard !wanted.isEmpty else { return rules }
+        return rules.filter { rule in
+            let filed = rule.category ?? (rule.goesUncategorized ? "Sin categoría" : nil)
+            return [rule.sent, rule.written, rule.name, filed]
+                .contains { $0.map { MerchantKey.normalized($0).contains(wanted) } ?? false }
+        }
+    }
+
     private static func rule(sent: String, name: String?, choice: CategoryRules.Choice?) -> MerchantRule {
         switch choice {
         case .category(let category): MerchantRule(sent: sent, name: name, category: category)

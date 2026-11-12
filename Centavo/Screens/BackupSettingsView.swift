@@ -280,15 +280,51 @@ struct BackupSettingsView: View {
             .disabled(!hasPassword || folderName == nil || working)
             .accessibilityIdentifier("respaldo-ahora")
             if let aside {
-                NoteText(Self.asideText(aside), color: Theme.ink)
-                    .padding(.vertical, Theme.Space.xxs)
-                    .accessibilityIdentifier("respaldo-aparte")
+                asideNote(aside)
                 trustButton
+                restoreInsteadButton
             }
         } footer: {
             HintText(aside == nil ? lastText : lastText + "\n" + Self.asideHint)
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// Why the last backup went apart, in one line; what to do about it are the two rows under
+    /// it, each with its case (owner, 2026-11-11: it was fifty words with both ways mixed).
+    private func asideNote(_ aside: BackupAsideNote) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            SectionLabel("Respaldo guardado aparte")
+                .accessibilityAddTraits(.isHeader)
+            NoteText(Self.asideText(aside), color: Theme.ink)
+        }
+        .padding(.vertical, Theme.Space.xs)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("respaldo-aparte")
+    }
+
+    /// One way out of a backup apart: when it applies, quiet, over what it does, in brass.
+    private func asideChoice(_ when: String, _ action: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(when)
+                .font(.ticket(.detail))
+                .foregroundStyle(Theme.muted)
+            Text(action)
+                .font(.ticket(.body))
+                .foregroundStyle(Theme.brass)
+                .multilineTextAlignment(.leading)
+        }
+        .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    /// «Aquí falta algo»: the same restore as the row further down, offered where it is needed.
+    private var restoreInsteadButton: some View {
+        Button { Task { await startRestoring() } } label: {
+            asideChoice("Aquí falta algo", "Restaurar el respaldo anterior")
+        }
+        .disabled(working)
+        .accessibilityIdentifier("respaldo-aparte-restaurar")
     }
 
     /// «Este iPhone es el bueno»: asks, checks it's the owner, and writes the daily file from
@@ -298,7 +334,7 @@ struct BackupSettingsView: View {
             countNow = try? context.fetchCount(FetchDescriptor<Expense>())
             confirmingTrust = true
         } label: {
-            IconRow("Este iPhone es el bueno", systemImage: "iphone") { EmptyView() }
+            asideChoice("Aquí está lo correcto", "Este iPhone es el bueno")
         }
         .disabled(working)
         .accessibilityIdentifier("respaldo-este-iphone")
@@ -311,10 +347,10 @@ struct BackupSettingsView: View {
     }
 
     static func asideText(_ aside: BackupAsideNote, now: Date = AppClock.now) -> String {
-        aside.message(now: now) + " Ese respaldo sigue en tu carpeta, sin cambios."
+        aside.reason(now: now)
     }
 
-    static let asideHint = "Si lo que hay en este iPhone es lo correcto (por ejemplo, borraste gastos repetidos), toca «Este iPhone es el bueno» y el respaldo de cada día volverá a salir de aquí. Si aquí falta algo, restaura el respaldo anterior."
+    static let asideHint = "El respaldo anterior sigue en tu carpeta, sin cambios."
 
     /// `expenses`: what this phone has right now, which may no longer be what the note said.
     static func trustQuestion(expenses: Int?) -> String {

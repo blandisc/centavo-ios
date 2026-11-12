@@ -296,8 +296,7 @@ final class DailyBackupAsideTests: XCTestCase {
         XCTAssertEqual(note.there, 8)
         XCTAssertEqual(note.day, "2026-11-10")
         XCTAssertEqual(note.file, apart)
-        XCTAssertEqual(note.message(now: at(10, 21)),
-                       "Tu último respaldo se guardó aparte: este iPhone tiene menos gastos (7) que el respaldo del 10 nov (8).")
+        XCTAssertEqual(note.reason(now: at(10, 21)), "Este iPhone tiene 7 gastos; el respaldo del 10 nov, 8.")
         XCTAssertEqual(DailyBackup.notice(now: at(10, 21)), DailyBackup.asideWarning)
         XCTAssertEqual(DailyBackup.lastBackup, at(10, 21), "Aparte también es un respaldo: está completo y comprobado")
         XCTAssertEqual(try names(), [daily, apart].sorted())
@@ -339,8 +338,7 @@ final class DailyBackupAsideTests: XCTestCase {
         XCTAssertEqual(written.aside?.kind, .fewer)
         XCTAssertEqual(written.aside?.there, 20)
         XCTAssertEqual(written.aside?.day, "2026-11-09")
-        XCTAssertEqual(DailyBackup.aside?.message(now: at(10, 21)),
-                       "Tu último respaldo se guardó aparte: este iPhone tiene menos gastos (4) que el respaldo del 9 nov (20).")
+        XCTAssertEqual(DailyBackup.aside?.reason(now: at(10, 21)), "Este iPhone tiene 4 gastos; el respaldo del 9 nov, 20.")
 
         let today = BackupRetention.fileName(for: at(10, 21))
         XCTAssertEqual(try backUp(4, at: at(10, 21, 5), trustingThisPhone: true).name, today)
@@ -454,8 +452,7 @@ final class DailyBackupAsideTests: XCTestCase {
                                                  order: 0, archived: false, createdAt: at(1, 9))], cuts: [])
         try backUp(8, money: money, at: at(10, 9))
         XCTAssertEqual(try backUp(8, at: at(10, 21)).aside?.kind, .noMoney)
-        XCTAssertEqual(DailyBackup.aside?.message(now: at(10, 21)),
-                       "Tu último respaldo se guardó aparte: este iPhone no tiene «Mi dinero» y el respaldo del 10 nov sí.")
+        XCTAssertEqual(DailyBackup.aside?.reason(now: at(10, 21)), "Este iPhone no tiene «Mi dinero»; el respaldo del 10 nov, sí.")
     }
 
     /// The file of the day was locked with another password: apart; trusting this phone keeps

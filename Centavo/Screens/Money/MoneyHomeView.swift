@@ -50,7 +50,11 @@ struct MoneyHomeView: View {
                 ToolbarItem(placement: .principal) { MoneySignature() }
                 if !accounts.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Hacer corte", systemImage: "checklist") { startCut() }
+                        // By its name, not a symbol to guess (owner, 2026-11-11): the first
+                        // time ends with «toca Hacer corte». Short, so the signature stays centered.
+                        Button("Corte") { startCut() }
+                            .font(.ticket(.footnoteStrong))
+                            .accessibilityLabel("Hacer corte")
                             .accessibilityIdentifier("dinero-hacer-corte")
                     }
                 }
@@ -126,72 +130,88 @@ struct MoneyHomeView: View {
 
     // MARK: Filled
 
+    /// The same page as «Hoy» (owner, 2026-11-11): a scroll with the screen's margin, the head
+    /// as far under the bar, one separation between blocks and perforations between lines, so
+    /// nothing jumps when the tab changes. It was a `List`, with its own margins and solid lines.
     private var filled: some View {
-        List {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 hero
-                    .listRowInsets(EdgeInsets(top: Theme.Space.none, leading: Theme.Space.screen,
-                                              bottom: Theme.Space.xl, trailing: Theme.Space.screen))
+                group("Cuentas", kinds: [.account, .investment])
+                group("Te deben", kinds: [.receivable])
+                group("Debes", kinds: [.debt])
+                incomeSection
+                if !archived.isEmpty { archivedSection }
             }
-            .listRowBackground(Theme.background)
-            .listRowSeparator(.hidden)
-
-            group("Cuentas", kinds: [.account, .investment])
-            group("Te deben", kinds: [.receivable])
-            group("Debes", kinds: [.debt])
-            incomeSection
-            if !archived.isEmpty {
-                Section {
-                    ForEach(archived) { account in
-                        HStack {
-                            Text(account.name)
-                                .font(.ticket(.bodyMedium))
-                                .tracking(Theme.Tracking.name)
-                                .textCase(.uppercase)
-                                .foregroundStyle(Theme.muted)
-                            Spacer()
-                            Button("Regresar") { unarchive(account) }
-                                .font(.ticket(.label))
-                                .foregroundStyle(Theme.brass)
-                                .buttonStyle(.tapTarget)
-                                .accessibilityIdentifier("dinero-regresar-\(account.name)")
-                        }
-                        .listRowBackground(Theme.background)
-                        .listRowSeparatorTint(Theme.hairline)
-                    }
-                } header: {
-                    Text("Archivadas").ticketCaption()
-                } footer: {
-                    HintText("No suman en tu patrimonio ni salen en el corte. Al regresarla, el próximo corte te pide su saldo.")
-                }
-            }
+            .padding(.horizontal, Theme.Space.screen)
+            // As «Hoy»'s list starts under its bar.
+            .padding(.top, Theme.Space.s)
+            .padding(.bottom, Theme.Space.xxl)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
     }
 
     private var hero: some View {
         let worth = latest?.worthToday(accounts) ?? NetWorth()
         let currency = latest?.mainCurrency ?? main
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+        return VStack(alignment: .leading, spacing: Theme.Space.none) {
+            // A section's distance from the figure, as the head of «Hoy».
             MoneyHead(date: AppClock.now, cutNumber: MoneyStore.cutsMade(among: cuts))
-                .padding(.bottom, Theme.Space.l)
-            Text("Patrimonio").ticketCaption(strong: true)
-            // Whole pesos, like «Hoy puedes gastar»: the rows below keep the cents.
-            Text(worth.total.formatted(currencyStyle(currency).precision(.fractionLength(0))))
-                .font(.ticket(.hero))
-                .tracking(Theme.Tracking.hero)
-                .foregroundStyle(Theme.brass)
-                .lineLimit(1)
-                .minimumScaleFactor(Theme.MinimumScale.figure)
-                .accessibilityIdentifier("dinero-patrimonio")
-            heroLine(worth: worth, currency: currency)
-            if !worth.missingRates.isEmpty {
-                Text("Falta el tipo de cambio de \(worth.missingRates.sorted().joined(separator: ", ")): esas cuentas no se suman. Hazlo en el corte.")
-                    .font(.ticket(.detail))
-                    .foregroundStyle(Theme.brass)
+                .padding(.bottom, Theme.Space.xxl)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Patrimonio").ticketCaption(strong: true)
+                heroFigure(worth, currency: currency)
+                heroLine(worth: worth, currency: currency)
+                if !worth.missingRates.isEmpty {
+                    WarningText("Falta el tipo de cambio de \(worth.missingRates.sorted().joined(separator: ", ")): esas cuentas no se suman. Hazlo en el corte.")
+                }
             }
+            if let month = cutDue { cutRow(month) }
         }
+    }
+
+    /// Whole pesos, like «Hoy puedes gastar»: the rows below keep the cents.
+    private func heroFigure(_ worth: NetWorth, currency: String) -> some View {
+        Text(worth.total.formatted(currencyStyle(currency).precision(.fractionLength(0))))
+            .font(.ticket(.hero))
+            .tracking(Theme.Tracking.hero)
+            .foregroundStyle(Theme.brass)
+            // The same optical fit as the figure of «Hoy»: the «$» carries its own air on the
+            // left, and the figure sits as close to its caption.
+            .padding(.leading, Theme.Space.outset)
+            .padding(.vertical, Theme.Space.heroTrim)
+            .lineLimit(1)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
+            .accessibilityIdentifier("dinero-patrimonio")
+    }
+
+    /// The month whose cut is due, if one is (owner, 2026-11-11): the first of the months «Hacer
+    /// corte» offers that has no cut made by hand. Not the month «Mi dinero» was started in
+    /// while it lasts: its balances were just written.
+    private var cutDue: String? {
+        guard !accounts.isEmpty else { return nil }
+        let this = MoneyMath.monthKey(of: AppClock.now)
+        let made = Set(cuts.filter { $0.id != start?.id }.map(\.month))
+        return MoneyStore.suggestedMonths(latest: latest?.month).first { month in
+            !made.contains(month) && !(month == this && start?.month == this)
+        }
+    }
+
+    /// «Hacer corte de noviembre», in brass under the net worth, only while it is due.
+    private func cutRow(_ month: String) -> some View {
+        Button { startCut(suggesting: month) } label: {
+            HStack(spacing: Theme.Space.s) {
+                LinkActionLabel("Hacer corte de \(MoneyHead.fullMonthName(month))", systemImage: "plus", alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.ticket(.footnote))
+                    .foregroundStyle(Theme.faint)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) { Perforation() }
+        .padding(.top, Theme.Space.l)
+        .accessibilityIdentifier("dinero-corte-del-mes")
     }
 
     private func heroLine(worth: NetWorth, currency: String) -> some View {
@@ -205,7 +225,7 @@ struct MoneyHomeView: View {
                 .foregroundStyle(delta >= 0 ? Theme.good : Theme.danger) + Text(" desde \(since)"))
         }
         if worth.receivable > 0 {
-            parts.append(Text(formatMoney(worth.receivable, isoCode: currency, label: currency)).foregroundStyle(Theme.brass)
+            parts.append(Text(formatMoney(worth.receivable, isoCode: currency, label: currency)).foregroundStyle(Theme.ink)
                          + Text(" te deben"))
         }
         let line = parts.enumerated().reduce(Text("")) { sum, item in
@@ -220,20 +240,14 @@ struct MoneyHomeView: View {
     private func group(_ title: String, kinds: [MoneyKind]) -> some View {
         let rows = accounts.filter { kinds.contains($0.kind) }
         if !rows.isEmpty, let latest {
-            Section {
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
+                MoneySectionHead(title: title,
+                                 total: formatMoney(sum(rows, in: latest), isoCode: latest.mainCurrency, label: latest.mainCurrency))
                 ForEach(rows) { account in
-                    Button { editing = account } label: { MoneyAccountRow(account: account, cut: latest, previous: previous) }
-                        .listRowBackground(Theme.background)
-                        .listRowSeparatorTint(Theme.hairline)
-                }
-            } header: {
-                HStack {
-                    Text(title).ticketCaption()
-                    Spacer()
-                    Text(formatMoney(sum(rows, in: latest), isoCode: latest.mainCurrency, label: latest.mainCurrency))
-                        .font(.ticket(.detail))
-                        .foregroundStyle(Theme.muted)
-                        .monospacedDigit()
+                    Button { editing = account } label: {
+                        MoneyAccountRow(account: account, cut: latest, previous: previous).moneyLine()
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -242,22 +256,47 @@ struct MoneyHomeView: View {
     /// What comes in each month (2026-11-02 audit): seen, edited and removed here. It's apart
     /// from the net worth, so its total isn't added to anything above.
     private var incomeSection: some View {
-        Section {
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            MoneySectionHead(title: "Te entra al mes", total: nil)
             ForEach(incomes) { income in
-                Button { editingIncome = income } label: { MoneyIncomeRow(income: income) }
-                    .listRowBackground(Theme.background)
-                    .listRowSeparatorTint(Theme.hairline)
+                Button { editingIncome = income } label: { MoneyIncomeRow(income: income).moneyLine() }
+                    .buttonStyle(.plain)
             }
             Button { addingIncome = true } label: {
                 LinkActionLabel(incomes.isEmpty ? "Agregar lo que te entra" : "Agregar otro ingreso",
                                 systemImage: "plus", alignment: .leading)
             }
-            .listRowBackground(Theme.background)
-            .listRowSeparator(.hidden)
+            .buttonStyle(.plain)
+            .overlay(alignment: .top) { Perforation() }
             .accessibilityIdentifier("dinero-agregar-ingreso")
-        } header: {
-            Text("Te entra al mes").ticketCaption()
         }
+    }
+
+    private var archivedSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            MoneySectionHead(title: "Archivadas", total: nil)
+            ForEach(archived) { account in archivedRow(account) }
+            HintText("No suman en tu patrimonio ni salen en el corte. Al regresarla, el próximo corte te pide su saldo.")
+                .padding(.top, Theme.Space.s)
+        }
+    }
+
+    private func archivedRow(_ account: MoneyAccount) -> some View {
+        AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.none) {
+            Text(account.name)
+                .font(.ticket(.bodyMedium))
+                .tracking(Theme.Tracking.name)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Regresar") { unarchive(account) }
+                .font(.ticket(.label))
+                .foregroundStyle(Theme.brass)
+                .buttonStyle(.tapTarget)
+                .accessibilityIdentifier("dinero-regresar-\(account.name)")
+        }
+        .frame(minHeight: Theme.Size.tapTarget)
+        .overlay(alignment: .top) { Perforation() }
     }
 
     private func sum(_ rows: [MoneyAccount], in cut: MoneyCut) -> Decimal {
@@ -289,6 +328,19 @@ struct MoneyHomeView: View {
         }
     }
 
+    /// The row under the net worth names a month: a cut left half-done still comes first.
+    private func startCut(suggesting month: String) {
+        do {
+            if let draft = try MoneyStore.openDraft(in: context) {
+                cutting = draft
+            } else {
+                startCut(for: month)
+            }
+        } catch {
+            problem = "No se pudo empezar el corte"
+        }
+    }
+
     private func startCut(for month: String) {
         do {
             cutting = try MoneyStore.draft(for: month, in: context, mainCurrency: latest?.mainCurrency ?? main)
@@ -303,6 +355,8 @@ struct MoneyAccountRow: View {
     let account: MoneyAccount
     let cut: MoneyCut
     let previous: MoneyCut?
+
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var balance: Decimal? { cut.shownEntry(for: account)?.balance }
 
@@ -341,11 +395,12 @@ struct MoneyAccountRow: View {
                     .tracking(Theme.Tracking.name)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 if !detail.isEmpty {
                     Text(detail)
                         .font(.ticket(.hint))
                         .foregroundStyle(Theme.muted)
+                        .multilineTextAlignment(.leading)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -355,7 +410,6 @@ struct MoneyAccountRow: View {
                 .monospacedDigit()
                 .fixedSize()
         }
-        .padding(.vertical, Theme.Space.xxs)
         .accessibilityElement(children: .combine)
     }
 }
@@ -363,28 +417,64 @@ struct MoneyAccountRow: View {
 /// One income: its name, where it comes from, and how much each month in its currency.
 struct MoneyIncomeRow: View {
     let income: MoneyIncome
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+        // With large text the amount goes under the name, whole, as an account's.
+        AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.xxs, alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                 Text(income.name)
                     .font(.ticket(.bodyMedium))
                     .tracking(Theme.Tracking.name)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 Text([income.institution, "al mes"].compactMap { $0 }.joined(separator: " · "))
                     .font(.ticket(.hint))
                     .foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.leading)
             }
-            Spacer(minLength: Theme.Space.s)
+            .frame(maxWidth: .infinity, alignment: .leading)
             Text(formatMoney(income.amount, isoCode: income.currency, label: income.currency))
                 .font(.ticket(.headline))
                 .foregroundStyle(Theme.ink)
                 .monospacedDigit()
+                .fixedSize()
         }
-        .padding(.vertical, Theme.Space.xxs)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A block's caption on «Mi dinero», and its total at the other end: «CUENTAS   $440,300.00».
+struct MoneySectionHead: View {
+    let title: String
+    let total: String?
+
+    var body: some View {
+        AdaptiveStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .ticketCaption()
+                .accessibilityAddTraits(.isHeader)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let total {
+                Text(total)
+                    .font(.ticket(.detail))
+                    .foregroundStyle(Theme.muted)
+                    .monospacedDigit()
+            }
+        }
+        .padding(.bottom, Theme.Space.s)
+    }
+}
+
+extension View {
+    /// A line of «Mi dinero»'s ticket, as an expense's on «Hoy» (`ExpenseRowLayout`): the same
+    /// air, at least a two-line row tall, growing with its text, under a perforation.
+    func moneyLine() -> some View {
+        padding(.vertical, Theme.Space.s)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
+            .contentShape(Rectangle())
+            .overlay(alignment: .top) { Perforation() }
     }
 }
 
@@ -412,23 +502,8 @@ struct MoneyHead: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-            Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(Self.mexico))
-                .replacingOccurrences(of: ".", with: ""))
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: Theme.Space.s)
-            if cutNumber > 0 {
-                Text("Corte N.º \(Text(String(format: "%03d", cutNumber)).foregroundStyle(Theme.brass))")
-                    .monospacedDigit()
-                    .accessibilityLabel(cutNumber == 1 ? "1 corte" : "\(cutNumber) cortes")
-            }
-        }
-        .font(.ticket(.microStrong))
-        .tracking(Theme.Tracking.label)
-        .textCase(.uppercase)
-        .foregroundStyle(Theme.ink)
-        .lineLimit(1)
-        .padding(.bottom, Theme.Space.s)
-        .overlay(alignment: .bottom) { Perforation() }
+        // The very head of «Hoy» (`TicketHead`), with the cuts made as its folio.
+        TicketHead(title: TicketHead.day(date), folio: "Corte N.º", number: cutNumber,
+                   spoken: cutNumber == 1 ? "1 corte" : "\(cutNumber) cortes")
     }
 }

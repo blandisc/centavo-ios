@@ -3,6 +3,20 @@ import XCTest
 /// Uses the app the way a person does and checks what comes out. Each test starts from a
 /// fresh in-memory store, so none depends on another.
 @MainActor
+extension XCTestCase {
+    /// «Presupuesto» in «Más» (2026-11-11: it was «Presupuesto del mes»). The carousel's page dot
+    /// is a button called «Presupuesto» too, 44 pt wide: the menu's is the wide one.
+    func budgetMenuItem(_ app: XCUIApplication) -> XCUIElement {
+        let named = app.buttons.matching(NSPredicate(format: "label == 'Presupuesto'"))
+        _ = named.firstMatch.waitForExistence(timeout: 5)
+        for index in 0..<named.count where named.element(boundBy: index).frame.width > 100 {
+            return named.element(boundBy: index)
+        }
+        return named.element(boundBy: max(named.count - 1, 0))
+    }
+}
+
+@MainActor
 final class FlowTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -161,58 +175,24 @@ final class FlowTests: XCTestCase {
 
     // MARK: Girar el teléfono
 
-    /// Back from landscape, the screen fits the phone again: each row starting at the left
-    /// margin, not left wider and pushed off to the left; and the carousel resting square on its
-    /// page, on either page and after several turns, not halfway with the other one peeking in
-    /// and the calendar cut short (owner, 2026-10-27).
-    func testAlGirarLaPantallaSeAcomoda() {
+    /// The app stays upright (owner, 2026-11-11): on its side the tab bar floated over the
+    /// mosaic and the list did not fit. Turning the phone leaves the screen as it was.
+    func testLaAppSeQuedaEnVertical() {
         let app = launch(demo: true, budget: true)
-        // The carousel's first page is «En qué se va»; the bar stays over it (2026-10-29).
-        let budget = app.descendants(matching: .any)["en-que-se-va"]
-        require(budget, "No está el carrusel")
-
-        func turn(_ orientation: UIDeviceOrientation) {
-            XCUIDevice.shared.orientation = orientation
+        let budget = require(app.descendants(matching: .any)["en-que-se-va"], "No está el carrusel")
+        let upright = app.windows.firstMatch.frame
+        let page = budget.frame
+        // The simulator stays turned for the tests that follow unless it is put back.
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for side in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = side
             sleep(2)
+            let window = app.windows.firstMatch.frame
+            XCTAssertLessThan(window.width, window.height, "La app giró con el teléfono de lado: \(window)")
+            XCTAssertEqual(window, upright, "La pantalla cambió de tamaño al girar")
+            XCTAssertEqual(budget.frame, page, "La página se movió al girar")
         }
-        /// Where the calendar page stands: from its first day to its last.
-        func calendarFrame() -> CGRect {
-            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Día "))
-                .allElementsBoundByIndex.map(\.frame).reduce(CGRect.null) { $0.union($1) }
-        }
-        func expectResting(onCalendar: Bool, _ moment: String) {
-            snap(moment)
-            let screen = app.windows.firstMatch.frame
-            let page = onCalendar ? calendarFrame() : budget.frame
-            XCTAssertTrue(page.minX >= screen.minX && page.maxX <= screen.maxX,
-                          "\(moment): la página quedó cortada: \(page) en \(screen)")
-            // The carousel is as tall as the page: the dots right under it, not over its last row.
-            let dots = app.buttons["Presupuesto"]
-            XCTAssertGreaterThanOrEqual(dots.frame.minY, page.maxY - 1,
-                                        "\(moment): la página quedó tapada: \(page), puntos en \(dots.frame)")
-            if screen.width < screen.height {
-                // Upright, the page's content runs from margin to margin (24 pt each side).
-                XCTAssertEqual(page.minX, 24, accuracy: 1, "\(moment): la página quedó corrida: \(page)")
-                XCTAssertEqual(page.width, screen.width - 48, accuracy: 1,
-                               "\(moment): la página no mide lo que la pantalla: \(page) en \(screen)")
-            }
-            let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "$")).element(boundBy: 0)
-            XCTAssertGreaterThanOrEqual(row.frame.minX, screen.minX, "\(moment): renglones corridos: \(row.frame)")
-            XCTAssertLessThanOrEqual(row.frame.maxX, screen.maxX, "\(moment): renglones anchos: \(row.frame)")
-        }
-
-        turn(.landscapeLeft)
-        expectResting(onCalendar: false, "horizontal-presupuesto")
-        app.buttons["Calendario"].tap()
-        sleep(1)
-        turn(.portrait)
-        expectResting(onCalendar: true, "vertical-calendario")
-        turn(.landscapeRight)
-        expectResting(onCalendar: true, "horizontal-calendario")
-        app.buttons["Presupuesto"].tap()
-        sleep(1)
-        turn(.portrait)
-        expectResting(onCalendar: false, "vertical-presupuesto")
+        snap("de-lado-sigue-en-vertical")
     }
 
     func testUnaDevolucionRestaDelTotal() {
@@ -331,11 +311,11 @@ final class FlowTests: XCTestCase {
         let app = launch(demo: true)
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
-        // The amount opens with the keyboard, and while it has it its row shows «Siguiente» in the
-        // button's place: move on to the merchant, as a person would.
-        app.textFields["comercio"].tap()
+        // In words on a row of its own under the amount, in view from the start, keyboard up
+        // and all (owner, 2026-11-11).
         let button = require(app.buttons["en-una-frase"], "No está «Dilo en una frase»")
-        for _ in 0..<4 where !button.isHittable { app.swipeDown() }
+        XCTAssertTrue(button.isHittable, "«Dilo en una frase» no está a la vista al abrir la hoja")
+        XCTAssertTrue(button.label.localizedCaseInsensitiveContains("Dilo en una frase"), "Dice: \(button.label)")
         button.tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
@@ -358,7 +338,7 @@ final class FlowTests: XCTestCase {
     func testTarjetasYCategoriasPropias() {
         let app = launch(demo: true)
         app.buttons["Más"].tap()
-        require(app.buttons["Pagos y categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «Más»").tap()
         // The cards that came with payments show up without setting them up.
         require(app.buttons["fuente-BBVA"], "No aparecen las tarjetas de los pagos")
 
@@ -489,11 +469,11 @@ final class FlowTests: XCTestCase {
         let app = launch()
         app.buttons["Anotar gasto"].tap()
         require(app.textFields["monto"], "No abrió la hoja de gasto")
-        // The amount opens with the keyboard, and while it has it its row shows «Siguiente» in the
-        // button's place: move on to the merchant, as a person would.
-        app.textFields["comercio"].tap()
+        // In words on a row of its own under the amount, in view from the start, keyboard up
+        // and all (owner, 2026-11-11).
         let button = require(app.buttons["en-una-frase"], "No está «Dilo en una frase»")
-        for _ in 0..<4 where !button.isHittable { app.swipeDown() }
+        XCTAssertTrue(button.isHittable, "«Dilo en una frase» no está a la vista al abrir la hoja")
+        XCTAssertTrue(button.label.localizedCaseInsensitiveContains("Dilo en una frase"), "Dice: \(button.label)")
         button.tap()
         let sentence = require(app.alerts.textFields.firstMatch, "No pidió la frase")
         sentence.tap()
@@ -528,7 +508,7 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cine del centro"), "El nombre nuevo no aparece en la lista")
 
         app.buttons["Más"].tap()
-        require(app.buttons["Pagos y categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «Más»").tap()
         // At the bottom of a lazy list: not in the hierarchy until it is scrolled to.
         let link = app.buttons["lo-que-recuerdo"]
         for _ in 0..<6 where !isClear(link, app) { scrollForm(app) }
@@ -584,7 +564,7 @@ final class FlowTests: XCTestCase {
             "-centavo-recuerdos",
         ])
         app.buttons["Más"].tap()
-        let catalog = app.buttons["Pagos y categorías"]
+        let catalog = app.buttons["Categorías"]
         for _ in 0..<6 where !catalog.isHittable { scrollForm(app) }
         require(catalog, "No está en «Más»").tap()
         let link = app.buttons["lo-que-recuerdo"]
@@ -599,6 +579,54 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThanOrEqual(rule.frame.maxX, window.maxX + 0.5, "La regla se sale de la pantalla")
         XCTAssertGreaterThanOrEqual(rule.frame.height, 44, "La regla es muy chica para tocarla")
         snap("flujo-lo-que-recuerdo-letra-de-accesibilidad")
+    }
+
+    /// «Lo que recuerdo» (owner, 2026-11-11): the merchants with a name of their own first, the
+    /// ones with only a category folded behind «Ver todos», and a search that looks in both.
+    func testLoQueRecuerdoSeparaLosQueTienenNombreYBusca() {
+        let app = launch(demo: true, extra: ["-centavo-recuerdos"])
+        // Only a category chosen for Cinépolis: remembered without a name.
+        require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
+        require(app.textFields["comercio"], "No abrió la hoja de edición")
+        let pantry = app.buttons["categoria-Despensa"]
+        for _ in 0..<4 where !isClear(pantry, app) { scrollForm(app) }
+        require(pantry, "No está Despensa en la hoja").tap()
+        app.buttons["hoja-guardar"].tap()
+        require(row(app, containing: "Cinépolis"), "No volvió a la lista")
+
+        app.buttons["Más"].tap()
+        require(app.buttons["Categorías"], "No está en «Más»").tap()
+        let link = app.buttons["lo-que-recuerdo"]
+        for _ in 0..<6 where !isClear(link, app) { scrollForm(app) }
+        require(link, "No está «Lo que recuerdo» en «Pagos y categorías»")
+        XCTAssertTrue(link.label.localizedCaseInsensitiveContains("1 con nombre"), "Dice: \(link.label)")
+        link.tap()
+
+        let named = require(app.buttons["recuerdo-clip*mx taq guero 02 cdmx"], "No está el comercio con nombre")
+        let onlyCategory = app.buttons["recuerdo-cinepolis"]
+        XCTAssertFalse(onlyCategory.exists, "Los que solo tienen categoría no empiezan plegados")
+        let fold = require(app.buttons["recuerdo-ver-todos"], "No ofrece «Ver todos»")
+        XCTAssertTrue(fold.label.localizedCaseInsensitiveContains("Ver todos"), "Dice: \(fold.label)")
+        snap("flujo-lo-que-recuerdo-plegado")
+        fold.tap()
+        require(onlyCategory, "«Ver todos» no abrió los que solo tienen categoría")
+        XCTAssertTrue(onlyCategory.label.localizedCaseInsensitiveContains("Despensa"), "Dice: \(onlyCategory.label)")
+        XCTAssertTrue(fold.label.localizedCaseInsensitiveContains("Ver menos"), "Dice: \(fold.label)")
+        snap("flujo-lo-que-recuerdo-abierto")
+        fold.tap()
+        XCTAssertTrue(onlyCategory.waitForNonExistence(timeout: 5), "«Ver menos» no los plegó")
+
+        // Searching opens both groups and looks at the text, the name and the category.
+        let search = require(app.searchFields.firstMatch, "No hay buscador")
+        search.tap()
+        search.typeText("despen")
+        require(onlyCategory, "Buscar por categoría no encontró el comercio plegado")
+        XCTAssertTrue(named.waitForNonExistence(timeout: 5), "La búsqueda no filtró los que tienen nombre")
+        XCTAssertFalse(fold.exists, "Con búsqueda sigue saliendo «Ver todos»")
+        snap("flujo-lo-que-recuerdo-busqueda")
+        search.typeText("zzz")
+        require(app.staticTexts["recuerdo-sin-resultados"], "Sin resultados no lo dice")
+        XCTAssertFalse(onlyCategory.exists, "Sin resultados sigue mostrando comercios")
     }
 
     func testBorrarPideConfirmacionYLuegoQuitaElGasto() {
@@ -734,7 +762,7 @@ final class FlowTests: XCTestCase {
     func testOcultarUnaCategoriaLaQuitaAlAnotar() {
         let app = launch()
         app.buttons["Más"].tap()
-        require(app.buttons["Pagos y categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «Más»").tap()
         // A tile per category (2026-10-29); its menu hides it.
         let cafe = app.buttons["mostrar-Café"]
         for _ in 0..<4 where !cafe.isHittable { app.swipeUp() }
@@ -776,7 +804,7 @@ final class FlowTests: XCTestCase {
         snap("flujo-presupuesto-fijado")
 
         app.buttons["Más"].tap()
-        app.buttons["Presupuesto del mes"].tap()
+        budgetMenuItem(app).tap()
         // «Quitar presupuesto» goes under the «Hoy puedes gastar» choice: scroll the sheet to it.
         let remove = app.buttons["quitar-presupuesto"]
         require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
@@ -833,7 +861,7 @@ final class FlowTests: XCTestCase {
     func testPasarseDelPresupuestoLoDice() {
         let app = launch()
         app.buttons["Más"].tap()
-        app.buttons["Presupuesto del mes"].tap()
+        budgetMenuItem(app).tap()
         let field = require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
         field.tap()
         field.typeAmount("100")
@@ -1167,7 +1195,7 @@ final class FlowTests: XCTestCase {
         require(app.buttons["Más"], "La pantalla principal no abrió", timeout: 20)
         XCTAssertFalse(app.buttons["para-cerrar-el-mes"].exists, "Sigue «Para cerrar el mes»")
         app.buttons["Más"].tap()
-        app.buttons["Presupuesto del mes"].tap()
+        budgetMenuItem(app).tap()
         require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
         sleep(7)
         snap("presupuesto-acumula")

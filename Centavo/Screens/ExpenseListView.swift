@@ -204,9 +204,11 @@ struct ExpenseListView: View {
                             .pickerStyle(.inline)
                         }
                         Section {
-                            Button("Presupuesto del mes", systemImage: "target") { showingBudget = true }
+                            // One line each, no word broken in two (owner, 2026-11-11): the sheet already says
+                            // «del mes», and the ways of paying are still inside «Categorías».
+                            Button("Presupuesto", systemImage: "target") { showingBudget = true }
                             Button("Gastos fijos", systemImage: "repeat") { showingFixed = true }
-                            Button("Pagos y categorías", systemImage: "creditcard") { showingCatalogs = true }
+                            Button("Categorías", systemImage: "creditcard") { showingCatalogs = true }
                         }
                         Section {
                             Button("Configurar atajo", systemImage: "wallet.pass") { showingSetup = true }
@@ -538,7 +540,8 @@ private struct HomeContent: View, Equatable {
                            catalog: catalog, model: model, actions: actions)
             }
             .padding(.top, Theme.Space.s)
-            .padding(.bottom, Theme.Space.xxl)
+            // The end of the list rests above the fade over the bottom bar (`BottomFade`).
+            .padding(.bottom, Theme.Size.bottomFade)
             .environment(\.listWidth, listWidth)
             // A tap anywhere else lets the picked day or category go, its card with it (owner,
             // 2026-10-30). Rows, bars and buttons take their own taps first.
@@ -548,11 +551,33 @@ private struct HomeContent: View, Equatable {
                 if selectedCategory != nil { actions.clearCategory() }
             }
         }
+        .modifier(BottomFade())
         // A warning the moment the budget is blown.
         .sensoryFeedback(.warning, trigger: isCurrent && (month.pace?.remaining ?? 0) < 0) { old, new in
             !old && new
         }
         .onChange(of: searching) { _, isOn in if !isOn { model.searchClosed() } }
+    }
+}
+
+/// The paper fades out over the screen's bottom edge, and is plain under the bottom bar (owner,
+/// 2026-11-11): the mosaic's colors passing under the tabs dyed their glass olive or orange and
+/// «Hoy», in brass, was lost on it. Not a bar: the system's own floats over it, on dark.
+private struct BottomFade: ViewModifier {
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .bottom) {
+            VStack(spacing: Theme.Space.none) {
+                LinearGradient(colors: [Theme.background.opacity(Theme.Opacity.hidden), Theme.background],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: Theme.Size.bottomFade)
+                // Nothing tall of its own: only what the bar covers, down to the screen's edge.
+                Theme.background
+                    .ignoresSafeArea(edges: .bottom)
+                    .frame(height: Theme.Space.none)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
     }
 }
 
@@ -1267,41 +1292,23 @@ private struct TicketRow: ViewModifier {
 
 // MARK: - Pieces
 
-/// The ticket's head over a perforation: «JUE 29 DE OCT» this month («SEP 2026» for another),
-/// and at the other end «N.º 042», the month's payments, like the number printed on a ticket.
+/// The head of «Hoy»'s ticket (`TicketHead`): «JUE 29 DE OCT» this month («SEP 2026» for
+/// another), and at the other end «N.º 042», the month's payments.
 private struct ReceiptHead: View {
     let date: Date
     let isCurrent: Bool
     let payments: Int
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var title: String {
-        let style: Date.FormatStyle = isCurrent ? .dateTime.weekday(.abbreviated).day().month(.abbreviated)
-            : .dateTime.month(.abbreviated).year()
-        return date.formatted(style.locale(Locale(identifier: "es_MX"))).replacingOccurrences(of: ".", with: "")
+        if isCurrent { return TicketHead.day(date) }
+        return date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "es_MX")))
+            .replacingOccurrences(of: ".", with: "")
     }
 
     var body: some View {
-        // With accessibility type the date and the folio stack and wrap («VIE 2… N.º 0…» said nothing).
-        AdaptiveStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("fecha-ticket")
-            if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Space.s) }
-            if payments > 0 {
-                Text("N.º \(Text(String(format: "%03d", payments)).foregroundStyle(Theme.brass))")
-                    .monospacedDigit()
-                    .accessibilityLabel(payments == 1 ? "1 pago este mes" : "\(payments) pagos este mes")
-                    .accessibilityIdentifier("folio")
-            }
-        }
-        .font(.ticket(.microStrong))
-        .tracking(Theme.Tracking.label)
-        .textCase(.uppercase)
-        .foregroundStyle(Theme.ink)
-        .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
-        .padding(.bottom, Theme.Space.s)
-        .overlay(alignment: .bottom) { Perforation() }
+        TicketHead(title: title, number: payments,
+                   spoken: payments == 1 ? "1 pago este mes" : "\(payments) pagos este mes",
+                   titleIdentifier: "fecha-ticket", folioIdentifier: "folio")
     }
 }
 
@@ -1731,8 +1738,8 @@ private struct LedgerRow: View {
     /// still reads the name.
     private var metaLine: Text? {
         var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { part in
-            // «¿Repetida?» in brass: it asks for a look.
-            part == "¿Repetida?" ? Text(part).foregroundStyle(Theme.brass) : Text(part)
+            // «¿Repetida?» asks for a look: the warning mark in front, its words in ink.
+            part == "¿Repetida?" ? WarningText.inline(part) : Text(part)
         }
         if let card {
             let icon = catalog.sourceIcon(for: card)
@@ -1854,8 +1861,7 @@ private struct SearchHeaderRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionLabel(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")",
-                         color: Theme.brass)
+            SectionLabel(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                 .accessibilityIdentifier("resultados-busqueda")
             if count == 0 {
@@ -1871,8 +1877,9 @@ private struct SearchHeaderRow: View {
     }
 }
 
-/// «Día 12 · 2 gastos · Ver todo el mes» (or «Ropa · 2 gastos») over the list while a day
-/// or a category is picked.
+/// «Día 12 · 2 gastos · $310 — Quitar filtro ✕» (or «Ropa · 2 gastos») over the list while a
+/// day or a category is picked. What informs is grey, like a section's caption; what is tapped
+/// is brass, as in the rest of the app (owner, 2026-11-11: it was the other way round).
 private struct FilterRow: View {
     let title: String
     let count: Int
@@ -1880,13 +1887,27 @@ private struct FilterRow: View {
     var total: String?
     let clear: () -> Void
 
+    private var summary: String {
+        "\(title) · \(count) \(count == 1 ? "gasto" : "gastos")" + (total.map { " · \($0)" } ?? "")
+    }
+
     var body: some View {
-        HStack {
-            SectionLabel("\(title) · \(count) \(count == 1 ? "gasto" : "gastos")" + (total.map { " · \($0)" } ?? ""),
-                         color: Theme.brass)
-            Spacer()
-            // The quiet way out, like every «Después» (decision 2026-10-29: in ink, a button).
-            SecondaryButton("Ver todo el mes", identifier: "ver-todo-el-mes", action: clear)
+        // With accessibility type the way out goes under the summary instead of squeezing it.
+        AdaptiveStack(spacing: Theme.Space.s, stackedSpacing: Theme.Space.none) {
+            SectionLabel(summary, color: Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: clear) {
+                Text("Quitar filtro \(Image(systemName: "xmark"))")
+                    .font(.ticket(.footnoteStrong))
+                    .foregroundStyle(Theme.brass)
+            }
+            .buttonStyle(.tapTarget)
+            // The summary wraps before the way out does.
+            .layoutPriority(1)
+            .accessibilityLabel("Quitar filtro")
+            // The name it had as «Ver todo el mes»: the tests know it by it.
+            .accessibilityIdentifier("ver-todo-el-mes")
         }
     }
 }
@@ -1944,6 +1965,10 @@ private struct DayDivider: View {
     private var day: Date { group.day }
     /// Worked out here, so an edited amount redraws only its day's divider.
     private var total: String? { group.total(in: primaryCurrency) }
+    /// With one expense the day's total is that expense's amount, right under it: printed once,
+    /// in its row (owner, 2026-11-11). VoiceOver still hears it with the day (`spoken`).
+    private var showsTotal: Bool { group.items.count > 1 }
+    private var spoken: String { [label, total].compactMap { $0 }.joined(separator: ", ") }
 
     private var label: String {
         let calendar = Calendar.current
@@ -1971,7 +1996,7 @@ private struct DayDivider: View {
     }
 
     @ViewBuilder private var totalText: some View {
-        if let total {
+        if showsTotal, let total {
             Text(total)
                 .font(.ticket(.micro))
                 .foregroundStyle(Theme.muted)
@@ -2006,7 +2031,8 @@ private struct DayDivider: View {
         }
         .padding(.top, Theme.Space.ml)
         .padding(.bottom, Theme.Space.xxxs)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("divisor-dia")
     }

@@ -1,6 +1,26 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **«Mi dinero» se ve como «Hoy»:** mismos márgenes, líneas punteadas y separaciones; nada brinca al cambiar de pestaña.
+- **«Hacer corte» se llama por su nombre:** «Corte» en la barra y, cuando toca, «Hacer corte de noviembre» bajo tu patrimonio.
+- **El corte del mes es más corto:** «Sin cambio» va bajo el monto y el campo dice «Escribe el saldo».
+- **Sobre el teclado hay una sola barra** a todo lo ancho con «Sin cambio», «Siguiente» y «Ocultar teclado»; ya no tapa lo que se llena.
+- **El dorado queda para lo que se toca, lo elegido y la cifra principal;** los avisos llevan un triángulo y texto en blanco.
+- **Los selectores** (Tipo, Motivo, Moneda, Categoría, Forma de pago…) van en la letra del ticket.
+- **«Dilo en una frase»** es un renglón con palabras bajo el monto, siempre a la vista al anotar un gasto.
+- **El menú «Más» dice «Presupuesto» y «Categorías»,** y «Guardar» va abajo también en «Tu presupuesto».
+- **En la lista, un día con un solo gasto ya no repite su total;** al filtrar, «Quitar filtro ✕» va en latón y el resumen en gris.
+- **La ficha de un día del boleto** dice su frase completa y ya no tapa «Hoy puedes gastar».
+- **«Lo que recuerdo»:** primero los comercios a los que les pusiste nombre, los demás plegados en «Ver todos», y un buscador.
+- **«Pagos y categorías»** a tres columnas, como la hoja del gasto; la leyenda de ★ y ))) solo cuando hace falta.
+- **Respaldo guardado aparte:** el aviso es una línea con el motivo y dos salidas claras.
+- **Bienvenida:** los días del calendario son más altos, las sugerencias de presupuesto van arriba del campo y los títulos son preguntas. En «Cómo funciona», el título ya no brinca entre historias.
+- **La app se queda en vertical.**
+### Fixed
+- **Con letra muy grande,** los días del calendario vuelven a ser cuadros y sus números ya no se enciman.
+- **«Menos devoluciones» ya no se corta** bajo «En qué se va», y la barra de abajo ya no se tiñe con el mosaico.
+- **La palomita de «sin cambio»** ya es una palomita, no una raíz cuadrada.
 ### Added
 - **«Lo que recuerdo»** en «Más › Pagos y categorías»: cómo se anota cada comercio («Lo que llega como… → Se anota como Tacos Pepe · Comida»), para cambiarlo u olvidarlo.
 - **Al corregir un gasto, «Cambiar también los otros N gastos»** aplica el cambio a los anteriores del mismo comercio, sin tocar los que tienen otra categoría puesta por ti.

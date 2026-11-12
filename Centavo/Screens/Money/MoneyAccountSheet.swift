@@ -105,14 +105,14 @@ struct MoneyAccountSheet: View {
                     }
                     if kind == .debt || kind == .receivable {
                         Section {
-                            Picker(selection: kind == .debt ? $debtSubtype : $owedSubtype) {
+                            TicketMenuPicker(kind == .debt ? "Qué debes" : "Qué es",
+                                             selection: kind == .debt ? $debtSubtype : $owedSubtype,
+                                             value: (kind == .debt ? debtSubtype : owedSubtype).name) {
                                 ForEach(kind == .debt ? [MoneySubtype.card, .loan, .other] : [MoneySubtype.lent, .coming],
                                         id: \.self) { Text($0.name).tag($0) }
                             } label: {
                                 Text(kind == .debt ? "Qué debes" : "Qué es").font(.ticket(.body)).foregroundStyle(Theme.ink)
                             }
-                            .pickerStyle(.menu)
-                            .tint(Theme.brass)
                             .accessibilityIdentifier("cuenta-subtipo")
                         }
                         .listRowBackground(Theme.surface)
@@ -124,7 +124,7 @@ struct MoneyAccountSheet: View {
                     TicketTextField("Institución", text: $institution, prompt: "Institución · opcional (Nu, BBVA…)",
                                     identifier: "cuenta-institucion")
                     if isNew {
-                        Picker(selection: $currency) {
+                        TicketMenuPicker("Moneda", selection: $currency, value: CurrencyPreference.name(currency)) {
                             ForEach(currencies, id: \.self) { Text(CurrencyPreference.name($0)).tag($0) }
                         } label: {
                             Text("Moneda").font(.ticket(.body)).foregroundStyle(Theme.ink)
@@ -211,7 +211,7 @@ struct MoneyAccountSheet: View {
     }
 
     private var kindPicker: some View {
-        Picker("Qué es", selection: $kind) {
+        Picker("Qué es", selection: $kind) { // ds-allow: su estilo (segmentado o en línea) se pone donde se usa
             Text("Cuenta").tag(MoneyKind.account)
             Text("Inversión").tag(MoneyKind.investment)
             Text("Te deben").tag(MoneyKind.receivable)

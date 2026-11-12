@@ -5,6 +5,9 @@ import SwiftUI
 /// «Lo que recuerdo»: what arrives as each text and how it is written down (owner's request,
 /// 2026-11-11: «todo lo que me llega así lo reclasifico así»). The rules make themselves when
 /// an expense is corrected; here they are seen, changed and forgotten.
+///
+/// The merchants with a name of the owner's come first; the ones with only a category
+/// remembered (there can be over a hundred) wait folded under them, and a search looks in both.
 struct MerchantRulesView: View {
     @AppStorage(UserCatalog.merchantRenamesKey) private var storedRenames = ""
     @AppStorage(UserCatalog.categoryRulesKey) private var storedRules = ""
@@ -12,9 +15,13 @@ struct MerchantRulesView: View {
     @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
     @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var editing: MerchantRule?
     /// A rule about to be forgotten, waiting for «Olvidar».
     @State private var forgetting: MerchantRule?
+    @State private var query = ""
+    /// «Ver todos»: the ones with only a category, open.
+    @State private var showsCategoryOnly = false
 
     private var rules: [MerchantRule] {
         MerchantRules.list(renames: MerchantRenames(stored: storedRenames),
@@ -25,40 +32,127 @@ struct MerchantRulesView: View {
         CatalogColors(categories: storedCategoryColors, sources: storedSourceColors)
     }
 
+    private var isSearching: Bool { !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
     var body: some View {
         let rules = rules
-        return List {
+        return Group {
             if rules.isEmpty {
-                Section {
-                    empty
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                }
-            } else {
-                Section {
-                    ForEach(rules) { rule in
-                        Button { editing = rule } label: { row(rule) }
-                            .buttonStyle(.plain)
-                            // No role: a destructive swipe would take the row out before the question.
-                            .swipeActions(edge: .trailing) {
-                                Button("Olvidar", systemImage: "trash") { forgetting = rule }
-                                    .tint(Theme.danger)
-                            }
-                            .accessibilityIdentifier("recuerdo-\(rule.sent)")
+                List {
+                    Section {
+                        empty
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
                     }
-                } header: {
-                    Text("Lo que llega como…").ticketCaption()
-                } footer: {
-                    HintText("Al día recuerda cómo llamas y dónde pones cada comercio. Se anotan solas cuando corriges un gasto o le eliges categoría, también en los que escribes a mano y en los fijos. Toca una para cambiarla; desliza para olvidarla.")
                 }
-                .listRowBackground(Theme.surface)
+                .ticketForm()
+            } else {
+                found(MerchantRules.sections(MerchantRules.matching(rules, query: query)))
+                    .ticketForm()
+                    .searchable(text: $query, prompt: "Comercio, nombre o categoría")
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
             }
         }
-        .ticketForm()
         .navigationBarTitleDisplayMode(.inline)
         .ticketBarTitle("Lo que recuerdo")
         .sheet(item: $editing) { MerchantRuleSheet(rule: $0) }
         .confirmsRemoval(of: $forgetting, question: { $0.forgetQuestion }) { UserCatalog.removeRule($0) }
+    }
+
+    /// The two groups, or the line that says a search found nothing.
+    private func found(_ sections: MerchantRules.Sections) -> some View {
+        List {
+            if sections.isEmpty {
+                Section {
+                    Text("Ningún comercio recordado coincide con «\(query.trimmingCharacters(in: .whitespacesAndNewlines))».")
+                        .font(.ticket(.callout))
+                        .foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+                        .accessibilityIdentifier("recuerdo-sin-resultados")
+                }
+                .listRowBackground(Color.clear)
+            }
+            if !sections.named.isEmpty {
+                namedSection(sections.named, hasFooter: sections.categoryOnly.isEmpty)
+            }
+            if !sections.categoryOnly.isEmpty {
+                categoryOnlySection(sections.categoryOnly, folds: !sections.named.isEmpty && !isSearching)
+            }
+        }
+    }
+
+    private func namedSection(_ rules: [MerchantRule], hasFooter: Bool) -> some View {
+        Section {
+            ForEach(rules) { ruleRow($0) }
+        } header: {
+            Text(Self.header("Con el nombre que les pusiste", rules.count)).ticketCaption()
+        } footer: {
+            if hasFooter { footer }
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    /// Folded behind «Ver todos» while there are named ones over it: with nothing else on the
+    /// screen, or while searching, it is open.
+    private func categoryOnlySection(_ rules: [MerchantRule], folds: Bool) -> some View {
+        let open = !folds || showsCategoryOnly
+        return Section {
+            if folds { foldButton }
+            if open { ForEach(rules) { ruleRow($0) } }
+        } header: {
+            Text(Self.header("Solo su categoría", rules.count)).ticketCaption()
+        } footer: {
+            footer
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    /// «Ver todos» / «Ver menos», as «Ver más» of the categories: the app's one fold.
+    private var foldButton: some View {
+        Button {
+            withAnimation(Theme.Motion.animation(Theme.Motion.fold, reduceMotion: reduceMotion)) {
+                showsCategoryOnly.toggle()
+            }
+        } label: {
+            HStack(spacing: Theme.Space.xs) {
+                // Swapped at once: blended while the rows move, both read as one blur.
+                Text(showsCategoryOnly ? "Ver menos" : "Ver todos")
+                    .contentTransition(.identity)
+                Spacer(minLength: Theme.Space.s)
+                Image(systemName: "chevron.down")
+                    .rotationEffect(.degrees(showsCategoryOnly ? 180 : 0))
+                    .accessibilityHidden(true)
+            }
+            .font(.ticket(.footnoteStrong))
+            .foregroundStyle(Theme.brass)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(showsCategoryOnly ? "Esconde los comercios que solo tienen categoría"
+                           : "Muestra los comercios que solo tienen categoría")
+        .accessibilityIdentifier("recuerdo-ver-todos")
+    }
+
+    private var footer: some View {
+        HintText("Al día recuerda cómo llamas y dónde pones cada comercio. Se anotan solas cuando corriges un gasto o le eliges categoría, también en los que escribes a mano y en los fijos. Toca una para cambiarla; desliza para olvidarla.")
+    }
+
+    /// «Solo su categoría · 147».
+    static func header(_ title: String, _ count: Int) -> String {
+        "\(title) · \(count.formatted(.number.locale(Locale(identifier: "es_MX"))))"
+    }
+
+    private func ruleRow(_ rule: MerchantRule) -> some View {
+        Button { editing = rule } label: { row(rule) }
+            .buttonStyle(.plain)
+            // No role: a destructive swipe would take the row out before the question.
+            .swipeActions(edge: .trailing) {
+                Button("Olvidar", systemImage: "trash") { forgetting = rule }
+                    .tint(Theme.danger)
+            }
+            .accessibilityIdentifier("recuerdo-\(rule.sent)")
     }
 
     /// The blank ticket: how the first one is made.

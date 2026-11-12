@@ -151,7 +151,7 @@ struct OnboardingView: View {
     // MARK: Pages
 
     private var welcome: some View {
-        page(title: "Cuánto puedes gastar hoy") {
+        page(title: "¿Cuánto puedes gastar hoy?") {
             WelcomeDemo(currency: currency)
                 .onboardingRise(2)
             // One line that doesn't lose cash (user research, 2026-10-29).
@@ -167,6 +167,9 @@ struct OnboardingView: View {
         page(title: "¿Cuánto quieres gastar al mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 currencyPills
+                // Over the field, not under it (owner, 2026-11-11): with the keyboard up they
+                // were cut in half behind «Continuar».
+                quickAmounts
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     AmountInputField("Presupuesto", text: $budgetText, prompt: suggestions[1].formatted(),
                                      size: .compact, identifier: "bienvenida-presupuesto")
@@ -175,10 +178,9 @@ struct OnboardingView: View {
                 }
                 .padding(Theme.Space.ml)
                 .selectableCard(selected: focused == .budget)
-                quickAmounts
             }
             .onboardingRise(2)
-            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «Más › Presupuesto del mes».",
+            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «Más › Presupuesto».",
                      color: Theme.faint)
                 .onboardingRise(3)
         }
@@ -271,7 +273,7 @@ struct OnboardingView: View {
             .transition(.opacity)
         } else {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Escribe un monto o elige uno abajo.")
+                Text("Escribe un monto o elige uno arriba.")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.faint)
                 WelcomeDaysStrip(days: Calendar.current.range(of: .day, in: .month, for: AppClock.now)?.count ?? 30, filled: false)
@@ -383,7 +385,7 @@ struct OnboardingView: View {
     }
 
     private var walletPage: some View {
-        page(title: "Que cada pago se anote solo") {
+        page(title: "¿Y si cada pago se anota solo?") {
             WalletChain()
                 .onboardingRise(2)
             Text(ShortcutsVersion.isIOS27
@@ -404,7 +406,10 @@ struct OnboardingView: View {
                 .ticketProminent()
                 .accessibilityIdentifier("bienvenida-configurar")
                 SecondaryButton("Después", identifier: "bienvenida-despues") { save(); go(to: pages - 1) }
+                // On the page's margin, as the paragraph and the buttons above: centred, its
+                // wrapped lines began a few points further in (UX review, 2026-11-11).
                 HintText("¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+». El atajo queda en «Más › Configurar atajo».")
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .onboardingRise(4)
         }
@@ -445,13 +450,13 @@ struct OnboardingView: View {
                         .foregroundStyle(Theme.muted)
                 }
             } else {
-                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «Más › Presupuesto del mes».")
+                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «Más › Presupuesto».")
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
         } else {
-            Text("Fija tu presupuesto cuando quieras en «Más › Presupuesto del mes» y Al día te dirá cuánto puedes gastar cada día.")
+            Text("Fija tu presupuesto cuando quieras en «Más › Presupuesto» y Al día te dirá cuánto puedes gastar cada día.")
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)

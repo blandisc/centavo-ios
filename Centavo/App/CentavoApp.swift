@@ -6,6 +6,7 @@ import UIKit
 struct CentavoApp: App {
     init() {
         TicketFont.register()
+        TicketFont.dressSegmentedControls()
         if Store.syncsBudget { BudgetSync.start() }
         WidgetBridge.start()
         #if DEBUG
