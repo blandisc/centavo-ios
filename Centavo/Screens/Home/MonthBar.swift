@@ -218,9 +218,16 @@ struct MonthBar: View {
                 }
                 sumLine("÷ Días del mes", "\(pace.daysInMonth)")
                 sumLine("= Por día", wholeMoney(sum.perDay))
-                if pace.day > 1 {
-                    sumLine(sum.carriedOver >= 0 ? "+ Sobró de otros días" : "− Te pasaste otros días",
+                if pace.countedDays > 1 {
+                    // A budget begun after the 1st only has its own days to carry: said with the day.
+                    let since = startText.map { "desde el \($0)" }
+                    sumLine(sum.carriedOver >= 0 ? "+ Sobró \(since ?? "de otros días")"
+                                                 : "− Te pasaste \(since ?? "otros días")",
                             wholeMoney(sum.carriedOver.magnitude))
+                }
+                if sum.heldBack > 0 {
+                    // Its days add up to more than what is left of the month: today gets what is left.
+                    sumLine("− Ya no queda en el mes", wholeMoney(sum.heldBack))
                 }
                 if sum.variableToday != 0 {
                     sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
@@ -229,6 +236,16 @@ struct MonthBar: View {
                 Perforation(tear: true)
                 sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",
                         wholeMoney(pace.dailyAllowance.magnitude), strong: true)
+            }
+            if showsExpected, let startText {
+                // A budget first set halfway through the month (owner, 2026-11-11): the days
+                // before it are not money left over, and the sum says from when it counts.
+                Perforation(tear: true)
+                Text("Tu presupuesto cuenta desde el \(startText).")
+                    .foregroundStyle(Theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("presupuesto-cuenta-desde")
             }
             if outside != 0 {
                 // Not part of the sum: what was spent but doesn't count, said apart.
@@ -241,6 +258,11 @@ struct MonthBar: View {
         // Under the tear line it is the same paper, torn open: no panel, only its dots (P1).
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("la-cuenta")
+    }
+
+    /// «14 nov»: the day this month's budget counts from, when it began after the 1st.
+    private var startText: String? {
+        pace.countsFrom?.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))
     }
 
     private func sumLine(_ label: String, _ value: String, strong: Bool = false, tint: Color? = nil) -> some View {

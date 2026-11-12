@@ -39,4 +39,14 @@ import Testing
         #expect(MerchantRenames(stored: renames.stored) == renames)
         #expect(MerchantRenames(stored: "basura").entries.isEmpty)
     }
+
+    @Test func aForgottenNameArrivesAsWalletSendsIt() {
+        var renames = MerchantRenames()
+        renames.rename("OXXO SUC 1234", to: "Oxxo de la esquina")
+        renames.rename("STARBUCKS 22", to: "Café")
+        renames.forget("oxxo  suc 1234")
+        #expect(renames.name(for: "OXXO SUC 1234") == nil)
+        #expect(renames.name(for: "STARBUCKS 22") == "Café")
+        #expect(MerchantRenames(stored: renames.stored) == renames)
+    }
 }

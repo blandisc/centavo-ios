@@ -545,6 +545,14 @@ struct OnboardingView: View {
         if draftValue != nil, !draftName.trimmingCharacters(in: .whitespaces).isEmpty { addFixed() }
         storedCurrency = currency
         if let budget {
+            // With its day, so «Hoy» counts from today and says the «Cada día tienes» shown here,
+            // not every day of the month so far (`BudgetHistory`). Not when this is someone's
+            // second phone (iCloud already has their setup, or this month's expenses are here):
+            // the list would go up saying the budget began today, and the first phone would
+            // lose what it had carried (independent review, 2026-11-11).
+            let known = (Store.syncsBudget && BudgetSync.hasSetupElsewhere)
+                || ((try? context.fetchCount(HomeModel.monthRows(of: AppClock.now))) ?? 0) > 0
+            if !known { BudgetStore.noteChange(from: storedBudget, to: BudgetStore.stored(budget)) }
             storedBudget = BudgetStore.stored(budget)
         }
         // Like «Nuevo gasto fijo»: one whose day already came this month starts now, with its

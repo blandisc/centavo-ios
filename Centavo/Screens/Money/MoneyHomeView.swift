@@ -26,6 +26,8 @@ struct MoneyHomeView: View {
     private var main: String { CurrencyPreference.resolve(storedCurrency) }
     private var latest: MoneyCut? { cuts.last }
     private var previous: MoneyCut? { cuts.count > 1 ? cuts[cuts.count - 2] : nil }
+    /// The opening balances: where «Mi dinero» starts, not a cut the person made (2026-11-11).
+    private var start: MoneyCut? { MoneyStore.start(among: cuts) }
 
     var body: some View {
         if MoneyStep(rawValue: step) != nil {
@@ -172,7 +174,7 @@ struct MoneyHomeView: View {
         let worth = latest?.worthToday(accounts) ?? NetWorth()
         let currency = latest?.mainCurrency ?? main
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            MoneyHead(date: AppClock.now, cutNumber: cuts.count)
+            MoneyHead(date: AppClock.now, cutNumber: MoneyStore.cutsMade(among: cuts))
                 .padding(.bottom, Theme.Space.l)
             Text("Patrimonio").ticketCaption(strong: true)
             // Whole pesos, like «Hoy puedes gastar»: the rows below keep the cents.
@@ -197,7 +199,8 @@ struct MoneyHomeView: View {
         if let previous {
             // The same accounts on both sides: archiving one isn't a loss, a new one isn't saved.
             let delta = latest.map { $0.change(since: previous) } ?? 0
-            let since = MoneyHead.monthName(previous.month)
+            // Against the opening balances it's «desde el inicio»: that month has no cut to name.
+            let since = previous.id == start?.id ? "el inicio" : MoneyHead.monthName(previous.month)
             parts.append(Text("\(delta >= 0 ? "+" : "−")\(formatMoney(delta.magnitude, isoCode: currency, label: currency))")
                 .foregroundStyle(delta >= 0 ? Theme.good : Theme.danger) + Text(" desde \(since)"))
         }

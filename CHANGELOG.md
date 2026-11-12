@@ -1,6 +1,21 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **«Lo que recuerdo»** en «Más › Pagos y categorías»: cómo se anota cada comercio («Lo que llega como… → Se anota como Tacos Pepe · Comida»), para cambiarlo u olvidarlo.
+- **Al corregir un gasto, «Cambiar también los otros N gastos»** aplica el cambio a los anteriores del mismo comercio, sin tocar los que tienen otra categoría puesta por ti.
+- **Pagos que no se pierden:** si un pago de Wallet no se pudo leer o no se pudo guardar, «Hoy» lo dice («2 pagos no se pudieron leer») y se queda ahí hasta que lo anotes (la hoja abre ya llena) o lo descartes. También se ve en la pantalla vacía.
+- **«Al día no pudo abrir tus gastos»** dice si es por falta de espacio y tiene «Intentar de nuevo» y «Guardar una copia de mis datos».
+- **«Respaldo» muestra las copias «antes de restaurar»** que habían quedado dentro de la app, para restaurarlas, guardarlas en Archivos o borrarlas. Al restaurar en un iPhone sin respaldo configurado, «Seguir respaldando aquí» lo deja listo.
+### Changed
+- **Si fijas tu presupuesto a mitad de mes, «Hoy puedes gastar» cuenta desde ese día:** los días anteriores ya no aparecen como dinero que sobró ni como días en que te pasaste. La cuenta lo dice: «Tu presupuesto cuenta desde el 14 nov.»
+- **Los meses pasados se juzgan con el presupuesto que tenías entonces:** cambiarlo hoy ya no cambia «Cerraste con…» ni «Te pasaste» de meses anteriores. Un mes sin presupuesto lo dice y muestra solo su total.
+- **La guía del atajo solo dice «Ya funciona» si llegó un pago después de abrirla;** si el último es de antes: «Último pago: ayer. Paga algo con Apple Pay para comprobar.»
+- **Restaurar ya no reemplaza nada sin guardar antes una copia** de lo actual en una carpeta que puedas abrir en Archivos; si no hay carpeta, te pide elegirla.
+- **«Mi dinero»:** el primer corte del mes en que empezaste ya no pregunta «¿Reemplazar el corte?»; tus saldos iniciales se conservan y ves cuánto cambió «desde el inicio». «Corte N.º» cuenta solo los cortes que tú haces.
+- **Importar CSV** reconoce tarjetas renombradas y comercios corregidos, y si algún renglón parece repetido (mismo día, hora y monto, con otro nombre o tarjeta) pregunta antes de agregarlo.
+### Fixed
+- **Renombrar un comercio ya no pierde su categoría.**
 ### Changed
 - **«¿Descartar cambios?»:** al tocar «Cancelar» o deslizar hacia abajo una hoja con algo escrito (un gasto, un gasto fijo, una categoría, el presupuesto, una cuenta o un ingreso), Al día pregunta antes de perderlo.
 - **Borrar, quitar, archivar o dejar de repetir se pregunta siempre igual:** la misma hoja que sube desde abajo, con el nombre de lo que se va y «Conservar».

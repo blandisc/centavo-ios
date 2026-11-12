@@ -109,6 +109,8 @@ struct BudgetSheet: View {
                            note: "La pantalla principal deja de decir cuánto puedes gastar al día. Tus gastos no se tocan.",
                            verb: "Quitar")
         }) {
+            // Written down with its day: the months before keep the budget they had.
+            BudgetStore.noteChange(from: stored, to: "")
             stored = ""
             dismiss()
         }
@@ -154,6 +156,9 @@ struct BudgetSheet: View {
 
     private func save() {
         guard let amount else { return }
+        // First its day (`BudgetHistory`), then the figure: a budget set today, with none on the
+        // 1st, counts from today and the screen never draws it as if it began on the 1st.
+        BudgetStore.noteChange(from: stored, to: BudgetStore.stored(amount))
         stored = BudgetStore.stored(amount)
         storedMode = mode.rawValue
         dismiss()

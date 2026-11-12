@@ -28,6 +28,7 @@ La **estructura es nativa de Apple** (Human Interface Guidelines): `NavigationSt
 
 ## Reglas
 - **Sin servidor propio.** Ni servidor, ni telemetría, ni cuenta de Centavo. La única red es el iCloud privado de la persona, que sincroniza el sistema (decisión del 2026-10-15); la app no hace llamadas por su cuenta.
+- **Un pago nunca se pierde.** Lo que la captura recibe y no puede anotar se guarda fuera del almacén (`UnreadNotice`) y solo la persona lo quita; un intent nunca lanza un error sin dejarlo ahí antes.
 - **Minimalismo.** Antes de agregar una pantalla o un ajuste, pregunta si cabe en lo que ya existe.
 - **Componentes nativos** de SwiftUI y estilos del sistema (Dynamic Type, modo oscuro). Nada de tamaños de fuente fijos.
 - **Copy en es-MX**, sin suponer género.

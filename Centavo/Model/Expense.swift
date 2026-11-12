@@ -138,12 +138,61 @@ enum Store {
     /// It also syncs to the person's private iCloud when the app is signed with the iCloud
     /// entitlement (SwiftData picks the container up from it). Signed without it, as with a
     /// free developer account, it is the same store, only on the phone.
-    static let opened: Result<ModelContainer, Error> = Result {
-        #if DEBUG
-        if DemoData.isBrokenStoreRequested { throw DemoData.DemoError.brokenStore }
-        if DemoData.isRequested { return try DemoData.makeContainer() }
-        #endif
-        return try ModelContainer(for: Expense.self)
+    ///
+    /// A failure is remembered too, until `retry()`: every screen and intent of one launch
+    /// gets the same answer, and the store is never opened twice.
+    static var opened: Result<ModelContainer, Error> {
+        openLock.lock()
+        defer { openLock.unlock() }
+        if let result = openedResult { return result }
+        let result = open()
+        openedResult = result
+        return result
+    }
+
+    /// «Intentar de nuevo» (2026-11-11): opens the store again without closing the app, only
+    /// if it failed before. One that's open is handed back as it is, never opened a second
+    /// time (two containers on one file is how data gets damaged).
+    @discardableResult
+    static func retry() -> Result<ModelContainer, Error> {
+        openLock.lock()
+        defer { openLock.unlock() }
+        if let result = openedResult, case .success = result { return result }
+        let result = open()
+        openedResult = result
+        return result
+    }
+
+    /// Where the expenses live: SwiftData's own default file («default.store»), with its
+    /// journal next to it. Only read to copy the files out when the store doesn't open.
+    static var url: URL { ModelConfiguration().url }
+
+    private static let openLock = NSLock()
+    nonisolated(unsafe) private static var openedResult: Result<ModelContainer, Error>?
+    #if DEBUG
+    nonisolated(unsafe) private static var attempts = 0
+    #endif
+
+    /// Only ever called with `openLock` held.
+    private static func open() -> Result<ModelContainer, Error> {
+        Result {
+            #if DEBUG
+            attempts += 1
+            let arguments = ProcessInfo.processInfo.arguments
+            // `-centavo-broken-store-una-vez`: only the first try fails, to see «Intentar de nuevo» work.
+            let failsNow = DemoData.isBrokenStoreRequested
+                && !(attempts > 1 && arguments.contains("-centavo-broken-store-una-vez"))
+            if failsNow {
+                // `-centavo-broken-store-sin-espacio`: the failure a full phone gives.
+                if arguments.contains("-centavo-broken-store-sin-espacio") {
+                    throw CocoaError(.fileWriteOutOfSpace)
+                }
+                throw DemoData.DemoError.brokenStore
+            }
+            if DemoData.isRequested { return try DemoData.makeContainer() }
+            #endif
+            return try ModelContainer(for: Expense.self)
+        }
     }
 
     /// The demo modes start clean and must not pull a real budget from iCloud.

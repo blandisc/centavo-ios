@@ -47,8 +47,9 @@ enum ExpenseRecorder {
 
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let sent = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
-        // A merchant renamed by hand comes back with its new name.
-        let renamed = renames.name(for: sent)
+        // A merchant renamed by hand comes back with its new name (`MerchantRules`: the rule
+        // is found by the text Wallet sends; its category, below, by the name it ends up with).
+        let renamed = MerchantRules.applied(to: sent, renames: renames, categories: rules).name
         let merchantName = renamed ?? sent
         // A card that is only spaces is no card: it would print as an empty gap in the ledger.
         // A card renamed in «Pagos y categorías» comes back with its new name.
@@ -299,5 +300,39 @@ enum ExpenseRecorder {
             expense.hasSuggestedCategory && !hidden.contains { UserCatalog.same($0, expense.category ?? "") }
         }
         return Remembered(category: suggested?.category, isSuggested: suggested != nil, name: name)
+    }
+}
+
+/// A rule of «Lo que recuerdo» applied to expenses already saved, when the owner asks for it.
+extension MerchantBackfill {
+    /// The ones among `expenses` it would change, each with what changes. Fixed expenses and
+    /// their copies follow their plan and are left out; so is one deleted meanwhile.
+    func pending(in expenses: [Expense]) -> [(expense: Expense, change: Change)] {
+        expenses.compactMap { expense in
+            guard expense.modelContext != nil, !expense.isDeleted, !expense.isFixed,
+                  let change = change(merchant: expense.merchant, category: expense.category,
+                                      isSuggested: expense.hasSuggestedCategory) else { return nil }
+            return (expense, change)
+        }
+    }
+
+    /// Writes `change` on `expense`, as the expense sheet would. The caller saves, once, and
+    /// rolls back if that fails.
+    static func apply(_ change: Change, to expense: Expense) {
+        if let name = change.name {
+            expense.merchant = name
+            expense.displayName = name
+        }
+        if let category = change.category {
+            expense.category = category
+            // Asked for by the owner: theirs, no longer a suggestion.
+            expense.categorySource = nil
+        }
+    }
+
+    /// «Cambiar también el otro gasto», «Cambiar también los otros 6 gastos».
+    static func offer(_ count: Int) -> String {
+        count == 1 ? "Cambiar también el otro gasto"
+            : "Cambiar también los otros \(count.formatted(.number.locale(Locale(identifier: "es_MX")))) gastos"
     }
 }

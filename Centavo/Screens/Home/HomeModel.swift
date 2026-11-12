@@ -70,7 +70,7 @@ final class HomeModel {
         let pace = TodayBudget.pace(budget: BudgetStore.amount(from: inputs.budget), rows: rows,
                                     originals: originals, plans: FixedPlan.decode(inputs.plans),
                                     primary: primary, month: inputs.viewed, now: inputs.now,
-                                    mode: AllowanceMode(stored: inputs.mode))
+                                    mode: AllowanceMode(stored: inputs.mode), history: inputs.history)
         return MonthNumbers(
             summary: summary,
             pace: pace,
@@ -293,6 +293,8 @@ struct MonthInputs: Equatable {
     let now: Date
     let isCurrent: Bool
     let budget: String
+    /// When the budget changed (`BudgetHistory`, as stored): which one judges `viewed`.
+    var history: String = ""
     let plans: String
     let currency: String
     let mode: String
@@ -301,8 +303,8 @@ struct MonthInputs: Equatable {
 
     /// The same month with nothing tapped: what its numbers depend on.
     var unfiltered: MonthInputs {
-        MonthInputs(viewed: viewed, now: now, isCurrent: isCurrent, budget: budget, plans: plans,
-                    currency: currency, mode: mode, selectedDay: nil, selectedCategory: nil)
+        MonthInputs(viewed: viewed, now: now, isCurrent: isCurrent, budget: budget, history: history,
+                    plans: plans, currency: currency, mode: mode, selectedDay: nil, selectedCategory: nil)
     }
 }
 

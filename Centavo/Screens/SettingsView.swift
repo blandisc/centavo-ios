@@ -104,7 +104,7 @@ struct SettingsView: View {
                     Text("Tus datos").ticketCaption()
                 } footer: {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos. El CSV es para tu hoja de cálculo: no guarda todo (ni «Mi dinero», ni tus ajustes, ni tus gastos fijos), así que no sustituye al respaldo diario.")
+                        HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos: si alguno parece repetido (mismo día y monto, con otro nombre o tarjeta), pregunta antes de agregarlo. El CSV es para tu hoja de cálculo: no guarda todo (ni «Mi dinero», ni tus ajustes, ni tus gastos fijos), así que no sustituye al respaldo diario.")
                         // Which build this is, to tell whether the iPhone has the latest (2026-10-30).
                         HintText(AppVersion.line)
                             .accessibilityIdentifier("version")

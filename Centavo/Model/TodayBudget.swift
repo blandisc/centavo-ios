@@ -8,10 +8,16 @@ enum TodayBudget {
     /// count. `originals` are the fixed expenses' first charges (`repeatsMonthly`), whatever
     /// their month, to know what is still to come. A month that is over is taken at its last
     /// second: all of the budget was due. `mode` is the rule chosen in the budget sheet.
+    ///
+    /// `budget` is the one in force today. `history` (`BudgetHistory`, the saved one unless
+    /// given) says which one `month` is judged with (a month that is over, with the one it
+    /// closed with; `nil` if it had none) and the day this month's counts from.
     static func snapshot(budget: Decimal?, rows: [Expense], originals: [Expense], plans: [FixedPlan],
                          primary: String, month: Date, now: Date = AppClock.now,
-                         mode: AllowanceMode = .saved) -> WidgetSnapshot {
+                         mode: AllowanceMode = .saved,
+                         history: String = BudgetStore.savedHistory) -> WidgetSnapshot {
         let isCurrent = MonthNavigator.isSameMonth(month, as: now)
+        let terms = BudgetHistory(stored: history).terms(for: month, current: budget, now: now)
         let colors = CatalogColors.current
         // What counts (`Expense.asAmount`): «no cuenta» stays out of today, the month and the widgets.
         let all = rows.map(\.asAmount)
@@ -22,7 +28,7 @@ enum TodayBudget {
         let reserved = isCurrent ? FixedOutlook.reserved(originals: originals, plans: plans,
                                                          primary: primary, now: now) : 0
         return WidgetSnapshot(
-            budget: budget, isoCode: summary.primary.isoCode, label: summary.primary.label,
+            budget: terms.budget, isoCode: summary.primary.isoCode, label: summary.primary.label,
             takenAt: isCurrent ? now : MonthNavigator.closingMoment(of: month),
             spent: summary.primary.amount,
             spentToday: isCurrent ? MonthSummarizer.dayTotal(all, onDayOf: now, primary: primary) : 0,
@@ -30,7 +36,8 @@ enum TodayBudget {
             fixedToday: isCurrent ? MonthSummarizer.dayTotal(fixed, onDayOf: now, primary: primary) : 0,
             reserved: reserved, slices: WidgetSnapshot.slices(summary.categories, color: colors.categoryIndex),
             mode: mode, days: dailyVariable(rows, month: month, primary: primary,
-                                           through: isCurrent ? now : MonthNavigator.closingMoment(of: month)))
+                                           through: isCurrent ? now : MonthNavigator.closingMoment(of: month)),
+            startDay: isCurrent && terms.startDay > 1 ? terms.startDay : nil)
     }
 
     /// What went each day of `month` outside the fixed expenses, from the 1st to `through`'s day:
@@ -49,10 +56,12 @@ enum TodayBudget {
 
     static func pace(budget: Decimal?, rows: [Expense], originals: [Expense], plans: [FixedPlan],
                      primary: String, month: Date, now: Date = AppClock.now,
-                     mode: AllowanceMode = .saved) -> BudgetPace? {
-        guard budget != nil else { return nil }
+                     mode: AllowanceMode = .saved,
+                     history: String = BudgetStore.savedHistory) -> BudgetPace? {
+        // No guard on `budget`: a month that is over keeps the budget it closed with even after
+        // today's was taken off (`BudgetHistory.terms`); with none, the snapshot gives no pace.
         let snapshot = snapshot(budget: budget, rows: rows, originals: originals, plans: plans,
-                                primary: primary, month: month, now: now, mode: mode)
+                                primary: primary, month: month, now: now, mode: mode, history: history)
         return snapshot.pace(at: snapshot.takenAt)
     }
 }

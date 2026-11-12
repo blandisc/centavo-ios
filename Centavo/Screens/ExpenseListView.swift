@@ -1,4 +1,5 @@
 import CentavoCore
+import Combine
 import CoreData
 import SwiftData
 import SwiftUI
@@ -49,6 +50,8 @@ struct ExpenseListView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(BudgetStore.key) private var storedBudget = ""
+    /// When the budget changed (`BudgetHistory`): which one judges each month, and from what day.
+    @AppStorage(BudgetHistory.key) private var storedHistory = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// The welcome runs once, and only on an empty app (someone who already has expenses
     /// is not new).
@@ -74,14 +77,21 @@ struct ExpenseListView: View {
     @State private var selectedCategory: CategoryShare?
     /// The search, the row left open by a swipe and the screen's numbers, worked out once.
     @State private var model = HomeModel()
-    @AppStorage(UnreadNotice.textKey) private var unreadText = ""
-    @AppStorage(UnreadNotice.dateKey) private var unreadDate = 0.0
+    /// The payments the capture couldn't write down (`UnreadNotice`), as kept. Read by hand and
+    /// not with `@AppStorage`: its key has a dot (what keeps it out of the backup), and
+    /// `UserDefaults` doesn't announce changes to such keys one by one. Read again on any
+    /// change to the settings and when the app comes back (`reloadPending`).
+    @State private var pendingStored = UserDefaults.standard.string(forKey: UnreadNotice.listKey) ?? ""
+    /// The pending payment «Anotar» opened the sheet for, until the sheet closes.
+    @State private var resolvingPending: PendingPayment?
     @AppStorage(WhereItGoesStyle.key) private var whereItGoesStyle = WhereItGoesStyle.bar.rawValue
     /// What was just deleted, kept a few seconds so it can come back.
     @State private var lastDeleted: DeletedExpense?
     /// What «Anotar otra vez» just wrote down, kept a few seconds so it can be taken back.
     @State private var lastCopy: CopiedExpense?
     @State private var importMessage: String?
+    /// A file read whose rows include some that look repeated: asked about before saving.
+    @State private var pendingImport: PendingImport?
     /// A change made here (delete, undo, a category) that couldn't be saved.
     @State private var saveProblem: String?
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
@@ -136,13 +146,15 @@ struct ExpenseListView: View {
                 model: model, viewed: viewed, now: now, isCurrent: isCurrent,
                 storeIsEmpty: newestRows.isEmpty,
                 stamp: StoreStamp(count: storeCount, newest: newestRows.first?.date),
-                settings: HomeSettings(budget: storedBudget, plans: storedPlans, currency: primaryCurrency,
+                settings: HomeSettings(budget: storedBudget, history: storedHistory, plans: storedPlans,
+                                       currency: primaryCurrency,
                                        mode: storedMode, whereItGoesStyle: whereItGoesStyle,
                                        ignoresWallet: ignoresWallet, backupWarning: backupWarning),
                 catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories,
                                        sources: storedSources, categoryColors: storedCategoryColors,
                                        sourceColors: storedSourceColors),
-                lastCapture: lastCapture, unread: unreadNotice(after: lastCapture),
+                lastCapture: lastCapture,
+                pending: isCurrent ? UnreadNotice.pending(stored: pendingStored, now: now) : [],
                 selectedDay: selectedDay, selectedCategory: selectedCategory,
                 entrance: entrance, listWidth: listWidth, actions: actions
             )
@@ -158,6 +170,13 @@ struct ExpenseListView: View {
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: storedBudget) { _, budget in
+                // The sheet and the welcome already wrote the change down with its day; this is
+                // for one that came from elsewhere (iCloud, a restored backup).
+                // Only `settleHistory`, never «it was `old` until today»: after restoring a backup
+                // with another budget and no list, that would date today a change that never
+                // happened and judge the backup's months with this phone's old budget
+                // (independent review, 2026-11-11). With no list the budget is «always» that one.
+                BudgetStore.settleHistory()
                 if Store.syncsBudget { BudgetSync.push(budget) }
             }
             .onChange(of: storedCurrency) { _, code in
@@ -224,15 +243,26 @@ struct ExpenseListView: View {
                 }
             }
             .onChange(of: storedBudget) { WidgetBridge.refresh() }
+            .onChange(of: storedHistory) { WidgetBridge.refresh() }
             .onChange(of: storedPlans) { WidgetBridge.refresh() }
             .onChange(of: storedCurrency) { WidgetBridge.refresh() }
             // The widgets get the new rule with the snapshot, and redraw.
             .onChange(of: storedMode) { WidgetBridge.refresh() }
-            .sheet(isPresented: $adding) {
-                // Adding while looking at a past month puts the expense in that month.
-                ExpenseEditorView(expense: nil,
-                                  initialDate: isCurrent ? nil : MonthNavigator.closingMoment(of: viewed))
+            .sheet(isPresented: $adding, onDismiss: { resolvingPending = nil }) {
+                // Adding while looking at a past month puts the expense in that month. A pending
+                // payment being written down fills the sheet with what was read of it, and goes
+                // from the list only when the sheet says it saved.
+                // Read through a binding, in a view of its own: a sheet's content built here
+                // still sees the state as it was before «Anotar» set it, the first time it opens,
+                // and the sheet came up empty.
+                NewExpenseSheet(pending: $resolvingPending,
+                                initialDate: isCurrent ? nil : MonthNavigator.closingMoment(of: viewed),
+                                primaryCurrency: primaryCurrency, saved: removePending)
             }
+            // The intents and «Descartar» write the list straight to `UserDefaults`.
+            .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+                .receive(on: DispatchQueue.main)) { _ in reloadPending() }
+            .onChange(of: now) { _, _ in reloadPending() }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0, onDelete: { delete($0) }) }
             .sheet(isPresented: $showingBudget) {
                 BudgetSheet(stored: $storedBudget, storedMode: $storedMode, currency: primaryCurrency) { budget, mode in
@@ -241,7 +271,8 @@ struct ExpenseListView: View {
                                      rows: (try? context.fetch(HomeModel.monthRows(of: now))) ?? [],
                                      originals: (try? context.fetch(HomeModel.originals)) ?? [],
                                      plans: FixedPlan.decode(storedPlans),
-                                     primary: primaryCurrency, month: now, now: now, mode: mode)
+                                     primary: primaryCurrency, month: now, now: now, mode: mode,
+                                     history: storedHistory)
                 }
             }
             .confirmsDelete(of: $pendingDelete, primaryCurrency: primaryCurrency, undoable: true) {
@@ -257,6 +288,9 @@ struct ExpenseListView: View {
             } message: {
                 Text(importMessage ?? "")
             }
+            .modifier(ImportQuestionAlert(pending: $pendingImport) { asked, repeated in
+                importMessage = importText(asked.text, repeated: repeated)
+            })
             // A new month, by the arrows or by midnight on the 1st, starts unfiltered.
             .onChange(of: viewed) { _, _ in selectedDay = nil; selectedCategory = nil }
             // Another view starts unfiltered: what was picked may not be on it.
@@ -279,7 +313,11 @@ struct ExpenseListView: View {
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
                                           onReview: { showingBudget = true }))
             .task {
+                UnreadNotice.prepare()
+                reloadPending()
                 rememberWalletArrival()
+                // A budget changed while the app was closed (iCloud) gets its day now.
+                BudgetStore.settleHistory()
                 // Siri learns the categories it can be asked about («¿Cuánto llevo en Café?»).
                 CentavoShortcuts.updateAppShortcutParameters()
                 // Never chosen: settle it once, from what the payments are in (pesos if none),
@@ -338,10 +376,13 @@ struct ExpenseListView: View {
             setBudget: { showingBudget = true },
             setup: { showingSetup = true },
             openSettings: { showingSettings = true },
-            openGuideFromWarning: {
-                // Seen: tapping the warning is the last time it shows.
+            // Opening the guide no longer clears what is pending: only the person does.
+            openGuideFromWarning: { showingSetup = true },
+            logPending: { logPending($0) },
+            discardPending: { removePending($0.id) },
+            discardAllPending: {
                 UnreadNotice.clear()
-                showingSetup = true
+                reloadPending()
             },
             setPrimary: { setPrimary($0) },
             edit: { editing = $0 },
@@ -359,6 +400,7 @@ struct ExpenseListView: View {
 /// The frame's settings the scrolling part reads.
 private struct HomeSettings: Equatable {
     let budget: String
+    let history: String
     let plans: String
     let currency: String
     let mode: String
@@ -379,6 +421,10 @@ private struct HomeActions {
     let setup: () -> Void
     let openSettings: () -> Void
     let openGuideFromWarning: () -> Void
+    /// The payments the capture couldn't write down (`PendingPaymentsPanel`).
+    let logPending: (PendingPayment) -> Void
+    let discardPending: (PendingPayment) -> Void
+    let discardAllPending: () -> Void
     let setPrimary: (String) -> Void
     let edit: (Expense) -> Void
     let askDelete: (Expense) -> Void
@@ -405,7 +451,8 @@ private struct HomeContent: View, Equatable {
     let settings: HomeSettings
     let catalog: CategoryCatalog
     let lastCapture: Date?
-    let unread: String?
+    /// Payments the capture couldn't write down, newest first; empty on a past month.
+    let pending: [PendingPayment]
     let selectedDay: Int?
     let selectedCategory: CategoryShare?
     let entrance: Entrance
@@ -418,7 +465,7 @@ private struct HomeContent: View, Equatable {
     @Environment(\.modelContext) private var context
 
     init(model: HomeModel, viewed: Date, now: Date, isCurrent: Bool, storeIsEmpty: Bool, stamp: StoreStamp,
-         settings: HomeSettings, catalog: CategoryCatalog, lastCapture: Date?, unread: String?,
+         settings: HomeSettings, catalog: CategoryCatalog, lastCapture: Date?, pending: [PendingPayment],
          selectedDay: Int?, selectedCategory: CategoryShare?, entrance: Entrance, listWidth: CGFloat?,
          actions: HomeActions) {
         self.model = model
@@ -430,7 +477,7 @@ private struct HomeContent: View, Equatable {
         self.settings = settings
         self.catalog = catalog
         self.lastCapture = lastCapture
-        self.unread = unread
+        self.pending = pending
         self.selectedDay = selectedDay
         self.selectedCategory = selectedCategory
         self.entrance = entrance
@@ -445,7 +492,7 @@ private struct HomeContent: View, Equatable {
         lhs.model === rhs.model && lhs.viewed == rhs.viewed && lhs.now == rhs.now
             && lhs.isCurrent == rhs.isCurrent && lhs.storeIsEmpty == rhs.storeIsEmpty
             && lhs.stamp == rhs.stamp && lhs.settings == rhs.settings && lhs.catalog == rhs.catalog
-            && lhs.lastCapture == rhs.lastCapture && lhs.unread == rhs.unread
+            && lhs.lastCapture == rhs.lastCapture && lhs.pending == rhs.pending
             && lhs.selectedDay == rhs.selectedDay && lhs.selectedCategory == rhs.selectedCategory
             && lhs.entrance === rhs.entrance && lhs.listWidth == rhs.listWidth
     }
@@ -454,7 +501,7 @@ private struct HomeContent: View, Equatable {
         let primary = settings.currency
         let month = model.month(
             MonthInputs(viewed: viewed, now: now, isCurrent: isCurrent, budget: settings.budget,
-                        plans: settings.plans, currency: primary, mode: settings.mode,
+                        history: settings.history, plans: settings.plans, currency: primary, mode: settings.mode,
                         selectedDay: selectedDay, selectedCategory: selectedCategory),
             rows: monthRows, originals: originals)
         let searching = model.isSearching
@@ -478,8 +525,8 @@ private struct HomeContent: View, Equatable {
                     month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
-                    showsCapture: isCurrent && (!settings.ignoresWallet || unread != nil),
-                    health: CaptureHealth(lastCapture: lastCapture, now: now), unread: unread,
+                    showsCapture: isCurrent && !settings.ignoresWallet,
+                    health: CaptureHealth(lastCapture: lastCapture, now: now), pending: pending,
                     backupWarning: isCurrent ? settings.backupWarning : nil,
                     entrance: entrance, model: model, actions: actions
                 )
@@ -521,7 +568,7 @@ private struct HomeHeader: View {
     let selectedCategory: CategoryShare?
     let showsCapture: Bool
     let health: CaptureHealth
-    let unread: String?
+    let pending: [PendingPayment]
     let backupWarning: String?
     let entrance: Entrance
     let model: HomeModel
@@ -621,6 +668,13 @@ private struct HomeHeader: View {
                 // between them instead of two pages touching.
                 .ticketRow(bottom: isCurrent ? Theme.Space.none : Theme.Space.xl, horizontal: Theme.Space.none)
             }
+            // Payments the capture couldn't write down: said with or without expenses, above the
+            // empty ticket too (the first payment may be the one that didn't read; 2026-11-11).
+            if searchCount == nil, !pending.isEmpty {
+                PendingPaymentsPanel(pending: pending, log: actions.logPending, discard: actions.discardPending,
+                                     discardAll: actions.discardAllPending, openGuide: actions.openGuideFromWarning)
+                    .ticketRow()
+            }
             if storeIsEmpty {
                 EmptyTicket(hasBudget: pace != nil, onAdd: actions.add,
                             onBudget: actions.setBudget, onSetup: actions.setup)
@@ -628,8 +682,10 @@ private struct HomeHeader: View {
             } else if searchCount == nil {
                 // The Wallet line stays between the carousel and the list, not under «Hoy»:
                 // it is about the capture, not about today's expenses (owner, 2026-10-21).
-                if showsCapture {
-                    CaptureHealthRow(health: health, unread: unread, openGuide: actions.openGuideFromWarning)
+                // With payments pending, «Wallet sin conectar» or «sin pagos» would contradict the
+                // notice above, which already leads to the guide: only the quiet line stays.
+                if showsCapture, pending.isEmpty || health.isRecent {
+                    CaptureHealthRow(health: health, openGuide: actions.openGuideFromWarning)
                         .ticketRow()
                 }
                 if let backupWarning {
@@ -878,6 +934,21 @@ private struct SaveProblemAlert: ViewModifier {
     }
 }
 
+/// The sheet of a new expense, filled with a pending payment when «Anotar» opened it.
+private struct NewExpenseSheet: View {
+    @Binding var pending: PendingPayment?
+    let initialDate: Date?
+    let primaryCurrency: String
+    let saved: (PendingPayment.ID) -> Void
+
+    var body: some View {
+        let payment = pending
+        ExpenseEditorView(expense: nil, initialDate: initialDate,
+                          prefill: payment?.prefill(primary: primaryCurrency),
+                          onSave: payment.map { payment in { saved(payment.id) } })
+    }
+}
+
 /// Every save, here or brought by iCloud, moves `HomeModel.revision`: the month's numbers and a
 /// search on screen are worked out again (an edit can change a figure, or make an expense match
 /// the search or stop matching).
@@ -962,13 +1033,23 @@ private extension ExpenseListView {
         Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })
     }
 
-    /// The unread notice, if it came after the last payment the capture saved and less than
-    /// two days ago: it goes once a payment comes in right, once tapped, or on its own.
-    func unreadNotice(after lastCapture: Date?) -> String? {
-        guard !unreadText.isEmpty else { return nil }
-        let date = Date(timeIntervalSinceReferenceDate: unreadDate)
-        guard now.timeIntervalSince(date) < 2 * 24 * 3600 else { return nil }
-        return lastCapture.map { date > $0 } ?? true ? unreadText : nil
+    /// «Anotar» on a pending payment: the sheet of a new expense, filled with what was read.
+    /// The payment stays pending until that sheet saves; «Cancelar» leaves it there.
+    private func logPending(_ payment: PendingPayment) {
+        resolvingPending = payment
+        adding = true
+    }
+
+    /// Written down or discarded: off the list, and off the screen without waiting to be told.
+    private func removePending(_ id: UUID) {
+        UnreadNotice.remove(id)
+        reloadPending()
+    }
+
+    /// The list as it is kept now.
+    private func reloadPending() {
+        let stored = UserDefaults.standard.string(forKey: UnreadNotice.listKey) ?? ""
+        if stored != pendingStored { pendingStored = stored }
     }
 
     /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes|anotar|tutorial`.
@@ -1092,25 +1173,27 @@ private extension ExpenseListView {
         withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastDeleted = nil }
     }
 
-    /// Reads the chosen file and says plainly what happened.
-    func importFile(_ result: Result<URL, Error>) -> String {
+    /// Reads the chosen file and says plainly what happened. `nil` when there's a question to
+    /// answer first (`pendingImport`): rows that look like expenses already here, with another
+    /// name or card. Nothing is saved until it is answered.
+    func importFile(_ result: Result<URL, Error>) -> String? {
         guard case .success(let url) = result else { return "No se pudo abrir el archivo." }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else {
             return "No se pudo leer el archivo."
         }
+        if let doubtful = try? ExpenseImporter.preview(text, in: context).leftOut, doubtful > 0 {
+            pendingImport = PendingImport(text: text, question: .init(looksRepeated: doubtful))
+            return nil
+        }
+        return importText(text, repeated: .leaveOut)
+    }
+
+    /// Saves what the file brings and says how many came in, were already here or were left out.
+    func importText(_ text: String, repeated: ExpenseImporter.Repeated) -> String {
         do {
-            let summary = try ExpenseImporter.importCSV(text, into: context)
-            var parts = [summary.added == 1 ? "Se agregó 1 gasto." : "Se agregaron \(summary.added) gastos."]
-            if summary.alreadyThere > 0 {
-                parts.append(summary.alreadyThere == 1 ? "1 ya estaba." : "\(summary.alreadyThere) ya estaban.")
-            }
-            if summary.unreadable > 0 {
-                parts.append(summary.unreadable == 1 ? "1 renglón no se pudo leer."
-                             : "\(summary.unreadable) renglones no se pudieron leer.")
-            }
-            return parts.joined(separator: " ")
+            return try ExpenseImporter.importCSV(text, into: context, repeated: repeated).text
         } catch CSVImporter.Failure.notOurFile {
             // «Mi dinero»'s file has its own place (2026-11-01).
             if MoneyImport.parse(text, main: primaryCurrency).refusal == nil {
@@ -1119,6 +1202,30 @@ private extension ExpenseListView {
             return "Ese archivo no es un CSV exportado de Al día (le falta el encabezado Fecha, Comercio, Monto, Moneda)."
         } catch {
             return "No se pudo guardar lo importado. Intenta de nuevo."
+        }
+    }
+}
+
+/// A CSV read and waiting for its one question (2026-11-11).
+struct PendingImport: Equatable {
+    var text: String
+    var question: ExpenseImporter.Question
+}
+
+/// «12 parecen repetidos… ¿Agregarlos también?»: «Solo los nuevos» is the default.
+private struct ImportQuestionAlert: ViewModifier {
+    @Binding var pending: PendingImport?
+    let answer: (PendingImport, ExpenseImporter.Repeated) -> Void
+
+    func body(content: Content) -> some View {
+        content.alert("Importar CSV",
+                      isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+                      presenting: pending) { asked in
+            Button(ExpenseImporter.Question.onlyNew) { answer(asked, .leaveOut) }
+                .keyboardShortcut(.defaultAction)
+            Button(ExpenseImporter.Question.all) { answer(asked, .add) }
+        } message: { asked in
+            Text(asked.question.message)
         }
     }
 }

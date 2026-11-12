@@ -45,11 +45,15 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
     /// the 1st to the day it was taken: the boleto's cells (2026-10-30). Optional so a snapshot
     /// written before it existed still reads (its widgets keep the old bar).
     public var days: [Decimal]?
+    /// The day of the month the budget counts from, when it was first set after the 1st
+    /// (`BudgetHistory.terms`, 2026-11-11). Optional so a snapshot written before it existed
+    /// still reads (as the whole month); what went before that day comes from `days`.
+    public var startDay: Int?
 
     public init(budget: Decimal?, isoCode: String?, label: String, takenAt: Date, spent: Decimal,
                 spentToday: Decimal = 0, fixedSpent: Decimal = 0, fixedToday: Decimal = 0,
                 reserved: Decimal = 0, slices: [Slice] = [], mode: AllowanceMode = .carry,
-                days: [Decimal]? = nil) {
+                days: [Decimal]? = nil, startDay: Int? = nil) {
         self.budget = budget
         self.isoCode = isoCode
         self.label = label
@@ -62,6 +66,7 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         self.slices = slices
         self.mode = mode
         self.days = days
+        self.startDay = startDay
     }
 
     /// The month as it stands at `date`, which may be days after `takenAt`.
@@ -77,15 +82,21 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         month.fixedSpent = 0
         month.slices = []
         month.days = days.map { _ in [] }
+        // A new month has the budget from its 1st.
+        month.startDay = nil
         return month
     }
 
     /// «Hoy puedes gastar» at `date`. `nil` without a budget.
     public func pace(at date: Date, calendar: Calendar = .current) -> BudgetPace? {
         let month = month(at: date, calendar: calendar)
+        let start = max(month.startDay ?? 1, 1)
+        // What the days before it spent outside the fixed expenses: the boleto's first cells.
+        let before = (month.days ?? []).prefix(start - 1).reduce(Decimal(0), +)
         return BudgetPace(budget: budget, spent: month.spent, spentToday: month.spentToday,
                           fixedSpent: month.fixedSpent, fixedToday: month.fixedToday,
-                          reserved: month.reserved, mode: mode ?? .carry, on: date, calendar: calendar)
+                          reserved: month.reserved, mode: mode ?? .carry, startDay: start,
+                          variableBeforeStart: before, on: date, calendar: calendar)
     }
 
     /// How long a snapshot reads as fresh: after this the widgets say «Actualizado hace X».

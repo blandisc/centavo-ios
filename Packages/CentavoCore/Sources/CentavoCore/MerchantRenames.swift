@@ -11,6 +11,9 @@ public struct MerchantRenames: Codable, Equatable, Sendable {
         public var from: String
         /// The name the owner typed, as they typed it.
         public var to: String
+        /// What Wallet sends as it was written, capitals and accents included, for «Lo que
+        /// recuerdo». Only to show; `nil` in names kept before the list existed.
+        public var written: String?
     }
 
     /// Oldest first. Past `limit`, the oldest names are forgotten.
@@ -43,8 +46,17 @@ public struct MerchantRenames: Codable, Equatable, Sendable {
         for index in entries.indices where MerchantKey.normalized(entries[index].to) == key {
             entries[index].to = clean
         }
+        // Renamed again from the list (where `old` is only the key): what was written stays.
+        let written = entries.last { $0.from == key }?.written
         entries.removeAll { $0.from == key || $0.from == target }
-        entries.append(Entry(from: key, to: clean))
+        let typed = old.trimmingCharacters(in: .whitespacesAndNewlines)
+        entries.append(Entry(from: key, to: clean, written: typed == key ? written ?? typed : typed))
         if entries.count > Self.limit { entries.removeFirst(entries.count - Self.limit) }
+    }
+
+    /// The name given to what arrives as `sent` is forgotten: it comes in as Wallet sends it.
+    public mutating func forget(_ sent: String) {
+        guard let key = MerchantKey.memory(sent) else { return }
+        entries.removeAll { $0.from == key }
     }
 }

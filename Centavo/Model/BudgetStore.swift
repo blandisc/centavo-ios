@@ -21,6 +21,39 @@ enum BudgetStore {
     }
 }
 
+/// When the budget changed (`BudgetHistory`, 2026-11-11): what lets a month that is over keep
+/// the budget it closed with, and a budget first set halfway through the month count from that
+/// day. Kept as JSON text under its own key, synced and backed up like the budget; the budget
+/// in force is still `key`'s figure, which widgets, Siri and older versions read.
+extension BudgetStore {
+    /// The saved list, as text.
+    static var savedHistory: String { UserDefaults.standard.string(forKey: BudgetHistory.key) ?? "" }
+
+    /// Writes down that the budget went from `old` to `new` (both as stored: empty is none).
+    /// Called right where it is saved, so the screen never draws the new budget without its
+    /// day; safe to call twice for the same change.
+    static func noteChange(from old: String, to new: String, now: Date = AppClock.now) {
+        let history = BudgetHistory(stored: savedHistory)
+        save(history.recording(amount(from: new), previous: amount(from: old), on: now), replacing: history)
+    }
+
+    /// Makes the list agree with the saved budget when it was changed where nobody wrote it
+    /// down (an older version on another phone, by iCloud): as of now. At launch and before the
+    /// widgets are written.
+    static func settleHistory(now: Date = AppClock.now) {
+        let history = BudgetHistory(stored: savedHistory)
+        let current = amount(from: UserDefaults.standard.string(forKey: key) ?? "")
+        save(history.settled(current: current, on: now), replacing: history)
+    }
+
+    private static func save(_ history: BudgetHistory, replacing old: BudgetHistory) {
+        guard history != old else { return }
+        let text = history.stored
+        UserDefaults.standard.set(text, forKey: BudgetHistory.key)
+        if Store.syncsBudget { BudgetSync.push(text, for: BudgetHistory.key) }
+    }
+}
+
 /// Keeps the budget and the chosen currency in the person's iCloud key-value store as
 /// well, so they come back after reinstalling or on a new phone. Without the iCloud
 /// entitlement that store never leaves the phone and none of this does any harm.
@@ -46,7 +79,9 @@ extension BudgetStore {
 enum BudgetSync {
     private static var cloud: NSUbiquitousKeyValueStore { .default }
     private static var local: UserDefaults { .standard }
-    static let keys = [BudgetStore.key, CurrencyPreference.key, UserCatalog.categoriesKey,
+    /// The budget's history goes first: it is adopted while this phone's own budget is still
+    /// the one saved (`adoptCloud`).
+    static let keys = [BudgetHistory.key, BudgetStore.key, CurrencyPreference.key, UserCatalog.categoriesKey,
                        UserCatalog.sourcesKey, UserCatalog.defaultSourceKey, FixedPlan.key,
                        UserCatalog.hiddenCategoriesKey, UserCatalog.categoryRulesKey,
                        UserCatalog.deletedCategoriesKey, AllowanceMode.key,
@@ -92,6 +127,16 @@ enum BudgetSync {
     private static func adoptCloud(_ key: String) {
         guard let remote = cloud.string(forKey: key),
               remote != local.string(forKey: key) else { return }
+        if key == BudgetHistory.key {
+            // Never whole over this phone's: a list that begins today (a second phone's welcome)
+            // must not make the budget this phone already had count from today.
+            let mine = BudgetHistory(stored: local.string(forKey: key) ?? "")
+            let budget = BudgetStore.amount(from: local.string(forKey: BudgetStore.key) ?? "")
+            let merged = mine.adopting(BudgetHistory(stored: remote), localBudget: budget).stored
+            local.set(merged, forKey: key)
+            if merged != remote { push(merged, for: key) }
+            return
+        }
         local.set(remote, forKey: key)
     }
 }

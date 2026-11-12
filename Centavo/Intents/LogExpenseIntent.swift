@@ -1,4 +1,5 @@
 import AppIntents
+import CentavoCore
 import Foundation
 
 /// The action a Shortcuts "Transaction" automation calls after every Apple Wallet payment.
@@ -30,7 +31,22 @@ struct LogExpenseIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // A payment the store can't take stays written down outside it for «Hoy» (2026-11-11):
+        // the error goes to Atajos, where nobody sees it in the background. With an amount
+        // that reads, as a payment to write down; without one, as a notice that didn't read.
+        func keepUnsaved() {
+            if CaptureText.amount(in: amount) != nil {
+                UnreadNotice.noteUnsaved(amount: amount, merchant: merchant, card: card)
+            } else {
+                UnreadNotice.note(amount, always: true)
+            }
+        }
+        // A store that failed to open earlier in this launch gets one more try before the
+        // payment is left pending (`Store.retry` never opens it twice).
+        guard let container = (try? Store.opened.get()) ?? (try? Store.retry().get()) else {
+            keepUnsaved()
+            throw CaptureError.storeUnavailable
+        }
         // On the widgets before returning: Atajos may suspend the app right after the payment,
         // before the 300 ms of `WidgetBridge.start()` go by.
         defer { WidgetBridge.refreshAfterIntent() }
@@ -39,15 +55,21 @@ struct LogExpenseIntent: AppIntent {
         let context = container.mainContext
         // Saved first; where the iPhone is comes after, so a slow location never costs a payment.
         var expense: Expense?
-        let outcome = try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
-                                                 in: context) { expense = $0 }
+        let outcome: CaptureOutcome
+        do {
+            outcome = try ExpenseRecorder.record(amountText: amount, merchant: merchant, card: card,
+                                                     in: context) { expense = $0 }
+        } catch {
+            keepUnsaved()
+            throw error
+        }
         if let expense { ExpenseRecorder.addPlace(await PaymentPlace.current(), to: expense, in: context) }
         switch outcome {
         case .unreadable:
             // Seen for real: the whole Wallet payment connected here arrives as just the
             // merchant's name. Say how to fix the automation, not only that it failed.
             // Kept for «Hoy» too, like the notice automation does: Atajos may fail out of sight.
-            UnreadNotice.note(amount, always: true)
+            UnreadNotice.note(amount, always: true, justSaved: UnreadNotice.justSavedShops(in: context))
             throw $amount.needsValueError(
                 "No llegó un monto, llegó «\(amount)». En Atajos, toca la burbuja de «Importe» y elige «Importe» del pago de Wallet (no el pago completo)."
             )
@@ -56,8 +78,14 @@ struct LogExpenseIntent: AppIntent {
             // show it, instead of a silent $0 in the list.
             throw CaptureError.empty
         case .maybeRepeated(let merchant):
+            UnreadNotice.settle(savedIn: [merchant, self.merchant ?? ""])
+            // The proof the setup guide waits for: it arrived on this iPhone (`CaptureArrival`).
+            CaptureArrival.note(amount: amount, merchant: merchant)
             return .result(dialog: "Anotado: \(amount) en \(merchant). Es igual a uno de hace unos minutos: revísalo en Al día.")
         case .saved(let merchant):
+            // The notice that brought only this shop's name a moment ago was this payment.
+            UnreadNotice.settle(savedIn: [merchant, self.merchant ?? ""])
+            CaptureArrival.note(amount: amount, merchant: merchant)
             // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
             return .result(dialog: "Anotado: \(amount) en \(merchant).")
         }

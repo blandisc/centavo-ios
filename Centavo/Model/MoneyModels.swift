@@ -70,9 +70,15 @@ final class MoneyCut {
         self.isDraft = isDraft
     }
 
-    /// The only way to ask for cuts that count.
+    /// The only way to ask for cuts that count. Oldest first; within a month, the starting
+    /// point (`MoneyStore.start`) comes before the cut made in it.
     static var finished: FetchDescriptor<MoneyCut> {
-        FetchDescriptor(predicate: #Predicate { !$0.isDraft }, sortBy: [SortDescriptor(\.month)])
+        FetchDescriptor(predicate: #Predicate { !$0.isDraft }, sortBy: [SortDescriptor(\.month), SortDescriptor(\.date)])
+    }
+
+    /// What `MoneyStart` needs to tell the starting point from a cut made by hand.
+    var startShape: MoneyStart.Cut<UUID> {
+        MoneyStart.Cut(id: id, month: month, date: date, accountsCreated: (entries ?? []).compactMap { $0.account?.createdAt })
     }
 
     var rateTable: [String: Decimal] {
@@ -136,8 +142,9 @@ final class MoneyCut {
     func shownEntry(for account: MoneyAccount) -> MoneyEntry? {
         if let mine = entry(for: account) { return mine }
         guard !MoneyMath.belongs(createdAt: account.createdAt, to: month) else { return nil }
+        // Within a month the cut made by hand is newer than the starting point.
         return (account.entries ?? []).filter { $0.cut?.isDraft == false }
-            .max { ($0.cut?.month ?? "") < ($1.cut?.month ?? "") }
+            .max { ($0.cut?.month ?? "", $0.cut?.date ?? .distantPast) < ($1.cut?.month ?? "", $1.cut?.date ?? .distantPast) }
     }
 
     /// Today's net worth under this cut, for `accounts` (the active ones): their lines, and the
@@ -368,12 +375,29 @@ enum MoneyStore {
                         sortBy: [SortDescriptor(\.order), SortDescriptor(\.createdAt)])
     }
 
-    /// The latest finished cut, if any.
+    /// The latest finished cut, if any. In the month «Mi dinero» started, the cut made by hand
+    /// comes after the starting point.
     static func latestCut(in context: ModelContext) -> MoneyCut? {
         var descriptor = MoneyCut.finished
-        descriptor.sortBy = [SortDescriptor(\.month, order: .reverse)]
+        descriptor.sortBy = [SortDescriptor(\.month, order: .reverse), SortDescriptor(\.date, order: .reverse)]
         descriptor.fetchLimit = 1
         return try? context.fetch(descriptor).first
+    }
+
+    // MARK: The starting point
+
+    /// The starting point among `cuts` (the finished ones): the cut the first account made
+    /// with the opening balances, which the person never finished by hand (`MoneyStart`,
+    /// 2026-11-11). `nil` when the first cut was made by hand (the start was replaced before
+    /// this existed).
+    static func start(among cuts: [MoneyCut]) -> MoneyCut? {
+        guard let id = MoneyStart.start(among: cuts.map(\.startShape)) else { return nil }
+        return cuts.first { $0.id == id }
+    }
+
+    /// How many cuts the person made: the starting point isn't one.
+    static func cutsMade(among cuts: [MoneyCut]) -> Int {
+        MoneyStart.cutsMade(among: cuts.map(\.startShape))
     }
 
     /// Adds an account with today's balance to the latest cut, so the net worth shows it at
@@ -484,9 +508,11 @@ enum MoneyStore {
         MoneyMath.cutMonths(now: now, latest: latest, lateDays: lateCutDays, calendar: calendar)
     }
 
-    /// The finished cut of a month, if it has one.
+    /// The finished cut of a month, if it has one: the one made by hand when the month also
+    /// holds the starting point.
     static func finishedCut(of month: String, in context: ModelContext) throws -> MoneyCut? {
-        try context.fetch(FetchDescriptor<MoneyCut>(predicate: #Predicate { $0.month == month && !$0.isDraft })).first
+        try context.fetch(FetchDescriptor<MoneyCut>(predicate: #Predicate { $0.month == month && !$0.isDraft },
+                                                    sortBy: [SortDescriptor(\.date, order: .reverse)])).first
     }
 
     /// The cut being written, if there's one (of any month): it's finished or dropped before a
@@ -531,7 +557,8 @@ enum MoneyStore {
     /// before it. Never a later month's.
     static func cut(before month: String, in context: ModelContext) -> MoneyCut? {
         var descriptor = FetchDescriptor<MoneyCut>(predicate: #Predicate { !$0.isDraft && $0.month <= month },
-                                                   sortBy: [SortDescriptor(\.month, order: .reverse)])
+                                                   sortBy: [SortDescriptor(\.month, order: .reverse),
+                                                            SortDescriptor(\.date, order: .reverse)])
         descriptor.fetchLimit = 1
         return try? context.fetch(descriptor).first
     }
@@ -560,24 +587,31 @@ enum MoneyStore {
     }
 
     enum CutProblem: Error, Equatable {
-        /// The month already has a finished cut, made on that date: ask before replacing it.
+        /// The month already has a cut the person made, on that date: ask before replacing it.
         case monthHasCut(Date)
     }
 
-    /// Saves a reviewed draft as its month's cut. A month has one cut: if it already has one,
-    /// it's replaced only when the person said so (`replacing`); otherwise this throws
-    /// `CutProblem.monthHasCut` and nothing changes. Lines the old cut had and the draft
-    /// doesn't (an account added while it was being written) move to the draft first, so
-    /// replacing never deletes a balance with it.
+    /// Saves a reviewed draft as its month's cut. A month has one cut made by hand: if it
+    /// already has one, it's replaced only when the person said so (`replacing`); otherwise
+    /// this throws `CutProblem.monthHasCut` and nothing changes. Lines the old cut had and the
+    /// draft doesn't (an account added while it was being written) are copied to the draft
+    /// first, so replacing never deletes a balance with it.
+    ///
+    /// The starting point (`start`) is not a cut the person made (2026-11-11): the first cut of
+    /// that month doesn't ask, and the starting point is never deleted. It stays as what that
+    /// cut is compared with («desde el inicio»).
     static func finish(_ draft: MoneyCut, replacing: Bool = false, in context: ModelContext, now: Date = AppClock.now,
                        defaults: UserDefaults = .standard) throws {
         let month = draft.month
-        let others = try context.fetch(FetchDescriptor<MoneyCut>(predicate: #Predicate { $0.month == month && !$0.isDraft }))
-            .filter { $0.id != draft.id }
-        if let old = others.first, !replacing { throw CutProblem.monthHasCut(old.date) }
+        let finished = try context.fetch(MoneyCut.finished).filter { $0.id != draft.id }
+        let others = finished.filter { $0.month == month }
+        let madeByHand = Set(MoneyStart.replaced(byACutOf: month, among: finished.map(\.startShape)).map(\.id))
+        // The newest first: its lines win when two cuts of the month hold the same account.
+        let replaced = others.filter { madeByHand.contains($0.id) }.sorted { $0.date > $1.date }
+        if let old = replaced.first, !replacing { throw CutProblem.monthHasCut(old.date) }
         let have = Set((draft.entries ?? []).compactMap { $0.account?.id })
         var moved = have
-        for old in others {
+        for old in replaced + others.filter({ !madeByHand.contains($0.id) }) {
             for entry in old.entries ?? [] {
                 guard let account = entry.account, !moved.contains(account.id) else { continue }
                 let line = MoneyEntry(balance: entry.balance, account: account, reviewed: true)
@@ -590,7 +624,7 @@ enum MoneyStore {
             var table = draft.rateTable
             for (code, rate) in old.rateTable where table[code] == nil { table[code] = rate }
             draft.rateTable = table
-            context.delete(old)
+            if madeByHand.contains(old.id) { context.delete(old) }
         }
         draft.isDraft = false
         draft.date = now

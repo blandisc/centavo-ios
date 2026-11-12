@@ -12,8 +12,13 @@ struct ExpenseEditorView: View {
     let expense: Expense?
     /// Where a new expense's date starts (the end of the month being browsed); `nil` is now.
     var initialDate: Date?
+    /// What a new expense starts filled with: a Wallet payment the capture couldn't write down
+    /// (`PendingPayment.prefill`). What it doesn't know keeps the sheet's own start.
+    var prefill: ExpensePrefill?
     /// How the list deletes, so «Deshacer» works from here too. Without it, a plain delete.
     var onDelete: ((Expense) -> Void)?
+    /// Called once a new expense is saved, and only then (never on «Cancelar» or a failed save).
+    var onSave: (() -> Void)?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -22,6 +27,9 @@ struct ExpenseEditorView: View {
     /// The amount as the sheet showed it on opening: left as it was, the amount isn't rewritten
     /// (0.125 shown as «0.13» became 0.13 when only the category changed).
     @State private var loadedAmountText: String?
+    /// What the sheet held right after `prefill` filled it: it has changes only once the
+    /// person touches something else, so «Cancelar» on a sheet nobody touched just closes.
+    @State private var prefilledState: String?
     /// The expense's currency. New ones start in the month's currency.
     @State private var currency = CurrencyPreference.current
     /// A refund is saved as a negative amount (the decimal pad has no minus key).
@@ -83,6 +91,12 @@ struct ExpenseEditorView: View {
     @State private var original: Expense?
     /// «Quitar ubicación» was tapped: the place goes on «Guardar», and «Cancelar» keeps it.
     @State private var removesPlace = false
+    /// The other expenses from this same merchant (the texts in `merchantTexts`), read once:
+    /// the ones a correction made here can also reach, if asked.
+    @State private var siblings: [Expense] = []
+    @State private var merchantTexts: [String] = []
+    /// «Cambiar también los otros»: off until someone turns it on.
+    @State private var changesOthers = false
 
     private enum Creating: String, Identifiable { case category, source; var id: String { rawValue } }
 
@@ -124,9 +138,16 @@ struct ExpenseEditorView: View {
     /// Hidden and deleted categories: never filled in on their own.
     private var notAutoAssigned: [String] { UserCatalog.decodeNames(storedHidden) + UserCatalog.deletedNames }
 
+    /// What a new expense's fields hold, to compare with how `prefill` left them.
+    private var fieldsState: String {
+        [amountText, currency, merchant, card, category, "\(counts)", "\(isRefund)", "\(date.timeIntervalSinceReferenceDate)"]
+            .joined(separator: "\u{1F}")
+    }
+
     /// Whether something was typed or changed since the sheet opened.
     private var hasChanges: Bool {
         guard let expense else {
+            if let prefilledState { return fieldsState != prefilledState }
             let changedCard = UserCatalog.same(card, defaultSource) ? "" : card
             return !(amountText + merchant + changedCard + category).trimmingCharacters(in: .whitespaces).isEmpty
                 || !counts || isRefund
@@ -139,6 +160,21 @@ struct ExpenseEditorView: View {
             || repeatsMonthly != (expense.repeatsMonthly == true)
             || (repeatsMonthly && rule != expense.rule)
             || removesPlace
+    }
+
+    /// The correction being made to this expense's name or category, as it would reach the
+    /// others from the same merchant; `nil` when neither changed.
+    private var backfill: MerchantBackfill? {
+        guard let expense, !trimmedMerchant.isEmpty, !siblings.isEmpty else { return nil }
+        let renamed = savedName != expense.merchant
+        let choseCategory = trimmedCategory != (expense.category ?? "")
+        guard renamed || choseCategory else { return nil }
+        // A name the owner gave before goes on the ones that arrived before it; a suggestion
+        // nobody confirmed is not passed on.
+        return MerchantBackfill(texts: merchantTexts,
+                                name: renamed || merchantTexts.count > 1 ? savedName : nil,
+                                category: choseCategory || !expense.hasSuggestedCategory ? trimmedCategory : nil,
+                                replacing: expense.category)
     }
 
     private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
@@ -187,6 +223,7 @@ struct ExpenseEditorView: View {
                 amountSection
                 merchantSection
                 categorySection
+                othersSection
                 sourceSection
                 detailsSection
 
@@ -464,6 +501,28 @@ struct ExpenseEditorView: View {
             }
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// «Cambiar también los otros 6 gastos»: shown only while this correction (a new name, another
+    /// category) would change other expenses that arrived with the same text. Nothing changes
+    /// unless it is turned on, and all of it is saved with this expense, in one save.
+    @ViewBuilder private var othersSection: some View {
+        if let backfill, let expense {
+            let count = backfill.pending(in: siblings).count
+            if count > 0 {
+                Section {
+                    Toggle(isOn: $changesOthers) {
+                        SectionLabel(MerchantBackfill.offer(count))
+                    }
+                    .tint(Theme.brass)
+                    .accessibilityIdentifier("cambiar-los-otros")
+                } footer: {
+                    HintText("Los que llegaron como «\(expense.merchant)» quedan como este. "
+                             + "El que tenga otra categoría puesta por ti la conserva.")
+                }
+                .listRowBackground(Theme.surface)
+            }
+        }
     }
 
     private var sourceSection: some View {
@@ -811,8 +870,26 @@ struct ExpenseEditorView: View {
         guard let expense else {
             if let initialDate { date = initialDate }
             card = defaultSource
-            refreshMerchant("")
-            amountFocused = true
+            guard let prefill else {
+                refreshMerchant("")
+                amountFocused = true
+                return
+            }
+            if let when = prefill.date { date = when }
+            if let name = prefill.card?.trimmingCharacters(in: .whitespaces), !name.isEmpty { card = name }
+            if let code = prefill.currency { currency = code }
+            isRefund = prefill.isRefund
+            // «Tipo» is under «Más detalles»: open, so a refund is seen as one.
+            showsDetails = prefill.isRefund
+            merchant = prefill.merchant ?? ""
+            refreshMerchant(merchant)
+            // The category this shop usually gets, set here and not by `onChange(of: merchant)`
+            // after: what the sheet opens with is not a change the person made.
+            if let suggestedCategory { category = suggestedCategory }
+            amountText = prefill.amountText ?? ""
+            prefilledState = fieldsState
+            // Only what is missing asks for the keyboard: the amount, when the notice had none.
+            amountFocused = amountText.isEmpty
             return
         }
         // A bare "$" from Wallet is the month's currency; anything else keeps its own.
@@ -835,6 +912,14 @@ struct ExpenseEditorView: View {
         pinnedCategories = [category]
         date = expense.date
         original = originalOfCopy(expense)
+        // A fixed expense and its copies are not a merchant's payments: they follow their plan.
+        if !expense.isFixed {
+            merchantTexts = MerchantRules.texts(for: expense.merchant, renames: UserCatalog.merchantRenames)
+            let texts = Set(merchantTexts)
+            siblings = history.filter {
+                $0 !== expense && !$0.isFixed && texts.contains(MerchantKey.normalized($0.merchant))
+            }
+        }
         refreshMerchant(expense.merchant)
         // Anything set in «Más detalles» is shown, not hidden behind it.
         showsDetails = isRefund || !counts || repeatsMonthly || expense.isRepeat == true
@@ -918,21 +1003,20 @@ struct ExpenseEditorView: View {
             let before = CurrencyResolver.isoCode(for: expense.currencyMarker,
                                                   primary: CurrencyPreference.current)
             if before != currency { expense.currencyMarker = currency }
+            // What this correction teaches, read before the expense changes under it.
+            let sent = expense.merchant
+            let renamed = name != sent
+            let choseCategory = categoryName != (expense.category ?? "")
+            let categoryIsTheirs = choseCategory || !expense.hasSuggestedCategory
+            let others = changesOthers ? (backfill?.pending(in: siblings) ?? []) : []
             // A name typed here reads as typed, and the model leaves it alone.
-            if name != expense.merchant {
-                expense.displayName = name
-                // What Wallet sends with the old name from now on comes in with this one.
-                if typedMerchant { UserCatalog.learnRename(expense.merchant, to: name) }
-            }
+            if renamed { expense.displayName = name }
             expense.merchant = name
             expense.card = cardName.isEmpty ? nil : cardName
             // Another category is a choice; keeping the suggested one leaves it a suggestion,
             // and taking it off means none, not «suggest another».
-            if categoryName != (expense.category ?? "") {
+            if choseCategory {
                 expense.categorySource = categoryName.isEmpty ? Expense.clearedCategory : nil
-                // The newest choice is what the next expense from here starts with, even when
-                // this one is older than others from the same place.
-                if typedMerchant { UserCatalog.learnCategory(categoryName, for: name) }
             }
             expense.category = categoryName.isEmpty ? nil : categoryName
             expense.date = date
@@ -943,7 +1027,16 @@ struct ExpenseEditorView: View {
                 expense.longitude = nil
                 expense.placeName = nil
             }
+            // The others asked for, in the same save: all of it is kept, or none of it.
+            for other in others { MerchantBackfill.apply(other.change, to: other.expense) }
             guard persist() else { return }
+            // Only once it is saved: what Wallet sends as the old name comes in with this one
+            // from now on, under this category. The newest choice wins, even when this expense
+            // is older than others from the same place (`MerchantRules.learn`).
+            if typedMerchant, renamed || choseCategory {
+                UserCatalog.learnRule(sent: sent, name: name, category: categoryName,
+                                      choseCategory: choseCategory, categoryIsTheirs: categoryIsTheirs)
+            }
         } else {
             let new = Expense(
                 amount: value,
@@ -965,6 +1058,7 @@ struct ExpenseEditorView: View {
             setRepeats(new)
             context.insert(new)
             guard persist() else { return }
+            onSave?()
             // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.
             // After it's saved, so waiting for the place never holds the expense.
             if abs(date.timeIntervalSinceNow) < 15 * 60 {

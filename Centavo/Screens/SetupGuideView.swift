@@ -1,3 +1,5 @@
+import CentavoCore
+import Combine
 import SwiftData
 import SwiftUI
 
@@ -14,7 +16,9 @@ struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
-    /// Payments the automation saved (only it keeps the raw Wallet text): proof that it works.
+    /// Payments the automation saved (only it keeps the raw Wallet text). Not proof that it
+    /// works (they may have come in a backup or from another device): `CaptureCheck` only says
+    /// when the last one was; the proof is `CaptureArrival`.
     @Query(Self.latestCapture) private var captured: [Expense]
 
     /// Only the newest capture is ever shown.
@@ -38,6 +42,13 @@ struct SetupGuideView: View {
     private var isLast: Bool { step == steps.count - 1 }
 
     var body: some View {
+        Group { content }
+            // Opening the guide starts the setup (or carries on with the one under way): only
+            // a payment that arrives from here on makes it say «Ya funciona».
+            .onAppear { CaptureArrival.openGuide() }
+    }
+
+    @ViewBuilder private var content: some View {
         if stepByStep {
             guide
         } else {
@@ -328,6 +339,17 @@ enum GuideDebug {
         false
         #endif
     }
+
+    /// `-centavo-guia-llega-pago`: a moment after the guide's check is on screen, a payment
+    /// «arrives» as if the automation had just saved it, to see and test «Ya funciona».
+    @MainActor static func deliverPayment() async {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("-centavo-guia-llega-pago") else { return }
+        try? await Task.sleep(for: .milliseconds(1500))
+        guard !Task.isCancelled else { return }
+        CaptureArrival.note(amount: "$47.50", merchant: "Oxxo")
+        #endif
+    }
 }
 
 // MARK: - The steps
@@ -522,21 +544,40 @@ private struct GuideStep {
 
 // MARK: - Is it working?
 
-/// The last step's answer: the first payment the automation saved, or that it is still waiting.
+/// The guide's answer: «Ya funciona» once a payment arrives on this iPhone after the guide was
+/// opened; until then it waits, and says when the last one was.
+///
+/// Until 2026-11-11 any capture under three days old counted, also one from before the guide
+/// was opened or one that came inside a restored backup: it said «Ya funciona» to someone whose
+/// automation was not working (`CaptureProof`).
 struct CaptureCheck: View {
+    /// The newest Wallet payment among the expenses: only to say when the last one was.
     let latest: Expense?
+    // Read by hand and not with `@AppStorage`: these keys have dots (what keeps them out of
+    // the backup), and `UserDefaults` doesn't announce changes to such keys one by one. Read
+    // again on any change to the settings and when the app comes back to the front.
+    @State private var session = UserDefaults.standard.double(forKey: CaptureArrival.sessionKey)
+    @State private var arrived = UserDefaults.standard.double(forKey: CaptureArrival.dateKey)
+    @State private var arrivedText = UserDefaults.standard.string(forKey: CaptureArrival.textKey) ?? ""
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Proof only if it is recent: a capture from days ago says nothing about the automation
-    /// someone came here to fix.
-    private var recent: Expense? {
-        guard let latest, AppClock.now.timeIntervalSince(latest.date) < 3 * 24 * 3600 else { return nil }
-        return latest
+    private var proof: CaptureProof {
+        CaptureArrival.proof(session: session, arrived: arrived, lastKnown: latest?.date)
+    }
+
+    private static var hint: String {
+        ShortcutsVersion.isIOS27
+            ? "Si pagaste y no llega en un par de minutos, revisa el paso 5: la acción debe decir "
+              + "«Registrar» y «Notificación» con campana, en azul."
+            : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7."
     }
 
     var body: some View {
+        let proof = proof
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            if let latest = recent {
+            switch proof {
+            case .working(let date):
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.brass)
                     .font(Theme.Symbol.large)
@@ -546,22 +587,25 @@ struct CaptureCheck: View {
                     Text("Ya funciona")
                         .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
-                    Text("Llegó \(latest.rawAmount ?? "") en \(latest.merchant), "
-                         + AppClock.relative(latest.date) + ".")
+                    Text("Llegó \(arrivedText.isEmpty ? "un pago" : arrivedText), "
+                         + AppClock.relative(date) + ".")
                         .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
-            } else {
+            case .waiting(let last):
                 ProgressView()
                     .tint(Theme.brass)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text("Esperando tu primer pago")
+                    Text(last == nil ? "Esperando tu primer pago" : "Esperando un pago nuevo")
                         .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
-                    Text(ShortcutsVersion.isIOS27
-                         ? "Si pagaste y no llega en un par de minutos, revisa el paso 5: la acción debe decir "
-                           + "«Registrar» y «Notificación» con campana, en azul."
-                         : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
+                    if let last {
+                        // A payment from before the guide was opened: said, and not taken as proof.
+                        Text("Último pago: " + AppClock.relative(last) + ". Paga algo con Apple Pay para comprobar.")
+                            .font(.ticket(.detail))
+                            .foregroundStyle(Theme.ink)
+                    }
+                    Text(Self.hint)
                         .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
@@ -572,8 +616,24 @@ struct CaptureCheck: View {
         .ticketPanel()
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("guia-comprobacion")
-        .animation(Theme.Motion.animation(Theme.Motion.toggle, reduceMotion: reduceMotion), value: recent?.persistentModelID)
-        .sensoryFeedback(.success, trigger: recent?.persistentModelID) { old, new in old == nil && new != nil }
+        .animation(Theme.Motion.animation(Theme.Motion.toggle, reduceMotion: reduceMotion), value: proof.isWorking)
+        .sensoryFeedback(.success, trigger: proof.isWorking) { old, new in !old && new }
+        .task { await GuideDebug.deliverPayment() }
+        .onAppear(perform: reload)
+        // The intents write the arrival straight to `UserDefaults`, often with the app behind.
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)) { _ in reload() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { reload() } }
+    }
+
+    private func reload() {
+        let defaults = UserDefaults.standard
+        let newSession = defaults.double(forKey: CaptureArrival.sessionKey)
+        let newArrived = defaults.double(forKey: CaptureArrival.dateKey)
+        let newText = defaults.string(forKey: CaptureArrival.textKey) ?? ""
+        if newSession != session { session = newSession }
+        if newText != arrivedText { arrivedText = newText }
+        if newArrived != arrived { arrived = newArrived }
     }
 }
 

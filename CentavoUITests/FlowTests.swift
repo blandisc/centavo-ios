@@ -516,6 +516,91 @@ final class FlowTests: XCTestCase {
         snap("flujo-editar")
     }
 
+    /// Owner's request (2026-11-11): correct a payment's name once and find what Al día remembers
+    /// about it in «Pagos y categorías › Lo que recuerdo», where it can be forgotten.
+    func testCorregirUnGastoLoDejaEnLoQueRecuerdo() {
+        let app = launch(demo: true)
+        require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
+        let merchant = require(app.textFields["comercio"], "No abrió la hoja de edición")
+        merchant.tap()
+        merchant.clearAndType("Cine del centro\n")
+        app.buttons["hoja-guardar"].tap()
+        require(row(app, containing: "Cine del centro"), "El nombre nuevo no aparece en la lista")
+
+        app.buttons["Más"].tap()
+        require(app.buttons["Pagos y categorías"], "No está en «Más»").tap()
+        // At the bottom of a lazy list: not in the hierarchy until it is scrolled to.
+        let link = app.buttons["lo-que-recuerdo"]
+        for _ in 0..<6 where !isClear(link, app) { scrollForm(app) }
+        require(link, "No está «Lo que recuerdo» en «Pagos y categorías»").tap()
+        let rule = require(app.buttons["recuerdo-cinepolis"], "No recuerda el comercio corregido")
+        XCTAssertTrue(rule.label.localizedCaseInsensitiveContains("Cine del centro"), "Dice: \(rule.label)")
+        // The category it already had goes with the new name.
+        XCTAssertTrue(rule.label.localizedCaseInsensitiveContains("Salidas"), "Dice: \(rule.label)")
+        snap("flujo-lo-que-recuerdo")
+
+        rule.tap()
+        let name = require(app.textFields["recuerdo-nombre"], "No abrió el comercio recordado")
+        XCTAssertEqual(name.value as? String, "Cine del centro")
+        snap("flujo-comercio-recordado")
+        let forget = app.buttons["recuerdo-olvidar"]
+        for _ in 0..<4 where !isClear(forget, app) { scrollForm(app) }
+        require(forget, "No deja olvidarlo").tap()
+        // The question's own red button, not the row that asked.
+        let confirm = app.buttons.matching(NSPredicate(format: "label ==[c] %@ AND identifier != %@",
+                                                       "Olvidar", "recuerdo-olvidar")).firstMatch
+        require(confirm, "No pregunta antes de olvidar").tap()
+        require(app.descendants(matching: .any)["recuerdo-vacio"], "Al olvidarlo no quedó la lista vacía")
+        snap("flujo-lo-que-recuerdo-vacio")
+    }
+
+    /// A correction offers to reach the other expenses from the same place, and only does when
+    /// the switch is turned on.
+    func testCorregirUnGastoOfreceCambiarLosOtrosDelMismoComercio() {
+        let app = launch(demo: true)
+        require(row(app, containing: "Oxxo"), "No hay fila de Oxxo").tap()
+        let merchant = require(app.textFields["comercio"], "No abrió la hoja de edición")
+        XCTAssertFalse(app.switches["cambiar-los-otros"].exists, "Ofrece cambiar los otros sin haber cambiado nada")
+        merchant.tap()
+        merchant.clearAndType("Oxxo esquina\n")
+        let others = app.switches["cambiar-los-otros"]
+        for _ in 0..<4 where !isClear(others, app) { scrollForm(app) }
+        require(others, "No ofrece cambiar los otros gastos de Oxxo")
+        XCTAssertTrue(others.label.localizedCaseInsensitiveContains("los otros 2 gastos"), "Dice: \(others.label)")
+        turnOn(others, "Cambiar también los otros")
+        snap("flujo-cambiar-los-otros")
+        app.buttons["hoja-guardar"].tap()
+        let renamed = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Oxxo esquina"))
+        require(renamed.firstMatch, "El nombre nuevo no aparece en la lista")
+        for _ in 0..<4 where renamed.count < 2 { scrollForm(app) }
+        XCTAssertGreaterThanOrEqual(renamed.count, 2, "Los otros gastos de Oxxo no tomaron el nombre")
+    }
+
+    /// «Lo que recuerdo» with the largest text: each rule stacks and nothing leaves the screen.
+    /// The rule is seeded by the demo (`-centavo-recuerdos`), which cleans it on every launch.
+    func testLoQueRecuerdoConLetraDeAccesibilidadCabeCompleto() {
+        let app = launch(demo: true, extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-centavo-recuerdos",
+        ])
+        app.buttons["Más"].tap()
+        let catalog = app.buttons["Pagos y categorías"]
+        for _ in 0..<6 where !catalog.isHittable { scrollForm(app) }
+        require(catalog, "No está en «Más»").tap()
+        let link = app.buttons["lo-que-recuerdo"]
+        for _ in 0..<10 where !isClear(link, app) { scrollForm(app) }
+        require(link, "No está «Lo que recuerdo» en «Pagos y categorías»").tap()
+        let rule = require(app.buttons["recuerdo-clip*mx taq guero 02 cdmx"], "No aparece la regla")
+        XCTAssertTrue(rule.label.contains("CLIP*MX TAQ GUERO 02 CDMX"), "Dice: \(rule.label)")
+        XCTAssertTrue(rule.label.contains("Taquería El Güero"), "Dice: \(rule.label)")
+        XCTAssertTrue(rule.label.contains("Comida"), "Dice: \(rule.label)")
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThanOrEqual(rule.frame.minX, window.minX - 0.5, "La regla se sale de la pantalla")
+        XCTAssertLessThanOrEqual(rule.frame.maxX, window.maxX + 0.5, "La regla se sale de la pantalla")
+        XCTAssertGreaterThanOrEqual(rule.frame.height, 44, "La regla es muy chica para tocarla")
+        snap("flujo-lo-que-recuerdo-letra-de-accesibilidad")
+    }
+
     func testBorrarPideConfirmacionYLuegoQuitaElGasto() {
         let app = launch(demo: true)
         require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis").tap()
@@ -705,6 +790,25 @@ final class FlowTests: XCTestCase {
         require(remove, "No ofrece quitar el presupuesto").tap()
         require(app.buttons["Quitar"], "No pidió confirmación para quitar el presupuesto").tap()
         require(app.buttons["fijar-presupuesto"], "No quitó el presupuesto")
+    }
+
+    /// A budget first set halfway through the month counts from that day (2026-11-11): today gets
+    /// one day's amount, not every day of the month so far, and the sum says since when. The demo
+    /// never lives on the 1st (`AppClock`).
+    func testUnPresupuestoFijadoAMitadDeMesCuentaDesdeEseDia() {
+        let app = launch(demo: true)
+        app.buttons["Presupuesto"].tap()
+        require(app.buttons["fijar-presupuesto"], "No ofrece fijar el presupuesto").tap()
+        let field = require(app.textFields["presupuesto-monto"], "No abrió la hoja del presupuesto")
+        field.tap()
+        field.typeAmount("30000")
+        app.buttons["hoja-guardar"].tap()
+
+        require(app.buttons["ver-cuenta"], "No ofrece ver la cuenta", timeout: 20).tap()
+        let sum = require(app.descendants(matching: .any)["la-cuenta"], "No abrió la cuenta")
+        XCTAssertTrue(sum.label.contains("Tu presupuesto cuenta desde el"), "La cuenta dice: \(sum.label)")
+        XCTAssertFalse(sum.label.contains("Sobró"), "El primer día no hay nada que sobre: \(sum.label)")
+        snap("flujo-presupuesto-a-mitad-de-mes")
     }
 
     /// What is spent today comes off today's figure peso for peso; it used to be spread over
@@ -1153,11 +1257,98 @@ final class FlowTests: XCTestCase {
         snap("flujo-guia-esperando")
     }
 
+    /// «Ya funciona» only once a payment arrives after the guide was opened (2026-11-11):
+    /// `-centavo-guia-llega-pago` delivers one a moment after the check is on screen.
     func testLaGuiaConfirmaQueLaCapturaFunciona() {
-        let check = walkGuideToTheEnd(launch(demo: true))
-        XCTAssertTrue(check.label.contains("Ya funciona"), "Dice: \(check.label)")
+        let check = walkGuideToTheEnd(launch(demo: true, extra: ["-centavo-guia-llega-pago"]))
+        let works = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Ya funciona"),
+                                              object: check)
+        XCTAssertEqual(XCTWaiter().wait(for: [works], timeout: 10), .completed, "Dice: \(check.label)")
         XCTAssertTrue(check.label.contains("Oxxo"), "Dice: \(check.label)")
         snap("flujo-guia-funciona")
+    }
+
+    /// The demo has Wallet payments from before the guide was opened: they are said, and they
+    /// are not taken as proof that the automation works (it said «Ya funciona» in false).
+    func testLaGuiaNoDaPorBuenoUnPagoDeAntes() {
+        let check = walkGuideToTheEnd(launch(demo: true))
+        XCTAssertFalse(check.label.contains("Ya funciona"), "Dice: \(check.label)")
+        XCTAssertTrue(check.label.contains("Esperando un pago nuevo"), "Dice: \(check.label)")
+        XCTAssertTrue(check.label.contains("Último pago"), "Dice: \(check.label)")
+        XCTAssertTrue(check.label.contains("Paga algo con Apple Pay para comprobar"), "Dice: \(check.label)")
+        snap("flujo-guia-pago-de-antes")
+    }
+
+    // MARK: Pagos pendientes
+
+    /// Brings the notice of pending payments out from under the bars.
+    private func pendingNotice(_ app: XCUIApplication) -> XCUIElement {
+        let notice = require(app.descendants(matching: .any)["pagos-pendientes"], "«Hoy» no dice que hay pagos sin anotar")
+        for _ in 0..<3 where !notice.isHittable || notice.frame.maxY > app.windows.firstMatch.frame.maxY - 120 {
+            app.swipeUp()
+        }
+        return notice
+    }
+
+    /// Two payments the capture couldn't write down (`-centavo-pendientes`): «Hoy» counts
+    /// them, opens the list, and each one goes only when the person discards it.
+    func testLosPagosPendientesSeVenYSeDescartanUnoPorUno() {
+        let app = launch(demo: true, extra: ["-centavo-pendientes"])
+        let notice = pendingNotice(app)
+        XCTAssertTrue(notice.label.contains("2 pagos sin anotar"), "Dice: \(notice.label)")
+        notice.tap()
+        require(app.buttons["pendientes-descartar-todos"], "No ofrece descartar todos")
+        require(app.buttons["pendientes-revisar-atajo"], "No ofrece revisar el atajo")
+        XCTAssertEqual(app.buttons.matching(identifier: "pendiente-anotar").count, 2, "No ofrece anotar cada pago")
+        snap("flujo-pagos-pendientes")
+        app.buttons.matching(identifier: "pendiente-descartar").firstMatch.tap()
+        // «Conservar» changes nothing.
+        require(app.buttons["Conservar"], "No preguntó antes de descartar").tap()
+        XCTAssertEqual(app.buttons.matching(identifier: "pendiente-descartar").count, 2, "«Conservar» descartó el pago")
+        app.buttons.matching(identifier: "pendiente-descartar").firstMatch.tap()
+        require(app.buttons["Descartar"], "No preguntó antes de descartar").tap()
+        let one = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "1 pago"),
+                                            object: app.descendants(matching: .any)["pagos-pendientes"])
+        XCTAssertEqual(XCTWaiter().wait(for: [one], timeout: 10), .completed, "Sigue diciendo dos pagos")
+        app.buttons.matching(identifier: "pendiente-descartar").firstMatch.tap()
+        require(app.buttons["Descartar"], "No preguntó antes de descartar").tap()
+        XCTAssertTrue(waitForDisappearance(app.descendants(matching: .any)["pagos-pendientes"]),
+                      "El aviso sigue sin pagos pendientes")
+    }
+
+    /// The first payment may be the one that didn't read: the empty screen says so too, above
+    /// «Tu mes empieza aquí». «Anotar» opens the sheet already filled with what was read, and
+    /// the payment goes only once that sheet saves; with «Cancelar» it is still pending.
+    func testLaPantallaVaciaMuestraLosPagosPendientesYAnotarLosResuelve() {
+        let app = launch(extra: ["-centavo-pendientes"])
+        let notice = require(app.descendants(matching: .any)["pagos-pendientes"], "La pantalla vacía no dice que hay pagos sin anotar")
+        let first = require(app.buttons["vacio-anotar"], "No está la pantalla vacía")
+        XCTAssertLessThan(notice.frame.minY, first.frame.minY, "El aviso no va arriba del ticket vacío")
+        snap("flujo-vacio-pagos-pendientes")
+        notice.tap()
+        // The newest one first: «$319.00 en Liverpool», which read and couldn't be saved.
+        let log = app.buttons.matching(identifier: "pendiente-anotar").firstMatch
+        require(log, "No ofrece anotar el pago").tap()
+        let amount = require(app.textFields["monto"], "«Anotar» no abrió la hoja de gasto")
+        XCTAssertEqual(amount.value as? String, "319.00", "La hoja no trae el monto del pago")
+        XCTAssertEqual(app.textFields["comercio"].value as? String, "Liverpool", "La hoja no trae el comercio del pago")
+        snap("flujo-pago-pendiente-hoja-llena")
+        // Nothing touched: «Cancelar» closes without asking, and the payment is still pending.
+        app.buttons["hoja-cancelar"].tap()
+        XCTAssertTrue(waitForDisappearance(amount), "«Cancelar» preguntó por cambios que nadie hizo")
+        XCTAssertTrue(pendingNotice(app).label.contains("2 pagos"), "«Cancelar» quitó el pago pendiente")
+        app.buttons.matching(identifier: "pendiente-anotar").firstMatch.tap()
+        require(app.textFields["monto"], "«Anotar» no abrió la hoja de gasto")
+        app.buttons["hoja-guardar"].tap()
+        let one = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "1 pago no se pudo leer"),
+                                            object: app.descendants(matching: .any)["pagos-pendientes"])
+        XCTAssertEqual(XCTWaiter().wait(for: [one], timeout: 10), .completed, "El pago anotado sigue pendiente")
+        XCTAssertTrue(row(app, containing: "Liverpool").waitForExistence(timeout: 10), "El pago anotado no está en la lista")
+        // The one left arrived with only a name: the sheet opens with it as the shop, no amount.
+        app.buttons.matching(identifier: "pendiente-anotar").firstMatch.tap()
+        let empty = require(app.textFields["monto"], "«Anotar» no abrió la hoja de gasto")
+        XCTAssertEqual(app.textFields["comercio"].value as? String, "Google", "La hoja no trae el nombre del aviso")
+        XCTAssertNotEqual(empty.value as? String, "319.00", "El monto del pago anterior se quedó en la hoja")
     }
 
     // MARK: Meses
@@ -1235,15 +1426,66 @@ final class FlowTests: XCTestCase {
 
     // MARK: Base de datos
 
-    func testSiLaBaseNoAbreSeExplicaEnVezDeCerrarse() {
+    /// The error screen with the store shut: `extra` picks how it fails (see `Store.open`).
+    private func launchBroken(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
-                               "-centavo-broken-store"]
+                               "-centavo-broken-store"] + extra
         app.launch()
+        return app
+    }
+
+    func testSiLaBaseNoAbreSeExplicaEnVezDeCerrarse() {
+        let app = launchBroken()
         require(app.staticTexts["Al día no pudo abrir tus gastos"],
                 "No mostró la pantalla de error de la base")
         XCTAssertFalse(app.buttons["Anotar gasto"].exists)
+        // Sin saber la causa no se promete que no se perdió nada, ni se culpa al espacio.
+        let cause = require(app.staticTexts["error-base-causa"], "No explica qué pasó")
+        XCTAssertTrue(cause.label.contains("deberían seguir en este iPhone"), cause.label)
+        XCTAssertFalse(cause.label.contains("no se borró nada"), cause.label)
+        XCTAssertFalse(cause.label.contains("espacio"), cause.label)
+        // Dos salidas: reintentar sin cerrar la app y sacar una copia de los datos.
+        let retry = require(app.buttons["error-base-reintentar"], "No hay «Intentar de nuevo»")
+        require(app.buttons["error-base-copia"], "No hay «Guardar una copia de mis datos»")
+        XCTAssertFalse(app.buttons["Restaurar respaldo"].exists, "Sin almacén no hay dónde restaurar")
         snap("flujo-error-base")
+        // La base sigue rota: lo dice y la pantalla se queda, sin cerrarse.
+        retry.tap()
+        require(app.staticTexts["error-base-sigue"], "No dijo que todavía no abre")
+        XCTAssertTrue(app.staticTexts["Al día no pudo abrir tus gastos"].exists)
+        snap("flujo-error-base-sigue")
+    }
+
+    func testSiLaBaseAbreAlReintentarSeEntraSinCerrarLaApp() {
+        let app = launchBroken(["-centavo-broken-store-una-vez", "-centavo-demo", "-monthlyBudget", "8000"])
+        require(app.staticTexts["Al día no pudo abrir tus gastos"],
+                "No mostró la pantalla de error de la base")
+        require(app.buttons["error-base-reintentar"], "No hay «Intentar de nuevo»").tap()
+        require(app.buttons["Anotar gasto"], "«Intentar de nuevo» no abrió la app", timeout: 20)
+        XCTAssertFalse(app.staticTexts["Al día no pudo abrir tus gastos"].exists)
+    }
+
+    func testSiElIPhoneNoTieneEspacioLaPantallaDeErrorLoDice() {
+        let app = launchBroken(["-centavo-broken-store-sin-espacio"])
+        let cause = require(app.staticTexts["error-base-causa"], "No explica qué pasó")
+        XCTAssertTrue(cause.label.hasPrefix("El iPhone casi no tiene espacio libre"), cause.label)
+        XCTAssertTrue(cause.label.contains("Almacenamiento del iPhone"), cause.label)
+        snap("flujo-error-base-sin-espacio")
+    }
+
+    func testLaPantallaDeErrorConLetraDeAccesibilidadSeDesplazaHastaLaCopia() {
+        let app = launchBroken(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        require(app.staticTexts["Al día no pudo abrir tus gastos"],
+                "No mostró la pantalla de error de la base")
+        let copy = app.buttons["error-base-copia"]
+        for _ in 0..<12 where !copy.isHittable { app.swipeUp() }
+        XCTAssertTrue(copy.isHittable, "Con letra grande no se llega a «Guardar una copia de mis datos»")
+        let window = app.windows.firstMatch.frame
+        for element in [copy, app.buttons["error-base-reintentar"]] {
+            XCTAssertLessThanOrEqual(element.frame.maxX, window.maxX + 0.5, "«\(element.label)» se sale de la pantalla")
+        }
+        snap("flujo-error-base-letra-grande")
     }
 
     // MARK: Utilidades

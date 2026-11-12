@@ -90,10 +90,43 @@ enum UserCatalog {
         MerchantRenames(stored: UserDefaults.standard.string(forKey: merchantRenamesKey) ?? "")
     }
 
-    /// The owner renamed `old` to `new`: the next payment Wallet sends as `old` is saved as `new`.
-    static func learnRename(_ old: String, to new: String) {
-        var renames = merchantRenames
-        renames.rename(old, to: new)
+    // MARK: «Lo que recuerdo» (`MerchantRules`)
+
+    /// What the app remembers per merchant: the names and the categories above, as one list.
+    static var merchantRules: [MerchantRule] {
+        MerchantRules.list(renames: merchantRenames, categories: categoryRules)
+    }
+
+    /// The expense sheet saved a correction (see `MerchantRules.learn`): what arrives as `sent`
+    /// comes in as `name`, under `category`, from the next payment on.
+    static func learnRule(sent: String, name: String, category: String?, choseCategory: Bool,
+                          categoryIsTheirs: Bool) {
+        update { renames, rules in
+            MerchantRules.learn(sent: sent, name: name, category: category, choseCategory: choseCategory,
+                                categoryIsTheirs: categoryIsTheirs, renames: &renames, categories: &rules)
+        }
+    }
+
+    /// «Lo que recuerdo» changed a rule's name or category.
+    static func changeRule(_ rule: MerchantRule, name: String, choice: CategoryRules.Choice?) {
+        update { MerchantRules.change(rule, name: name, choice: choice, renames: &$0, categories: &$1) }
+    }
+
+    /// «Lo que recuerdo» deleted a rule. The expenses keep what they have.
+    static func removeRule(_ rule: MerchantRule) {
+        update { MerchantRules.remove(rule, renames: &$0, categories: &$1) }
+    }
+
+    /// Both lists, changed together; each is written (and pushed to iCloud) only if it changed.
+    private static func update(_ change: (inout MerchantRenames, inout CategoryRules) -> Void) {
+        let oldRenames = merchantRenames, oldRules = categoryRules
+        var renames = oldRenames, rules = oldRules
+        change(&renames, &rules)
+        if renames != oldRenames { saveRenames(renames) }
+        if rules != oldRules { saveRules(rules) }
+    }
+
+    private static func saveRenames(_ renames: MerchantRenames) {
         let stored = renames.stored
         UserDefaults.standard.set(stored, forKey: merchantRenamesKey)
         if Store.syncsBudget { BudgetSync.push(stored, for: merchantRenamesKey) }

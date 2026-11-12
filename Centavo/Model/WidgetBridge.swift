@@ -64,6 +64,9 @@ enum WidgetBridge {
         #endif
         guard let container = try? Store.container else { return }
         let context = container.mainContext
+        // A budget changed where nobody wrote down when (`BudgetHistory`) is dated now, once:
+        // this runs after every save, also Siri's and Atajos', with no screen up.
+        BudgetStore.settleHistory(now: now)
         let budget = BudgetStore.amount(from: UserDefaults.standard.string(forKey: BudgetStore.key) ?? "")
         let interval = Calendar.current.dateInterval(of: .month, for: now) ?? DateInterval(start: now, duration: 0)
         let start = interval.start, end = interval.end

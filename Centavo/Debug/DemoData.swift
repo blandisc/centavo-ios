@@ -8,6 +8,7 @@ import SwiftData
 ///
 /// - `-centavo-demo`: an in-memory store with a believable month.
 /// - `-centavo-empty`: an in-memory store with nothing in it (the first-launch screen).
+/// - `-centavo-recuerdos`, with either: «Lo que recuerdo» starts with one corrected merchant.
 enum DemoData {
     enum DemoError: Error { case brokenStore }
 
@@ -22,11 +23,23 @@ enum DemoData {
             || arguments.contains("-centavo-demo-large")
     }
 
+    /// What correcting one Wallet payment in the expense sheet leaves behind, written the way
+    /// the app writes it (a JSON launch argument is read as a property list, not as text).
+    private static func seedRemembered() {
+        var renames = MerchantRenames(), rules = CategoryRules()
+        MerchantRules.learn(sent: "CLIP*MX TAQ GUERO 02 CDMX", name: "Taquería El Güero", category: "Comida",
+                            choseCategory: true, renames: &renames, categories: &rules)
+        UserDefaults.standard.set(renames.stored, forKey: UserCatalog.merchantRenamesKey)
+        UserDefaults.standard.set(rules.stored, forKey: UserCatalog.categoryRulesKey)
+    }
+
     static func makeContainer() throws -> ModelContainer {
         // A demo starts as clean as its in-memory store: a budget saved by an earlier run
         // would leak into this one. `-monthlyBudget 8000` still applies (launch arguments
         // win over what is saved).
         UserDefaults.standard.removeObject(forKey: BudgetStore.key)
+        // Its changes too: a reused simulator carried the last run's history into the next one.
+        UserDefaults.standard.removeObject(forKey: BudgetHistory.key)
         UserDefaults.standard.removeObject(forKey: CurrencyPreference.key)
         UserDefaults.standard.removeObject(forKey: "onboarded")
         UserDefaults.standard.removeObject(forKey: WalletWatch.lastArrivalKey)
@@ -36,6 +49,8 @@ enum DemoData {
                     UserCatalog.categoryColorsKey, UserCatalog.sourceColorsKey, UserCatalog.cardRenamesKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        // After the cleaning above, so it never carries over to a run without the argument.
+        if ProcessInfo.processInfo.arguments.contains("-centavo-recuerdos") { seedRemembered() }
         let container = try ModelContainer(
             for: Expense.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)

@@ -41,6 +41,8 @@ struct BudgetPage: View {
     @ScaledMetric(relativeTo: .body) private var scaledBarHeight: CGFloat = Theme.Size.budgetBar
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(WhereItGoesStyle.key) private var storedStyle = WhereItGoesStyle.bar.rawValue
+    /// Today's budget: a month that is over and had none doesn't invite to set one that exists.
+    @AppStorage(BudgetStore.key) private var storedBudget = ""
 
     /// Grows a little with the text, but a bar the size of the screen helps nobody.
     private var barHeight: CGFloat { min(scaledBarHeight, Theme.Size.budgetBarMaxHeight) }
@@ -63,6 +65,8 @@ struct BudgetPage: View {
             case .top:
                 if let pace {
                     ticket(pace)
+                } else if !isCurrentMonth, BudgetStore.amount(from: storedBudget) != nil {
+                    noBudgetThen
                 } else {
                     invitation
                 }
@@ -104,6 +108,17 @@ struct BudgetPage: View {
     }
 
     // MARK: Without a budget
+
+    /// A month that closed with no budget (it was set later, or had been taken off): nothing to
+    /// judge it with, so only its total, and why (`BudgetHistory`, 2026-11-11).
+    private var noBudgetThen: some View {
+        Text("Este mes no tenías presupuesto.")
+            .font(.ticket(.detail))
+            .foregroundStyle(Theme.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("sin-presupuesto-ese-mes")
+    }
 
     private var invitation: some View {
         Button(action: onSetBudget) {
@@ -156,6 +171,10 @@ struct BudgetPage: View {
         if isCurrentMonth {
             parts.append("A hoy \(pace.isAheadOfPace ? "deberías" : "podrías") llevar \(wholeMoney(pace.expectedShown)).")
             if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
+            if let start = pace.countsFrom {
+                let day = start.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_MX")))
+                parts.append("Tu presupuesto cuenta desde el \(day).")
+            }
             if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
                 parts.append("Vas \(wholeMoney(rhythm.magnitude)) " + (rhythm > 0 ? "abajo" : "arriba") + " del ritmo.")
             }

@@ -55,7 +55,9 @@ enum MoneyDemo {
             ("Amex", .debt, "MXN", nil, 7_600, 6_420),
             ("Préstamo auto", .debt, "MXN", nil, 3_000, 1_500),
         ]
-        let before = MoneyCut(month: MoneyMath.monthKey(of: lastMonth), date: lastMonth, mainCurrency: "MXN", isDraft: false)
+        // An hour after its accounts: a cut made by hand, not the starting point (`MoneyStart`).
+        let before = MoneyCut(month: MoneyMath.monthKey(of: lastMonth), date: lastMonth.addingTimeInterval(3_600),
+                              mainCurrency: "MXN", isDraft: false)
         before.rateTable = ["USD": 20]
         let now = MoneyCut(month: MoneyMath.monthKey(of: AppClock.now), date: AppClock.now, mainCurrency: "MXN", isDraft: false)
         now.rateTable = ["USD": 19]

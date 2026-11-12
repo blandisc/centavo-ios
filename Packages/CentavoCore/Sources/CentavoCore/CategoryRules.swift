@@ -32,6 +32,9 @@ public struct CategoryRules: Codable, Equatable, Sendable {
         public var merchant: String
         /// `nil`: the owner took the category off, so nothing is filled in for it.
         public var category: String?
+        /// The merchant as it was written when chosen, accents and all, for «Lo que recuerdo».
+        /// Only to show; `nil` in choices kept before the list existed.
+        public var written: String?
     }
 
     public enum Choice: Equatable, Sendable {
@@ -68,8 +71,15 @@ public struct CategoryRules: Codable, Equatable, Sendable {
         guard let key = MerchantKey.memory(merchant) else { return }
         let clean = category?.trimmingCharacters(in: .whitespacesAndNewlines)
         entries.removeAll { $0.merchant == key }
-        entries.append(Entry(merchant: key, category: (clean?.isEmpty ?? true) ? nil : clean))
+        entries.append(Entry(merchant: key, category: (clean?.isEmpty ?? true) ? nil : clean,
+                             written: merchant.trimmingCharacters(in: .whitespacesAndNewlines)))
         if entries.count > Self.limit { entries.removeFirst(entries.count - Self.limit) }
+    }
+
+    /// The owner's choice for `merchant` is forgotten: the history and the catalog decide again.
+    public mutating func forget(_ merchant: String) {
+        guard let key = MerchantKey.memory(merchant) else { return }
+        entries.removeAll { $0.merchant == key }
     }
 
     /// A category of their own got a new name: what was filed under it follows.

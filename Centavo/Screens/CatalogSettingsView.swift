@@ -3,7 +3,8 @@ import SwiftData
 import SwiftUI
 
 /// «Pagos y categorías»: the ways someone pays (one of them the default for what they
-/// write down by hand) and the categories of their own, each with its icon.
+/// write down by hand), the categories of their own, each with its icon, and the way into
+/// «Lo que recuerdo» (what each merchant is called and filed under).
 struct CatalogSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -14,6 +15,9 @@ struct CatalogSettingsView: View {
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
     @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
+    /// Read here only to count what «Lo que recuerdo» holds, as it changes.
+    @AppStorage(UserCatalog.merchantRenamesKey) private var storedRenames = ""
+    @AppStorage(UserCatalog.categoryRulesKey) private var storedRules = ""
     /// The categories and cards the expenses use, read with only those two fields when the
     /// screen opens (audit 2026-11-02: a live query loaded every expense whole).
     @State private var used = UsedNames()
@@ -89,6 +93,17 @@ struct CatalogSettingsView: View {
     static func guessIcon(_ name: String) -> String {
         let folded = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
         return folded.contains("efectivo") || folded.contains("cash") ? "banknote" : "creditcard"
+    }
+
+    /// «3 comercios», beside the way into «Lo que recuerdo».
+    private var rememberedText: String {
+        let count = MerchantRules.list(renames: MerchantRenames(stored: storedRenames),
+                                       categories: CategoryRules(stored: storedRules)).count
+        switch count {
+        case 0: return "Nada aún"
+        case 1: return "1 comercio"
+        default: return "\(count.formatted(.number.locale(Locale(identifier: "es_MX")))) comercios"
+        }
     }
 
     private let columns = [GridItem(.adaptive(minimum: Theme.Size.catalogTile), spacing: Theme.Space.s)]
@@ -186,6 +201,24 @@ struct CatalogSettingsView: View {
                     Text("Categorías").ticketCaption()
                 } footer: {
                     HintText("Toca una para ocultarla al anotar, o para cambiar las tuyas. Ocultarla o borrarla no cambia los gastos que ya la tienen; cambiarle el nombre, sí.")
+                }
+                .listRowBackground(Theme.surface)
+
+                Section {
+                    NavigationLink {
+                        Deferred { MerchantRulesView() }
+                    } label: {
+                        IconRow("Lo que recuerdo", systemImage: "bookmark") {
+                            Text(rememberedText)
+                                .font(.ticket(.detail))
+                                .foregroundStyle(Theme.muted)
+                        }
+                    }
+                    .accessibilityIdentifier("lo-que-recuerdo")
+                } header: {
+                    Text("Comercios").ticketCaption()
+                } footer: {
+                    HintText("El nombre y la categoría que le pusiste a cada comercio. Lo que vuelva a llegar igual se anota así.")
                 }
                 .listRowBackground(Theme.surface)
             }

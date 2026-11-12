@@ -140,3 +140,14 @@ import Testing
                                           hidden: ["Comida"]) == nil)
     }
 }
+
+extension CategoryRulesTests {
+    @Test func aForgottenChoiceLeavesTheHistoryToDecide() {
+        var decided = rules(("Antojos", "Oxxo"), ("Comida", "Tacos"))
+        decided.forget("ÓXXO ")
+        #expect(decided.choice(for: "Oxxo") == nil)
+        #expect(decided.choice(for: "Tacos") == .category("Comida"))
+        let history = [entry("Oxxo", "Despensa", 1)]
+        #expect(CategoryMemory.remembered(for: "Oxxo", rules: decided, history: history) == "Despensa")
+    }
+}

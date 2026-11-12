@@ -134,14 +134,20 @@ final class DailyBackupTests: XCTestCase {
         // The draft is still a draft: the net worth is the finished cut's.
         XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 1_000)
         XCTAssertEqual(try MoneyStore.draftForThisMonth(in: context, mainCurrency: "MXN").id, draft.id)
-        // The month already has a cut: replacing it is asked first, never done in silence.
-        XCTAssertThrowsError(try MoneyStore.finish(draft, in: context)) { error in
+        // The opening balances are where it starts, not a cut the person made: the first cut of
+        // that month doesn't ask (2026-11-11).
+        try MoneyStore.finish(draft, in: context)
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 9_999)
+        // Now the month has a cut made by hand: replacing it is asked first, never done in silence.
+        let again = try MoneyStore.draftForThisMonth(in: context, mainCurrency: "MXN")
+        again.entry(for: nu)?.balance = 5
+        XCTAssertThrowsError(try MoneyStore.finish(again, in: context)) { error in
             guard case MoneyStore.CutProblem.monthHasCut = error else { return XCTFail("\(error)") }
         }
-        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 1_000, "Nada cambió sin preguntar")
-        try MoneyStore.finish(draft, replacing: true, in: context)
-        XCTAssertEqual(try context.fetch(MoneyCut.finished).count, 1)
-        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 9_999)
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 9_999, "Nada cambió sin preguntar")
+        try MoneyStore.finish(again, replacing: true, in: context)
+        XCTAssertEqual(try context.fetch(MoneyCut.finished).count, 2, "El inicio y el corte del mes")
+        XCTAssertEqual(MoneyStore.latestCut(in: context)?.netWorth.total, 5)
     }
 
     func testTheNewFieldsTravelToo() throws {

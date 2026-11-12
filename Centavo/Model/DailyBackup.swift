@@ -23,6 +23,12 @@ enum DailyBackup {
     /// The last backup went apart, and why (`BackupAsideNote.stored`), until a daily one is
     /// written again (2026-11-11). Like the others, it belongs to this phone.
     static let asideKey = "respaldo.aparte"
+    /// When a backup was last restored on this phone (2026-11-11): a restored phone with no
+    /// daily backup set up is said in «Hoy». Like the others, it doesn't travel.
+    static let restoredKey = "respaldo.restaurado"
+    /// The last «Ahora no» to «Seguir respaldando aquí», or the last look at the backup's screen
+    /// without it set up: «Hoy» stays quiet a week after it (`BackupSetupReminder`).
+    static let laterKey = "respaldo.ahoraNo"
 
     enum Failure: Error, CustomLocalizedStringResourceConvertible, Equatable {
         case noPassword, passwordUnavailable, noFolder, folderGone, notWritten, moneyUnreadable, unreadable(BackupError)
@@ -39,6 +45,10 @@ enum DailyBackup {
         case notWrittenOldKept(String)
         /// Another backup is being written right now: this one did nothing.
         case busy
+        /// Restoring: there's something on this phone and no folder to copy it to first.
+        case noPlaceForCopy
+        /// Restoring: the copy of what there is couldn't be written where the person can see it.
+        case copyNotSaved
 
         var localizedStringResource: LocalizedStringResource {
             switch self {
@@ -46,7 +56,9 @@ enum DailyBackup {
             case .passwordUnavailable: "El iPhone no dejó leer la contraseña del respaldo (suele pasar si no se ha desbloqueado desde que se encendió). Desbloquéalo y respalda otra vez."
             case .newPhone: "Parece un iPhone nuevo: restaura tu respaldo antes de respaldar."
             case .moneyNotReady: "No se pudo abrir «Mi dinero» para restaurarlo. Tus gastos no cambiaron. Si «Mi dinero» no abría, quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
-            case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó en tu carpeta."
+            case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
+            case .noPlaceForCopy: "Antes de restaurar hay que guardar una copia de lo que hay en este iPhone, y no hay una carpeta donde ponerla. No se cambió nada."
+            case .copyNotSaved: "No se pudo guardar la copia de lo que hay en este iPhone, así que no se restauró nada. Revisa que la carpeta siga ahí y que haya espacio, o elige otra."
             case .noFolder: "Primero elige la carpeta del respaldo en Ajustes de Al día."
             case .folderGone: "La carpeta del respaldo ya no está. Elígela otra vez en Ajustes de Al día."
             case .oldNotKept: "No se pudo conservar el respaldo que tenía más, así que no se cambió nada. Abre la carpeta en Archivos, espera a que ese archivo termine de bajar de iCloud e intenta otra vez."
@@ -88,10 +100,36 @@ enum DailyBackup {
         return now.timeIntervalSince(lastBackup) > 3 * 24 * 60 * 60
     }
 
-    /// What «Hoy» says, quietly, once the backup is set up: nothing while it's fine.
+    /// What «Hoy» says, quietly: nothing while the backup is fine, and nothing on a phone that
+    /// never had one, unless it was restored and still has none (`setUpNotice`).
     static func warning(now: Date = AppClock.now) -> String? {
-        guard isSetUp else { return nil }
+        guard isSetUp else { return setUpNotice(now: now) }
         return notice(now: now)
+    }
+
+    /// A restored phone with no daily backup: its settings don't travel in the file, so the new
+    /// phone had none and nothing said so (2026-11-11). At most once a week after «Ahora no».
+    /// Apart from `warning` so it can be tried without the Keychain.
+    static func setUpNotice(now: Date = AppClock.now, defaults: UserDefaults = .standard) -> String? {
+        BackupSetupReminder.isDue(restoredAt: defaults.object(forKey: restoredKey) as? Date,
+                                  saidLaterAt: defaults.object(forKey: laterKey) as? Date, now: now)
+            ? BackupSetupReminder.warning : nil
+    }
+
+    /// This phone was restored and the daily backup isn't set up on it.
+    static var needsSetUpAfterRestore: Bool {
+        !isSetUp && UserDefaults.standard.object(forKey: restoredKey) != nil
+    }
+
+    /// A restore just worked: from now on a phone without a daily backup is worth a line.
+    static func noteRestored(now: Date = AppClock.now, defaults: UserDefaults = .standard) {
+        defaults.set(now, forKey: restoredKey)
+        defaults.removeObject(forKey: laterKey)
+    }
+
+    /// «Ahora no», or the person saw the line on the backup's screen: «Hoy» waits a week.
+    static func sayLater(now: Date = AppClock.now, defaults: UserDefaults = .standard) {
+        defaults.set(now, forKey: laterKey)
     }
 
     /// What there is to say once it's set up, in order of urgency. Apart from `warning` so it
@@ -169,6 +207,46 @@ enum DailyBackup {
         if isTrashed(url) { throw Failure.folderGone }
         if stale { try? remember(folder: url) }
         return url
+    }
+
+    /// Whether the chosen folder is there to write to: picked, still resolving, not in the trash.
+    static var folderIsUsable: Bool {
+        guard let url = try? folder() else { return false }
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        var isFolder: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isFolder)
+            && isFolder.boolValue
+    }
+
+    /// «Seguir respaldando aquí» (2026-11-11): tries the folder the restored file came from as
+    /// this phone's backup folder. Only when it can really be written to (Archivos usually hands
+    /// over the file alone, not its folder); otherwise nothing changes and the person picks it.
+    static func adoptFolder(of file: URL) -> Bool {
+        let parent = file.deletingLastPathComponent()
+        // Never a folder inside the app itself (a copy listed from Documents): nobody sees it.
+        let home = URL(fileURLWithPath: NSHomeDirectory()).resolvingSymlinksInPath().path(percentEncoded: false)
+        guard !parent.resolvingSymlinksInPath().path(percentEncoded: false).hasPrefix(home), !isTrashed(parent) else { return false }
+        let defaults = UserDefaults.standard
+        let before = (defaults.data(forKey: folderKey), defaults.string(forKey: folderNameKey))
+        func undo() {
+            defaults.set(before.0, forKey: folderKey)
+            defaults.set(before.1, forKey: folderNameKey)
+        }
+        let fileAccess = file.startAccessingSecurityScopedResource()
+        defer { if fileAccess { file.stopAccessingSecurityScopedResource() } }
+        guard (try? remember(folder: parent)) != nil else { undo(); return false }
+        // Through the bookmark, as tomorrow's backup will: a small file written and removed.
+        let probe = ".al-dia-prueba-\(UUID().uuidString)"
+        let wrote = (try? inFolder { folder -> Bool in
+            let url = folder.appending(path: probe)
+            try Data("Al día".utf8).write(to: url, options: .atomic)
+            try FileManager.default.removeItem(at: url)
+            return true
+        }) ?? false
+        guard wrote else { undo(); return false }
+        defaults.removeObject(forKey: asideKey)
+        return true
     }
 
     /// A folder in the trash (Archivos keeps it in «.Trash» until it's emptied).
@@ -251,7 +329,11 @@ enum DailyBackup {
 
     /// The chosen folder, opened for the length of `work`.
     private static func inFolder<T>(_ work: (URL) throws -> T) throws -> T {
-        let folder = try folder()
+        try within(try folder(), work)
+    }
+
+    /// A folder the person picked (now or before), opened for the length of `work`.
+    private static func within<T>(_ folder: URL, _ work: (URL) throws -> T) throws -> T {
         let access = folder.startAccessingSecurityScopedResource()
         defer { if access { folder.stopAccessingSecurityScopedResource() } }
         return try work(folder)
@@ -385,22 +467,40 @@ enum DailyBackup {
         return .holds(expenses: back.expenses.count, money: back.money?.hasContent ?? false)
     }
 
-    /// Before a restore replaces everything, what there was goes to the folder (never trimmed:
-    /// the name isn't a daily one) and to the app's own Documents, whichever works. A cut left
-    /// half-done goes too (2026-11-02, second audit): restoring replaces it, and this copy is
-    /// where it's kept.
+    /// Before a restore replaces everything, what there was goes to a folder the person can
+    /// open in Archivos (never trimmed: the name isn't a daily one): the backup's folder, or
+    /// `chosen`, picked for this copy when there's none. Never to the app's own Documents alone,
+    /// which nobody can see (2026-11-11): without a visible copy this throws and the restore
+    /// doesn't happen. A cut left half-done goes too (2026-11-02, second audit): restoring
+    /// replaces it, and this copy is where it's kept.
     ///
     /// Locking the copy takes a moment off the main thread, and a Wallet payment can be saved in
     /// it: the restore would delete it with no copy (independent review). So once written, the
-    /// expenses are counted again and, if any came, the copy is taken again.
-    @MainActor
-    static func safetyCopy(in context: ModelContext, password: String, now: Date = AppClock.now) async throws {
+    /// expenses are counted again and, if any came, the copy is taken again, over the same file.
+    @MainActor @discardableResult
+    static func safetyCopy(in context: ModelContext, password: String, into chosen: URL? = nil,
+                           now: Date = AppClock.now) async throws -> SafetyCopy {
+        let target: URL
+        if let chosen {
+            target = chosen
+        } else {
+            do { target = try folder() } catch { throw Failure.noPlaceForCopy }
+        }
+        let name = BackupRetention.safetyName(for: now)
         for _ in 0..<safetyAttempts {
-            let payload = try await writeSafetyCopy(in: context, password: password, now: now)
-            if try expensesMark(in: context) == mark(of: payload) { return }
+            let payload = try await writeSafetyCopy(in: context, password: password, named: name, into: target, now: now)
+            if try expensesMark(in: context) == mark(of: payload) {
+                return SafetyCopy(name: name, folderName: target.lastPathComponent)
+            }
         }
         // Payments keep arriving: better not to restore now than to lose one.
-        throw Failure.notWritten
+        throw Failure.copyNotSaved
+    }
+
+    /// The copy taken before a restore: its file and the folder it's in, as the screen says them.
+    struct SafetyCopy: Equatable, Sendable {
+        var name: String
+        var folderName: String
     }
 
     static let safetyAttempts = 3
@@ -424,26 +524,113 @@ enum DailyBackup {
     }
 
     @MainActor
-    private static func writeSafetyCopy(in context: ModelContext, password: String,
-                                        now: Date) async throws -> BackupPayload {
+    private static func writeSafetyCopy(in context: ModelContext, password: String, named name: String,
+                                        into target: URL, now: Date) async throws -> BackupPayload {
         // A «Mi dinero» that doesn't open can't be copied, but the expenses still can (and its
         // file is set aside, never deleted, if the restore needs a new one).
         let payload = try (try? snapshot(in: context, now: now, drafts: true))
             ?? snapshot(in: context, now: now, moneyContainer: nil)
-        let name = BackupRetention.safetyName(for: AppClock.now)
         try await apart {
-            let sealed = try BackupSeal.seal(payload, password: password)
-            var saved = false
-            if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                saved = (try? sealed.write(to: docs.appending(path: name), options: .atomic)) != nil
+            do {
+                // Read back and opened with the password, like every backup: only then it counts.
+                try within(target) { folder in
+                    try writeChecked(payload, password: password, named: name, in: folder)
+                }
+            } catch {
+                throw Failure.copyNotSaved
             }
-            let inFolder = try? inFolder { folder in
-                try writeChecked(payload, password: password, named: name, in: folder, sealed: sealed)
-            }
-            if inFolder != nil { saved = true }
-            if !saved { throw Failure.notWritten }
         }
         return payload
+    }
+
+    /// What the person sets up by hand and a restore replaces: the budget, the fixed expenses
+    /// to come, their own categories and payment methods (with colors, hidden and deleted ones
+    /// and the default) and the rules and renames. A phone with any of them isn't empty, even
+    /// with no expenses. The main currency isn't here: the welcome picks it on every phone.
+    static let personalKeys = [BudgetStore.key, FixedPlan.key, UserCatalog.categoriesKey, UserCatalog.sourcesKey,
+                               UserCatalog.defaultSourceKey, UserCatalog.hiddenCategoriesKey,
+                               UserCatalog.categoryRulesKey, UserCatalog.deletedCategoriesKey,
+                               UserCatalog.merchantRenamesKey, UserCatalog.cardRenamesKey,
+                               UserCatalog.categoryColorsKey, UserCatalog.sourceColorsKey]
+
+    /// What a restore has to do first with what's on this phone (`BackupSafetyPlan`). A «Mi
+    /// dinero» that's there and doesn't open has nothing that can be copied: restoring sets its
+    /// files aside, never deleted. `settings`: what would travel in a backup right now.
+    @MainActor
+    static func safetyPlan(in context: ModelContext,
+                           money: @autoclosure () -> ModelContainer? = try? MoneyStore.opened.get(),
+                           settings: [String: BackupSetting] = Settings.current()) -> BackupSafetyPlan {
+        // If the expenses can't be counted, there may be some: never «nothing to copy».
+        let expenses = (try? context.fetchCount(FetchDescriptor<Expense>())) ?? 1
+        var hasMoney = false
+        if expenses == 0, let container = money() {
+            hasMoney = (try? moneySnapshot(container, drafts: true))?.hasContent ?? true
+        }
+        return BackupSafetyPlan.decide(expenses: expenses, hasMoney: hasMoney,
+                                       configured: BackupSafetyPlan.isConfigured(settings, keys: personalKeys),
+                                       folderUsable: folderIsUsable)
+    }
+
+    /// The only way the screen restores (2026-11-11): what's on this phone is first copied where
+    /// the person can see it, and only then replaced. With something to keep and nowhere to put
+    /// it (`chosen` is the folder picked for the copy when the backup has none) it throws before
+    /// anything changes. An empty phone has nothing to copy: it returns `nil` for the copy.
+    @MainActor @discardableResult
+    static func restoreKeepingCopy(_ payload: BackupPayload, in context: ModelContext, password: String,
+                                   copyInto chosen: URL? = nil, now: Date = AppClock.now,
+                                   money: @autoclosure () -> ModelContainer? = try? MoneyStore.opened.get(),
+                                   settings: [String: BackupSetting] = Settings.current()) async throws -> SafetyCopy? {
+        var copy: SafetyCopy?
+        if chosen != nil || safetyPlan(in: context, money: money(), settings: settings) != .nothingToCopy {
+            copy = try await safetyCopy(in: context, password: password, into: chosen, now: now)
+        }
+        // No suspension between the copy's last count (or the plan) and the restore: both run
+        // here, on the main actor, so no payment lands in between.
+        try restore(payload, into: context.container, now: now)
+        return copy
+    }
+
+    // MARK: Copies left inside the app
+
+    /// The app's own Documents, where copies «antes de restaurar» were also written until
+    /// 2026-11-11. Archivos doesn't show it.
+    static var ownDocuments: URL? {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+    }
+
+    /// The copies «antes de restaurar» that earlier restores left inside the app, newest first:
+    /// the screen lists them so they can be restored or taken out to Archivos.
+    static func strandedCopies(in documents: URL? = ownDocuments) -> [BackupSafetyCopy] {
+        guard let documents,
+              let names = try? FileManager.default.contentsOfDirectory(atPath: documents.path(percentEncoded: false))
+        else { return [] }
+        return BackupSafetyCopy.list(names)
+    }
+
+    /// Deletes one, because the person asked. Never any other file.
+    @discardableResult
+    static func removeStranded(_ copy: BackupSafetyCopy, in documents: URL? = ownDocuments) -> Bool {
+        guard let documents, BackupRetention.safetyDate(of: copy.name) != nil else { return false }
+        return (try? FileManager.default.removeItem(at: documents.appending(path: copy.name))) != nil
+    }
+
+    /// Drops the copies inside the app that are also in the backup's folder, byte for byte (until
+    /// 2026-11-11 each was written to both): those are already where the person can see them.
+    /// Any other stays until it's taken out to Archivos or deleted by hand.
+    @discardableResult
+    static func tidyStrandedCopies(in documents: URL? = ownDocuments) -> [String] {
+        guard let documents else { return [] }
+        let copies = strandedCopies(in: documents)
+        guard !copies.isEmpty else { return [] }
+        return (try? inFolder { folder in
+            copies.map(\.name).filter { name in
+                let inside = documents.appending(path: name)
+                guard let mine = try? Data(contentsOf: inside), !mine.isEmpty,
+                      FileManager.default.fileExists(atPath: folder.appending(path: name).path(percentEncoded: false)),
+                      coordinatedRead(folder.appending(path: name)) == mine else { return false }
+                return (try? FileManager.default.removeItem(at: inside)) != nil
+            }
+        }) ?? []
     }
 
     /// Writes a file and reads it back: only a file that comes back byte for byte, and opens with
