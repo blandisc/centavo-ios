@@ -35,7 +35,7 @@ Todos los valores son puntos al tamaño de letra predeterminado.
 | `Theme.ink` | Texto principal |
 | `Theme.muted` | Texto secundario (6.5:1) |
 | `Theme.faint` | Texto más callado: pistas, *placeholders* (5.2:1) |
-| `Theme.brass` | El único acento, y solo para tres cosas: lo que se toca, lo que está elegido y la cifra principal (más los dígitos del folio y las marcas). Lo que solo informa va en `ink`/`muted`; lo que avisa, con `WarningText` (regla del 2026-11-11) |
+| `Theme.brass` | El único acento, y solo para tres cosas: lo que se toca, lo que está elegido y la cifra principal (más los dígitos del folio y las marcas). Lo que solo informa va en `ink`/`muted`; lo que avisa, con `WarningText` (regla del 2026-11-11). Tres excepciones aprobadas: el encabezado de cada día de la lista, los puntos «·» entre partes de un renglón y el monto de una devolución |
 | `Theme.brassMid` / `Theme.brassLow` | Latón atenuado para gráficas (nunca texto) |
 | `Theme.onBrass` | Texto sobre latón |
 | `Theme.hairline` | Perforación y bordes finos |
