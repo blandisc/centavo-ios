@@ -1,7 +1,8 @@
 import Foundation
 
-/// Which build this is, to tell whether the iPhone has the latest (owner, 2026-10-30). The build
-/// stamps it (Tools/stamp-build.sh): the number of commits and the commit's short hash.
+/// Which build this is, to tell whether the iPhone has the latest (owner, 2026-10-30):
+/// the number of commits and the commit's short hash, passed as build settings by
+/// `Tools/instalar.sh` (any other build says «compilación 1 · local»).
 enum AppVersion {
     /// «Al día 0.1.0 · compilación 312 · 59f8d9e».
     static var line: String {

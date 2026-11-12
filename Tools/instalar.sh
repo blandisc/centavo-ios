@@ -14,11 +14,17 @@ data="${CENTAVO_DEVICE_DERIVED_DATA:-/tmp/dd-centavo-device}"
 
 # At most 2 builds on the Mac, counting every session.
 while [[ "$(pgrep -x xcodebuild | wc -l)" -ge 2 ]]; do echo "Esperando a que termine otro build…"; sleep 30; done
+# What «Ajustes» shows, to tell whether the iPhone has the latest: how many commits, and which
+# one («+» when installed with changes not committed yet).
+build="$(git rev-list --count HEAD)"
+commit="$(git rev-parse --short HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then commit="$commit+"; fi
 xcodegen generate -q
 xcodebuild -project Centavo.xcodeproj -scheme Centavo -configuration Release \
   -destination "id=$iphone" -derivedDataPath "$data" -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$team" CODE_SIGN_ENTITLEMENTS=Centavo/CentavoGratis.entitlements \
-  DEPLOYMENT_POSTPROCESSING=YES -jobs 4 -quiet build
+  DEPLOYMENT_POSTPROCESSING=YES \
+  CURRENT_PROJECT_VERSION="$build" CENTAVO_COMMIT="$commit" -jobs 4 -quiet build
 app="$data/Build/Products/Release-iphoneos/Centavo.app"
 echo "Peso: $(du -sh "$app" | cut -f1)"
 xcrun devicectl device install app --device "$iphone" "$app"

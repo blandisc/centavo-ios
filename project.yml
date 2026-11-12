@@ -12,7 +12,12 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
+    # The build number and the commit shown in «Ajustes» come in as build settings
+    # (`Tools/instalar.sh` passes the real ones). They used to be written into the built
+    # Info.plist by a script after the build: its place among Xcode's steps was left to chance,
+    # so the stamp was sometimes lost and once broke the widget's signature (2026-11-12).
     CURRENT_PROJECT_VERSION: "1"
+    CENTAVO_COMMIT: "local"
     # Drops code nothing calls from the binary.
     DEAD_CODE_STRIPPING: YES
     # The CI's Xcode is older and slower at type-checking than the Mac's: a long chain of
@@ -32,16 +37,9 @@ targets:
       - target: CentavoWidgets
     scheme:
       testTargets: [CentavoTests, CentavoUITests]
-    # The build number and the commit, shown in «Ajustes» (Tools/stamp-build.sh).
-    postBuildScripts:
-      - name: Número de compilación
-        script: Tools/stamp-build.sh
-        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
-        # The stamp reads the repository and writes the built Info.plist.
-        ENABLE_USER_SCRIPT_SANDBOXING: NO
         # iCloud sync and the App Group shared with the widgets. A free developer account
         # cannot sign iCloud, and xcodebuild gives it profiles without the App Group: build with
         # CODE_SIGN_ENTITLEMENTS=Centavo/CentavoGratis.entitlements (for both targets: only the
@@ -75,23 +73,19 @@ targets:
     dependencies:
       - package: CentavoCore
     # The same build number as the app.
-    postBuildScripts:
-      - name: Número de compilación
-        script: Tools/stamp-build.sh
-        basedOnDependencyAnalysis: false
     info:
       path: CentavoWidgets/Info.plist
       properties:
         CFBundleDisplayName: Al día
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CentavoCommit: $(CENTAVO_COMMIT)
         CentavoKeychainGroup: $(AppIdentifierPrefix)com.blandisc.centavo.shared
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.widgets
-        ENABLE_USER_SCRIPT_SANDBOXING: NO
         # The App Group and the shared Keychain group (the fallback a free account can sign).
         CODE_SIGN_ENTITLEMENTS: CentavoWidgets/CentavoWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
