@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Changed
-- **«Anotar gasto» va abajo y la búsqueda arriba:** un círculo de vidrio del mismo latón de la app con «+» junto a las pestañas, donde estaba la lupa, y la lupa arriba a la derecha. La lista se desenfoca poco a poco al bajar hacia la barra y el «+».
+- **«Anotar gasto» va abajo y la búsqueda arriba:** un círculo de vidrio, como la barra, con el «+» latón junto a las pestañas, donde estaba la lupa, y la lupa arriba a la derecha. La lista se desenfoca poco a poco al bajar hacia la barra y el «+».
 - **«Mi dinero» se ve como «Hoy»:** mismos márgenes, líneas punteadas y separaciones; nada brinca al cambiar de pestaña.
 - **«Hacer corte» se llama por su nombre:** «Corte» en la barra y, cuando toca, «Hacer corte de noviembre» bajo tu patrimonio.
 - **El corte del mes es más corto:** «Sin cambio» va bajo el monto y el campo dice «Escribe el saldo».
@@ -19,6 +19,7 @@
 - **Bienvenida:** los días del calendario son más altos, las sugerencias de presupuesto van arriba del campo y los títulos son preguntas. En «Cómo funciona», el título ya no brinca entre historias.
 - **La app se queda en vertical.**
 ### Fixed
+- **En «Nuevo gasto», la línea bajo el monto** ya va completa; antes solo aparecía bajo «MXN».
 - **Al escribir el comercio en un iPhone más chico,** las sugerencias ya no quedan tapadas por «Guardar»: la hoja sube sola.
 - **Con letra muy grande,** los días del calendario vuelven a ser cuadros y sus números ya no se enciman.
 - **«Menos devoluciones» ya no se corta** bajo «En qué se va», y la barra de abajo ya no se tiñe con el mosaico.

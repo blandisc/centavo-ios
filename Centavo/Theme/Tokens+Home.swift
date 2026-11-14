@@ -116,18 +116,16 @@ private struct PrintOut: ViewModifier {
 
 // The «+» beside the tabs (`RootView`, owner 2026-11-14): a circle as tall as the tab bar.
 extension Theme.Size {
-    /// Side of the «+» circle: as tall as the system's floating tab bar (measured, iOS 27).
-    static let addCircle: CGFloat = 59
-    /// How far over the bottom safe area the list starts to blur toward the tabs (`DockBlur`):
-    /// from just above the bar's top down to the screen's edge.
-    static let dockBlur: CGFloat = 80
+    /// Side of the «+» inside its glass, which adds about 7 pt around it: together as tall as the
+    /// system's floating tab bar, 59 pt (measured, iOS 27).
+    static let addCircle: CGFloat = 45
 }
 
 
 extension Theme.Space {
     /// How far the tab bar sits under the bottom safe area (measured, iOS 27): the «+» goes as
     /// low, so its middle lines up with the bar's.
-    static let tabBarDrop: CGFloat = -11
+    static let tabBarDrop: CGFloat = -13
 }
 
 // The boleto (`MonthCodeView`).

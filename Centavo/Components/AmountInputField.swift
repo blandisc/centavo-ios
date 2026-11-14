@@ -36,6 +36,7 @@ struct AmountInputField: View {
             .foregroundStyle(Theme.ink)
             .keyboardType(.decimalPad)
             .groupsThousands($text)
+            .anchorsRowSeparator()
             .accessibilityIdentifier(identifier ?? "")
     }
 }
@@ -59,11 +60,20 @@ struct TicketTextField: View {
             .font(.ticket(.field))
             .tracking(Theme.Tracking.detail)
             .foregroundStyle(Theme.ink)
+            .anchorsRowSeparator()
             .accessibilityIdentifier(identifier ?? "")
     }
 }
 
 extension View {
+    /// The line under a form row starts at this field's edge. Left alone, iOS starts it at the
+    /// row's first text: beside a field that is the currency menu, and under «Monto» the line
+    /// showed only beneath «MXN», as if broken (owner, 2026-11-14). Every field component carries
+    /// it (`Tools/lint-design.py`, `field-separator`).
+    func anchorsRowSeparator() -> some View {
+        alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+    }
+
     /// Puts the thousands in while an amount is typed ("8000" → "8,000").
     func groupsThousands(_ text: Binding<String>) -> some View {
         modifier(GroupsThousands(text: text))

@@ -89,6 +89,7 @@ RULES = [
 RULE_EXEMPT = {
     "color-scheme": {APP / "App" / "CentavoApp.swift", APP / "Components" / "Preview.swift"},
     "hand-made-prominent": {APP / "Components" / "Buttons.swift"},
+    "system-bordered": {APP / "Components" / "Buttons.swift"},
 }
 
 ALLOW_RE = re.compile(r"//\s*ds-allow\b:?\s*(.*)$")
@@ -251,6 +252,13 @@ def lint_file(path: Path):
                 found.append(("magic-number",
                               f"número suelto en `{name}`: usa Theme.Space/Radius/Size/Stroke/"
                               "Opacity/Tracking/MinimumScale/Motion"))
+        # A field component anchors its row's line at its own edge (`anchorsRowSeparator`):
+        # otherwise iOS starts it at the row's first text and it looks broken (2026-11-14).
+        if path.parent == APP / "Components" and re.search(r"(?<![\w.])TextField\(", code) \
+                and not any("anchorsRowSeparator" in c for c in codes[n - 1:n + 12]):
+            found.append(("field-separator",
+                          "un campo de componente sin .anchorsRowSeparator(): la línea de su "
+                          "renglón empezaría en otro texto y se vería cortada"))
         if not found:
             continue
         rel = path.relative_to(ROOT)

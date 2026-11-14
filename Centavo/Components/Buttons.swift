@@ -24,6 +24,14 @@ extension View {
     }
 }
 
+extension View {
+    /// The system's clear Liquid Glass button, as the tab bar's: for a control that floats beside
+    /// the system's own bars (the «+» next to the tabs). Never a grey button inside a screen.
+    func ticketGlass() -> some View {
+        buttonStyle(.glass)
+    }
+}
+
 private struct TicketProminent: ViewModifier {
     let kind: TicketButtonKind
 

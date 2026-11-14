@@ -26,9 +26,8 @@ struct RootView: View {
     }
 }
 
-/// The «+»: a circle of Liquid Glass in the app's brass (the same as «Hoy» in the tabs), as
-/// tall as the tab bar, its middle on the bar's. It answers the finger like the bar beside it
-/// (owner, 2026-11-14: «más liquid glass», «el mismo color»).
+/// The «+»: the system's glass, the same as the tab bar's, with a brass «+» (owner,
+/// 2026-11-14, option A over brass glass), as tall as the bar and with its middle on the bar's.
 private struct AddCircle: View {
     let action: () -> Void
 
@@ -36,12 +35,12 @@ private struct AddCircle: View {
         Button(action: action) {
             Image(systemName: "plus")
                 .font(.ticket(.heading))
-                .foregroundStyle(Theme.onBrass)
+                .foregroundStyle(Theme.brass)
+                // The glass adds its own margin around this: together, the bar's height.
                 .frame(width: Theme.Size.addCircle, height: Theme.Size.addCircle)
-                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .glassEffect(.regular.tint(Theme.brass).interactive(), in: Circle())
+        .ticketGlass()
+        .buttonBorderShape(.circle)
         .accessibilityLabel("Anotar gasto")
         .padding(.trailing, Theme.Space.xl)
         .padding(.bottom, Theme.Space.tabBarDrop)
