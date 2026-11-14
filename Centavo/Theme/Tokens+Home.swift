@@ -118,6 +118,19 @@ private struct PrintOut: ViewModifier {
 }
 
 
+// The «+» beside the tabs (`RootView`, owner 2026-11-14): a circle as tall as the tab bar.
+extension Theme.Size {
+    /// Side of the «+» inside its circle: the glass adds about 7 pt around it, so the circle is
+    /// as tall as the system's floating tab bar, 59 pt (measured, iOS 27).
+    static let addCircle: CGFloat = 45
+}
+
+extension Theme.Space {
+    /// How far the tab bar sits under the bottom safe area (measured, iOS 27): the «+» goes as
+    /// low, so its middle lines up with the bar's.
+    static let tabBarDrop: CGFloat = -11
+}
+
 // The boleto (`MonthCodeView`).
 extension Theme.Size {
     /// Scaled. Height of the boleto's cells: what a day may spend.

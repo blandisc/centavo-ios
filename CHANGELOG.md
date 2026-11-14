@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Changed
-- **«Anotar gasto» va abajo y la búsqueda arriba:** el «+» está junto a «Hoy» y «Mi dinero» (desde «Mi dinero» abre la hoja y te deja en «Hoy»), y la lupa arriba a la derecha.
+- **«Anotar gasto» va abajo y la búsqueda arriba:** un círculo latón con «+» junto a las pestañas, donde estaba la lupa, y la lupa arriba a la derecha.
 - **«Mi dinero» se ve como «Hoy»:** mismos márgenes, líneas punteadas y separaciones; nada brinca al cambiar de pestaña.
 - **«Hacer corte» se llama por su nombre:** «Corte» en la barra y, cuando toca, «Hacer corte de noviembre» bajo tu patrimonio.
 - **El corte del mes es más corto:** «Sin cambio» va bajo el monto y el campo dice «Escribe el saldo».

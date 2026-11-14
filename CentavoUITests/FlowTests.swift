@@ -173,20 +173,22 @@ final class FlowTests: XCTestCase {
         snap("flujo-anotar")
     }
 
-    /// «+» beside the tabs and search up top (owner, 2026-11-14). The «+» opens the sheet from
-    /// either tab and leaves «Hoy» behind it; it is never a place that stays selected.
+    /// The brass «+» beside the tabs and search up top (owner, 2026-11-14).
     func testElMasVaAbajoYLaBusquedaArriba() {
         let app = launch(demo: true)
-        let add = require(app.tabBars.buttons["Anotar gasto"], "El «+» no está junto a las pestañas")
+        let add = require(app.buttons["Anotar gasto"], "No está el «+»")
         XCTAssertFalse(app.navigationBars.buttons["Anotar gasto"].exists, "El «+» sigue arriba")
 
-        app.tabBars.buttons["Mi dinero"].tap()
+        XCTAssertFalse(app.tabBars.buttons["Anotar gasto"].exists, "El «+» es una pestaña más")
         add.tap()
-        require(app.textFields["monto"], "Desde «Mi dinero» el «+» no abrió la hoja")
+        require(app.textFields["monto"], "El «+» no abrió la hoja")
         app.buttons["Cancelar"].tap()
         XCTAssertTrue(app.textFields["monto"].waitForNonExistence(timeout: 5), "No se cerró la hoja")
-        XCTAssertTrue(app.tabBars.buttons["Hoy"].isSelected, "Tras anotar no quedó «Hoy» detrás")
-        XCTAssertFalse(add.isSelected, "El «+» quedó como pestaña elegida")
+        // Like the search it replaces, it belongs to «Hoy».
+        app.tabBars.buttons["Mi dinero"].tap()
+        XCTAssertTrue(add.waitForNonExistence(timeout: 5), "El «+» sigue en «Mi dinero»")
+        app.tabBars.buttons["Hoy"].tap()
+        require(add, "El «+» no volvió en «Hoy»")
 
         let search = require(app.navigationBars.buttons["Búsqueda"], "La búsqueda no está arriba")
         search.tap()
