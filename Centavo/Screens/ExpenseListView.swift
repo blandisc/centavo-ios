@@ -17,6 +17,8 @@ import UniformTypeIdentifiers
 /// the store for the month on screen only and works its numbers out in `HomeModel`, once per
 /// change instead of on every redraw.
 struct ExpenseListView: View {
+    /// Goes up by one each time the «+» beside the tabs is tapped (`RootView`): opens «Anotar gasto».
+    var addRequests = 0
     /// The newest and the oldest expense, one row each (audit 2026-11-02: it used to load every
     /// expense just to count them). How many there are is asked of the store as a count.
     @Query(HomeModel.newest(1)) private var newestRows: [Expense]
@@ -164,7 +166,7 @@ struct ExpenseListView: View {
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting, model.openRow != nil { model.openRow = nil }
             }
-            .modifier(BottomSearch(text: Bindable(model).searchText) { model.query = $0 })
+            .modifier(TopSearch(text: Bindable(model).searchText) { model.query = $0 })
             .modifier(RefreshesOnSave(model: model))
             .modifier(CountsStore(newest: newestRows.first?.persistentModelID,
                                   oldest: oldestRows.first?.persistentModelID, recount: countStore))
@@ -219,23 +221,20 @@ struct ExpenseListView: View {
                         Label("Más", systemImage: "ellipsis")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Anotar gasto", systemImage: "plus") { adding = true }
-                }
+                // Search up here and «+» down beside the tabs (owner, 2026-11-14): a button that
+                // opens into a field, not a bar across the top of the ticket.
+                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
                 // ‹ › up top since «Mi dinero» put tabs at the bottom (2026-10-31). Only the
                 // arrows: the ticket's head already names the month, and the signature must
-                // keep its place in the middle. Search stays down there, beside the tabs.
+                // keep its place in the middle.
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
                         .disabled(offset <= earliest)
                     Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
                         .disabled(offset >= 0)
                 }
-                // Search lives down here, as a button that opens into a field, not as a bar
-                // across the top of the ticket.
-                ToolbarSpacer(.flexible, placement: .bottomBar)
-                DefaultToolbarItem(kind: .search, placement: .bottomBar)
             }
+            .onChange(of: addRequests) { adding = true }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
             // The widgets' «+» and «Fijar presupuesto» (`centavo://anotar`, `centavo://presupuesto`).
             .onOpenURL { url in
@@ -879,12 +878,12 @@ private struct CatalogsSheet: ViewModifier {
     }
 }
 
-/// The search: a button in the bottom bar that opens into a field.
+/// The search: a button in the top bar that opens into a field.
 ///
 /// The words reach the list (`settle`) once typing pauses (`HomeModel.searchPause`), so a
 /// search over every month runs once per word and not once per letter; clearing it is at once.
 /// Each letter redraws only this modifier, not the screen.
-private struct BottomSearch: ViewModifier {
+private struct TopSearch: ViewModifier {
     @Binding var text: String
     let settle: (String) -> Void
     private let prompt = "Comercio, mes o monto…"

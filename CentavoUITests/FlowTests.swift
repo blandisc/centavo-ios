@@ -173,6 +173,29 @@ final class FlowTests: XCTestCase {
         snap("flujo-anotar")
     }
 
+    /// «+» beside the tabs and search up top (owner, 2026-11-14). The «+» opens the sheet from
+    /// either tab and leaves «Hoy» behind it; it is never a place that stays selected.
+    func testElMasVaAbajoYLaBusquedaArriba() {
+        let app = launch(demo: true)
+        let add = require(app.tabBars.buttons["Anotar gasto"], "El «+» no está junto a las pestañas")
+        XCTAssertFalse(app.navigationBars.buttons["Anotar gasto"].exists, "El «+» sigue arriba")
+
+        app.tabBars.buttons["Mi dinero"].tap()
+        add.tap()
+        require(app.textFields["monto"], "Desde «Mi dinero» el «+» no abrió la hoja")
+        app.buttons["Cancelar"].tap()
+        XCTAssertTrue(app.textFields["monto"].waitForNonExistence(timeout: 5), "No se cerró la hoja")
+        XCTAssertTrue(app.tabBars.buttons["Hoy"].isSelected, "Tras anotar no quedó «Hoy» detrás")
+        XCTAssertFalse(add.isSelected, "El «+» quedó como pestaña elegida")
+
+        let search = require(app.navigationBars.buttons["Búsqueda"], "La búsqueda no está arriba")
+        search.tap()
+        let field = require(app.searchFields.firstMatch, "La lupa no abrió el campo")
+        field.typeText("oxxo")
+        require(row(app, containing: "OXXO"), "La búsqueda no encontró el gasto")
+        snap("flujo-busqueda-arriba")
+    }
+
     // MARK: Girar el teléfono
 
     /// The app stays upright (owner, 2026-11-11): on its side the tab bar floated over the
