@@ -50,10 +50,6 @@ extension Theme.Size {
     /// Scaled. Height of «Menos devoluciones», the line under «En qué se va»: the chart gives
     /// it up, with the gap over it, so the page is as tall with money returned as without.
     static let shareReturnedLine: CGFloat = 16
-
-    /// How much of the paper fades out over the bottom bar of «Hoy», so the tabs' glass floats
-    /// on dark and not on the mosaic's colors.
-    static let bottomFade: CGFloat = 40
 }
 
 extension Theme.Opacity {
@@ -120,9 +116,13 @@ private struct PrintOut: ViewModifier {
 
 // The «+» beside the tabs (`RootView`, owner 2026-11-14): a circle as tall as the tab bar.
 extension Theme.Size {
-    /// Side of the «+» inside its circle: the glass adds about 7 pt around it, so the circle is
-    /// as tall as the system's floating tab bar, 59 pt (measured, iOS 27).
-    static let addCircle: CGFloat = 45
+    /// Side of the «+» circle: as tall as the system's floating tab bar (measured, iOS 27).
+    static let addCircle: CGFloat = 59
+}
+
+extension Theme.Opacity {
+    /// 0.6: how much brass tints the «+»'s glass; the list still shows through it.
+    static let addGlass: Double = 0.6
 }
 
 extension Theme.Space {

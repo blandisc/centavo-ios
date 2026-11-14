@@ -539,8 +539,6 @@ private struct HomeContent: View, Equatable {
                            catalog: catalog, model: model, actions: actions)
             }
             .padding(.top, Theme.Space.s)
-            // The end of the list rests above the fade over the bottom bar (`BottomFade`).
-            .padding(.bottom, Theme.Size.bottomFade)
             .environment(\.listWidth, listWidth)
             // A tap anywhere else lets the picked day or category go, its card with it (owner,
             // 2026-10-30). Rows, bars and buttons take their own taps first.
@@ -550,33 +548,11 @@ private struct HomeContent: View, Equatable {
                 if selectedCategory != nil { actions.clearCategory() }
             }
         }
-        .modifier(BottomFade())
         // A warning the moment the budget is blown.
         .sensoryFeedback(.warning, trigger: isCurrent && (month.pace?.remaining ?? 0) < 0) { old, new in
             !old && new
         }
         .onChange(of: searching) { _, isOn in if !isOn { model.searchClosed() } }
-    }
-}
-
-/// The paper fades out over the screen's bottom edge, and is plain under the bottom bar (owner,
-/// 2026-11-11): the mosaic's colors passing under the tabs dyed their glass olive or orange and
-/// «Hoy», in brass, was lost on it. Not a bar: the system's own floats over it, on dark.
-private struct BottomFade: ViewModifier {
-    func body(content: Content) -> some View {
-        content.overlay(alignment: .bottom) {
-            VStack(spacing: Theme.Space.none) {
-                LinearGradient(colors: [Theme.background.opacity(Theme.Opacity.hidden), Theme.background],
-                               startPoint: .top, endPoint: .bottom)
-                    .frame(height: Theme.Size.bottomFade)
-                // Nothing tall of its own: only what the bar covers, down to the screen's edge.
-                Theme.background
-                    .ignoresSafeArea(edges: .bottom)
-                    .frame(height: Theme.Space.none)
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
     }
 }
 
