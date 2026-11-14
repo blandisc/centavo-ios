@@ -117,8 +117,8 @@ private struct PrintOut: ViewModifier {
 // The «+» beside the tabs (`RootView`, owner 2026-11-14): a circle as tall as the tab bar.
 extension Theme.Size {
     /// Side of the «+» inside its glass, which adds about 7 pt around it: together as tall as the
-    /// system's floating tab bar, 59 pt (measured, iOS 27).
-    static let addCircle: CGFloat = 45
+    /// system's floating tab bar, 62 pt (measured, iOS 27).
+    static let addCircle: CGFloat = 48
 }
 
 
