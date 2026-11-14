@@ -548,11 +548,32 @@ private struct HomeContent: View, Equatable {
                 if selectedCategory != nil { actions.clearCategory() }
             }
         }
+        .modifier(DockBlur())
         // A warning the moment the budget is blown.
         .sensoryFeedback(.warning, trigger: isCurrent && (month.pace?.remaining ?? 0) < 0) { old, new in
             !old && new
         }
         .onChange(of: searching) { _, isOn in if !isOn { model.searchClosed() } }
+    }
+}
+
+/// The list blurs more and more as it goes down to the tabs and the «+» (owner, 2026-11-14):
+/// it is still seen behind their glass, out of focus, not hidden under a dark band. The
+/// system's material, faded in from clear, so the blur grows toward the screen's edge.
+private struct DockBlur: ViewModifier {
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .mask {
+                    LinearGradient(colors: [.black.opacity(Theme.Opacity.hidden), .black],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                .frame(height: Theme.Size.dockBlur)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 }
 

@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Changed
-- **«Anotar gasto» va abajo y la búsqueda arriba:** un círculo de vidrio latón con «+» junto a las pestañas, donde estaba la lupa, y la lupa arriba a la derecha. La lista se sigue viendo, desenfocada, detrás de la barra y del «+».
+- **«Anotar gasto» va abajo y la búsqueda arriba:** un círculo de vidrio del mismo latón de la app con «+» junto a las pestañas, donde estaba la lupa, y la lupa arriba a la derecha. La lista se desenfoca poco a poco al bajar hacia la barra y el «+».
 - **«Mi dinero» se ve como «Hoy»:** mismos márgenes, líneas punteadas y separaciones; nada brinca al cambiar de pestaña.
 - **«Hacer corte» se llama por su nombre:** «Corte» en la barra y, cuando toca, «Hacer corte de noviembre» bajo tu patrimonio.
 - **El corte del mes es más corto:** «Sin cambio» va bajo el monto y el campo dice «Escribe el saldo».

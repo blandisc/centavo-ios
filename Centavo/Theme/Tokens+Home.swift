@@ -118,12 +118,11 @@ private struct PrintOut: ViewModifier {
 extension Theme.Size {
     /// Side of the «+» circle: as tall as the system's floating tab bar (measured, iOS 27).
     static let addCircle: CGFloat = 59
+    /// How far over the bottom safe area the list starts to blur toward the tabs (`DockBlur`):
+    /// from just above the bar's top down to the screen's edge.
+    static let dockBlur: CGFloat = 80
 }
 
-extension Theme.Opacity {
-    /// 0.6: how much brass tints the «+»'s glass; the list still shows through it.
-    static let addGlass: Double = 0.6
-}
 
 extension Theme.Space {
     /// How far the tab bar sits under the bottom safe area (measured, iOS 27): the «+» goes as
