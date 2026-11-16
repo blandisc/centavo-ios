@@ -21,7 +21,7 @@ struct MoneyHomeView: View {
     @State private var choosingMonth = false
     @State private var addingIncome = false
     @State private var editingIncome: MoneyIncome?
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
 
     private var main: String { CurrencyPreference.resolve(storedCurrency) }
     private var latest: MoneyCut? { cuts.last }
@@ -85,9 +85,7 @@ struct MoneyHomeView: View {
                 MoneyIncomeSheet(income: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover()
             }
 
-            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) { // ds-allow: el motivo va de título; si se une a .problemAlert queda en la lista de decisiones (2026-11-16)
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text("Intenta de nuevo.") }
+            .problemAlert(problem: $problem)
             .onMoneyCovered { problem = nil; choosingMonth = false }
         }
     }
@@ -191,10 +189,7 @@ struct MoneyHomeView: View {
         Button { startCut(suggesting: month) } label: {
             HStack(spacing: Theme.Space.s) {
                 LinkActionLabel("Hacer corte de \(MoneyHead.fullMonthName(month))", systemImage: "plus", alignment: .leading)
-                Image(systemName: "chevron.right")
-                    .font(.ticket(.footnote))
-                    .foregroundStyle(Theme.faint)
-                    .accessibilityHidden(true)
+                RowChevron()
             }
             .contentShape(Rectangle())
         }
@@ -298,7 +293,7 @@ struct MoneyHomeView: View {
         account.archived = false
         do { try context.save() } catch {
             context.rollback()
-            problem = "No se pudo regresar la cuenta"
+            problem = SaveProblem(title: "No se pudo regresar la cuenta")
         }
     }
 
@@ -312,7 +307,7 @@ struct MoneyHomeView: View {
                 choosingMonth = true
             }
         } catch {
-            problem = "No se pudo empezar el corte"
+            problem = SaveProblem(title: "No se pudo empezar el corte")
         }
     }
 
@@ -325,7 +320,7 @@ struct MoneyHomeView: View {
                 startCut(for: month)
             }
         } catch {
-            problem = "No se pudo empezar el corte"
+            problem = SaveProblem(title: "No se pudo empezar el corte")
         }
     }
 
@@ -333,7 +328,7 @@ struct MoneyHomeView: View {
         do {
             cutting = try MoneyStore.draft(for: month, in: context, mainCurrency: latest?.mainCurrency ?? main)
         } catch {
-            problem = "No se pudo empezar el corte"
+            problem = SaveProblem(title: "No se pudo empezar el corte")
         }
     }
 }

@@ -54,9 +54,7 @@ struct CaptureHealthRow: View {
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: Theme.Space.s)
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(Theme.faint)
-                    .accessibilityHidden(true)
+                RowChevron()
             }
             .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
@@ -185,9 +183,7 @@ struct PendingPaymentsPanel: View {
             .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: Theme.Space.s)
             if folds {
-                Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                    .foregroundStyle(Theme.faint)
-                    .accessibilityHidden(true)
+                RowChevron(.folds(expanded))
             }
         }
         .padding(.vertical, Theme.Space.m)

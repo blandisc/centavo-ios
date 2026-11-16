@@ -50,7 +50,7 @@ struct ExpenseEditorView: View {
     /// «Cancelar» or a swipe down with something changed: «¿Descartar cambios?».
     @State private var askingDiscard = false
     /// A save that didn't go through: said, and the sheet stays open with what was typed.
-    @State private var saveProblem: String?
+    @State private var saveProblem: SaveProblem?
     /// «Más detalles»: open by itself when the expense has something set there.
     @State private var showsDetails = false
     /// «Ver todas»: the whole category list instead of the short one.
@@ -306,7 +306,7 @@ struct ExpenseEditorView: View {
             .saveBar(saveSummary, enabled: canSave, action: save)
             .problemAlert(problem: $saveProblem)
             .alert("Dilo en una frase", isPresented: $askingSentence) {
-                TextField("230 de tacos ayer, en efectivo", text: $sentence)
+                TextField("230 de tacos ayer, en efectivo", text: $sentence) // ds-allow: campo dentro de una alerta del sistema; la alerta pone su letra
                     .accessibilityIdentifier("frase")
                 Button("Llenar") { Task { await fillFromSentence() } }
                 Button("Cancelar", role: .cancel) { sentence = "" }
@@ -420,7 +420,7 @@ struct ExpenseEditorView: View {
                 Text(currency)
                     .font(.ticket(.label))
                     .tracking(Theme.Tracking.label)
-                Image(systemName: "chevron.down")
+                Image(systemName: "chevron.down") // ds-allow: parte de «MXN ⌄»: lleva el color de la moneda
                     .font(Theme.Symbol.regular)
                     .imageScale(.small)
                     .accessibilityHidden(true)
@@ -557,11 +557,7 @@ struct ExpenseEditorView: View {
                             .foregroundStyle(Theme.muted)
                             .multilineTextAlignment(.trailing)
                     }
-                    Image(systemName: showsDetails ? "chevron.down" : "chevron.right")
-                        .font(Theme.Symbol.regular)
-                        .imageScale(.small)
-                        .foregroundStyle(Theme.brass)
-                        .accessibilityHidden(true)
+                    RowChevron(.discloses(showsDetails))
                 }
                 .frame(minHeight: Theme.Size.tapTarget)
                 .contentShape(Rectangle())
@@ -760,7 +756,7 @@ struct ExpenseEditorView: View {
                         // Swapped at once: blended while the button moves, both read as one blur.
                         Text(showsAllCategories ? "Ver menos" : "Ver \(count) más")
                             .contentTransition(.identity)
-                        Image(systemName: "chevron.down")
+                        Image(systemName: "chevron.down") // ds-allow: parte de «Ver 6 más ⌄»
                             .rotationEffect(.degrees(showsAllCategories ? 180 : 0))
                             .accessibilityHidden(true)
                     }
@@ -830,7 +826,7 @@ struct ExpenseEditorView: View {
             return true
         } catch {
             context.rollback()
-            saveProblem = "Al día no pudo guardar el cambio. Intenta otra vez; si sigue, cierra la app y vuelve a abrirla."
+            saveProblem = SaveProblem(title: "No se guardó el gasto", detail: SaveProblem.unchangedPersisting)
             return false
         }
     }

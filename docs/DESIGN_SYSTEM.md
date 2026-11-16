@@ -182,7 +182,9 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `.heroFigure()` | La cifra grande (lo que puedes gastar, lo que tienes): tamaño, el aire del «$» hacia atrás, recorte y encogido. El color lo pone quien la usa | `Text(left).heroFigure().foregroundStyle(Theme.brass)` |
 | `.rowName()` | Un nombre como lo imprime el ticket: peso medio, su espaciado y mayúsculas | `Text(account.name).rowName().foregroundStyle(Theme.ink)` |
 | `CurrencyTile` | Una moneda como ficha: símbolo sobre su nombre corto, latón si se eligió (bienvenida y «Mi dinero»). Va dentro de un `Button` con `.currencyTileAccessibility(code:selected:)` | `CurrencyTile(code: code, selected: chosen, fills: true)` |
-| `.problemAlert(_:problem:)` | **El único** aviso de que algo no se guardó: alerta del sistema con el motivo y «Aceptar» | `.problemAlert(problem: $saveProblem)` |
+| `.problemAlert(problem:)` + `SaveProblem` | **El único** aviso de que algo no se guardó: el título dice qué («No se guardó el corte»), abajo «Nada cambió. Intenta otra vez.» y «Aceptar» | `saveProblem = SaveProblem(title: "No se guardó el gasto")` |
+| `RowChevron` | **La única** flecha de renglón: chica y gris tenue. `.opens` (›), `.discloses(Bool)` (› que gira a ⌄), `.folds(Bool)` (⌄ que gira a ⌃) | `RowChevron(.discloses(showsDetails))` |
+| `.ticketField(_:)` | Lo que hace a un campo del ticket: letra `.field` (o la que se pida), espaciado, tinta y la línea del renglón desde su borde | `TextField("Tasa", text: $rate, prompt: …).ticketField()` |
 | `.selectableCard(selected:)` | Opción como tarjeta con borde latón al elegirla | monedas en la bienvenida |
 | `StepEmblem` | Emblema de latón decorativo que acompaña al título; oculto con letra de accesibilidad | Se usa dentro de `StepHeader`, no sola |
 | `StepHeader` | Encabezado reutilizable de cada paso: «Paso X de N» + emblema junto al título | `StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")` |
@@ -267,7 +269,11 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 | `RoundedRectangle(…).strokeBorder(…, dash: Theme.Dash.ticket)` | `.ticketOutline()` |
 | `.background(Theme.surface, in: RoundedRectangle(…))` | `.ticketPanel()`, o `.selectableCard(selected:)` si se elige |
 | `.font(.ticket(.bodyMedium)).tracking(Theme.Tracking.name).textCase(.uppercase)` | `.rowName()`: un nombre de comercio, cuenta o ingreso |
-| `.alert("No se guardó", isPresented: Binding(get: { … != nil } …))` | `.problemAlert(problem: $problem)`: el motivo como mensaje y un «Aceptar» |
+| `.alert(…, isPresented: Binding(get: { … != nil } …))` para un error | `.problemAlert(problem: $problem)` con `SaveProblem(title: "No se guardó el corte")`: el título dice qué; abajo, «Nada cambió. Intenta otra vez.» |
+| «Cancelar» en negritas | Letra normal (`.footnote`); solo lo que guarda va en negritas |
+| `LinkActionLabel` con `.ticketOutline()` | El enlace de agregar va solo dentro de una lista; el botón lleno, solo en una pantalla vacía; el cuadrito punteado, solo en una cuadrícula |
+| `Image(systemName: "chevron.right")` al final de un renglón | `RowChevron()`, `RowChevron(.discloses(abierto))` o `RowChevron(.folds(abierto))`: chica y gris tenue. La de una frase («Ver 6 más ⌄») va con su frase y `// ds-allow` |
+| `TextField` sin `.ticketField()` | `.ticketField()` (o `TicketTextField`): la letra, el espaciado y la tinta del ticket |
 | `.cornerRadius(8)`, `RoundedRectangle(cornerRadius: 8)` | `RoundedRectangle(cornerRadius: Theme.Radius.control)` |
 | `.font(.system(size: 15))`, `.font(.ticket(15))`, `.font(.body)` en texto | `.font(.ticket(.body))` |
 | `Color(red:…)`, `Color(hex:)`, `.foregroundStyle(.secondary)`, `Color.gray`, `.red` | `Theme.muted`, `Theme.danger`… |

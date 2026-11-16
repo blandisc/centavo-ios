@@ -928,3 +928,14 @@ Pedido del dueño: «que tengamos un sistema de diseño que sea respetado, que n
 - **Tokens sin uso** fuera (`compactRow`, `Opacity.glow`, `Stroke.fine`, `Theme.horizontalPadding`).
 - El lint falla con cualquier copia nueva (`hero-figure`, `ticket-outline`, `ticket-panel`, `row-name`, `problem-alert`).
 - **Pendiente del dueño** lo que obliga a escoger entre estilos distintos (botones de agregar, estados vacíos, avisos, flechas, tarjetas elegidas, «Cancelar» en dos grosores, los avisos de «Mi dinero» que ponen el motivo de título, campos de texto sueltos). Las listas de monedas siguen siendo dos a propósito: tres para gastos, siete para «Mi dinero».
+
+## 2026-11-16 · Lo que el dueño escogió para dejar el diseño parejo
+Se le mostraron 8 diferencias lado a lado (captura real contra maqueta). Escogió:
+- **D1-A · «Cancelar» con letra normal en todas las hojas.** Solo lo que guarda («Guardar», «Listo») va en negritas. Lint `cancel-weight`.
+- **D2-A · El aviso dice qué no se guardó.** Título «No se guardó el corte / la cuenta / el gasto…», abajo «Nada cambió. Intenta otra vez.» (`SaveProblem`). Lint `problem-alert`.
+- **D3-A · Agregar según el caso.** Botón lleno solo en una pantalla vacía; dentro de una lista, el enlace dorado solo, sin recuadro punteado; en una cuadrícula, el cuadrito punteado. El «+» de la barra se queda. Lint `link-outline`.
+- **D4 · Los estados vacíos se quedan como están:** le gustan con sus animaciones.
+- **D5 · Sin cambio** (no la escogió): los tres avisos en rojo siguen en rojo.
+- **D6-A · Una sola flecha de renglón** (`RowChevron`), chica y gris tenue; «Más detalles» deja de ser dorado. Las flechas que son parte de una frase («Ver 6 más ⌄», «MXN ⌄», «cuenta ⌄») siguen con su frase. Lint `row-chevron`.
+- **D7 · Lo elegido se queda como está:** fondo tenue con borde en tarjetas y monedas, dorado lleno en cuadritos.
+- **D8-A · Todo campo lleva la letra del ticket** (`.ticketField()`), con el mismo espaciado. Lint `ticket-field`.

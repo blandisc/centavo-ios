@@ -21,7 +21,7 @@ struct FixedExpensesView: View {
     @State private var editingPlan: FixedPlan?
     /// A fixed expense about to stop or be deleted, waiting for the answer.
     @State private var confirming: FixedItem?
-    @State private var saveProblem: String?
+    @State private var saveProblem: SaveProblem?
 
     private var primary: String { CurrencyPreference.resolve(storedCurrency) }
     private var items: [FixedItem] { FixedOutlook.items(originals: originals, plans: FixedPlan.decode(storedPlans)) }
@@ -266,7 +266,7 @@ struct FixedExpensesView: View {
         RecurringExpenses.stopRepeating(original)
         do { try context.save() } catch {
             context.rollback()
-            saveProblem = "Al día no pudo dejar de repetirlo. Intenta otra vez."
+            saveProblem = SaveProblem(title: "No se dejó de repetir")
         }
     }
 
@@ -286,7 +286,7 @@ struct FixedPlanSheet: View {
     @AppStorage(UserCatalog.hiddenCategoriesKey) private var storedHidden = ""
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @State private var amountText = ""
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
     @State private var merchant = ""
     @State private var rule = RepeatRule.monthly
     @State private var firstDay = AppClock.now
@@ -378,8 +378,7 @@ struct FixedPlanSheet: View {
                 Section {
                     TextField("Qué es", text: $merchant,
                               prompt: Text("Renta, limpieza, Netflix…").foregroundStyle(Theme.faint))
-                        .font(.ticket(.field))
-                        .foregroundStyle(Theme.ink)
+                        .ticketField()
                         .textInputAutocapitalization(.sentences)
                         .accessibilityIdentifier("fijo-nombre")
                 } header: {
@@ -468,7 +467,8 @@ struct FixedPlanSheet: View {
         // Started meanwhile (its day came, or another device started it): it is no longer a
         // plan, and saving would make a second one (independent review, 2026-11-02).
         if let editing, !FixedPlan.saved.contains(where: { $0.id == editing.id }) {
-            problem = "Este gasto fijo ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo."
+            problem = SaveProblem(title: "No se guardó el gasto fijo",
+                                  detail: "Ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo.")
             return
         }
         let categoryName = category.trimmingCharacters(in: .whitespaces)
@@ -498,7 +498,7 @@ struct FixedPlanSheet: View {
                 try context.save()
             } catch {
                 context.rollback()
-                problem = "Al día no pudo guardar el gasto fijo. Intenta otra vez."
+                problem = SaveProblem(title: "No se guardó el gasto fijo")
                 return
             }
             // It started: it is no longer a plan.

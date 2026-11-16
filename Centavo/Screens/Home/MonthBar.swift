@@ -84,7 +84,7 @@ struct MonthBar: View {
                 Perforation(tear: true)
                 HStack(spacing: Theme.Space.xs) {
                     Text("cuenta").foregroundStyle(Theme.brass)
-                    Image(systemName: "chevron.down")
+                    Image(systemName: "chevron.down") // ds-allow: parte de «cuenta ⌄»
                         .foregroundStyle(Theme.faint)
                         .rotationEffect(.degrees(showsSum ? 180 : 0))
                         .accessibilityHidden(true)

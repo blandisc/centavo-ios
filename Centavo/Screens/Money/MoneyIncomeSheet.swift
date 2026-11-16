@@ -17,7 +17,7 @@ struct MoneyIncomeSheet: View {
     @State private var amount = ""
     @State private var confirmingRemove = false
     @State private var askingDiscard = false
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
 
     private var isNew: Bool { income == nil }
     /// The offered ones, plus the income's own and the main one when they aren't (an imported
@@ -73,9 +73,8 @@ struct MoneyIncomeSheet: View {
                 Section {
                     TextField("Cuánto te entra al mes", text: $amount,
                               prompt: Text("\(MoneyCurrency.symbol(currency.isEmpty ? mainCurrency : currency))0").foregroundStyle(Theme.faint))
-                        .font(.ticket(.field))
+                        .ticketField()
                         .keyboardType(.decimalPad)
-                        .foregroundStyle(Theme.ink)
                         .groupsMoney($amount)
                         .accessibilityIdentifier("ingreso-monto")
                 } header: {
@@ -105,7 +104,7 @@ struct MoneyIncomeSheet: View {
                     Button("Cancelar") {
                         if hasChanges { askingDiscard = true } else { dismiss() }
                     }
-                    .font(.ticket(.footnoteStrong))
+                    .font(.ticket(.footnote))
                 }
             }
             // «Guardar» at the bottom with what it saves, as in the sheets of «Hoy» (2026-11-11).
@@ -115,7 +114,7 @@ struct MoneyIncomeSheet: View {
                 TicketQuestion(title: "¿Quitar este ingreso?", name: income?.name ?? name,
                                note: "Deja de contar como lo que te entra al mes.", verb: "Quitar")
             }, onConfirm: remove)
-            .problemAlert("No se guardó el ingreso", problem: $problem)
+            .problemAlert(problem: $problem)
             .onAppear(perform: load)
             .onMoneyCovered { confirmingRemove = false; askingDiscard = false; problem = nil }
         }
@@ -146,7 +145,7 @@ struct MoneyIncomeSheet: View {
             }
             dismiss()
         } catch {
-            problem = "Intenta otra vez."
+            problem = SaveProblem(title: "No se guardó el ingreso")
         }
     }
 
@@ -156,7 +155,7 @@ struct MoneyIncomeSheet: View {
             try MoneyStore.removeIncome(income, in: context)
             dismiss()
         } catch {
-            problem = "No se pudo quitar. Intenta otra vez."
+            problem = SaveProblem(title: "No se quitó el ingreso")
         }
     }
 }

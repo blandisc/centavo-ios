@@ -57,15 +57,22 @@ struct TicketTextField: View {
 
     var body: some View {
         TextField(title, text: $text, prompt: Text(prompt).foregroundStyle(Theme.faint))
-            .font(.ticket(.field))
-            .tracking(Theme.Tracking.detail)
-            .foregroundStyle(Theme.ink)
-            .anchorsRowSeparator()
+            .ticketField()
             .accessibilityIdentifier(identifier ?? "")
     }
 }
 
 extension View {
+    /// What makes a text field the ticket's (owner, 2026-11-16, D8-A): its letter and spacing,
+    /// ink for what's typed, and the row's line starting at its edge. Every `TextField` wears it
+    /// (`Tools/lint-design.py`, `ticket-field`); the prompt stays `Theme.faint`.
+    func ticketField(_ style: TicketStyle = .field) -> some View {
+        font(.ticket(style))
+            .tracking(Theme.Tracking.detail)
+            .foregroundStyle(Theme.ink)
+            .anchorsRowSeparator()
+    }
+
     /// The line under a form row starts at this field's edge. Left alone, iOS starts it at the
     /// row's first text: beside a field that is the currency menu, and under «Monto» the line
     /// showed only beneath «MXN», as if broken (owner, 2026-11-14). Every field component carries

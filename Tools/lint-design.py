@@ -268,7 +268,7 @@ def lint_file(path: Path):
         # A field component anchors its row's line at its own edge (`anchorsRowSeparator`):
         # otherwise iOS starts it at the row's first text and it looks broken (2026-11-14).
         if path.parent == APP / "Components" and re.search(r"(?<![\w.])TextField\(", code) \
-                and not any("anchorsRowSeparator" in c for c in codes[n - 1:n + 12]):
+                and not any("anchorsRowSeparator" in c or "ticketField" in c for c in codes[n - 1:n + 12]):
             found.append(("field-separator",
                           "un campo de componente sin .anchorsRowSeparator(): la línea de su "
                           "renglón empezaría en otro texto y se vería cortada"))
@@ -279,6 +279,26 @@ def lint_file(path: Path):
             found.append(("currency-option",
                           "un selector de moneda sin CurrencyOptions: cada moneda se muestra igual "
                           "en toda la app (bandera y nombre)"))
+        # The owner's choices of 2026-11-16 (D1-A, D3-A, D6-A, D8-A), so they stay made.
+        if not drawing and path.name != "AmountInputField.swift" \
+                and re.search(r"(?<![\w.])TextField\(", code) \
+                and not any("ticketField" in c for c in codes[n - 1:n + 12]) \
+                and not any("field(" in c for c in codes[max(0, n - 4):n - 1]):
+            found.append(("ticket-field",
+                          "campo de texto sin .ticketField(): todos llevan la letra y el espaciado del "
+                          "ticket (o usa TicketTextField)"))
+        if re.search(r'Button\(\s*"Cancelar"', raw) \
+                and any("footnoteStrong" in c for c in codes[n - 1:n + 4]):
+            found.append(("cancel-weight",
+                          "«Cancelar» en negritas: va con letra normal; lo fuerte es solo lo que guarda"))
+        if "LinkActionLabel(" in code and any("ticketOutline" in c for c in codes[n - 1:n + 4]):
+            found.append(("link-outline",
+                          "enlace de agregar con recuadro punteado: dentro de una lista va solo, sin recuadro"))
+        if not drawing and path.name != "RowChevron.swift" \
+                and re.search(r'Image\(\s*systemName:[^)]*"chevron\.(right|up|down)"', raw):
+            found.append(("row-chevron",
+                          "flecha de renglón a mano: usa RowChevron() (chica y gris tenue); la de una "
+                          "frase («Ver más ⌄») lleva ds-allow"))
         # A name in capitals is `.rowName()`: the same weight, tracking and case everywhere.
         if re.search(r"\.tracking\(\s*Theme\.Tracking\.name\s*\)", code) \
                 and any(".textCase(.uppercase)" in c for c in codes[max(0, n - 3):n + 2]):

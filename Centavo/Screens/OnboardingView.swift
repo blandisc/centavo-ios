@@ -299,6 +299,7 @@ struct OnboardingView: View {
                 VStack(spacing: Theme.Space.s) {
                     TextField("Qué es", text: $draftName,
                               prompt: Text("Renta, Netflix…").foregroundStyle(Theme.faint))
+                        .ticketField()
                         .textInputAutocapitalization(.words)
                         .focused($focused, equals: .name)
                         .submitLabel(.next)
@@ -308,6 +309,7 @@ struct OnboardingView: View {
                     HStack {
                         TextField("Cuánto", text: $draftAmount,
                                   prompt: Text("Monto").foregroundStyle(Theme.faint))
+                            .ticketField()
                             .keyboardType(.decimalPad)
                             .focused($focused, equals: .amount)
                             .groupsThousands($draftAmount)

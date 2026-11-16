@@ -23,7 +23,7 @@ struct MoneyCutSheet: View {
     @State private var startRates: [String: Decimal] = [:]
     @State private var confirmingDiscard = false
     @State private var addingIncome = false
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
     /// The month already has a cut made on this date: «¿Reemplazar…?» before anything goes.
     @State private var replacing: Date?
     @FocusState private var focus: UUID?
@@ -152,7 +152,7 @@ struct MoneyCutSheet: View {
                     dismiss()
                 } catch {
                     context.rollback()
-                    problem = "No se descartó el corte"
+                    problem = SaveProblem(title: "No se descartó el corte")
                 }
             }
             .alert("¿Reemplazar el corte de \(MoneyHead.fullMonthName(draft.month))?",
@@ -162,9 +162,7 @@ struct MoneyCutSheet: View {
             } message: {
                 Text("Ese mes ya tiene un corte, hecho el \(replacing?.formatted(.dateTime.day().month(.wide).locale(MoneyHead.mexico)) ?? ""). Si lo reemplazas, cuenta este y el otro se quita.")
             }
-            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) { // ds-allow: el motivo va de título; si se une a .problemAlert queda en la lista de decisiones (2026-11-16)
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text("Intenta otra vez.") }
+            .problemAlert(problem: $problem)
             .sheet(isPresented: $addingIncome) { MoneyIncomeSheet(income: nil, mainCurrency: draft.mainCurrency).moneyPrivacyCover() }
             .onAppear(perform: load)
             .onChange(of: ratesReviewed) { _, now in draft.reviewedRates = MoneyWords.encodeCodes(now) }
@@ -199,7 +197,7 @@ struct MoneyCutSheet: View {
                     ratesReviewed.insert(code)
                 }),
                 prompt: Text(before.map { BackupNumber.text($0) } ?? "0.00").foregroundStyle(Theme.faint))
-                .font(.ticket(.field))
+                .ticketField()
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .focused($rateFocus, equals: code)
@@ -284,7 +282,7 @@ struct MoneyCutSheet: View {
                 .foregroundStyle(Theme.ink)
             : Text("Escribe el saldo").foregroundStyle(Theme.faint)
         return TextField(account.name, text: balanceText, prompt: prompt)
-            .font(.ticket(.field))
+            .ticketField()
             .keyboardType(.decimalPad)
             .multilineTextAlignment(typeSize.isAccessibilitySize ? .leading : .trailing)
             .focused($focus, equals: account.id)
@@ -337,7 +335,7 @@ struct MoneyCutSheet: View {
             })
         TextField("¿Metiste o sacaste?", text: movementText,
             prompt: Text("¿Metiste o sacaste? (−300 si sacaste)").foregroundStyle(Theme.faint))
-            .font(.ticket(.detail))
+            .ticketField(.detail)
             .keyboardType(.numbersAndPunctuation)
             .focused($movementFocus, equals: account.id)
             .groupsMoney(movementText)
@@ -451,7 +449,7 @@ struct MoneyCutSheet: View {
         } catch MoneyStore.CutProblem.monthHasCut(let date) {
             self.replacing = date
         } catch {
-            problem = "No se guardó el corte"
+            problem = SaveProblem(title: "No se guardó el corte")
         }
     }
 }

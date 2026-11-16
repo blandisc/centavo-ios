@@ -28,7 +28,7 @@ struct MoneyImportView: View {
     @State private var rateTexts: [String: String] = [:]
     @State private var rateChoices: [String: [Decimal]] = [:]
     @State private var open: UUID?
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
     /// Something was corrected, added or removed since the answer was loaded: «Pegar otra
     /// respuesta» asks before throwing it away (2026-11-02 audit).
     @State private var changed = false
@@ -75,10 +75,10 @@ struct MoneyImportView: View {
         .fileImporter(isPresented: $choosingFile,
                       allowedContentTypes: [.commaSeparatedText, .tabSeparatedText, .plainText, .utf8PlainText]) { result in
             guard case .success(let url) = result else { return }
-            guard let text = Self.read(url) else { problem = "No se pudo abrir ese archivo."; return }
+            guard let text = Self.read(url) else { problem = SaveProblem(title: "No se pudo abrir ese archivo"); return }
             load(text)
         }
-        .problemAlert("No se pudo importar", problem: $problem)
+        .problemAlert(problem: $problem)
         .alert("¿Pegar otra respuesta?", isPresented: $confirmingRestart) {
             Button("Cancelar", role: .cancel) {}
             Button("Borrar y pegar otra", role: .destructive, action: restart)
@@ -214,8 +214,7 @@ struct MoneyImportView: View {
         }
         // A row can be of any kind: «un renglón», not «otra» (2026-11-11).
         Button(action: addRow) {
-            LinkActionLabel("Agregar un renglón", systemImage: "plus")
-                .ticketOutline()
+            LinkActionLabel("Agregar un renglón", systemImage: "plus", alignment: .leading)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("importar-agregar")
@@ -238,10 +237,9 @@ struct MoneyImportView: View {
                         Spacer()
                         TextField("Tipo de cambio", text: Binding(get: { rateTexts[code] ?? "" }, set: { rateTexts[code] = $0; changed = true }),
                                   prompt: Text("\(MoneyCurrency.symbol(mainCurrency))0.00").foregroundStyle(Theme.faint))
-                            .font(.ticket(.field))
+                            .ticketField()
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
-                            .foregroundStyle(Theme.ink)
                             .accessibilityIdentifier("importar-cambio-\(code)")
                     }
                     if let choices = rateChoices[code], choices.count > 1 {
@@ -356,7 +354,7 @@ struct MoneyImportView: View {
 
     private func load(_ text: String) {
         let result = MoneyImport.parse(text, main: mainCurrency)
-        if let refusal = result.refusal { problem = refusal; return }
+        if let refusal = result.refusal { problem = SaveProblem(title: "No se pudo importar", detail: refusal); return }
         withAnimation(motion) {
             notes = result.notes
             let accounts = (try? context.fetch(MoneyStore.activeAccounts)) ?? []
@@ -428,7 +426,7 @@ struct MoneyImportView: View {
             forgetPasted()
             finished()
         } catch {
-            problem = "No se guardó nada. Intenta otra vez."
+            problem = SaveProblem(title: "No se guardó nada")
         }
     }
 

@@ -120,7 +120,7 @@ struct MerchantRulesView: View {
                 Text(showsCategoryOnly ? "Ver menos" : "Ver todos")
                     .contentTransition(.identity)
                 Spacer(minLength: Theme.Space.s)
-                Image(systemName: "chevron.down")
+                Image(systemName: "chevron.down") // ds-allow: parte de «Ver todos ⌄»
                     .rotationEffect(.degrees(showsCategoryOnly ? 180 : 0))
                     .accessibilityHidden(true)
             }
@@ -181,11 +181,7 @@ struct MerchantRulesView: View {
         } amount: {
             // Stacked with the largest text, where an arrow on a line of its own says nothing.
             if !typeSize.isAccessibilitySize {
-                Image(systemName: "chevron.right")
-                    .font(Theme.Symbol.regular)
-                    .imageScale(.small)
-                    .foregroundStyle(Theme.faint)
-                    .accessibilityHidden(true)
+                RowChevron()
             }
         }
         .accessibilityElement(children: .combine)
@@ -364,7 +360,7 @@ struct MerchantRuleSheet: View {
                 }
             }
             .saveBar(summary, enabled: hasChanges, identifier: "recuerdo-guardar", action: save)
-            .problemAlert(isPresented: $saveFailed, message: "Al día no pudo cambiar tus gastos; nada cambió. Intenta otra vez.")
+            .problemAlert("No se guardó el cambio", isPresented: $saveFailed)
             .confirmsRemoval(isPresented: $confirmingForget, question: { rule.forgetQuestion }) {
                 UserCatalog.removeRule(rule)
                 dismiss()

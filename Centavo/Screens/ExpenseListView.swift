@@ -95,7 +95,7 @@ struct ExpenseListView: View {
     /// A file read whose rows include some that look repeated: asked about before saving.
     @State private var pendingImport: PendingImport?
     /// A change made here (delete, undo, a category) that couldn't be saved.
-    @State private var saveProblem: String?
+    @State private var saveProblem: SaveProblem?
     /// Fixed expenses whose first charge is still to come (`FixedPlan`).
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     /// How «Hoy puedes gastar» treats what a day leaves over (`AllowanceMode`).
@@ -931,7 +931,7 @@ private struct BackupWatch: ViewModifier {
 
 /// A change made in «Hoy» that couldn't be saved, said out loud.
 private struct SaveProblemAlert: ViewModifier {
-    @Binding var problem: String?
+    @Binding var problem: SaveProblem?
 
     func body(content: Content) -> some View {
         content.problemAlert(problem: $problem)
@@ -1028,7 +1028,7 @@ private extension ExpenseListView {
             return true
         } catch {
             context.rollback()
-            saveProblem = "Al día no pudo guardar el cambio. Intenta otra vez; si sigue, cierra la app y vuelve a abrirla."
+            saveProblem = SaveProblem(title: "No se guardó el cambio", detail: SaveProblem.unchangedPersisting)
             return false
         }
     }

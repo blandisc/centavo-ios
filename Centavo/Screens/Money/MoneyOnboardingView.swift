@@ -22,7 +22,7 @@ struct MoneyOnboardingView: View {
     /// The row that is open: a saved account's id, or `draftID` for a new one.
     @State private var open: UUID?
     @State private var draft = MoneyRowDraft()
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
     /// While typing, the step's button steps aside instead of riding over the fields.
     @State private var typing = false
     @State private var confirmingLeave = false
@@ -72,7 +72,7 @@ struct MoneyOnboardingView: View {
                     }
                 }
             }
-            .problemAlert("No se guardó la cuenta", problem: $problem)
+            .problemAlert(problem: $problem)
             .navigationDestination(isPresented: $importing) {
                 MoneyImportView(mainCurrency: mainCurrency) { importing = false }
             }
@@ -146,9 +146,7 @@ struct MoneyOnboardingView: View {
             // Its own phrase for each kind (2026-11-11): «Agregar» glued to the kind's name gave
             // «Agregar me deben».
             Button { startNew(chosen) } label: {
-                LinkActionLabel(chosen.addTitle, systemImage: "plus")
-                    .padding(.horizontal, Theme.Space.sm)
-                    .ticketOutline()
+                LinkActionLabel(chosen.addTitle, systemImage: "plus", alignment: .leading)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("recorrido-agregar")
@@ -169,8 +167,7 @@ struct MoneyOnboardingView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: Theme.Space.xxs)
-                Image(systemName: "chevron.right").font(.ticket(.footnote)).foregroundStyle(Theme.faint)
-                    .accessibilityHidden(true)
+                RowChevron()
             }
             .padding(Theme.Space.sm)
             .ticketOutline()
@@ -392,7 +389,7 @@ struct MoneyOnboardingView: View {
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
             return true
         } catch {
-            problem = "Intenta otra vez."
+            problem = SaveProblem(title: "No se guardó la cuenta")
             return false
         }
     }
@@ -402,7 +399,7 @@ struct MoneyOnboardingView: View {
             try MoneyStore.remove(account, in: context)
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
         } catch {
-            problem = "No se pudo quitar. Intenta otra vez."
+            problem = SaveProblem(title: "No se quitó la cuenta")
         }
     }
 
@@ -724,11 +721,7 @@ struct MoneyRow<Editor: View>: View {
                         Text(figure).font(.ticket(.headline)).foregroundStyle(Theme.ink).monospacedDigit()
                             .fixedSize()
                     }
-                    Image(systemName: "chevron.right")
-                        .font(.ticket(.footnote))
-                        .foregroundStyle(Theme.faint)
-                        .rotationEffect(.degrees(isOpen ? 90 : 0))
-                        .accessibilityHidden(true)
+                    RowChevron(.discloses(isOpen))
                 }
                 .padding(.horizontal, Theme.Space.m)
                 // At least a two-line row, never a fixed height (owner, 2026-11-11): with a
@@ -888,8 +881,7 @@ struct MoneyRowEditor: View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(title).ticketCaption()
             input()
-                .font(.ticket(.field))
-                .foregroundStyle(Theme.ink)
+                .ticketField()
                 .padding(.horizontal, Theme.Space.sm)
                 .frame(minHeight: Theme.Size.tapTarget)
                 .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.control))

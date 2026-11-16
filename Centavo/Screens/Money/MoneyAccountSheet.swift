@@ -24,7 +24,7 @@ struct MoneyAccountSheet: View {
     @State private var exchange = ""
     @State private var confirmingArchive = false
     @State private var askingDiscard = false
-    @State private var problem: String?
+    @State private var problem: SaveProblem?
 
     private var isNew: Bool { account == nil }
     private var isForeign: Bool { currency != mainCurrency }
@@ -189,7 +189,7 @@ struct MoneyAccountSheet: View {
                     Button("Cancelar") {
                         if hasChanges { askingDiscard = true } else { dismiss() }
                     }
-                    .font(.ticket(.footnoteStrong))
+                    .font(.ticket(.footnote))
                 }
             }
             // «Guardar» at the bottom with what it saves, as in the sheets of «Hoy» (2026-11-11).
@@ -200,9 +200,7 @@ struct MoneyAccountSheet: View {
                                note: "Deja de sumar en tu patrimonio y de salir en los próximos cortes; los cortes pasados la conservan. La puedes regresar desde «Archivadas».",
                                verb: "Archivar")
             }, onConfirm: archive)
-            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) { // ds-allow: el motivo va de título; si se une a .problemAlert queda en la lista de decisiones (2026-11-16)
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text("Intenta otra vez.") }
+            .problemAlert(problem: $problem)
             .onAppear(perform: load)
             .onMoneyCovered { confirmingArchive = false; askingDiscard = false; problem = nil }
         }
@@ -253,9 +251,8 @@ struct MoneyAccountSheet: View {
 
     private func amountField(_ title: String, text: Binding<String>, identifier: String) -> some View {
         TextField(title, text: text, prompt: Text(title).foregroundStyle(Theme.faint))
-            .font(.ticket(.field))
+            .ticketField()
             .keyboardType(.decimalPad)
-            .foregroundStyle(Theme.ink)
             .accessibilityIdentifier(identifier)
     }
 
@@ -292,7 +289,7 @@ struct MoneyAccountSheet: View {
             }
             dismiss()
         } catch {
-            problem = "No se guardó la cuenta"
+            problem = SaveProblem(title: "No se guardó la cuenta")
         }
     }
 
@@ -303,7 +300,7 @@ struct MoneyAccountSheet: View {
             dismiss()
         } catch {
             context.rollback()
-            problem = "No se archivó la cuenta"
+            problem = SaveProblem(title: "No se archivó la cuenta")
         }
     }
 }
