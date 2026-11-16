@@ -458,8 +458,11 @@ final class FlowTests: XCTestCase {
         fillExpense(app, amount: "0", merchant: "Nada")
         XCTAssertFalse(app.buttons["hoja-guardar"].isEnabled, "Dejó guardar un gasto de $0")
 
+        // Focusing «Comercio» brings it to the top of the sheet (cdfc05a): the amount scrolled
+        // above it and the form no longer draws its row, so it is brought back first.
         let amount = app.textFields["monto"]
-        amount.tap()
+        for _ in 0..<4 where !isClear(amount, app) { scrollFormBack(app) }
+        require(amount, "El monto no volvió a la vista").tap()
         amount.clearAndType("1234567890123")
         // The field stops at 12 digits, the most an amount can have: a 13th is not typed.
         let digits = (amount.value as? String ?? "").filter(\.isNumber)
@@ -1261,10 +1264,9 @@ final class FlowTests: XCTestCase {
         let app = launch(budget: true, extra: ["-centavo-demo-large"])
         let health = require(app.buttons["salud-captura"], "No dice cómo va la captura")
         XCTAssertTrue(health.label.localizedCaseInsensitiveContains("sin conectar"), "Dice: \(health.label)")
-        // Past the budget the plan sits above it: bring the line out from under the bottom bar.
-        for _ in 0..<3 where !health.isHittable || health.frame.maxY > app.windows.firstMatch.frame.maxY - 120 {
-            app.swipeUp()
-        }
+        // Past the budget the plan sits above it: bring the line out from under the bottom bar,
+        // without sending it under the top one, where a tap lands on the bar (CI, 29c487d).
+        bringClear(health, app)
         health.tap()
         stepByStep(app)
         require(app.buttons["guia-siguiente"], "No abrió la guía")
@@ -1564,6 +1566,33 @@ final class FlowTests: XCTestCase {
     private func scrollForm(_ app: XCUIApplication) {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
         start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)))
+    }
+
+    /// The other way: the sheet's form back toward its top, slowly and held at the end so it
+    /// does not coast, and from below the top bar so it does not pull the sheet down.
+    private func scrollFormBack(_ app: XCUIApplication) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+        start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55)),
+                    withVelocity: .slow, thenHoldForDuration: 0.3)
+    }
+
+    /// Scrolls a screen in short, held drags until `element` sits between the top bar and the
+    /// bottom one. `swipeUp()` flings: a row near the bottom ended under the top bar.
+    private func bringClear(_ element: XCUIElement, _ app: XCUIApplication) {
+        let window = app.windows.firstMatch.frame
+        let nav = app.navigationBars.firstMatch
+        let top = nav.exists ? nav.frame.maxY : window.minY + 120
+        let bottom = window.maxY - 120
+        for _ in 0..<8 {
+            guard element.exists else { return }
+            let frame = element.frame
+            if element.isHittable, frame.minY >= top, frame.maxY <= bottom { return }
+            let up = frame.maxY > bottom
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.6 : 0.4))
+            from.press(forDuration: 0.05,
+                       thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.42 : 0.58)),
+                       withVelocity: .slow, thenHoldForDuration: 0.3)
+        }
     }
 
     private func expectTotal(_ app: XCUIApplication, _ expected: String,
