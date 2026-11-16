@@ -18,7 +18,7 @@ extension XCTestCase {
 
 @MainActor
 final class FlowTests: XCTestCase {
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
         XCUIDevice.shared.appearance = .dark
     }

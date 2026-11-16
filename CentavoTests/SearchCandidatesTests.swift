@@ -9,7 +9,7 @@ import XCTest
 final class SearchCandidatesTests: XCTestCase {
     private var context: ModelContext!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         let container = try ModelContainer(for: Expense.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         context = ModelContext(container)

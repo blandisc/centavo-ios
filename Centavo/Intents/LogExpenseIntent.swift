@@ -51,7 +51,7 @@ struct LogExpenseIntent: AppIntent {
         // before the 300 ms of `WidgetBridge.start()` go by.
         defer { WidgetBridge.refreshAfterIntent() }
         // So "what is left" counts this month's rent even if the app was not opened.
-        try? RecurringExpenses.logDue(in: container.mainContext)
+        _ = try? RecurringExpenses.logDue(in: container.mainContext)
         let context = container.mainContext
         // Saved first; where the iPhone is comes after, so a slow location never costs a payment.
         var expense: Expense?

@@ -61,8 +61,8 @@ struct AllowanceExplainer: View {
                 Text(verbatim: " \n ").hidden()
                 // Paused, a pause mark leads the line being read (up in the drawing, the coins
                 // would run over it).
-                (paused ? Text("\(Image(systemName: "pause.fill")) ").foregroundStyle(Theme.muted) : Text(verbatim: ""))
-                    + Text(caption).foregroundStyle(Theme.ink)
+                let mark = paused ? Text("\(Image(systemName: "pause.fill")) ").foregroundStyle(Theme.muted) : Text(verbatim: "")
+                Text("\(mark)\(Text(caption).foregroundStyle(Theme.ink))")
             }
             .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)

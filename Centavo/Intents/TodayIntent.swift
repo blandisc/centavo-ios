@@ -13,7 +13,7 @@ struct TodayIntent: AppIntent {
         guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
         // A fixed expense now due may have been saved: on the widgets before returning.
         defer { WidgetBridge.refreshAfterIntent() }
-        try? RecurringExpenses.logDue(in: container.mainContext)
+        _ = try? RecurringExpenses.logDue(in: container.mainContext)
         let sentence = try MonthStatus.todaySentence(in: container.mainContext, budget: MonthStatus.savedBudget)
         return .result(value: sentence, dialog: "\(sentence)")
     }

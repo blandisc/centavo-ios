@@ -214,7 +214,7 @@ final class GuideCompanion: NSObject {
         let folder = caches.appending(path: "guia-cuadros")
         try? FileManager.default.removeItem(at: folder)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        for (position, page) in pages.enumerated() {
+        for position in pages.indices {
             let renderer = ImageRenderer(content: CompanionCard(pages: pages, position: position))
             renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
             renderer.scale = Theme.Size.companionScale
@@ -243,7 +243,7 @@ final class GuideCompanion: NSObject {
         }
         if !FileManager.default.fileExists(atPath: url.path) {
             var images: [CGImage] = []
-            for (position, page) in pages.enumerated() {
+            for position in pages.indices {
                 let renderer = ImageRenderer(content: CompanionCard(pages: pages, position: position))
                 renderer.proposedSize = ProposedViewSize(Theme.Size.companionCard)
                 renderer.scale = Theme.Size.companionScale

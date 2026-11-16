@@ -199,10 +199,9 @@ struct HoyView: View {
     /// «Llevas $24,518 de $24,180» under the boleto where there is no rhythm to say (past the
     /// budget, or a stale snapshot); what went in red past the budget.
     private func dataLine(_ pace: BudgetPace) -> some View {
-        (Text("Llevas ").foregroundStyle(ink.muted)
-            + Text(money.whole(pace.spentShown)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
-            + Text(" de ").foregroundStyle(ink.muted)
-            + Text(money.whole(pace.budget)).foregroundStyle(ink.primary))
+        let spent = Text(money.whole(pace.spentShown)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
+        let budget = Text(money.whole(pace.budget)).foregroundStyle(ink.primary)
+        return Text("\(Text("Llevas ").foregroundStyle(ink.muted))\(spent)\(Text(" de ").foregroundStyle(ink.muted))\(budget)")
             .font(.widget(.verdict))
             .lineLimit(1)
             .minimumScaleFactor(Theme.MinimumScale.figure)

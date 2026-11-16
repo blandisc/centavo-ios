@@ -41,7 +41,7 @@ struct LogWalletNoticeIntent: AppIntent {
         let container = (try? Store.opened.get()) ?? (try? Store.retry().get())
         // On the widgets before returning: Atajos may suspend the app right after the payment.
         defer { if container != nil { WidgetBridge.refreshAfterIntent() } }
-        if let container { try? RecurringExpenses.logDue(in: container.mainContext) }
+        if let container { _ = try? RecurringExpenses.logDue(in: container.mainContext) }
         // The subtitle goes after the amount, where the reader expects the concept.
         let shop = subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let text = shop.isEmpty || notice.localizedCaseInsensitiveContains(shop) ? notice : notice + "\n" + shop

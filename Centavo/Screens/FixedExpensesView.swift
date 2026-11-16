@@ -140,7 +140,7 @@ struct FixedExpensesView: View {
             .sheet(item: $adding) { FixedPlanSheet(initialName: $0.name) }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
             .sheet(item: $editingPlan) { FixedPlanSheet(editing: $0) }
-            .onAppear { try? RecurringExpenses.logDue(in: context) }
+            .onAppear { _ = try? RecurringExpenses.logDue(in: context) }
         }
     }
 
@@ -503,7 +503,7 @@ struct FixedPlanSheet: View {
             }
             // It started: it is no longer a plan.
             if editing != nil { FixedPlan.save(others) }
-            try? RecurringExpenses.logDue(in: context)
+            _ = try? RecurringExpenses.logDue(in: context)
         } else if let editing {
             FixedPlan.save(FixedPlan.saved.map { $0.id == editing.id ? plan : $0 })
         } else {

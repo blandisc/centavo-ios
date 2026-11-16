@@ -10,12 +10,12 @@ final class MoneyStartingPointTests: XCTestCase {
     private var defaults: UserDefaults!
     private let suite = "MoneyStartingPointTests"
 
-    override func setUp() {
+    override func setUp() async throws {
         defaults = UserDefaults(suiteName: suite)
         defaults.removePersistentDomain(forName: suite)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suite)
     }
 

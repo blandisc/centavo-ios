@@ -29,7 +29,7 @@ struct QuickExpenseIntent: AppIntent {
         // On the widgets before returning: Siri may suspend the app right after.
         defer { WidgetBridge.refreshAfterIntent() }
         let context = container.mainContext
-        try? RecurringExpenses.logDue(in: context)
+        _ = try? RecurringExpenses.logDue(in: context)
         let sources = UserCatalog.decode(UserDefaults.standard.string(forKey: UserCatalog.sourcesKey) ?? "")
             .map(\.name)
         guard let entry = await QuickExpense.read(sentence, sources: sources) else {

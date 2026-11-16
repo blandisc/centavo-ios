@@ -192,14 +192,14 @@ struct Verdict: View {
         case .overToday(let pace), .normal(let pace):
             guard let rhythm = pace.rhythm else {
                 if twoLines { return nil }
-                return Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(ink.muted)
-                    + Text(money.whole(pace.expectedToDate)).foregroundStyle(ink.primary)
+                let lead = Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(ink.muted)
+                return Text("\(lead)\(Text(money.whole(pace.expectedToDate)).foregroundStyle(ink.primary))")
             }
             if rhythm.magnitude < 1 { return Text("Vas al ritmo").foregroundStyle(ink.muted) }
-            return Text("Vas ").foregroundStyle(ink.muted)
-                + Text("\(money.whole(rhythm.magnitude)) \(rhythm > 0 ? "abajo" : "arriba")")
-                    .foregroundStyle(rhythm > 0 ? ink.good : ink.danger)
-                + Text(endsWithRhythm ? " del ritmo" : tail).foregroundStyle(ink.muted)
+            let gap = Text("\(money.whole(rhythm.magnitude)) \(rhythm > 0 ? "abajo" : "arriba")")
+                .foregroundStyle(rhythm > 0 ? ink.good : ink.danger)
+            let rest = Text(endsWithRhythm ? " del ritmo" : tail).foregroundStyle(ink.muted)
+            return Text("\(Text("Vas ").foregroundStyle(ink.muted))\(gap)\(rest)")
         }
     }
 
@@ -346,7 +346,7 @@ struct WidgetHatch: Shape {
 
 /// «LLEVAS $8,140»: a label in grey and its figure in ink.
 func keyText(_ label: String, _ value: String, ink: Ink) -> Text {
-    Text(label + " ").foregroundStyle(ink.muted) + Text(value).foregroundStyle(ink.primary)
+    Text("\(Text(label + " ").foregroundStyle(ink.muted))\(Text(value).foregroundStyle(ink.primary))")
 }
 
 /// The brass «+» that opens «Anotar gasto» in the app.

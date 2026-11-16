@@ -155,9 +155,10 @@ struct MonthBar: View {
     }
 
     private func verdict(_ line: Line) -> some View {
-        (Text(line.before).foregroundStyle(Theme.muted)
-            + Text(line.colored).foregroundStyle(line.good ? Theme.good : Theme.danger)
-            + Text(line.after).foregroundStyle(Theme.muted))
+        let before = Text(line.before).foregroundStyle(Theme.muted)
+        let colored = Text(line.colored).foregroundStyle(line.good ? Theme.good : Theme.danger)
+        let after = Text(line.after).foregroundStyle(Theme.muted)
+        return Text("\(before)\(colored)\(after)")
             .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("veredicto")

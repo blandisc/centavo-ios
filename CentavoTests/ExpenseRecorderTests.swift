@@ -51,9 +51,9 @@ final class ExpenseRecorderTests: XCTestCase {
     /// someone named by hand, or a real shop, stays as it is.
     func testOldCapturesWithTheBankAsMerchantAreRepaired() throws {
         let notice = "Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena"
-        try ExpenseRecorder.record(amountText: "MXN 1,060.00", merchant: "American Express México",
+        _ = try ExpenseRecorder.record(amountText: "MXN 1,060.00", merchant: "American Express México",
                                    card: nil, rawNotice: notice, in: context, renames: MerchantRenames(), now: now)
-        try ExpenseRecorder.record(amountText: "MXN 20.00", merchant: "Oxxo Roble", card: "HSBC México",
+        _ = try ExpenseRecorder.record(amountText: "MXN 20.00", merchant: "Oxxo Roble", card: "HSBC México",
                                    rawNotice: "HSBC México\nMXN 20.00\nOxxo Roble", in: context,
                                    renames: MerchantRenames(), now: now.addingTimeInterval(3_600))
         XCTAssertEqual(try ExpenseRecorder.repairBankMerchants(in: context, knownCards: [], defaults: nil), 1)
@@ -225,7 +225,7 @@ final class ExpenseRecorderTests: XCTestCase {
     }
 
     func testABareDollarIsSavedAsTheMainCurrencyOfThatMoment() throws {
-        try ExpenseRecorder.record(amountText: "$89.00", merchant: "Oxxo", card: nil, in: context,
+        _ = try ExpenseRecorder.record(amountText: "$89.00", merchant: "Oxxo", card: nil, in: context,
                                    primary: "USD", rules: CategoryRules(), hidden: [], renames: MerchantRenames(), now: now)
         XCTAssertEqual(try saved().first?.currencyMarker, "USD")
     }
@@ -244,7 +244,7 @@ final class ExpenseRecorderTests: XCTestCase {
         context.insert(Expense(amount: 10, currencyMarker: "$", merchant: "A", date: now))
         try context.save()
         XCTAssertEqual(try ExpenseRecorder.pinBareDollars(in: context, primary: nil), 0)
-        try ExpenseRecorder.record(amountText: "$5.00", merchant: "B", card: nil, in: context, primary: nil,
+        _ = try ExpenseRecorder.record(amountText: "$5.00", merchant: "B", card: nil, in: context, primary: nil,
                                    rules: CategoryRules(), hidden: [], renames: MerchantRenames(), now: now)
         XCTAssertEqual(try saved().map(\.currencyMarker), ["$", "$"])
     }
@@ -253,7 +253,7 @@ final class ExpenseRecorderTests: XCTestCase {
     /// thousands of «CHF 1'234.50».
     func testTheAmountANoticeReadIsTheOneSaved() throws {
         let notice = try XCTUnwrap(WalletNotice.parse("Visa · Hotel Zürich · CHF 1'234.50"))
-        try ExpenseRecorder.record(amountText: notice.amountText, merchant: notice.merchant, card: notice.card,
+        _ = try ExpenseRecorder.record(amountText: notice.amountText, merchant: notice.merchant, card: notice.card,
                                    amount: notice.amount, in: context, rules: CategoryRules(), hidden: [],
                                    renames: MerchantRenames(), now: now)
         XCTAssertEqual(try saved().first?.amount, notice.amount.value)
@@ -262,7 +262,7 @@ final class ExpenseRecorderTests: XCTestCase {
 
     func testThePaymentIsSavedBeforeThePlaceIsAdded() throws {
         var handed: Expense?
-        try ExpenseRecorder.record(amountText: "$89.00", merchant: "Oxxo", card: nil, in: context,
+        _ = try ExpenseRecorder.record(amountText: "$89.00", merchant: "Oxxo", card: nil, in: context,
                                    rules: CategoryRules(), hidden: [], renames: MerchantRenames(), now: now) { handed = $0 }
         XCTAssertFalse(context.hasChanges, "Debe estar guardado antes de buscar la ubicación")
         let expense = try XCTUnwrap(handed)
@@ -445,14 +445,14 @@ final class ExpenseRecorderTests: XCTestCase {
         var renames = MerchantRenames()
         renames.rename("OXXO SUC 1234", to: "Oxxo de la esquina")
         try filed("Oxxo de la esquina", "Súper", daysAgo: 1)
-        try ExpenseRecorder.record(amountText: "$45.00", merchant: "OXXO SUC 1234", card: "BBVA",
+        _ = try ExpenseRecorder.record(amountText: "$45.00", merchant: "OXXO SUC 1234", card: "BBVA",
                                    in: context, rules: CategoryRules(), hidden: [], renames: renames, now: now)
         let expense = try XCTUnwrap(saved().last)
         XCTAssertEqual(expense.merchant, "Oxxo de la esquina")
         XCTAssertEqual(expense.shownName, "Oxxo de la esquina")
         XCTAssertEqual(expense.category, "Súper")
         // Another branch was never renamed.
-        try ExpenseRecorder.record(amountText: "$20.00", merchant: "OXXO SUC 5678", card: "BBVA",
+        _ = try ExpenseRecorder.record(amountText: "$20.00", merchant: "OXXO SUC 5678", card: "BBVA",
                                    in: context, rules: CategoryRules(), hidden: [], renames: renames,
                                    now: now.addingTimeInterval(3_600))
         XCTAssertEqual(try saved().last?.merchant, "OXXO SUC 5678")
@@ -463,11 +463,11 @@ final class ExpenseRecorderTests: XCTestCase {
     func testARenamedCardArrivesWithItsNewName() throws {
         var cards = MerchantRenames()
         cards.rename("BBVA", to: "Débito BBVA")
-        try ExpenseRecorder.record(amountText: "$45.00", merchant: "Oxxo", card: "bbva ", in: context,
+        _ = try ExpenseRecorder.record(amountText: "$45.00", merchant: "Oxxo", card: "bbva ", in: context,
                                    rules: CategoryRules(), hidden: [], renames: MerchantRenames(),
                                    cardRenames: cards, now: now)
         XCTAssertEqual(try saved().last?.card, "Débito BBVA")
-        try ExpenseRecorder.record(amountText: "$20.00", merchant: "Uber", card: "Nu", in: context,
+        _ = try ExpenseRecorder.record(amountText: "$20.00", merchant: "Uber", card: "Nu", in: context,
                                    rules: CategoryRules(), hidden: [], renames: MerchantRenames(),
                                    cardRenames: cards, now: now.addingTimeInterval(3_600))
         XCTAssertEqual(try saved().last?.card, "Nu")

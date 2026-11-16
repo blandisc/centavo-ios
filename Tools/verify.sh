@@ -24,11 +24,18 @@ if [[ "$mode" == all || "$mode" == app ]]; then
     grep -B3 "to type-check (limit" "$log" | grep -E "\.swift:[0-9]+" | sort -u
     rm -f "$log"; exit 1
   fi
-  rm -f "$log"
   # The tests too: they are compiled only when they run, so one that no longer builds was found
   # out by the CI (2026-11-11).
   xcodebuild build-for-testing -project Centavo.xcodeproj -scheme Centavo \
     -destination 'generic/platform=iOS Simulator' \
-    -derivedDataPath "${CENTAVO_DERIVED_DATA:-/tmp/dd-centavo}" CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet
+    -derivedDataPath "${CENTAVO_DERIVED_DATA:-/tmp/dd-centavo}" CODE_SIGNING_ALLOWED=NO -jobs 4 -quiet 2>&1 | tee -a "$log"
+  # Zero warnings in Xcode (owner, 2026-11-16: 83 had piled up). Only what was recompiled shows,
+  # so a new warning stops here the first time.
+  if grep -qE "\.swift:[0-9]+:[0-9]+: warning:" "$log"; then
+    echo "verify: Xcode da advertencias; corrígelas antes de subir:"
+    grep -E "\.swift:[0-9]+:[0-9]+: warning:" "$log" | sed "s|$PWD/||" | sort -u
+    rm -f "$log"; exit 1
+  fi
+  rm -f "$log"
 fi
 echo "verify: OK"

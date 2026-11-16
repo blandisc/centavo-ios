@@ -13,7 +13,7 @@ struct MoneyHomeView: View {
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     /// Where «Primera cuenta» is: 0 not started, 1…4 a step, 5 done (`MoneyStep`).
     @AppStorage(MoneyHomeView.stepKey) private var step = 0
-    static let stepKey = "dinero.recorrido"
+    nonisolated static let stepKey = "dinero.recorrido"
 
     @State private var adding = false
     @State private var editing: MoneyAccount?
@@ -206,15 +206,16 @@ struct MoneyHomeView: View {
             let delta = latest.map { $0.change(since: previous) } ?? 0
             // Against the opening balances it's «desde el inicio»: that month has no cut to name.
             let since = previous.id == start?.id ? "el inicio" : MoneyHead.monthName(previous.month)
-            parts.append(Text("\(delta >= 0 ? "+" : "−")\(formatMoney(delta.magnitude, isoCode: currency, label: currency))")
-                .foregroundStyle(delta >= 0 ? Theme.good : Theme.danger) + Text(" desde \(since)"))
+            let change = Text("\(delta >= 0 ? "+" : "−")\(formatMoney(delta.magnitude, isoCode: currency, label: currency))")
+                .foregroundStyle(delta >= 0 ? Theme.good : Theme.danger)
+            parts.append(Text("\(change) desde \(since)"))
         }
         if worth.receivable > 0 {
-            parts.append(Text(formatMoney(worth.receivable, isoCode: currency, label: currency)).foregroundStyle(Theme.ink)
-                         + Text(" te deben"))
+            let owed = Text(formatMoney(worth.receivable, isoCode: currency, label: currency)).foregroundStyle(Theme.ink)
+            parts.append(Text("\(owed) te deben"))
         }
         let line = parts.enumerated().reduce(Text("")) { sum, item in
-            item.offset == 0 ? item.element : sum + Text(" · ").foregroundStyle(Theme.brass) + item.element
+            item.offset == 0 ? item.element : Text("\(sum)\(Text(" · ").foregroundStyle(Theme.brass))\(item.element)")
         }
         return line
             .font(.ticket(.detail))

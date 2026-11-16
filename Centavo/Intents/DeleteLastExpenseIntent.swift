@@ -20,10 +20,11 @@ struct DeleteLastExpenseIntent: AppIntent {
             return .result(dialog: "No hay gastos que borrar.")
         }
         let described = describe(expense)
+        // Always asked (no `conditions`): a delete by voice is never taken for granted.
         try await requestConfirmation(
-            result: .result(dialog: "¿Borro \(described)?"),
-            confirmationActionName: .custom(acceptLabel: "Borrar", acceptAlternatives: ["Sí", "Bórralo"],
-                                            denyLabel: "Cancelar", denyAlternatives: ["No"], destructive: true)
+            actionName: .custom(acceptLabel: "Borrar", acceptAlternatives: ["Sí", "Bórralo"],
+                                denyLabel: "Cancelar", denyAlternatives: ["No"], destructive: true),
+            dialog: "¿Borro \(described)?"
         )
         context.delete(expense)
         // The context is the screens' too: a delete left pending would go out with the next save.

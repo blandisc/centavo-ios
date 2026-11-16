@@ -1138,8 +1138,11 @@ private struct PlaceMap: View {
     private func nameThePlace() async {
         guard expense.placeName == nil else { return }
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        guard let mark = try? await CLGeocoder().reverseGeocodeLocation(location).first else { return }
-        let parts = [mark.name, mark.subLocality, mark.locality].compactMap { $0 }
+        guard let request = MKReverseGeocodingRequest(location: location),
+              let place = try? await request.mapItems.first else { return }
+        // The short address is the street and neighborhood; the city follows when it isn't in it.
+        let parts = [place.address?.shortAddress ?? place.name, place.addressRepresentations?.cityName]
+            .compactMap { $0 }
         var seen: [String] = []
         for part in parts where !seen.contains(part) { seen.append(part) }
         guard !seen.isEmpty else { return }

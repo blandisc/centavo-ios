@@ -13,7 +13,7 @@ final class SecondAuditDataTests: XCTestCase {
     /// `logDue` also starts the plans in the app's settings: none from the simulator.
     private var savedPlans: [FixedPlan] = []
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         savedPlans = FixedPlan.saved
         FixedPlan.save([])
         let container = try ModelContainer(
@@ -23,7 +23,7 @@ final class SecondAuditDataTests: XCTestCase {
         context = ModelContext(container)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         FixedPlan.save(savedPlans)
     }
 
@@ -62,7 +62,7 @@ final class SecondAuditDataTests: XCTestCase {
     /// Review 5. Another shop a minute later through the other automation is another purchase,
     /// and an expense typed by hand never takes part.
     func testTheOtherAutomationNeedsALikeShop() throws {
-        try ExpenseRecorder.record(amountText: "$50.00", merchant: "OXXO ROBLE MTY", card: "Amex",
+        _ = try ExpenseRecorder.record(amountText: "$50.00", merchant: "OXXO ROBLE MTY", card: "Amex",
                                    in: context, primary: "MXN", rules: CategoryRules(), hidden: [],
                                    renames: MerchantRenames(), now: now)
         let other = try ExpenseRecorder.record(amountText: "MXN 50.00", merchant: "Starbucks", card: "American Express México",
@@ -105,7 +105,7 @@ final class SecondAuditDataTests: XCTestCase {
     /// 19. A merchant named by hand isn't turned back into what the notice said.
     func testTheRepairLeavesANameWrittenByHand() throws {
         let notice = "Ahora\nAmerican Express México\nMXN 1,060.00\nLa Docena"
-        try ExpenseRecorder.record(amountText: "MXN 1,060.00", merchant: "American Express México",
+        _ = try ExpenseRecorder.record(amountText: "MXN 1,060.00", merchant: "American Express México",
                                    card: nil, rawNotice: notice, in: context, renames: MerchantRenames(), now: now)
         let expense = try XCTUnwrap(all().first)
         expense.displayName = "Cena con Ana"

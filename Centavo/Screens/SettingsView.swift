@@ -28,7 +28,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TicketMenuPicker("Moneda principal", selection: Binding(get: { currency }, set: setCurrency),
+                    TicketMenuPicker("Moneda principal", selection: Binding(get: { currency }, set: { setCurrency($0) }),
                                      value: CurrencyPreference.flagged(currency)) {
                         CurrencyOptions(codes: CurrencyPreference.offered)
                     } label: {

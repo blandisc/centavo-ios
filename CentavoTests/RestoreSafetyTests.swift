@@ -16,7 +16,7 @@ final class RestoreSafetyTests: XCTestCase {
     private var folder: URL!
     private var documents: URL!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         let defaults = UserDefaults.standard
         saved = [:]
         for key in keys {
@@ -30,7 +30,7 @@ final class RestoreSafetyTests: XCTestCase {
         try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         let defaults = UserDefaults.standard
         for key in keys {
             if let value = saved[key] { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
@@ -314,12 +314,12 @@ final class RestoreSafetyTests: XCTestCase {
 final class StoreTroubleAppTests: XCTestCase {
     private var base: URL!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         base = FileManager.default.temporaryDirectory.appending(path: "base-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: base.appending(path: "datos"), withIntermediateDirectories: true)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         try? FileManager.default.removeItem(at: base)
     }
 

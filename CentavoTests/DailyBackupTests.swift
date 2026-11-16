@@ -231,7 +231,7 @@ final class DailyBackupAsideTests: XCTestCase {
     private var saved: [String: Any] = [:]
     private var folder: URL!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         let defaults = UserDefaults.standard
         saved = [:]
         for key in keys {
@@ -243,7 +243,7 @@ final class DailyBackupAsideTests: XCTestCase {
         try DailyBackup.choose(folder: folder)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         let defaults = UserDefaults.standard
         for key in keys {
             if let value = saved[key] { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }

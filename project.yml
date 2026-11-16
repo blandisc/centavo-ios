@@ -96,6 +96,9 @@ targets:
     sources: [CentavoUITests]
     dependencies:
       - target: Centavo
+      # Linked only so the build's App Intents step finds it: without it every build warns
+      # «Metadata extraction skipped, no AppIntents.framework dependency found» (2026-11-16).
+      - sdk: AppIntents.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo.uitests

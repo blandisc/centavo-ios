@@ -1006,9 +1006,9 @@ private struct KeepsTime: ViewModifier {
             }
             .task(id: now) {
                 // Captures from before «$» was saved as its currency, pinned once (2026-11-02).
-                try? ExpenseRecorder.pinBareDollars(in: context)
-                try? RecurringExpenses.logDue(in: context, now: now)
-                try? ExpenseRecorder.repairBankMerchants(in: context)
+                _ = try? ExpenseRecorder.pinBareDollars(in: context)
+                _ = try? RecurringExpenses.logDue(in: context, now: now)
+                _ = try? ExpenseRecorder.repairBankMerchants(in: context)
                 WidgetBridge.refresh()
             }
             .onReceive(NotificationCenter.default.publisher(

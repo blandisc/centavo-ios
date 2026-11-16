@@ -9,7 +9,7 @@ import XCTest
 final class GuideScreenshotsTests: XCTestCase {
     private var shortcuts: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["CENTAVO_GUIA"] != nil,
                           "Solo se corre a mano para rehacer las imágenes de la guía")
         continueAfterFailure = false
