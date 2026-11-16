@@ -415,7 +415,7 @@ struct ExpenseEditorView: View {
     private var currencyMenu: some View {
         Menu {
             Picker("Moneda", selection: $currency) {
-                ForEach(currencies, id: \.self) { Text($0).tag($0) }
+                CurrencyOptions(codes: currencies)
             }
         } label: {
             HStack(spacing: Theme.Space.xxs) {

@@ -109,7 +109,13 @@ final class FlowTests: XCTestCase {
     private func pickCurrency(_ app: XCUIApplication, _ code: String) {
         for _ in 0..<4 where !app.buttons["moneda"].isHittable { app.swipeDown() }
         require(app.buttons["moneda"], "No está la moneda junto al monto").tap()
-        require(app.buttons[code], "La moneda no ofrece \(code)").tap()
+        require(currencyOption(app, code), "La moneda no ofrece \(code)").tap()
+    }
+
+    /// A currency in a menu, written as «🇺🇸  Dólar de EE. UU.» (`CurrencyOption`).
+    private func currencyOption(_ app: XCUIApplication, _ code: String) -> XCUIElement {
+        let name = ["MXN": "Peso mexicano", "USD": "Dólar de EE. UU.", "EUR": "Euro"][code] ?? code
+        return app.buttons.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch
     }
 
     /// The row for a payment. The list is lazy, so a row off screen is not in the hierarchy
@@ -256,7 +262,7 @@ final class FlowTests: XCTestCase {
         require(app.buttons["Ajustes"], "No está «Ajustes» en «Más»").tap()
         let currency = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Moneda principal'")).firstMatch
         require(currency, "No está la moneda en «Ajustes»").tap()
-        require(app.buttons["Dólares (USD)"], "No ofrece dólares").tap()
+        require(currencyOption(app, "USD"), "No ofrece dólares").tap()
         // Asking about the budget closes «Ajustes» if it is still up.
         if app.buttons["ajustes-listo"].waitForExistence(timeout: 2) { app.buttons["ajustes-listo"].tap() }
         require(app.buttons["Así está bien"], "No preguntó por el presupuesto al cambiar de moneda").tap()

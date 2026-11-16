@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- **Las monedas se ven igual en toda la app,** con su bandera y su nombre: «🇲🇽  Peso mexicano», «🇺🇸  Dólar de EE. UU.», «🇪🇺  Euro».
 - **«Ver más» en las categorías** ya no las muestra de golpe: llegan una por una mientras se abre el espacio.
 - **«Anotar gasto» va abajo y la búsqueda arriba:** un círculo de vidrio, como la barra, con el «+» latón junto a las pestañas, donde estaba la lupa, y la lupa arriba a la derecha. La lista se desenfoca poco a poco al bajar hacia la barra y el «+».
 - **«Mi dinero» se ve como «Hoy»:** mismos márgenes, líneas punteadas y separaciones; nada brinca al cambiar de pestaña.

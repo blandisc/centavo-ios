@@ -243,7 +243,7 @@ final class ScreenshotTests: XCTestCase {
         sleep(1)
         // The currency is a menu next to the amount (2026-10-29).
         app.buttons["moneda"].tap()
-        app.buttons["USD"].tap()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Dólar de EE. UU.")).firstMatch.tap()
         snap("05b-nuevo-gasto-dolares")
     }
 

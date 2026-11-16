@@ -914,3 +914,9 @@ Pedido del dueño: «enrocar» el botón de añadir gasto y el de búsqueda en �
 Pedido del dueño: al tocar «Ver más» en las categorías «sale muy de repente». Grabado en el simulador: el espacio se abría vacío y las nueve aparecían de golpe, todas a la vez.
 - **Ahora llegan una por una** (`arriving`): cada categoría se desvanece hacia adentro y baja unos puntos a su lugar (`Theme.Space.chipArriveDrop`, `Theme.Size.chipArriveScale`), la primera cuando el espacio va a la mitad (`chipArriveStart`) y cada siguiente un poco después (`chipStagger`), así siguen al espacio que se abre y nunca se dibujan sobre lo que baja. Con «Reducir movimiento», solo el desvanecido.
 - **Al cerrar no cambia:** se van todas juntas y rápido (`revealOut`) y luego se cierra el espacio.
+
+## 2026-11-16 · Una sola forma de mostrar una moneda
+Pedido del dueño: estilizar donde se escoge la moneda. Cada selector la escribía distinto: en «Nuevo gasto» «MXN», en Ajustes «Pesos (MXN)», en «Mi dinero» «pesos».
+- **Bandera y nombre, en todos:** «🇲🇽  Peso mexicano», «🇺🇸  Dólar de EE. UU.», «🇪🇺  Euro»… en el menú (`CurrencyOptions`) y en el renglón cerrado (`CurrencyPreference.flagged`). El menú es el del sistema, con su palomita. No lleva subtítulo con la clave: el menú de un selector no lo muestra, y la pastilla junto al monto ya dice «MXN».
+- **«Dólar de EE. UU.»** y no «estadounidense», que se partía en dos renglones.
+- El lint (`currency-option`) falla si un selector de moneda arma sus propias opciones.

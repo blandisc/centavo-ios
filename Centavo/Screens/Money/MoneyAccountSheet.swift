@@ -124,13 +124,13 @@ struct MoneyAccountSheet: View {
                     TicketTextField("Institución", text: $institution, prompt: "Institución · opcional (Nu, BBVA…)",
                                     identifier: "cuenta-institucion")
                     if isNew {
-                        TicketMenuPicker("Moneda", selection: $currency, value: CurrencyPreference.name(currency)) {
-                            ForEach(currencies, id: \.self) { Text(CurrencyPreference.name($0)).tag($0) }
+                        TicketMenuPicker("Moneda", selection: $currency, value: CurrencyPreference.flagged(currency)) {
+                            CurrencyOptions(codes: currencies)
                         } label: {
                             Text("Moneda").font(.ticket(.body)).foregroundStyle(Theme.ink)
                         }
                     } else if let account {
-                        LabeledContent("Moneda") { Text(CurrencyPreference.name(account.currency)).foregroundStyle(Theme.muted) }
+                        LabeledContent("Moneda") { Text(CurrencyPreference.flagged(account.currency)).foregroundStyle(Theme.muted) }
                             .font(.ticket(.body))
                     }
                 } header: {

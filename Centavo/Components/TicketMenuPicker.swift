@@ -84,8 +84,8 @@ extension TicketMenuPicker where Label == SectionLabel {
             TicketMenuPicker("Tipo", selection: $kind, value: kind) {
                 ForEach(["Gasto", "Devolución", "No cuenta"], id: \.self) { Text($0).tag($0) }
             }
-            TicketMenuPicker("Moneda principal", selection: $currency, value: "Pesos (\(currency))") {
-                ForEach(["MXN", "USD"], id: \.self) { Text($0).tag($0) }
+            TicketMenuPicker("Moneda principal", selection: $currency, value: CurrencyPreference.flagged(currency)) {
+                CurrencyOptions(codes: ["MXN", "USD"])
             } label: {
                 IconRow("Moneda principal", systemImage: "dollarsign.circle")
             }

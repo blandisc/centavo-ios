@@ -37,18 +37,42 @@ enum CurrencyPreference {
         }
     }
 
-    /// "Pesos (MXN)".
-    static func name(_ code: String) -> String {
+    /// "🇲🇽  Peso mexicano": how a currency is named wherever one is chosen or shown in a form
+    /// (`CurrencyOption` in its menu, and the menu's row). The one way to write it.
+    static func flagged(_ code: String) -> String {
+        let flag = flag(code)
+        let name = singular(code)
+        return flag.isEmpty ? name : "\(flag)  \(name)"
+    }
+
+    static func flag(_ code: String) -> String {
         switch code {
-        case "MXN": "Pesos (MXN)"
-        case "USD": "Dólares (USD)"
-        case "EUR": "Euros (EUR)"
-        // The rest of «Mi dinero»'s currencies (`MoneyCurrency.offered`).
-        case "GBP": "Libras (GBP)"
-        case "CAD": "Dólares canadienses (CAD)"
-        case "JPY": "Yenes (JPY)"
-        case "CHF": "Francos suizos (CHF)"
-        default: code
+        case "MXN": "🇲🇽"
+        case "USD": "🇺🇸"
+        case "EUR": "🇪🇺"
+        case "GBP": "🇬🇧"
+        case "CAD": "🇨🇦"
+        case "JPY": "🇯🇵"
+        case "CHF": "🇨🇭"
+        default: ""
         }
     }
+
+    /// "Peso mexicano".
+    static func singular(_ code: String) -> String {
+        switch code {
+        case "MXN": "Peso mexicano"
+        case "USD": "Dólar de EE. UU."
+        case "EUR": "Euro"
+        case "GBP": "Libra esterlina"
+        case "CAD": "Dólar canadiense"
+        case "JPY": "Yen japonés"
+        case "CHF": "Franco suizo"
+        default: Locale(identifier: "es_MX").localizedString(forCurrencyCode: code)?.capitalizedFirst ?? code
+        }
+    }
+}
+
+private extension String {
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }

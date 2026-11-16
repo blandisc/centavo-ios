@@ -259,6 +259,13 @@ def lint_file(path: Path):
             found.append(("field-separator",
                           "un campo de componente sin .anchorsRowSeparator(): la línea de su "
                           "renglón empezaría en otro texto y se vería cortada"))
+        # Every currency menu lists its options with `CurrencyOptions` (flag and name), the
+        # same in every screen; before, one said «MXN», another «Pesos (MXN)», another «pesos».
+        if re.search(r"(?:Ticket)?(?:Menu)?Picker\(\s*\"Moneda", raw) \
+                and not any("CurrencyOptions" in line for line in lines[n - 1:n + 4]):
+            found.append(("currency-option",
+                          "un selector de moneda sin CurrencyOptions: cada moneda se muestra igual "
+                          "en toda la app (bandera y nombre)"))
         if not found:
             continue
         rel = path.relative_to(ROOT)

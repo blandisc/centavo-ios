@@ -258,6 +258,7 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 |---|---|
 | `.padding(16)`, `spacing: 12`, `.frame(minHeight: 44)` | `Theme.Space.l`, `Theme.Space.m`, `Theme.Size.tapTarget` |
 | Un campo de `Components/` sin `.anchorsRowSeparator()` (la línea del renglón empieza en el siguiente texto y se ve cortada) | Todo campo de componente lleva `.anchorsRowSeparator()` |
+| Un selector de moneda con sus propias opciones («MXN», «Pesos (MXN)», «pesos») | `CurrencyOptions(codes:)` en el menú y `CurrencyPreference.flagged(_:)` en su renglón: «🇲🇽  Peso mexicano» en toda la app |
 | `.buttonStyle(.glass)` dentro de una pantalla | `.ticketGlass()`, solo para lo que flota junto a las barras del sistema (el «+» junto a las pestañas) |
 | `.cornerRadius(8)`, `RoundedRectangle(cornerRadius: 8)` | `RoundedRectangle(cornerRadius: Theme.Radius.control)` |
 | `.font(.system(size: 15))`, `.font(.ticket(15))`, `.font(.body)` en texto | `.font(.ticket(.body))` |

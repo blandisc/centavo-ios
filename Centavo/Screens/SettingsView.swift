@@ -29,10 +29,8 @@ struct SettingsView: View {
             Form {
                 Section {
                     TicketMenuPicker("Moneda principal", selection: Binding(get: { currency }, set: setCurrency),
-                                     value: CurrencyPreference.name(currency)) {
-                        ForEach(CurrencyPreference.offered, id: \.self) { code in
-                            Text(CurrencyPreference.name(code)).tag(code)
-                        }
+                                     value: CurrencyPreference.flagged(currency)) {
+                        CurrencyOptions(codes: CurrencyPreference.offered)
                     } label: {
                         IconRow("Moneda principal", systemImage: "dollarsign.circle")
                     }
