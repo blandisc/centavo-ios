@@ -79,6 +79,21 @@ extension Theme.Motion {
     static let revealIn: Animation = .easeOut(duration: 0.22).delay(0.2)
     static let revealOut: Animation = .easeIn(duration: revealOutSeconds)
     static let revealOutSeconds: Double = 0.12
+    /// The categories «Ver más» brings arrive one by one (`arriving`): each a soft settle, the
+    /// first once the room is half open, the next a beat later, the last as it finishes opening.
+    static let chipArrive: Animation = .smooth(duration: 0.34)
+    static let chipArriveStart: Double = 0.14
+    static let chipStagger: Double = 0.035
+}
+
+extension Theme.Size {
+    /// A category arriving starts a touch smaller and grows into its place.
+    static let chipArriveScale: CGFloat = 0.94
+}
+
+extension Theme.Space {
+    /// A category arriving starts this far above its place and settles down into it.
+    static let chipArriveDrop: CGFloat = -8
 }
 
 extension AnyTransition {

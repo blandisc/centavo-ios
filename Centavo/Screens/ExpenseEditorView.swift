@@ -711,9 +711,11 @@ struct ExpenseEditorView: View {
     }
 
     private func moreCategories(_ names: [String]) -> some View {
-        ArrivingRow(leaving: fadingCategories) {
+        ArrivingRow(leaving: fadingCategories) { shown in
             LazyVGrid(columns: categoryGridColumns, spacing: Theme.Space.s) {
-                ForEach(names, id: \.self) { categoryButton($0) }
+                ForEach(Array(names.enumerated()), id: \.element) { index, name in
+                    categoryButton(name).arriving(shown: shown, order: index)
+                }
             }
         }
     }
@@ -1161,19 +1163,43 @@ private extension View {
     }
 }
 
-/// A row the list slides in: what it holds shows once the room is there (`Theme.Motion.revealIn`),
-/// so it never draws over the rows still moving down, and hides while `leaving`.
+/// A row the list slides in. What it holds is told when to show (`shown`): the categories arrive
+/// one by one while the room opens (`arriving`), and leave together, quickly, before it closes.
 private struct ArrivingRow<Content: View>: View {
     var leaving: Bool
-    @ViewBuilder var content: Content
+    @ViewBuilder var content: (Bool) -> Content
     @State private var arrived = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        content(arrived && !leaving)
+            .onAppear { arrived = true }
+    }
+}
+
+private extension View {
+    /// One of the categories «Ver más» brings: it fades in and settles down a few points into its
+    /// place, a beat after the one before it, so the rest unfold as a wave that follows the room
+    /// opening instead of all popping in at once (owner, 2026-11-15: «sale muy de repente»).
+    /// Leaving, it takes the fold's own quick fade (`revealOut`), all together.
+    func arriving(shown: Bool, order: Int) -> some View {
+        modifier(Arriving(shown: shown, order: order))
+    }
+}
+
+private struct Arriving: ViewModifier {
+    let shown: Bool
+    let order: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
         content
-            .opacity(arrived && !leaving ? Theme.Opacity.visible : Theme.Opacity.hidden)
-            .onAppear {
-                withAnimation(Theme.Motion.animation(Theme.Motion.revealIn, reduceMotion: reduceMotion)) { arrived = true }
+            .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
+            .scaleEffect(shown || reduceMotion ? Theme.Size.barFullScale : Theme.Size.chipArriveScale)
+            .offset(y: shown || reduceMotion ? Theme.Space.none : Theme.Space.chipArriveDrop)
+            .transaction { transaction in
+                guard shown else { return }
+                transaction.animation = reduceMotion ? Theme.Motion.revealIn
+                    : Theme.Motion.chipArrive.delay(Theme.Motion.chipArriveStart + Double(order) * Theme.Motion.chipStagger)
             }
     }
 }
