@@ -85,7 +85,7 @@ struct MoneyHomeView: View {
                 MoneyIncomeSheet(income: $0, mainCurrency: latest?.mainCurrency ?? main).moneyPrivacyCover()
             }
 
-            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) { // ds-allow: el motivo va de título; si se une a .problemAlert queda en la lista de decisiones (2026-11-16)
                 Button("Aceptar", role: .cancel) {}
             } message: { Text("Intenta de nuevo.") }
             .onMoneyCovered { problem = nil; choosingMonth = false }
@@ -113,10 +113,7 @@ struct MoneyHomeView: View {
                 }
                 .padding(Theme.Space.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.ticket)
-                        .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
-                }
+                .ticketOutline()
                 Button { step = MoneyStep.have.rawValue } label: {
                     PrimaryButtonLabel("Agregar tu primera cuenta", systemImage: "plus")
                 }
@@ -172,15 +169,8 @@ struct MoneyHomeView: View {
     /// Whole pesos, like «Hoy puedes gastar»: the rows below keep the cents.
     private func heroFigure(_ worth: NetWorth, currency: String) -> some View {
         Text(worth.total.formatted(currencyStyle(currency).precision(.fractionLength(0))))
-            .font(.ticket(.hero))
-            .tracking(Theme.Tracking.hero)
+            .heroFigure()
             .foregroundStyle(Theme.brass)
-            // The same optical fit as the figure of «Hoy»: the «$» carries its own air on the
-            // left, and the figure sits as close to its caption.
-            .padding(.leading, Theme.Space.outset)
-            .padding(.vertical, Theme.Space.heroTrim)
-            .lineLimit(1)
-            .minimumScaleFactor(Theme.MinimumScale.figure)
             .accessibilityIdentifier("dinero-patrimonio")
     }
 
@@ -284,9 +274,7 @@ struct MoneyHomeView: View {
     private func archivedRow(_ account: MoneyAccount) -> some View {
         AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.none) {
             Text(account.name)
-                .font(.ticket(.bodyMedium))
-                .tracking(Theme.Tracking.name)
-                .textCase(.uppercase)
+                .rowName()
                 .foregroundStyle(Theme.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button("Regresar") { unarchive(account) }
@@ -391,9 +379,7 @@ struct MoneyAccountRow: View {
         AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.xxs, alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                 Text(account.name)
-                    .font(.ticket(.bodyMedium))
-                    .tracking(Theme.Tracking.name)
-                    .textCase(.uppercase)
+                    .rowName()
                     .foregroundStyle(Theme.ink)
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 if !detail.isEmpty {
@@ -424,9 +410,7 @@ struct MoneyIncomeRow: View {
         AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.xxs, alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                 Text(income.name)
-                    .font(.ticket(.bodyMedium))
-                    .tracking(Theme.Tracking.name)
-                    .textCase(.uppercase)
+                    .rowName()
                     .foregroundStyle(Theme.ink)
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 Text([income.institution, "al mes"].compactMap { $0 }.joined(separator: " · "))

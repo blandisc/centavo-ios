@@ -57,7 +57,6 @@ enum Theme {
     /// «Otras», everything past the four: grey, so it never reads as a category of its own.
     static var categoryRest: Color { Color(hex: 0x6E6A62) }
 
-    static let horizontalPadding: CGFloat = 24
 
     /// The setup guide draws Apple's Shortcuts app (dark mode) so each step looks like the
     /// screen the person will see there. Only for those drawings, never for Centavo itself.

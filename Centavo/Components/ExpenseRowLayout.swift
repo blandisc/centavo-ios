@@ -18,9 +18,7 @@ struct ExpenseRowLayout<Meta: View, Amount: View>: View {
         Text(name)
             .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
             .truncationMode(.tail)
-            .font(.ticket(.bodyMedium))
-            .tracking(Theme.Tracking.name)
-            .textCase(.uppercase)
+            .rowName()
             .foregroundStyle(Theme.ink)
             .multilineTextAlignment(.leading)
     }

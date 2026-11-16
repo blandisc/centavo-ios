@@ -304,9 +304,7 @@ struct ExpenseEditorView: View {
                 }
             }
             .saveBar(saveSummary, enabled: canSave, action: save)
-            .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(saveProblem ?? "") }
+            .problemAlert(problem: $saveProblem)
             .alert("Dilo en una frase", isPresented: $askingSentence) {
                 TextField("230 de tacos ayer, en efectivo", text: $sentence)
                     .accessibilityIdentifier("frase")

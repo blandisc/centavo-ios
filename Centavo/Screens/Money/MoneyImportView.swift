@@ -78,9 +78,7 @@ struct MoneyImportView: View {
             guard let text = Self.read(url) else { problem = "No se pudo abrir ese archivo."; return }
             load(text)
         }
-        .alert("No se pudo importar", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-            Button("Aceptar", role: .cancel) {}
-        } message: { Text(problem ?? "") }
+        .problemAlert("No se pudo importar", problem: $problem)
         .alert("¿Pegar otra respuesta?", isPresented: $confirmingRestart) {
             Button("Cancelar", role: .cancel) {}
             Button("Borrar y pegar otra", role: .destructive, action: restart)
@@ -208,7 +206,7 @@ struct MoneyImportView: View {
             }
             .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+            .ticketPanel()
         }
         if !currencies.isEmpty { rates }
         ForEach(MoneyImportRow.Place.allCases, id: \.self) { place in
@@ -217,10 +215,7 @@ struct MoneyImportView: View {
         // A row can be of any kind: «un renglón», not «otra» (2026-11-11).
         Button(action: addRow) {
             LinkActionLabel("Agregar un renglón", systemImage: "plus")
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.card)
-                        .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
-                }
+                .ticketOutline()
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("importar-agregar")
@@ -264,7 +259,7 @@ struct MoneyImportView: View {
                     }
                 }
                 .padding(Theme.Space.m)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .ticketPanel()
             }
         }
     }

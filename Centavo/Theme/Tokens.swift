@@ -49,7 +49,7 @@ extension Theme {
         /// 6 pt. Exception to the rhythm: icon to name inside a mosaic tile.
         static let tileItem: CGFloat = 6
         /// Left and right margin of every screen.
-        static let screen: CGFloat = Theme.horizontalPadding
+        static let screen: CGFloat = 24
     }
 
     /// Corner radii. Rhythm: one small radius (4) for bars and days, one radius (12) for every
@@ -78,8 +78,6 @@ extension Theme {
     enum Size {
         /// 44 pt: Apple's minimum tap target. Every button and tappable row is at least this.
         static let tapTarget: CGFloat = 44
-        /// 28 pt: a row that is not tapped on its own (a status line inside a card).
-        static let compactRow: CGFloat = 28
         /// 34 pt: label height inside a capsule button (the capsule adds the rest to 44).
         static let capsuleLabel: CGFloat = 34
         /// 36 pt: label height inside the full-width destructive button.
@@ -134,8 +132,6 @@ extension Theme {
 
     /// Line widths.
     enum Stroke {
-        /// 0.5 pt. Outline of a legend swatch.
-        static let fine: CGFloat = 0.5
         /// 1 pt. Hairlines, perforations, a small blank ticket.
         static let hairline: CGFloat = 1
         /// 1.2 pt. The even-pace mark on the month bar.
@@ -165,8 +161,6 @@ extension Theme {
         static let visible: Double = 1
         /// 0.25: the brass rule after a day's name.
         static let rule: Double = 0.25
-        /// 0.35: the brass glow of a pulsing tile.
-        static let glow: Double = 0.35
         /// 0.4: what is not selected while something else is.
         static let unselected: Double = 0.4
         /// 0.55 / 0.8: the even-pace mark when behind / ahead of it.

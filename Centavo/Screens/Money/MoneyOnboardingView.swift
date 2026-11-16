@@ -72,9 +72,7 @@ struct MoneyOnboardingView: View {
                     }
                 }
             }
-            .alert("No se guardó la cuenta", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(problem ?? "") }
+            .problemAlert("No se guardó la cuenta", problem: $problem)
             .navigationDestination(isPresented: $importing) {
                 MoneyImportView(mainCurrency: mainCurrency) { importing = false }
             }
@@ -150,10 +148,7 @@ struct MoneyOnboardingView: View {
             Button { startNew(chosen) } label: {
                 LinkActionLabel(chosen.addTitle, systemImage: "plus")
                     .padding(.horizontal, Theme.Space.sm)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Radius.card)
-                            .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
-                    }
+                    .ticketOutline()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("recorrido-agregar")
@@ -178,10 +173,7 @@ struct MoneyOnboardingView: View {
                     .accessibilityHidden(true)
             }
             .padding(Theme.Space.sm)
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.card)
-                    .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
-            }
+            .ticketOutline()
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -222,7 +214,7 @@ struct MoneyOnboardingView: View {
             }
         }
         .padding(Theme.Space.l)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.ticket))
+        .ticketPanel()
         if !incomes.isEmpty { incomeLine }
         Text("Al terminar el mes, toca «Hacer corte» en «Mi dinero» y verás cuánto ahorraste.")
             .font(.ticket(.callout))
@@ -255,7 +247,7 @@ struct MoneyOnboardingView: View {
             }
         }
         .padding(Theme.Space.l)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.ticket))
+        .ticketPanel()
         .accessibilityElement(children: .combine)
     }
 
@@ -713,9 +705,7 @@ struct MoneyRow<Editor: View>: View {
                         .frame(width: Theme.Size.moneySwatch, height: Theme.Size.moneySwatch)
                     VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                         Text(title)
-                            .font(.ticket(.bodyMedium))
-                            .tracking(Theme.Tracking.name)
-                            .textCase(.uppercase)
+                            .rowName()
                             .foregroundStyle(Theme.ink)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
@@ -758,7 +748,7 @@ struct MoneyRow<Editor: View>: View {
                     .transition(.unfold)
             }
         }
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .ticketPanel()
         .overlay {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
                 .strokeBorder(isOpen ? Theme.brassMid : .clear, lineWidth: Theme.Stroke.hairline)
@@ -911,36 +901,6 @@ struct MoneyRowEditor: View {
 
 // MARK: - Currency by its symbol
 
-enum MoneyCurrency {
-    /// In the order people here reach for them.
-    static let offered = ["MXN", "USD", "EUR", "GBP", "CAD", "JPY", "CHF"]
-
-    static func symbol(_ code: String) -> String {
-        switch code {
-        case "MXN": "$"
-        case "USD": "US$"
-        case "EUR": "€"
-        case "GBP": "£"
-        case "CAD": "CA$"
-        case "JPY": "¥"
-        default: code
-        }
-    }
-
-    static func name(_ code: String) -> String {
-        switch code {
-        case "MXN": "pesos"
-        case "USD": "dólares"
-        case "EUR": "euros"
-        case "GBP": "libras"
-        case "CAD": "dól. can."
-        case "JPY": "yenes"
-        case "CHF": "francos"
-        default: code
-        }
-    }
-}
-
 /// The currencies as tiles with their symbol, sliding sideways; the edge fades to say there's more.
 struct MoneyCurrencyCarousel: View {
     @Binding var selection: String
@@ -950,27 +910,10 @@ struct MoneyCurrencyCarousel: View {
             HStack(spacing: Theme.Space.xs) {
                 ForEach(MoneyCurrency.offered, id: \.self) { code in
                     Button { selection = code } label: {
-                        VStack(spacing: Theme.Space.xxxs) {
-                            Text(MoneyCurrency.symbol(code))
-                                .font(.ticket(.bodyStrong))
-                                .foregroundStyle(selection == code ? Theme.brass : Theme.ink)
-                            Text(MoneyCurrency.name(code))
-                                .font(.ticket(.micro))
-                                .textCase(.uppercase)
-                                .foregroundStyle(Theme.muted)
-                        }
-                        .padding(.horizontal, Theme.Space.xs)
-                        .frame(minWidth: Theme.Size.moneyCurrencyTile, minHeight: Theme.Size.tallRow)
-                        .background(selection == code ? Theme.brass.opacity(Theme.Opacity.moneyCurrency) : .clear,
-                                    in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: Theme.Radius.control)
-                                .strokeBorder(selection == code ? Theme.brass : Theme.outline, lineWidth: Theme.Stroke.hairline)
-                        }
+                        CurrencyTile(code: code, selected: selection == code)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(MoneyCurrency.name(code))
-                    .accessibilityAddTraits(selection == code ? .isSelected : [])
+                    .currencyTileAccessibility(code: code, selected: selection == code)
                     .accessibilityIdentifier("moneda-\(code)")
                 }
             }

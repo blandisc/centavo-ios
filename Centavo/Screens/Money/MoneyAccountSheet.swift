@@ -200,7 +200,7 @@ struct MoneyAccountSheet: View {
                                note: "Deja de sumar en tu patrimonio y de salir en los próximos cortes; los cortes pasados la conservan. La puedes regresar desde «Archivadas».",
                                verb: "Archivar")
             }, onConfirm: archive)
-            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) { // ds-allow: el motivo va de título; si se une a .problemAlert queda en la lista de decisiones (2026-11-16)
                 Button("Aceptar", role: .cancel) {}
             } message: { Text("Intenta otra vez.") }
             .onAppear(perform: load)

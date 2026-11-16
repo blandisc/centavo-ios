@@ -934,9 +934,7 @@ private struct SaveProblemAlert: ViewModifier {
     @Binding var problem: String?
 
     func body(content: Content) -> some View {
-        content.alert("No se guardó", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-            Button("Aceptar", role: .cancel) {}
-        } message: { Text(problem ?? "") }
+        content.problemAlert(problem: $problem)
     }
 }
 
@@ -1405,15 +1403,8 @@ private struct HeroTotal: View {
                 Text(countedText)
                     .accessibilityIdentifier("hoy-puedes-gastar")
                     .accessibilityLabel((isOverToday ? "Hoy te pasaste " : "Hoy puedes gastar ") + allowanceText)
-                    .font(.ticket(.hero))
-                    .tracking(Theme.Tracking.hero)
+                    .heroFigure()
                     .foregroundStyle(isOverToday ? Theme.danger : Theme.brass)
-                    // The «$» carries its own air on the left (3 pt at this size, measured): pulled
-                    // back so the figure lines up with «Hoy puedes gastar» above it.
-                    .padding(.leading, Theme.Space.outset)
-                    .padding(.vertical, Theme.Space.heroTrim)
-                    .lineLimit(1)
-                    .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText(value: counted))
                     .onAppear {
                         // Starts from where it last counted to: a rebuilt row is already there.
@@ -1434,25 +1425,16 @@ private struct HeroTotal: View {
                     .ticketCaption(strong: true)
                 Text(wholeText(overage))
                     .accessibilityIdentifier("te-pasaste")
-                    .font(.ticket(.hero))
-                    .tracking(Theme.Tracking.hero)
+                    .heroFigure()
                     .foregroundStyle(Theme.danger)
-                    .padding(.leading, Theme.Space.outset)
-                    .padding(.vertical, Theme.Space.heroTrim)
-                    .lineLimit(1)
-                    .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText())
                     .animation(reduceMotion ? nil : Theme.Motion.quick, value: overage)
             } else {
                 Text(verbatim: caption).ticketCaption(strong: true)
                 Text(totalText)
                     .accessibilityIdentifier("total-mes")
-                    .font(.ticket(.hero))
-                    .tracking(Theme.Tracking.hero)
+                    .heroFigure()
                     .foregroundStyle(Theme.ink)
-                    .padding(.vertical, Theme.Space.heroTrim)
-                    .lineLimit(1)
-                    .minimumScaleFactor(Theme.MinimumScale.figure)
                     .contentTransition(.numericText())
                     .animation(reduceMotion ? nil : Theme.Motion.quick, value: summary.primary.amount)
             }
@@ -1485,13 +1467,8 @@ private struct FixedOverBudgetHero: View {
             Text(text)
                 .accessibilityIdentifier("fijos-pasan")
                 .accessibilityLabel("Tus fijos pasan el presupuesto por " + text)
-                .font(.ticket(.hero))
-                .tracking(Theme.Tracking.hero)
+                .heroFigure()
                 .foregroundStyle(Theme.brass)
-                .padding(.leading, Theme.Space.outset)
-                .padding(.vertical, Theme.Space.heroTrim)
-                .lineLimit(1)
-                .minimumScaleFactor(Theme.MinimumScale.figure)
         } else {
             Text("Hoy puedes gastar")
                 .accessibilityHidden(true)
@@ -1499,13 +1476,8 @@ private struct FixedOverBudgetHero: View {
             Text(text)
                 .accessibilityIdentifier("fijos-pasan")
                 .accessibilityLabel("Tus fijos se llevan todo el presupuesto")
-                .font(.ticket(.hero))
-                .tracking(Theme.Tracking.hero)
+                .heroFigure()
                 .foregroundStyle(Theme.brass)
-                .padding(.leading, Theme.Space.outset)
-                .padding(.vertical, Theme.Space.heroTrim)
-                .lineLimit(1)
-                .minimumScaleFactor(Theme.MinimumScale.figure)
             Text("Tus fijos se llevan todo el presupuesto")
                 .font(.ticket(.detail))
                 .foregroundStyle(Theme.muted)
@@ -1581,9 +1553,7 @@ private struct EmptyTicket: View {
                 .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.dotted))
                 .frame(width: Theme.Size.rowTile, height: Theme.Size.rowTile)
             Text("Tu primer gasto")
-                .font(.ticket(.bodyMedium))
-                .tracking(Theme.Tracking.name)
-                .textCase(.uppercase)
+                .rowName()
             Spacer(minLength: Theme.Space.s)
             Text("$0.00").font(.ticket(.body)).monospacedDigit()
         }

@@ -121,9 +121,7 @@ private struct TicketQuestionSheet: View {
                     }
                     if let name = question.name {
                         Text(question.quotesName ? "«\(name)»" : name)
-                            .font(.ticket(.bodyMedium))
-                            .tracking(Theme.Tracking.name)
-                            .textCase(.uppercase)
+                            .rowName()
                             .foregroundStyle(Theme.ink)
                             .lineLimit(2)
                     }

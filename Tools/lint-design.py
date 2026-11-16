@@ -83,6 +83,16 @@ RULES = [
      False),
     ("scaled-metric-number", re.compile(r"@ScaledMetric[^=]*=\s*-?\d"),
      "@ScaledMetric con número: usa un valor de Theme.Size como base", False),
+    # One way to draw each shared piece (2026-11-16, design-system sweep): before, each was
+    # copied by hand in two to eight screens and the copies drifted.
+    ("hero-figure", re.compile(r"\.ticket\(\s*\.hero\s*\)"),
+     "cifra grande a mano: usa .heroFigure() (tamaño, aire del «$», recorte y encogido)", False),
+    ("ticket-outline", re.compile(r"dash:\s*Theme\.Dash\.ticket\b"),
+     "borde punteado de ticket a mano: usa .ticketOutline()", False),
+    ("ticket-panel", re.compile(r"background\(\s*Theme\.surface\s*,\s*in:"),
+     "panel a mano: usa .ticketPanel() (o .selectableCard si se elige)", False),
+    ("problem-alert", re.compile(r"\.alert\(.*isPresented:\s*Binding\(get:"),
+     "aviso de error a mano: usa .problemAlert(problem:) («No se guardó» y un «Aceptar»)", False),
 ]
 
 # Files outside Theme/ allowed to use a rule, and why.
@@ -90,6 +100,9 @@ RULE_EXEMPT = {
     "color-scheme": {APP / "App" / "CentavoApp.swift", APP / "Components" / "Preview.swift"},
     "hand-made-prominent": {APP / "Components" / "Buttons.swift"},
     "system-bordered": {APP / "Components" / "Buttons.swift"},
+    "ticket-outline": {APP / "Components" / "TicketShapes.swift"},
+    "ticket-panel": {APP / "Components" / "TicketShapes.swift"},
+    "problem-alert": {APP / "Components" / "ProblemAlert.swift"},
 }
 
 ALLOW_RE = re.compile(r"//\s*ds-allow\b:?\s*(.*)$")
@@ -266,6 +279,11 @@ def lint_file(path: Path):
             found.append(("currency-option",
                           "un selector de moneda sin CurrencyOptions: cada moneda se muestra igual "
                           "en toda la app (bandera y nombre)"))
+        # A name in capitals is `.rowName()`: the same weight, tracking and case everywhere.
+        if re.search(r"\.tracking\(\s*Theme\.Tracking\.name\s*\)", code) \
+                and any(".textCase(.uppercase)" in c for c in codes[max(0, n - 3):n + 2]):
+            found.append(("row-name",
+                          "nombre en mayúsculas a mano: usa .rowName()"))
         if not found:
             continue
         rel = path.relative_to(ROOT)

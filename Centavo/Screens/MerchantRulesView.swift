@@ -364,11 +364,7 @@ struct MerchantRuleSheet: View {
                 }
             }
             .saveBar(summary, enabled: hasChanges, identifier: "recuerdo-guardar", action: save)
-            .alert("No se guardó", isPresented: $saveFailed) {
-                Button("Aceptar", role: .cancel) {}
-            } message: {
-                Text("Al día no pudo cambiar tus gastos; nada cambió. Intenta otra vez.")
-            }
+            .problemAlert(isPresented: $saveFailed, message: "Al día no pudo cambiar tus gastos; nada cambió. Intenta otra vez.")
             .confirmsRemoval(isPresented: $confirmingForget, question: { rule.forgetQuestion }) {
                 UserCatalog.removeRule(rule)
                 dismiss()

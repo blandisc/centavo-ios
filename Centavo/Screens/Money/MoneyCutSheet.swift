@@ -162,7 +162,7 @@ struct MoneyCutSheet: View {
             } message: {
                 Text("Ese mes ya tiene un corte, hecho el \(replacing?.formatted(.dateTime.day().month(.wide).locale(MoneyHead.mexico)) ?? ""). Si lo reemplazas, cuenta este y el otro se quita.")
             }
-            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) { // ds-allow: el motivo va de título; si se une a .problemAlert queda en la lista de decisiones (2026-11-16)
                 Button("Aceptar", role: .cancel) {}
             } message: { Text("Intenta otra vez.") }
             .sheet(isPresented: $addingIncome) { MoneyIncomeSheet(income: nil, mainCurrency: draft.mainCurrency).moneyPrivacyCover() }
@@ -243,9 +243,7 @@ struct MoneyCutSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             AdaptiveStack(spacing: Theme.Space.s, stackedSpacing: Theme.Space.xxs, alignment: .firstTextBaseline) {
                 Text(account.name)
-                    .font(.ticket(.bodyMedium))
-                    .tracking(Theme.Tracking.name)
-                    .textCase(.uppercase)
+                    .rowName()
                 balanceField(entry, account: account)
             }
             AdaptiveStack(spacing: Theme.Space.s, stackedSpacing: Theme.Space.none, alignment: .top) {

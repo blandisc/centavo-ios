@@ -920,3 +920,11 @@ Pedido del dueño: estilizar donde se escoge la moneda. Cada selector la escrib�
 - **Bandera y nombre, en todos:** «🇲🇽  Peso mexicano», «🇺🇸  Dólar de EE. UU.», «🇪🇺  Euro»… en el menú (`CurrencyOptions`) y en el renglón cerrado (`CurrencyPreference.flagged`). El menú es el del sistema, con su palomita. No lleva subtítulo con la clave: el menú de un selector no lo muestra, y la pastilla junto al monto ya dice «MXN».
 - **«Dólar de EE. UU.»** y no «estadounidense», que se partía en dos renglones.
 - El lint (`currency-option`) falla si un selector de moneda arma sus propias opciones.
+
+## 2026-11-16 · Pasada al sistema de diseño: una pieza por cosa
+Pedido del dueño: «que tengamos un sistema de diseño que sea respetado, que no tengamos diferentes componentes hechos a mano… que todo esté tokenizado». Una revisión encontró 43 lugares; aquí se unió lo que se veía igual y estaba copiado, sin cambiar nada a la vista:
+- **La cifra grande** (6 copias) es `.heroFigure()`. Única diferencia visible: el total del mes ya se alinea con su título como las demás.
+- **El ticket punteado** (5 copias) es `.ticketOutline()`; **el panel** (5) es `.ticketPanel()`; **el nombre en mayúsculas** (9) es `.rowName()`; **«No se guardó»** (8) es `.problemAlert`; **la ficha de moneda** de la bienvenida y de «Mi dinero» es `CurrencyTile`.
+- **Tokens sin uso** fuera (`compactRow`, `Opacity.glow`, `Stroke.fine`, `Theme.horizontalPadding`).
+- El lint falla con cualquier copia nueva (`hero-figure`, `ticket-outline`, `ticket-panel`, `row-name`, `problem-alert`).
+- **Pendiente del dueño** lo que obliga a escoger entre estilos distintos (botones de agregar, estados vacíos, avisos, flechas, tarjetas elegidas, «Cancelar» en dos grosores, los avisos de «Mi dinero» que ponen el motivo de título, campos de texto sueltos). Las listas de monedas siguen siendo dos a propósito: tres para gastos, siete para «Mi dinero».

@@ -177,6 +177,27 @@ extension View {
             .foregroundStyle(Theme.muted)
     }
 
+    /// The big figure that leads a screen («Hoy puedes gastar», the month's total, «Mi dinero»'s
+    /// worth): the hero size and tracking, the «$»'s own air on the left pulled back so the figure
+    /// lines up with its caption, the line trimmed to the digits, and shrunk rather than cut.
+    /// The color is the caller's (brass, ink or danger). The one way to draw it.
+    func heroFigure() -> some View {
+        self.font(.ticket(.hero))
+            .tracking(Theme.Tracking.hero)
+            .padding(.leading, Theme.Space.outset)
+            .padding(.vertical, Theme.Space.heroTrim)
+            .lineLimit(1)
+            .minimumScaleFactor(Theme.MinimumScale.figure)
+    }
+
+    /// A name as the ticket prints it (a merchant, an account, an income): medium weight,
+    /// the name's tracking and capitals. The color and line limit are the caller's.
+    func rowName() -> some View {
+        self.font(.ticket(.bodyMedium))
+            .tracking(Theme.Tracking.name)
+            .textCase(.uppercase)
+    }
+
     /// The small key over a figure inside a ticket («LLEVAS», «NOTA», «POR VENIR»): one step
     /// quieter than a section's caption, so the figure under it leads.
     func ticketKey(_ color: Color = Theme.muted) -> some View {

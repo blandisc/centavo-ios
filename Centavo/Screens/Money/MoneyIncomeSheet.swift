@@ -115,9 +115,7 @@ struct MoneyIncomeSheet: View {
                 TicketQuestion(title: "¿Quitar este ingreso?", name: income?.name ?? name,
                                note: "Deja de contar como lo que te entra al mes.", verb: "Quitar")
             }, onConfirm: remove)
-            .alert("No se guardó el ingreso", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(problem ?? "") }
+            .problemAlert("No se guardó el ingreso", problem: $problem)
             .onAppear(perform: load)
             .onMoneyCovered { confirmingRemove = false; askingDiscard = false; problem = nil }
         }

@@ -218,10 +218,7 @@ struct MoneyLockedView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Theme.Space.xxl)
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.ticket)
-                        .strokeBorder(Theme.outline, style: StrokeStyle(lineWidth: Theme.Stroke.hairline, dash: Theme.Dash.ticket))
-                }
+                .ticketOutline()
                 Button(action: unlock) { PrimaryButtonLabel("Desbloquear", systemImage: method.symbol) }
                     .ticketProminent()
                     .disabled(asking)

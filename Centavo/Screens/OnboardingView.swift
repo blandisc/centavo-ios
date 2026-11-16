@@ -191,26 +191,11 @@ struct OnboardingView: View {
     private var currencyPills: some View {
         HStack(spacing: Theme.Space.xs) {
             ForEach(CurrencyPreference.offered, id: \.self) { code in
-                let chosen = currency == code
                 Button { currency = code } label: {
-                    VStack(spacing: Theme.Space.xxxs) {
-                        Text(MoneyCurrency.symbol(code)).font(.ticket(.bodyStrong))
-                            .foregroundStyle(chosen ? Theme.brass : Theme.ink)
-                        Text(MoneyCurrency.name(code)).font(.ticket(.micro)).textCase(.uppercase)
-                            .foregroundStyle(Theme.muted)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow)
-                    .background(chosen ? Theme.brass.opacity(Theme.Opacity.moneyCurrency) : .clear,
-                                in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Radius.control)
-                            .strokeBorder(chosen ? Theme.brass : Theme.outline, lineWidth: Theme.Stroke.hairline)
-                    }
-                    .contentShape(Rectangle())
+                    CurrencyTile(code: code, selected: currency == code, fills: true)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(MoneyCurrency.name(code))
-                .accessibilityAddTraits(chosen ? .isSelected : [])
+                .currencyTileAccessibility(code: code, selected: currency == code)
                 .accessibilityIdentifier(code == CurrencyPreference.offered.first ? "bienvenida-moneda" : "bienvenida-moneda-\(code)")
             }
         }
@@ -501,9 +486,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 // Written as in the month's list.
                 Text(item.name)
-                    .font(.ticket(.bodyMedium))
-                    .tracking(Theme.Tracking.name)
-                    .textCase(.uppercase)
+                    .rowName()
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("\(item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))) · día \(item.day)")

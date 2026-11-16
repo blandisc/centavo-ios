@@ -166,11 +166,7 @@ struct LabeledIconSheet: View {
                     .font(.ticket(.footnote))
                 }
             }
-            .alert("No se guardó", isPresented: $saveFailed) {
-                Button("Aceptar", role: .cancel) {}
-            } message: {
-                Text("Al día no pudo cambiar el nombre en tus gastos; nada cambió. Intenta otra vez.")
-            }
+            .problemAlert(isPresented: $saveFailed, message: "Al día no pudo cambiar el nombre en tus gastos; nada cambió. Intenta otra vez.")
             .confirmsRemoval(isPresented: $confirmingDelete, question: {
                 deleteQuestion ?? TicketQuestion(
                     title: colorKind == .source ? "¿Borrar esta forma de pago?" : "¿Borrar esta categoría?",

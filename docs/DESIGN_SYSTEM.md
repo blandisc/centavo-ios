@@ -120,7 +120,6 @@ Una sola altura de renglón, una sola separación entre secciones y una sola cur
 | Token | pt | Uso |
 |---|---:|---|
 | `tapTarget` | 44 | Altura mínima de todo lo que se toca |
-| `compactRow` | 28 | Fila que no se toca sola |
 | `capsuleLabel` / `wideCapsuleLabel` | 34 / 36 | Alto de la etiqueta dentro de un botón cápsula |
 | `choiceTile` | 48 | Cuadro de elección en una cuadrícula |
 | `tallRow` | 52 | Fila de dos líneas; tarjeta seleccionable |
@@ -138,7 +137,7 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 
 | Grupo | Tokens |
 |---|---|
-| `Theme.Stroke` | `fine` 0.5 · `hairline` 1 · `mark` 1.2 · `emphasis` 1.5 · `strong` 2 |
+| `Theme.Stroke` | `hairline` 1 · `mark` 1.2 · `emphasis` 1.5 · `strong` 2 |
 | `Theme.Dash` | `perforation` [3,3] · `ticket` [5,4] · `dotted` [3,2] |
 | `Theme.Opacity` | `hidden` 0 · `visible` 1 · `rule` 0.25 · `glow` 0.35 · `unselected` 0.4 · `paceBehind` 0.55 · `paceAhead` 0.8 · `onTileSecondary` 0.75. Solo marcas y rellenos; el texto usa `ink`/`muted`/`faint`. |
 | `Theme.Tracking` | `none` 0 · `hero` −2 · `amount` −1.5 · `figure` −0.5 · `name` 0.4 · `detail` 0.6 · `compactLabel` 0.8 · `tag` 1 · `label` 1.2 · `action` 1.4 · `caption` 1.6 · `title` 2 |
@@ -180,6 +179,10 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `AdaptiveStack` | Fila que con letra de accesibilidad se vuelve columna | `AdaptiveStack { a; b }` |
 | `TicketOutline` / `.ticketOutline(_:)` | Ticket en blanco punteado (estado vacío, aviso) | `.ticketOutline(.emphasis)` |
 | `.ticketPanel()` | Panel callado (`surface`, radio `panel`) | nota, vista previa |
+| `.heroFigure()` | La cifra grande (lo que puedes gastar, lo que tienes): tamaño, el aire del «$» hacia atrás, recorte y encogido. El color lo pone quien la usa | `Text(left).heroFigure().foregroundStyle(Theme.brass)` |
+| `.rowName()` | Un nombre como lo imprime el ticket: peso medio, su espaciado y mayúsculas | `Text(account.name).rowName().foregroundStyle(Theme.ink)` |
+| `CurrencyTile` | Una moneda como ficha: símbolo sobre su nombre corto, latón si se eligió (bienvenida y «Mi dinero»). Va dentro de un `Button` con `.currencyTileAccessibility(code:selected:)` | `CurrencyTile(code: code, selected: chosen, fills: true)` |
+| `.problemAlert(_:problem:)` | **El único** aviso de que algo no se guardó: alerta del sistema con el motivo y «Aceptar» | `.problemAlert(problem: $saveProblem)` |
 | `.selectableCard(selected:)` | Opción como tarjeta con borde latón al elegirla | monedas en la bienvenida |
 | `StepEmblem` | Emblema de latón decorativo que acompaña al título; oculto con letra de accesibilidad | Se usa dentro de `StepHeader`, no sola |
 | `StepHeader` | Encabezado reutilizable de cada paso: «Paso X de N» + emblema junto al título | `StepHeader(step: 3, of: 8, title: "Conecta el importe", systemImage: "wallet.pass")` |
@@ -260,6 +263,11 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 | Un campo de `Components/` sin `.anchorsRowSeparator()` (la línea del renglón empieza en el siguiente texto y se ve cortada) | Todo campo de componente lleva `.anchorsRowSeparator()` |
 | Un selector de moneda con sus propias opciones («MXN», «Pesos (MXN)», «pesos») | `CurrencyOptions(codes:)` en el menú y `CurrencyPreference.flagged(_:)` en su renglón: «🇲🇽  Peso mexicano» en toda la app |
 | `.buttonStyle(.glass)` dentro de una pantalla | `.ticketGlass()`, solo para lo que flota junto a las barras del sistema (el «+» junto a las pestañas) |
+| `.font(.ticket(.hero))` con su aire y recorte copiados | `.heroFigure()` y el color de quien la usa: la cifra grande se dibuja de una sola forma |
+| `RoundedRectangle(…).strokeBorder(…, dash: Theme.Dash.ticket)` | `.ticketOutline()` |
+| `.background(Theme.surface, in: RoundedRectangle(…))` | `.ticketPanel()`, o `.selectableCard(selected:)` si se elige |
+| `.font(.ticket(.bodyMedium)).tracking(Theme.Tracking.name).textCase(.uppercase)` | `.rowName()`: un nombre de comercio, cuenta o ingreso |
+| `.alert("No se guardó", isPresented: Binding(get: { … != nil } …))` | `.problemAlert(problem: $problem)`: el motivo como mensaje y un «Aceptar» |
 | `.cornerRadius(8)`, `RoundedRectangle(cornerRadius: 8)` | `RoundedRectangle(cornerRadius: Theme.Radius.control)` |
 | `.font(.system(size: 15))`, `.font(.ticket(15))`, `.font(.body)` en texto | `.font(.ticket(.body))` |
 | `Color(red:…)`, `Color(hex:)`, `.foregroundStyle(.secondary)`, `Color.gray`, `.red` | `Theme.muted`, `Theme.danger`… |

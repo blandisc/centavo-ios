@@ -136,9 +136,7 @@ struct FixedExpensesView: View {
                     remove(plan)
                 }
             }
-            .alert("No se guardó", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(saveProblem ?? "") }
+            .problemAlert(problem: $saveProblem)
             .sheet(item: $adding) { FixedPlanSheet(initialName: $0.name) }
             .sheet(item: $editing) { ExpenseEditorView(expense: $0) }
             .sheet(item: $editingPlan) { FixedPlanSheet(editing: $0) }
@@ -446,9 +444,7 @@ struct FixedPlanSheet: View {
                         : "\(name) · " + FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first!,
                      enabled: amount != nil && !name.isEmpty, action: save)
             .onAppear(perform: load)
-            .alert("No se guardó", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-                Button("Aceptar", role: .cancel) {}
-            } message: { Text(problem ?? "") }
+            .problemAlert(problem: $problem)
             .onChange(of: merchant) { _, new in
                 guard !pickedCategory else { return }
                 category = CategoryMemory.suggestion(for: new.trimmingCharacters(in: .whitespaces),
