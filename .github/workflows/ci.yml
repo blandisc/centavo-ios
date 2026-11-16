@@ -168,11 +168,16 @@ jobs:
       # Flows, audits, screenshots and the 5,000-expense timing, between the two machines.
       # (Two simulators on one runner were tried: on these small runners the second one
       # dropped out and nothing was gained.)
+      # A failed test gets one more try: on these runners the simulator sometimes stops
+      # answering mid-test («App event loop idle notification not received»), and before
+      # every test after it failed too (2026-11-16, 40 failures from one hang). Failing
+      # twice still fails the job.
       - name: Correr las pruebas de interfaz
         run: |
           xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             ${{ matrix.parte.pruebas }} \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath build/result.xcresult \
             CODE_SIGNING_ALLOWED=NO -jobs 4
 
