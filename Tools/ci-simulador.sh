@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CI only: picks an iPhone simulator of the newest iOS on the runner, boots it (so it is ready
 # while the app compiles) and prints its UDID.
-# CENTAVO_SIM_NAME="iPhone SE (3rd generation)" asks for that model (dispositivos.yml): if the
+# CENTAVO_SIM_NAME="iPhone SE (3rd generation)" asks for that model (el trabajo «dispositivos» de ci.yml): if the
 # runner has none, it is created from the device type on the newest iOS.
 set -euo pipefail
 udid="$(xcrun simctl list -j | CENTAVO_SIM_NAME="${CENTAVO_SIM_NAME:-}" python3 -c "

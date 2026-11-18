@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      dispositivos:
+        description: "También las capturas en iPhone SE, 13 mini, 17 Pro y 17 Pro Max"
+        type: boolean
+        default: false
 
 env:
   XCODEGEN_VERSION: "2.46.0"
@@ -191,5 +196,72 @@ jobs:
         if: always()
         with:
           name: ${{ matrix.parte.artefacto }}
+          path: build/capturas
+          retention-days: 14
+
+  # Las capturas en varios iPhones a la vez, del más chico al más grande (2026-11-18, pasada
+  # antes del lanzamiento). Solo a mano, con «dispositivos»: son cuatro máquinas de casi una hora.
+  dispositivos:
+    name: Dispositivos · ${{ matrix.iphone }}
+    if: github.event_name == 'workflow_dispatch' && inputs.dispositivos
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        iphone:
+          - "iPhone SE (3rd generation)"
+          - "iPhone 13 mini"
+          - "iPhone 17 Pro"
+          - "iPhone 17 Pro Max"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Elegir el Xcode más nuevo
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Instalar xcodegen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Elegir el simulador
+        id: sim
+        env:
+          CENTAVO_SIM_NAME: ${{ matrix.iphone }}
+        run: echo "udid=$(Tools/ci-simulador.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Correr las pruebas
+        run: |
+          xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:CentavoUITests/ScreenshotTests -only-testing:CentavoUITests/FlowTests/testSinMiDineroNoHayPestanas \
+            -retry-tests-on-failure -test-iterations 2 \
+            -resultBundlePath build/result.xcresult \
+            CODE_SIGNING_ALLOWED=NO -jobs 4
+
+      - name: Exportar las capturas
+        if: always()
+        run: |
+          mkdir -p build/capturas
+          xcrun xcresulttool export attachments --path build/result.xcresult --output-path build/capturas
+
+      - name: Nombre del artefacto
+        if: always()
+        id: nombre
+        run: echo "valor=capturas-$(echo '${{ matrix.iphone }}' | tr -c 'A-Za-z0-9' '-' | tr -s '-')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ steps.nombre.outputs.valor }}
           path: build/capturas
           retention-days: 14
