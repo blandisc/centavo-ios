@@ -36,11 +36,16 @@ public enum CSVImporter {
         // Added later: a file from before has neither, and everything in it counts.
         let counts = column("Cuenta"), reason = column("Motivo")
         let commaDecimals = readsWithDecimalComma(rows.dropFirst(), delimiter: delimiter, columns: [amount, counts])
+        // Spelled out: a ternary between two of these functions crashed the CI's compiler
+        // («failed to produce diagnostic for expression», 2026-11-18).
+        let tab: Unicode.Scalar = "\t"
         let number: (String) -> Decimal?
         if commaDecimals {
-            number = Self.commaDecimal
+            number = { Self.commaDecimal($0) }
+        } else if delimiter == tab {
+            number = { Self.pointDecimal($0) }
         } else {
-            number = delimiter == "\t" ? Self.pointDecimal : Self.number
+            number = { Self.number($0) }
         }
 
         var result = Result(records: [], skipped: 0)
