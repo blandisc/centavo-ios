@@ -179,7 +179,12 @@ extension RecurringSchedule {
     public static func next(rule: RepeatRule, anchor: Date, day: Int? = nil, after: Date,
                             now: Date, calendar: Calendar = .current) -> Date? {
         guard let horizon = calendar.date(byAdding: .month, value: 13, to: now) else { return nil }
-        return dates(rule: rule, anchor: anchor, day: day, after: max(after, now), through: horizon,
-                     calendar: calendar).first
+        // Not from `now`: a monthly counts from the month after `after`'s, so from the 18th it
+        // skipped this month's 25th and 30th still to come, and «Próximo» said next month while
+        // «Por venir» held this one (2026-11-18). From a month back at most (never before what
+        // was already logged), keeping only what is still to come.
+        let monthBack = calendar.date(byAdding: .month, value: -1, to: now) ?? now
+        return dates(rule: rule, anchor: anchor, day: day, after: max(after, monthBack), through: horizon,
+                     calendar: calendar).first { $0 > now }
     }
 }

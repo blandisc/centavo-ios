@@ -301,6 +301,8 @@ struct FixedPlanSheet: View {
     @State private var knownCategories: [String] = []
     @State private var knownCards: [String] = []
     @FocusState private var amountFocused: Bool
+    /// The decimal pad has no return key: «Siguiente» beside the amount comes here (2026-11-18).
+    @FocusState private var nameFocused: Bool
 
     /// `initialName`: a suggestion tapped on «Gastos fijos» («Renta»), already written.
     init(initialName: String = "") {
@@ -362,14 +364,30 @@ struct FixedPlanSheet: View {
         Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: firstDay) ?? firstDay
     }
 
+    /// What happens with the first charge. A quincena's is logged on its own date even when
+    /// that is not the 15th nor the last day: said so, not found later as a charge of more
+    /// (2026-11-18).
+    private var firstChargeNote: String {
+        let quincena = rule.kind == .semimonthly
+        if firstDate > AppClock.now {
+            return "Hasta su primer cobro no se anota nada."
+                + (quincena ? " Ese día se anota, aunque no sea día 15 ni último." : "")
+        }
+        let offDay = quincena ? ", aunque no sea día 15 ni último," : ","
+        return "El primer cobro ya llegó: se anota con su fecha\(offDay) y los que hayan llegado después."
+    }
+
     private var latest: Date { Calendar.current.date(byAdding: .year, value: 1, to: AppClock.now) ?? AppClock.now }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "fijo-monto")
-                        .focused($amountFocused)
+                    HStack(spacing: Theme.Space.s) {
+                        AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "fijo-monto")
+                            .focused($amountFocused)
+                        NextKey(visible: amountFocused, identifier: "fijo-siguiente") { nameFocused = true }
+                    }
                 } header: {
                     Text("Monto (\(currency))").ticketCaption()
                 }
@@ -380,6 +398,8 @@ struct FixedPlanSheet: View {
                               prompt: Text("Renta, limpieza, Netflix…").foregroundStyle(Theme.faint))
                         .ticketField()
                         .textInputAutocapitalization(.sentences)
+                        .focused($nameFocused)
+                        .submitLabel(.done)
                         .accessibilityIdentifier("fijo-nombre")
                 } header: {
                     Text("Qué es").ticketCaption()
@@ -419,10 +439,7 @@ struct FixedPlanSheet: View {
                 } header: {
                     Text("Cada cuándo").ticketCaption()
                 } footer: {
-                    HintText(FixedWording.howItRepeats(rule, from: firstDate) + " "
-                             + (firstDate > AppClock.now
-                                ? "Hasta su primer cobro no se anota nada."
-                                : "El primer cobro ya llegó: se anota con su fecha, y los que hayan llegado después."))
+                    HintText(FixedWording.howItRepeats(rule, from: firstDate) + " " + firstChargeNote)
                 }
                 .listRowBackground(Theme.surface)
             }

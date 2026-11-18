@@ -5,7 +5,7 @@ import Foundation
 /// the code in front of any other ("USD 24.99"), and a "+" when money came back.
 func ledgerAmount(for expense: Expense, primary: String) -> String {
     let iso = CurrencyResolver.isoCode(for: expense.currencyMarker, primary: primary)
-    let number = expense.amount.magnitude.formatted(.number.precision(.fractionLength(2)))
+    let number = plainAmount(expense.amount.magnitude)
     let sign = expense.amount < 0 ? "+" : ""
     // The month's own money reads like every other figure on screen: «$47.50».
     if iso == primary { return sign + formatMoney(expense.amount.magnitude, isoCode: primary, label: primary) }
@@ -13,6 +13,13 @@ func ledgerAmount(for expense: Expense, primary: String) -> String {
     // name, seen for real) and must not push the row off the screen.
     let code = String((iso ?? expense.currencyMarker ?? "").prefix(4))
     return sign + (code.isEmpty ? number : "\(code) \(number)")
+}
+
+/// "1,234.50": an amount in another currency, beside its code («EUR 1,234.50»), written the
+/// Mexican way in any region, like the main currency's (2026-10-18). It followed the phone's
+/// region, and «$47.50» and «EUR 12,50» shared one screen (2026-11-18).
+func plainAmount(_ amount: Decimal) -> String {
+    amount.formatted(.number.precision(.fractionLength(2)).locale(Locale(identifier: "es_MX")))
 }
 
 /// "12/10": day and month, in the order the region writes them.

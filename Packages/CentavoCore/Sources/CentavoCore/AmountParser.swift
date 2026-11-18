@@ -44,6 +44,16 @@ public enum AmountParser {
         read(raw, pointDecimal: false)
     }
 
+    /// For the amount field while it is typed: a point just pressed («230.», which
+    /// `AmountTyping.grouped` keeps for the cents to come) reads as the amount before it, so
+    /// «Guardar» doesn't go dark with 230 in view (2026-11-18). Only for the field: in a Wallet
+    /// notice or a backup a separator with nothing after it is not cents, and `parse` stays.
+    public static func parseTyped(_ raw: String) -> ParsedAmount? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let last = text.last, last == "." || last == "," else { return parse(text) }
+        return parse(String(text.dropLast()))
+    }
+
     /// For text written to a format that asks for a decimal point («Mi dinero», the import of
     /// «¿Lo tienes en Excel?»): the `.` is always the decimal point, with as many decimals as
     /// it brings (`18.125` is eighteen and a bit, never 18,125), and commas only group thousands
@@ -171,5 +181,15 @@ public enum AmountParser {
         // Only grouping: `0,500` has nothing to group.
         if numeric.contains(","), !(numeric.first.map { $0 != "0" } ?? false) { return nil }
         return (numeric, "")
+    }
+}
+
+extension AmountTyping {
+    /// A value as the amount field writes it («1,234.5»): a point for the decimals whatever the
+    /// iPhone's region, then grouped. The sentence's amount was written with the region's own
+    /// («1.234,5» in Spain) and the field read it as 1.23 (2026-11-18).
+    public static func text(for value: Decimal, decimals: ClosedRange<Int>) -> String {
+        let style = Decimal.FormatStyle(locale: written).precision(.fractionLength(decimals)).grouping(.never)
+        return grouped(value.magnitude.formatted(style))
     }
 }

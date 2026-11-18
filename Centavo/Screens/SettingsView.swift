@@ -21,7 +21,7 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// The location is off for the app in the iPhone's Ajustes: «Guardar dónde pagas» can't work.
     @State private var locationDenied = PaymentPlace.isDenied
-    /// The whole history as a CSV, read once when the sheet opens (not on every redraw).
+    /// The whole history as a CSV, read when the sheet opens and after each save (not on every redraw).
     @State private var csv: ExpensesCSVFile?
 
     var body: some View {
@@ -80,14 +80,7 @@ struct SettingsView: View {
                 .listRowBackground(Theme.surface)
 
                 Section {
-                    if let csv, !csv.records.isEmpty {
-                        ShareLink(item: csv, preview: SharePreview("Gastos de Al día")) {
-                            IconRow("Exportar CSV", systemImage: "square.and.arrow.up") { EmptyView() }
-                        }
-                    } else {
-                        IconRow("Exportar CSV", systemImage: "square.and.arrow.up") { EmptyView() }
-                            .foregroundStyle(Theme.faint)
-                    }
+                    exportRow
                     Button(action: importCSV) {
                         IconRow("Importar CSV", systemImage: "square.and.arrow.down") { EmptyView() }
                     }
@@ -126,10 +119,11 @@ struct SettingsView: View {
                         .accessibilityIdentifier("ajustes-listo")
                 }
             }
-            .task {
-                let all = (try? context.fetch(FetchDescriptor<Expense>(
-                    sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-                csv = ExpensesCSVFile(expenses: all, primaryCurrency: currency)
+            .task { readCSV() }
+            // A payment that lands, or a backup restored, while the sheet is open: the file
+            // shared is what there is now, not what there was when it opened (2026-11-18).
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+                readCSV()
             }
             // The answer to the system's question, or a change made in Ajustes of the iPhone.
             .onReceive(NotificationCenter.default.publisher(for: PaymentPlace.permissionChanged)) { _ in
@@ -139,6 +133,36 @@ struct SettingsView: View {
                 if phase == .active { locationDenied = PaymentPlace.isDenied }
             }
         }
+    }
+
+    /// «Exportar CSV», or with nothing to export, the same row off and saying why (2026-11-18):
+    /// before, a faint row without a word looked broken, and VoiceOver read it as plain text.
+    /// While the expenses are being read it says nothing, so an empty store is never guessed.
+    @ViewBuilder private var exportRow: some View {
+        if let csv, !csv.records.isEmpty {
+            ShareLink(item: csv, preview: SharePreview("Gastos de Al día")) {
+                IconRow("Exportar CSV", systemImage: "square.and.arrow.up") { EmptyView() }
+            }
+        } else {
+            Button {} label: {
+                IconRow("Exportar CSV", systemImage: "square.and.arrow.up") {
+                    if csv != nil {
+                        Text("Sin gastos todavía")
+                            .font(.ticket(.detail))
+                            .foregroundStyle(Theme.muted)
+                    }
+                }
+            }
+            .disabled(true)
+            .accessibilityHint("Todavía no hay gastos que exportar.")
+        }
+    }
+
+    /// The whole history as a CSV, read here and not on every redraw.
+    private func readCSV() {
+        let all = (try? context.fetch(FetchDescriptor<Expense>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        csv = ExpensesCSVFile(expenses: all, primaryCurrency: currency)
     }
 
     /// «Hoy», «Hace 4 días» or what's missing. Muted always: the guide's line is the warning.

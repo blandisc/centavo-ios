@@ -61,7 +61,7 @@ struct AllowanceExplainer: View {
                 Text(verbatim: " \n ").hidden()
                 // Paused, a pause mark leads the line being read (up in the drawing, the coins
                 // would run over it).
-                let mark = paused ? Text("\(Image(systemName: "pause.fill")) ").foregroundStyle(Theme.muted) : Text(verbatim: "")
+                let mark = paused && !still ? Text("\(Image(systemName: "pause.fill")) ").foregroundStyle(Theme.muted) : Text(verbatim: "")
                 Text("\(mark)\(Text(caption).foregroundStyle(Theme.ink))")
             }
             .font(.ticket(.detail))
@@ -77,12 +77,24 @@ struct AllowanceExplainer: View {
         .accessibilityLabel(mode == .carry
             ? "Ejemplo: lo que sobra un día pasa completo al día siguiente; lo que te pasas se le quita."
             : "Ejemplo: lo que sobra o falta un día se reparte parejo entre todos los días que quedan.")
-        .accessibilityAction(named: finished ? "Ver otra vez" : paused ? "Seguir" : "Pausar") {
-            if finished { replays += 1 } else { paused.toggle() }
+        // Still (reduced motion, low power), the week is drawn at once: nothing to pause, the
+        // same as the tap (2026-11-18: it offered «Pausar» and left a false ⏸).
+        .accessibilityActions {
+            if !still {
+                Button(actionName) {
+                    if finished { replays += 1 } else { paused.toggle() }
+                }
+            }
         }
         // Again when the rule changes, on a tap at the end, or when it goes still (low power).
         .task(id: Run(mode: mode, replays: replays, still: MotionPolicy.isStill(reduceMotion: reduceMotion))) { await play() }
     }
+
+    /// Drawn at once and still (reduced motion, low power): nothing plays, so nothing pauses.
+    private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
+
+    /// What VoiceOver offers on the drawing while it plays.
+    private var actionName: String { finished ? "Ver otra vez" : paused ? "Seguir" : "Pausar" }
 
     // MARK: Pieces
 

@@ -164,7 +164,12 @@ final class ExpenseImporterTests: XCTestCase {
         XCTAssertEqual(ExpenseImporter.Summary(added: 30, alreadyThere: 5, unreadable: 1, leftOut: 12).text,
                        "Se agregaron 30 gastos. 5 ya estaban. 12 se dejaron fuera por parecer repetidos. 1 renglón no se pudo leer.")
         XCTAssertEqual(ExpenseImporter.Summary(added: 0, alreadyThere: 1, unreadable: 0, leftOut: 0).text,
-                       "Se agregaron 0 gastos. 1 ya estaba.")
+                       "No se agregó ningún gasto. 1 ya estaba.")
+        // Nothing came in and nothing was there: not said as a success, and what to look at (2026-11-18).
+        XCTAssertEqual(ExpenseImporter.Summary(added: 0, alreadyThere: 0, unreadable: 100, leftOut: 0).text,
+                       "No se agregó ningún gasto. 100 renglones no se pudieron leer. Revisa que las fechas y los montos estén como en la exportación de Al día.")
+        XCTAssertEqual(ExpenseImporter.Summary().text,
+                       "No se agregó ningún gasto. El archivo no trae renglones con gastos.")
     }
 
     /// «Cuenta» from another spreadsheet (an account number, a 1 for yes) is not a part.

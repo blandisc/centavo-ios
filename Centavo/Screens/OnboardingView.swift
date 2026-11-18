@@ -23,7 +23,11 @@ struct OnboardingView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage(BudgetStore.key) private var storedBudget = ""
+    /// The same flag «Hoy» reads to decide whether to open the welcome (`ExpenseListView`).
+    @AppStorage("onboarded") private var onboarded = false
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
     @State private var page = Self.firstPage
     /// Which way the last move went, so the pages slide the right way.
@@ -42,7 +46,13 @@ struct OnboardingView: View {
     /// «Configurar ahora» on Wallet's page: «Listo» first, so everyone sees what «Hoy» will say,
     /// and then the guide (2026-11-18, owner).
     @State private var thenGuide = false
+    /// A page is sliding in: a second tap on the same button waits for it (2026-11-18: a quick
+    /// double tap on «Empezar» skipped «Tu mes», because the button stays put between pages).
+    @State private var moving = false
     @FocusState private var focused: Field?
+    /// VoiceOver lands on the new page's title (2026-11-18): the bottom button kept the focus
+    /// and only changed its name, so nobody heard what the new page asked.
+    @AccessibilityFocusState private var titleFocused: Bool
 
     private enum Field { case budget, name, amount }
     /// The four steps and the end.
@@ -123,6 +133,7 @@ struct OnboardingView: View {
     private var bottomBar: some View {
         VStack(spacing: Theme.Space.m) {
             Button {
+                guard !moving else { return }
                 focused = nil
                 primaryAction()
             } label: {
@@ -163,6 +174,10 @@ struct OnboardingView: View {
         case pages - 1:
             finish(thenGuide ? .guide : .home)
         default:
+            // A fixed expense typed in but not «Agregar»-ed goes in the list before moving on
+            // (2026-11-18): with the number pad up only «Continuar» shows, and coming back to
+            // the fields still full led to adding it twice.
+            if page == 2 { commitDraft() }
             go(to: page + 1)
         }
     }
@@ -171,13 +186,28 @@ struct OnboardingView: View {
     private static let labels = ["Bienvenida", "Tu mes", "Gastos fijos", "Conecta Wallet", "Listo"]
 
     private func go(to target: Int) {
-        guard (0..<pages).contains(target), target != page else { return }
+        guard !moving, (0..<pages).contains(target), target != page else { return }
+        moving = true
+        titleFocused = false
         // The way first, in its own update, so the page leaving already knows which side to go:
         // set together with the page, going back slid both pages the same way and they crossed.
         forward = target > page
         Task { @MainActor in
-            withAnimation(Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion)) { page = target }
+            guard let slide = Theme.Motion.animation(Theme.Motion.page, reduceMotion: reduceMotion) else {
+                // No animation to wait for: just the update that draws the new page.
+                page = target
+                try? await Task.sleep(for: .seconds(Theme.Motion.Onboarding.pageSettle))
+                arrived()
+                return
+            }
+            withAnimation(slide) { page = target } completion: { arrived() }
         }
+    }
+
+    /// The new page is in place: the buttons answer again and VoiceOver reads its title.
+    private func arrived() {
+        moving = false
+        titleFocused = true
     }
 
     // MARK: Pages
@@ -293,7 +323,8 @@ struct OnboardingView: View {
             .transition(.opacity)
         } else {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Escribe un monto o elige uno arriba.")
+                // It can stay empty (2026-11-18): said here, so nobody thinks it's required.
+                Text("Escribe un monto o elige uno arriba. Si no quieres presupuesto, toca «Continuar».")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.faint)
                 WelcomeDaysStrip(days: Calendar.current.range(of: .day, in: .month, for: AppClock.now)?.count ?? 30, filled: false)
@@ -313,7 +344,8 @@ struct OnboardingView: View {
     private var fixedPage: some View {
         page(title: "¿Qué pagas cada mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Se anotan solos cada mes y se apartan de lo que puedes gastar.")
+                // Without a budget there is nothing to set them apart from (2026-11-18).
+                Text(budget != nil ? "Se anotan solos cada mes y se apartan de lo que puedes gastar." : "Se anotan solos cada mes.")
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -341,7 +373,9 @@ struct OnboardingView: View {
                         .onSubmit { focused = .amount }
                         .accessibilityIdentifier("bienvenida-fijo-nombre")
                     Divider().overlay(Theme.hairline)
-                    HStack {
+                    // Stacked with accessibility text (2026-11-18): «el día 15» beside it left
+                    // the amount a digit or two wide.
+                    AdaptiveStack {
                         TextField("Cuánto", text: $draftAmount,
                                   prompt: Text("Monto").foregroundStyle(Theme.faint))
                             .ticketField()
@@ -366,7 +400,7 @@ struct OnboardingView: View {
                     LinkActionLabel("Agregar", systemImage: "plus")
                 }
                 .buttonStyle(.plain)
-                .disabled(draftValue == nil || draftName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(!draftIsReady)
                 .accessibilityIdentifier("bienvenida-fijo-agregar")
             }
             .animation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion), value: focused)
@@ -440,12 +474,13 @@ struct OnboardingView: View {
                     .font(.ticket(.pageTitle))
                     .foregroundStyle(Theme.ink)
                     .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($titleFocused)
                     .padding(.top, Theme.Space.l)
                 doneFigure
                 // What «Hoy» will show, said once before seeing it (2026-11-18, owner: in place
                 // of the check mark).
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    ForEach(Self.doneLines, id: \.self) { line in
+                    ForEach(doneLines, id: \.self) { line in
                         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                             Image(systemName: "circle.fill")
                                 .imageScale(.small)
@@ -472,11 +507,19 @@ struct OnboardingView: View {
         .onAppear { save() }
     }
 
-    static let doneLines = [
+    /// The figure and what carries over only when «Hoy» will show a figure (2026-11-18): with no
+    /// budget, or fixed expenses past it, «Hoy» has no brass figure and they said otherwise.
+    private var doneLines: [String] {
+        let figure = pace.map { $0.dailyBase > 0 } ?? false
+        return (figure ? Self.figureLines : Self.noFigureLines) + Self.alwaysLines
+    }
+
+    static let figureLines = [
         "La cifra en latón es lo que puedes gastar hoy.",
         "Lo que te sobre pasa a mañana.",
-        "¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta».",
     ]
+    static let noFigureLines = ["Cada gasto que anotes aparece en «Hoy», con el total del mes."]
+    static let alwaysLines = ["¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta»."]
 
     @ViewBuilder private var doneFigure: some View {
         if let pace, let budget {
@@ -521,6 +564,7 @@ struct OnboardingView: View {
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($titleFocused)
                     .onboardingRise(1)
                 content()
             }
@@ -544,15 +588,21 @@ struct OnboardingView: View {
                     .rowName()
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))) · día \(item.day)")
-                    .font(.ticket(.footnote))
-                    .foregroundStyle(Theme.muted)
+                // Two pieces that stack with accessibility text, so the amount is never cut in
+                // half by the line break (2026-11-18).
+                AdaptiveStack(spacing: Theme.Space.xs) {
+                    Text(item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2))))
+                    Text(typeSize.isAccessibilitySize ? "día \(item.day)" : "· día \(item.day)")
+                }
+                .font(.ticket(.footnote))
+                .foregroundStyle(Theme.muted)
             }
             Spacer(minLength: Theme.Space.s)
             Button("Quitar \(item.name)", systemImage: "xmark.circle.fill") {
                 withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
                     fixed.removeAll { $0.id == item.id }
                 }
+                say("Gasto fijo quitado: \(item.name).")
             }
             .labelStyle(.iconOnly)
             .foregroundStyle(Theme.faint)
@@ -569,15 +619,33 @@ struct OnboardingView: View {
         return value
     }
 
+    /// A name and an amount: enough to add it.
+    private var draftIsReady: Bool {
+        draftValue != nil && !draftName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// The fixed expense typed in, if it can be added.
+    private func commitDraft() {
+        if draftIsReady { addFixed() }
+    }
+
     private func addFixed() {
         guard let value = draftValue else { return }
+        let item = FixedDraft(name: draftName.trimmingCharacters(in: .whitespaces), amount: value, day: draftDay)
         withAnimation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion)) {
-            fixed.append(FixedDraft(name: draftName.trimmingCharacters(in: .whitespaces),
-                                    amount: value, day: draftDay))
+            fixed.append(item)
         }
         added += 1
         draftName = ""; draftAmount = ""; draftDay = 1
         focused = nil
+        // The new row lands under the calendar, out of VoiceOver's way: said (2026-11-18).
+        let amount = item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))
+        say("Gasto fijo agregado: \(item.name), \(amount), el día \(item.day).")
+    }
+
+    /// Spoken with VoiceOver on only.
+    private func say(_ text: String) {
+        if voiceOver { AccessibilityNotification.Announcement(text).post() }
     }
 
     /// Whatever was filled in is kept, even when the rest is skipped.
@@ -585,7 +653,7 @@ struct OnboardingView: View {
         guard !saved else { return }
         saved = true
         // A fixed expense typed in but never «Agregar»-ed still counts.
-        if draftValue != nil, !draftName.trimmingCharacters(in: .whitespaces).isEmpty { addFixed() }
+        commitDraft()
         storedCurrency = currency
         if let budget {
             // With its day, so «Hoy» counts from today and says the «Cada día tienes» shown here,
@@ -615,13 +683,27 @@ struct OnboardingView: View {
                 plans.append(plan)
             }
         }
-        if !plans.isEmpty { FixedPlan.save(FixedPlan.saved + plans) }
+        // A welcome started over (the app closed before «Ver mi día») never stores the same
+        // plan twice (2026-11-18): it would be charged twice a month.
+        let current = FixedPlan.saved
+        let fresh = Self.notSaved(plans, in: current)
+        if !fresh.isEmpty { FixedPlan.save(current + fresh) }
         do {
             try context.save()
+            // Saved: closing the app now doesn't bring the welcome back from the start
+            // (2026-11-18). Only once it is on disk, or what didn't save would be lost with it.
+            onboarded = true
         } catch {
             // Left in the context: the next autosave tries again, and the welcome can't hold
             // the person back for it. Nothing is rolled back, so nothing typed is lost.
             saveFailed = true
+        }
+    }
+
+    /// The plans not stored yet: same name, amount and day is the same fixed expense.
+    static func notSaved(_ plans: [FixedPlan], in saved: [FixedPlan]) -> [FixedPlan] {
+        plans.filter { plan in
+            !saved.contains { $0.merchant == plan.merchant && $0.value == plan.value && $0.day == plan.day }
         }
     }
 

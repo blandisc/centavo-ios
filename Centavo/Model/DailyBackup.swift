@@ -58,7 +58,9 @@ enum DailyBackup {
             // «Mi dinero» off (2026-11-18): the same, without its name.
             case .moneyNotReady where !Features.money: "No se pudo abrir una parte de tus datos para restaurarla. Tus gastos no cambiaron. Lo que no abría quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
             case .halfRestored where !Features.money: "No se pudieron restaurar tus gastos, pero una parte de tus datos ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
-            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez."
+            // With «Mi dinero» hidden its screen, the one that says restoring fixes it, can't be
+            // reached: said here (2026-11-18).
+            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, restaura un respaldo en Más › Ajustes › Respaldo diario: lo que no abría queda guardado aparte en este iPhone, sin borrarse. Restaurar también regresa tus gastos al día de ese respaldo."
             case .moneyNotReady: "No se pudo abrir «Mi dinero» para restaurarlo. Tus gastos no cambiaron. Si «Mi dinero» no abría, quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
             case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
             case .noPlaceForCopy: "Antes de restaurar hay que guardar una copia de lo que hay en este iPhone, y no hay una carpeta donde ponerla. No se cambió nada."

@@ -156,16 +156,29 @@ enum CaptureArrival {
     /// says «Llegó tu primer pago solo» for a day (2026-11-18). Never set for whoever already
     /// had payments arriving before it existed.
     static let firstKey = "respaldo.esteIPhone.walletPrimero"
+    /// That first payment, as «Hoy» says it (2026-11-18): `textKey` is the latest one, and
+    /// with a few payments that first day the card named the last, maybe a refund.
+    static let firstTextKey = "respaldo.esteIPhone.walletPrimeroTexto"
 
-    /// A payment the automation just saved here.
-    static func note(amount: String, merchant: String, now: Date = AppClock.now, defaults: UserDefaults = .standard) {
-        if defaults.double(forKey: dateKey) <= 0, defaults.double(forKey: firstKey) <= 0,
-           defaults.double(forKey: WalletWatch.lastArrivalKey) <= 0 {
+    /// Whether Wallet had ever delivered a payment here (`WalletWatch.lastArrivalKey`), as
+    /// `note(arrivedBefore:)` takes it: asked before `ExpenseRecorder.record`, which marks the
+    /// payment it saves as arrived (2026-11-18: asked after, the first one never counted).
+    static func walletKnown(defaults: UserDefaults = .standard) -> Bool {
+        defaults.double(forKey: WalletWatch.lastArrivalKey) > 0
+    }
+
+    /// A payment the automation just saved here. `arrivedBefore`: `walletKnown()` before it
+    /// was saved; `nil` reads it now (the guide's demo, which saves nothing).
+    static func note(amount: String, merchant: String, arrivedBefore: Bool? = nil,
+                     now: Date = AppClock.now, defaults: UserDefaults = .standard) {
+        let text = PendingPayment.unsaved(amount: amount, merchant: merchant, card: nil, date: now)?.text ?? ""
+        let known = arrivedBefore ?? walletKnown(defaults: defaults)
+        if defaults.double(forKey: dateKey) <= 0, defaults.double(forKey: firstKey) <= 0, !known {
             defaults.set(now.timeIntervalSinceReferenceDate, forKey: firstKey)
+            defaults.set(text, forKey: firstTextKey)
         }
         defaults.set(now.timeIntervalSinceReferenceDate, forKey: dateKey)
-        defaults.set(PendingPayment.unsaved(amount: amount, merchant: merchant, card: nil, date: now)?.text ?? "",
-                     forKey: textKey)
+        defaults.set(text, forKey: textKey)
     }
 
     /// The guide was opened («Configurar», «Revisar», the warning on «Hoy»): the setup under
@@ -182,7 +195,7 @@ enum CaptureArrival {
     }
 
     static func forget(defaults: UserDefaults = .standard) {
-        for key in [dateKey, textKey, sessionKey, firstKey] { defaults.removeObject(forKey: key) }
+        for key in [dateKey, textKey, sessionKey, firstKey, firstTextKey] { defaults.removeObject(forKey: key) }
     }
 
     /// What «Hoy» and Ajustes say about the automation, from the stored moments.

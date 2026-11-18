@@ -9,29 +9,48 @@ private struct SaveBar: View {
     let identifier: String
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: Theme.Space.m) {
-            Text(summary)
-                .font(.ticket(.detail))
-                .foregroundStyle(enabled ? Theme.ink : Theme.muted)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                // On the line of the sections' text (card 16 + row 16).
-                .padding(.leading, Theme.Space.l)
-                .accessibilityIdentifier("resumen-guardar")
-            Button(action: action) {
-                Text("Guardar")
-                    .font(.ticket(.button))
-                    .padding(.horizontal, Theme.Space.s)
-                    .frame(minHeight: Theme.Size.capsuleLabel)
-            }
-            .ticketProminent()
-            .disabled(!enabled)
-            .accessibilityIdentifier(identifier)
+        // With accessibility type, side by side left the summary three letters wide: «Falt…»,
+        // the one line saying why «Guardar» is off (2026-11-18). Stacked, it reads whole.
+        let stacked = typeSize.isAccessibilitySize
+        let layout = stacked
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.sm))
+            : AnyLayout(HStackLayout(spacing: Theme.Space.m))
+        layout {
+            summaryLine(stacked: stacked)
+            saveButton(stacked: stacked)
         }
         // 16 on each side: «Guardar» mirrors «Cancelar» at the top.
         .padding(.horizontal, Theme.Space.l)
         .padding(.vertical, Theme.Space.sm)
+    }
+
+    private func summaryLine(stacked: Bool) -> some View {
+        Text(summary)
+            .font(.ticket(.detail))
+            .foregroundStyle(enabled ? Theme.ink : Theme.muted)
+            // Stacked, a few lines more, not the whole form: the bar rides above the keyboard.
+            .lineLimit(stacked ? 4 : 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // On the line of the sections' text (card 16 + row 16).
+            .padding(.leading, Theme.Space.l)
+            .accessibilityIdentifier("resumen-guardar")
+    }
+
+    private func saveButton(stacked: Bool) -> some View {
+        // Stacked, as wide as the bar, like every main action under its text.
+        let width: CGFloat? = stacked ? .infinity : nil
+        return Button(action: action) {
+            Text("Guardar")
+                .font(.ticket(.button))
+                .padding(.horizontal, Theme.Space.s)
+                .frame(maxWidth: width, minHeight: Theme.Size.capsuleLabel)
+        }
+        .ticketProminent()
+        .disabled(!enabled)
+        .accessibilityIdentifier(identifier)
     }
 }
 

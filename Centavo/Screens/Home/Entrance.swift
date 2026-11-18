@@ -13,4 +13,8 @@ final class Entrance {
     var heroFigure: Double = 0
     /// Whether the boleto and the line under it have come in.
     var barShown = false
+    /// Whether the boleto has come in, with or without a budget (`MonthCodeView`; 2026-11-18).
+    var codeShown = false
+    /// Whether today's cell has had its breaths: once, on the first boleto shown.
+    var todayBreathed = false
 }

@@ -23,7 +23,12 @@ struct MonthCodeView: View {
     var entrance = Entrance()
 
     @State private var drawn = false
-    private var shown: Bool { drawn || entrance.barShown }
+    /// A boleto rebuilt (closing a search) is already there: it came in once, when the app
+    /// opened, with or without a budget (2026-11-18: without one it faded in again).
+    private var shown: Bool { drawn || entrance.barShown || entrance.codeShown }
+    /// Whether today breathes on this boleto: only the first one the app shows, so a rebuilt one
+    /// rests at full (2026-11-18). Settled when it appears.
+    @State private var breathesToday: Bool?
 
     @State private var touched: Int?
     /// This touch held and read the days: its lift is not also a tap.
@@ -33,6 +38,8 @@ struct MonthCodeView: View {
     @ScaledMetric(relativeTo: .body) private var height = Theme.Size.monthCode
 
     private var shownDay: Int? { touched ?? selectedDay }
+    /// Today, or the month's last day that came: what a double tap picks with VoiceOver.
+    private var lastDay: Int? { code.days.last { $0.kind != .future }?.number }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -40,6 +47,9 @@ struct MonthCodeView: View {
                 .frame(height: height)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
                 .overlay(alignment: .bottomLeading) { card }
+                // Over the card too, which comes and goes with the dimming of the other days
+                // instead of popping in (2026-11-18).
+                .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion), value: shownDay)
                 .contentShape(Rectangle())
                 // A swipe is always the carousel's (owner, 2026-10-30, twice: it was hard to get to
                 // the calendar). A tap picks a day; holding a moment and sliding reads the days, and
@@ -54,8 +64,13 @@ struct MonthCodeView: View {
         }
         .opacity(shown ? Theme.Opacity.visible : Theme.Opacity.hidden)
         .onAppear {
+            if breathesToday == nil {
+                breathesToday = !entrance.todayBreathed
+                entrance.todayBreathed = true
+            }
             guard !drawn else { return }
             withAnimation(reduceMotion ? nil : Theme.Motion.Entrance.code) { drawn = true }
+            entrance.codeShown = true
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Gasto de cada día")
@@ -66,6 +81,15 @@ struct MonthCodeView: View {
             let next = direction == .increment ? min(current + 1, last) : max(current - 1, 1)
             onSelectDay(next)
         }
+        // A double tap is not a tap in the middle of the boleto, on whatever day is there
+        // (2026-11-18): it shows today, or the whole month again.
+        .accessibilityAction(.default) { onSelectDay(selectedDay == nil ? lastDay : nil) }
+        .accessibilityActions {
+            if selectedDay != nil {
+                Button("Ver todo el mes") { onSelectDay(nil) }
+            }
+        }
+        .accessibilityHint("Desliza hacia arriba o hacia abajo para cambiar de día")
         .accessibilityIdentifier("codigo-del-mes")
     }
 
@@ -82,12 +106,12 @@ struct MonthCodeView: View {
                     .opacity(opacity(day))
                     // Today breathes a few times once the boleto has come in, then rests at full
                     // (audit 2026-11-02: it breathed forever, and began before it could be seen).
-                    .breathes(day.kind == .today && shownDay == nil, times: Theme.Motion.todayBreaths,
+                    .breathes(day.kind == .today && shownDay == nil && breathesToday == true,
+                              times: Theme.Motion.todayBreaths,
                               seconds: Theme.Motion.todayBreathSeconds, low: Theme.Opacity.tileBreath,
                               begins: shown, after: Theme.Motion.todayBreathAfter)
             }
         }
-        .animation(Theme.Motion.animation(Theme.Motion.select, reduceMotion: reduceMotion), value: shownDay)
     }
 
     private func cell(_ day: MonthCode.Day) -> some View {
@@ -166,7 +190,9 @@ struct MonthCodeView: View {
             touched = day(at: location.x)
         } ended: { location in
             defer { touched = nil; onScrubbing(false) }
-            guard let location else { return }
+            // Cancelled (a call, the app going away): no lift will come to be taken for a tap,
+            // so the next tap is one (2026-11-18: it was swallowed).
+            guard let location else { didScrub = false; return }
             pick(day(at: location.x))
             // The lift that ends a scrub is not also a tap; a later touch is a tap again.
             Task { @MainActor in didScrub = false }

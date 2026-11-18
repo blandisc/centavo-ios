@@ -156,6 +156,9 @@ final class HomeModel {
         let key = SearchKey(query: query, now: now, stamp: stamp, revision: revision)
         return searchMemo.value(for: key) {
             let parsed = ExpenseSearch.query(from: key.query, now: now)
+            // Only words that ask for nothing («el», «de», on the way to «el palacio»): no
+            // results, instead of every expense ever loaded on the main thread (2026-11-18).
+            guard !parsed.isEmpty else { return HomeSearch(count: 0, groups: []) }
             // The store narrows it down first (audit 2026-11-02: every letter loaded every
             // expense); the exact rule (`ExpenseSearch.matches`) then decides, as before.
             let candidates = (try? context.fetch(Self.searchCandidates(for: parsed))) ?? []

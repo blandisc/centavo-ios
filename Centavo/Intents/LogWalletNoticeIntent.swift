@@ -37,8 +37,8 @@ struct LogWalletNoticeIntent: AppIntent {
     // every purchase (owner, 2026-10-22). The expense just appears in the list.
     func perform() async throws -> some IntentResult {
         // A store that failed to open earlier in this launch gets one more try before the
-        // payment is left pending (`Store.retry` never opens it twice).
-        let container = (try? Store.opened.get()) ?? (try? Store.retry().get())
+        // payment is left pending (`Store.forIntent`).
+        let container = Store.forIntent
         // On the widgets before returning: Atajos may suspend the app right after the payment.
         defer { if container != nil { WidgetBridge.refreshAfterIntent() } }
         if let container { _ = try? RecurringExpenses.logDue(in: container.mainContext) }
@@ -67,6 +67,9 @@ struct LogWalletNoticeIntent: AppIntent {
             throw CaptureError.storeUnavailable
         }
         let context = container.mainContext
+        // Whether a payment had ever arrived here, asked before `record` marks this one as
+        // arrived: otherwise «Llegó tu primer pago solo» never showed (2026-11-18).
+        let arrivedBefore = CaptureArrival.walletKnown()
         // The amount the notice already read, not its text read again (`ExpenseRecorder.record`).
         var expense: Expense?
         let outcome: CaptureOutcome
@@ -89,7 +92,7 @@ struct LogWalletNoticeIntent: AppIntent {
             // The notice that brought only this shop's name a moment ago was this payment.
             UnreadNotice.settle(savedIn: [merchant, parsed.merchant ?? ""])
             // The proof the setup guide waits for: it arrived on this iPhone (`CaptureArrival`).
-            CaptureArrival.note(amount: parsed.amountText, merchant: merchant)
+            CaptureArrival.note(amount: parsed.amountText, merchant: merchant, arrivedBefore: arrivedBefore)
         case .empty:
             break
         }

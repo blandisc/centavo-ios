@@ -10,7 +10,8 @@ struct BackupIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard case .success(let container) = Store.opened else {
+        // One more try at a store that failed earlier in this launch (`Store.forIntent`).
+        guard let container = Store.forIntent else {
             // A night without a backup is said in «Hoy», whatever the reason.
             UserDefaults.standard.set(AppClock.now, forKey: DailyBackup.failedKey)
             throw CaptureError.storeUnavailable

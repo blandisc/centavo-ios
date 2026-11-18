@@ -20,7 +20,8 @@ struct CategoryTotalIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // One more try at a store that failed earlier in this launch (`Store.forIntent`).
+        guard let container = Store.forIntent else { throw CaptureError.storeUnavailable }
         // A fixed expense now due may have been saved: on the widgets before returning.
         defer { WidgetBridge.refreshAfterIntent() }
         _ = try? RecurringExpenses.logDue(in: container.mainContext)
@@ -64,7 +65,7 @@ enum CategoryNames {
     static func all() -> [String] {
         let custom = UserCatalog.decode(UserDefaults.standard.string(forKey: UserCatalog.categoriesKey) ?? "")
         var used: [String] = []
-        if case .success(let container) = Store.opened {
+        if let container = Store.forIntent {
             var descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
             descriptor.fetchLimit = 1_000
             let expenses = (try? container.mainContext.fetch(descriptor)) ?? []

@@ -35,6 +35,20 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         }
     }
 
+    /// Without a budget there is no «Hoy puedes gastar» and the figure on top is the month's
+    /// total (DECISIONS): these two stories say what a budget would do instead of
+    /// pointing at a figure that isn't there (QA, 2026-11-18). «Pruébalo» opens the budget.
+    func text(hasBudget: Bool) -> String {
+        switch self {
+        case .figure where !hasBudget:
+            "Con un presupuesto, Al día lo reparte entre los días del mes, menos tus fijos, y arriba te dice cuánto puedes gastar hoy. Sin él, arriba ves lo que llevas en el mes."
+        case .leftover where !hasBudget:
+            "Con un presupuesto, lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
+        default:
+            text
+        }
+    }
+
     /// Where «Pruébalo» goes, if the story has somewhere to try it.
     var destination: TutorialDestination? {
         switch self {
@@ -45,7 +59,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         }
     }
 
-    var duration: Double { StoryTiming.duration(for: [title, text]) }
+    func duration(hasBudget: Bool) -> Double { StoryTiming.duration(for: [title, text(hasBudget: hasBudget)]) }
 }
 
 /// What «Pruébalo» opens on «Hoy», once the stories are gone (two covers can't be up at once).
@@ -62,6 +76,7 @@ struct TutorialView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(BudgetStore.key) private var storedBudget = ""
 
     @State private var index = 0
     /// When the current story started, and how long it has been held since: what has gone by is
@@ -79,15 +94,21 @@ struct TutorialView: View {
     @State private var pressStart: Date?
     /// Taps only: the stories that move by themselves don't buzz.
     @State private var taps = 0
+    /// The story didn't fit and scrolls: no press there to hold it, so it doesn't move on by
+    /// itself while the person scrolls down to read it (QA on the SE, 2026-11-18).
+    @State private var scrolls = false
 
     private var stories: [TutorialStory] { TutorialStory.allCases }
     private var story: TutorialStory { stories[index] }
     private var isFirst: Bool { index == stories.startIndex }
+    private var hasBudget: Bool { BudgetStore.amount(from: storedBudget) != nil }
+    private var text: String { story.text(hasBudget: hasBudget) }
+    private var duration: Double { story.duration(hasBudget: hasBudget) }
 
     /// It moves on by itself only when the person can read at their pace anyway: never with
-    /// VoiceOver, still drawings or an accessibility text size.
+    /// VoiceOver, still drawings, an accessibility text size or a story that scrolls.
     private var advancesByItself: Bool {
-        !voiceOver && !still && !typeSize.isAccessibilitySize
+        !voiceOver && !still && !typeSize.isAccessibilitySize && !scrolls
     }
 
     private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
@@ -106,7 +127,10 @@ struct TutorialView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .contentShape(Rectangle())
                         .gesture(press(width: proxy.size.width))
+                    // Only the variant on screen appears, so this says which one it is.
                     ScrollView { ZStack { storyContent } }
+                        .onAppear { scrolls = true }
+                        .onDisappear { scrolls = false }
                 }
             }
             footer
@@ -115,6 +139,9 @@ struct TutorialView: View {
         .padding(.vertical, Theme.Space.m)
         .background(Theme.background.ignoresSafeArea())
         .offset(y: max(drag, Theme.Space.none))
+        // The spring back after a short pull is a full-screen move: none with «Reducir
+        // movimiento» (QA, 2026-11-18). The reset's own transaction can't read the setting.
+        .transaction(value: drag) { [isStill = still] in if isStill { $0.animation = nil } }
         // Again when it starts or stops moving by itself (low power, VoiceOver, text size).
         .task(id: RunKey(index: index, moves: advancesByItself)) { await run() }
         .onChange(of: advancesByItself) { restartClock() }
@@ -140,7 +167,7 @@ struct TutorialView: View {
             }
         }
         .onChange(of: index) {
-            if voiceOver { AccessibilityNotification.Announcement("\(story.title). \(story.text)").post() }
+            if voiceOver { AccessibilityNotification.Announcement("\(story.title). \(text)").post() }
         }
         .sensoryFeedback(.selection, trigger: taps)
     }
@@ -156,8 +183,8 @@ struct TutorialView: View {
                         // 2026-11-02: a 30 fps clock redrew it the whole story). A new clock is a
                         // new bar.
                         RunningStoryBar(now: StoryTiming.progress(elapsed: elapsed(at: AppClock.now),
-                                                                  duration: story.duration),
-                                        duration: story.duration, paused: heldSince != nil)
+                                                                  duration: duration),
+                                        duration: duration, paused: heldSince != nil)
                             .id(storyStart)
                     } else {
                         StoryBar(fill: item.rawValue <= index ? 1 : 0)
@@ -197,7 +224,7 @@ struct TutorialView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("tutorial-titulo")
-            Text(story.text)
+            Text(text)
                 .font(.ticket(.body))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -276,7 +303,7 @@ struct TutorialView: View {
     private func run() async {
         guard advancesByItself else { return }
         while !Task.isCancelled {
-            let left = story.duration - elapsed(at: AppClock.now)
+            let left = duration - elapsed(at: AppClock.now)
             if heldSince == nil && left <= 0 {
                 if index < stories.count - 1 { go(index + 1) }
                 return

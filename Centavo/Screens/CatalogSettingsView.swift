@@ -71,16 +71,11 @@ struct CatalogSettingsView: View {
 
     /// Cards that came with payments (Wallet names them) but were never set up here: they
     /// show beside the saved ones, so the screen is never empty for someone using Wallet.
+    /// `used.cards` already comes one per card, not one per expense, and the saved ones are
+    /// folded once: with thousands of expenses this ran on every redraw (2026-11-18).
     private var detectedCards: [String] {
-        var names: [String] = []
-        for name in used.cards {
-            let card = name.trimmingCharacters(in: .whitespaces)
-            guard !card.isEmpty,
-                  !sources.contains(where: { UserCatalog.same($0.name, card) }),
-                  !names.contains(where: { UserCatalog.same($0, card) }) else { continue }
-            names.append(card)
-        }
-        return names
+        let saved = Set(sources.map { UserCatalog.fold($0.name) })
+        return used.cards.filter { !saved.contains(UserCatalog.fold($0)) }
     }
 
     /// Every category in one place: yours first, then the usual ones and any other used.
@@ -116,6 +111,8 @@ struct CatalogSettingsView: View {
     /// Under the ways of paying: with none, what to add; with some, only the marks that are on
     /// screen get their line (owner, 2026-11-11: it explained ★ and ))) to an empty square).
     @ViewBuilder private var sourcesFooter: some View {
+        let sources = self.sources
+        let detectedCards = self.detectedCards
         let hasDefault = sources.contains { UserCatalog.same($0.name, defaultSource) }
         let star = Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano.")
         let wave = Text("\(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono.")
@@ -419,14 +416,17 @@ struct CatalogSettingsView: View {
 /// Only those fields are read from the store.
 private struct UsedNames {
     var categories: [String] = []
-    /// One per expense that has a card, so they can be counted too.
+    /// Each card once, as it first came (newest first, trimmed), never empty. Before it was one
+    /// per expense and the screen compared thousands of them on every redraw (2026-11-18).
     var cards: [String] = []
+    /// How many expenses have each card, by `UserCatalog.fold` of its name.
+    var cardCounts: [String: Int] = [:]
     /// How many expenses have each category, by its name as the app compares them.
     var categoryCounts: [String: Int] = [:]
 
     /// How many expenses have this card, compared as everywhere (case, accents and spaces don't count).
     func count(card name: String) -> Int {
-        cards.filter { UserCatalog.same($0, name) }.count
+        cardCounts[UserCatalog.fold(name)] ?? 0
     }
 
     func count(category name: String) -> Int {
@@ -439,11 +439,18 @@ private struct UsedNames {
         let rows = (try? context.fetch(descriptor)) ?? []
         let history = rows.map { CategorizedExpense(merchant: "", category: $0.category, date: $0.date) }
         var counts: [String: Int] = [:]
+        var cards: [String] = []
+        var cardCounts: [String: Int] = [:]
         for row in rows {
+            if let card = row.card?.trimmingCharacters(in: .whitespaces), !card.isEmpty {
+                let key = UserCatalog.fold(card)
+                if cardCounts[key] == nil { cards.append(card) }
+                cardCounts[key, default: 0] += 1
+            }
             guard let category = row.category, !category.isEmpty else { continue }
             counts[category, default: 0] += 1
         }
-        return UsedNames(categories: CategoryMemory.known(in: history), cards: rows.compactMap(\.card),
-                         categoryCounts: counts)
+        return UsedNames(categories: CategoryMemory.known(in: history), cards: cards,
+                         cardCounts: cardCounts, categoryCounts: counts)
     }
 }

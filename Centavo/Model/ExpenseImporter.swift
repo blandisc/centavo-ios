@@ -14,8 +14,17 @@ enum ExpenseImporter {
 
         /// What happened, said plainly: how many came in, how many were already here, how many
         /// were left out for looking repeated, and how many rows couldn't be read.
+        ///
+        /// Nothing added is not said as a success (2026-11-18): «Se agregaron 0 gastos» read like
+        /// it worked. When nothing was there either, it says what to look at.
         var text: String {
-            var parts = [added == 1 ? "Se agregó 1 gasto." : "Se agregaron \(added) gastos."]
+            let first: String
+            switch added {
+            case 0: first = "No se agregó ningún gasto."
+            case 1: first = "Se agregó 1 gasto."
+            default: first = "Se agregaron \(added) gastos."
+            }
+            var parts = [first]
             if alreadyThere > 0 {
                 parts.append(alreadyThere == 1 ? "1 ya estaba." : "\(alreadyThere) ya estaban.")
             }
@@ -26,6 +35,11 @@ enum ExpenseImporter {
             if unreadable > 0 {
                 parts.append(unreadable == 1 ? "1 renglón no se pudo leer."
                              : "\(unreadable) renglones no se pudieron leer.")
+            }
+            if added == 0 && alreadyThere == 0 && leftOut == 0 {
+                parts.append(unreadable > 0
+                             ? "Revisa que las fechas y los montos estén como en la exportación de Al día."
+                             : "El archivo no trae renglones con gastos.")
             }
             return parts.joined(separator: " ")
         }

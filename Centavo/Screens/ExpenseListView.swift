@@ -66,10 +66,17 @@ struct ExpenseListView: View {
     @State private var now = AppClock.now
     /// Months back from this one that are on screen: 0 is this month, -1 last month.
     @State private var monthOffset = 0
+    /// A past month whose last expense was just deleted while on it (2026-11-18): it stays
+    /// reachable, empty, until the arrows leave it, instead of the screen jumping to this month.
+    @State private var keptMonth: Date?
     @State private var pendingDelete: Expense?
     @State private var showingSetup = false
     @State private var showingBudget = false
     @State private var currencyChanged = false
+    /// The fixed expenses left in the old currency when it changed, and that currency: they are
+    /// no longer set apart from «Hoy puedes gastar» (2026-11-18).
+    @State private var fixedLeftBehind = 0
+    @State private var previousCurrency = ""
     @State private var showingCatalogs = false
     @AppStorage(PaymentPlace.key) private var savesPlace = false
     @State private var adding = false
@@ -128,21 +135,55 @@ struct ExpenseListView: View {
     static let mexico = Locale(identifier: "es_MX")
 
     /// Changes the currency the month adds up in. The budget is a bare number, and 8,000
-    /// pesos must not quietly become 8,000 dollars, so it asks about it.
+    /// pesos must not quietly become 8,000 dollars, so it asks about it. The fixed expenses in
+    /// the old currency stop being set apart from «Hoy puedes gastar»: it says so too, instead
+    /// of the figure going up without a word (2026-11-18).
     private func setPrimary(_ code: String) {
-        if code != primaryCurrency, BudgetStore.amount(from: storedBudget) != nil {
+        let old = primaryCurrency
+        if code != old, BudgetStore.amount(from: storedBudget) != nil {
+            let originals = (try? context.fetch(HomeModel.originals)) ?? []
+            let items = FixedOutlook.items(originals: originals, plans: FixedPlan.decode(storedPlans), now: now)
+            fixedLeftBehind = items.filter { CurrencyResolver.isoCode(for: $0.currency, primary: old) == old }.count
+            previousCurrency = old
             currencyChanged = true
         }
         storedCurrency = code
     }
 
+    /// As far back as the oldest expense, and no further; deleting it pulls the limit forward,
+    /// unless it was the last one of the month on screen (`keptMonth`).
+    private var earliestOffset: Int {
+        // Only while something is left: with nothing at all, the empty screen is this month's.
+        let kept = oldestRows.isEmpty ? nil : keptMonth
+        let oldest = [oldestRows.first?.date, kept].compactMap { $0 }.min()
+        return MonthNavigator.earliestOffset(oldest: oldest, now: now)
+    }
+
+    /// The month on screen, as an offset from this one.
+    private var shownOffset: Int { min(0, max(monthOffset, earliestOffset)) }
+
+    /// The month on screen, by its first instant: the same date for as long as the month is the
+    /// same. It was `now` moved by whole months, a new date each time the app came back, and the
+    /// picked day or category was let go as if the month had changed (2026-11-18).
+    private func viewedMonth(_ offset: Int) -> Date {
+        MonthNavigator.bounds(of: MonthNavigator.month(offsetBy: offset, from: now)).start
+    }
+
+    /// The arrows: to the month before or after, said out loud with its whole name, since the
+    /// buttons only say «anterior» and «siguiente» (2026-11-18).
+    private func goToMonth(_ offset: Int) {
+        keptMonth = nil
+        monthOffset = offset
+        let name = viewedMonth(offset).formatted(.dateTime.month(.wide).year().locale(Self.mexico))
+        let said: String = offset == 0 ? "Este mes, \(name)" : name
+        AccessibilityNotification.Announcement(said).post()
+    }
+
     var body: some View {
-        // You can browse back as far as the oldest expense, and no further; deleting it pulls the
-        // limit forward.
-        let earliest = MonthNavigator.earliestOffset(oldest: oldestRows.first?.date, now: now)
-        let offset = min(0, max(monthOffset, earliest))
+        let earliest = earliestOffset
+        let offset = shownOffset
         let isCurrent = offset == 0
-        let viewed = MonthNavigator.month(offsetBy: offset, from: now)
+        let viewed = viewedMonth(offset)
         let lastCapture = WalletWatch.lastCapture(stored: walletArrival, newestInStore: latestCaptures.first?.date)
         let health = CaptureArrival.health(lastCapture: lastCapture, session: guideOpened, first: firstArrival, now: now)
 
@@ -196,6 +237,9 @@ struct ExpenseListView: View {
                 ToolbarItem(placement: .principal) {
                     // «Al día. Punto.»
                     Signature("al día", spoken: "Al día")
+                        // The «+» is read after the whole list: from the top, VoiceOver offers it
+                        // here, the first thing on the screen (2026-11-18).
+                        .accessibilityAction(named: "Anotar gasto") { adding = true }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -231,9 +275,9 @@ struct ExpenseListView: View {
                 // arrows: the ticket's head already names the month, and the signature must
                 // keep its place in the middle.
                 ToolbarItemGroup(placement: .topBarLeading) {
-                    Button("Mes anterior", systemImage: "chevron.left") { monthOffset = offset - 1 }
+                    Button("Mes anterior", systemImage: "chevron.left") { goToMonth(offset - 1) }
                         .disabled(offset <= earliest)
-                    Button("Mes siguiente", systemImage: "chevron.right") { monthOffset = offset + 1 }
+                    Button("Mes siguiente", systemImage: "chevron.right") { goToMonth(offset + 1) }
                         .disabled(offset >= 0)
                 }
             }
@@ -304,7 +348,7 @@ struct ExpenseListView: View {
             .onChange(of: whereItGoesStyle) { _, _ in selectedCategory = nil }
             .modifier(Feedback(expenseCount: storeCount, newest: newestRows.first?.date))
             .overlay(alignment: .bottom) { undoOverlay }
-            .modifier(KeepsTime(now: $now, context: context))
+            .modifier(KeepsTime(now: $now, monthOffset: $monthOffset, context: context))
             withSheets
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
@@ -319,7 +363,8 @@ struct ExpenseListView: View {
                 if Store.syncsBudget { BudgetSync.push(value, for: FixedPlan.key) }
             }
             .modifier(BudgetCurrencyCheck(isPresented: $currencyChanged, currency: primaryCurrency,
-                                          onReview: { showingBudget = true }))
+                                          fixedLeft: fixedLeftBehind, previous: previousCurrency,
+                                          onReview: { showingBudget = true }, onFixed: { showingFixed = true }))
             .task {
                 UnreadNotice.prepare()
                 reloadPending()
@@ -551,7 +596,8 @@ private struct HomeContent: View, Equatable {
                 if selectedCategory != nil { actions.clearCategory() }
             }
         }
-        // Under the tabs and the «+» the list blurs the way iOS does it under any bar.
+        // Under the tabs, or under the «+»'s own bar without them (`RootView`), the list blurs the
+        // way iOS does it under any bar.
         .scrollEdgeEffectStyle(.soft, for: .bottom)
         // A warning the moment the budget is blown.
         .sensoryFeedback(.warning, trigger: isCurrent && (month.pace?.remaining ?? 0) < 0) { old, new in
@@ -646,7 +692,9 @@ private struct HomeHeader: View {
             // se va» in Lista or Mosaico; on the right only the calendar. A budget with nothing
             // written down yet has it too, empty: its days to come dashed, today outlined, the
             // same as any other day of the month (owner, 2026-11-11).
-            if storeIsEmpty ? pace != nil : searchCount == nil {
+            // Never while searching, the store empty or not (2026-11-18: an empty store with a
+            // budget kept it under the search's results).
+            if searchCount == nil, !storeIsEmpty || pace != nil {
                 MonthCarousel(
                     calendarModel: month.calendar,
                     selectedDay: selectedDay,
@@ -684,9 +732,15 @@ private struct HomeHeader: View {
                                      discardAll: actions.discardAllPending, openGuide: actions.openGuideFromWarning)
                     .ticketRow()
             }
-            if storeIsEmpty {
-                EmptyTicket(hasBudget: pace != nil, wallet: WalletCard(health), onAdd: actions.add,
-                            onBudget: actions.setBudget, onSetup: actions.setup)
+            // While searching, only the results: with nothing in the store the empty ticket said
+            // «Tu mes empieza aquí» under «Sin resultados» (2026-11-18).
+            if searchCount == nil, storeIsEmpty {
+                // A day picked on the empty calendar says so, and how to let it go (2026-11-18).
+                filters
+                // «Avisar si no llegan pagos» off: the empty screen stops asking to connect Wallet
+                // too, as Ajustes says (2026-10-29).
+                EmptyTicket(hasBudget: pace != nil, wallet: showsCapture ? WalletCard(health) : nil,
+                            onAdd: actions.add, onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
                 // The Wallet line stays between the carousel and the list, not under «Hoy»:
@@ -702,28 +756,40 @@ private struct HomeHeader: View {
                         .ticketRow()
                 }
 
-                if let day = selectedDay {
-                    FilterRow(title: "Día \(day)", count: month.shownCount, total: month.shownTotal,
-                              clear: actions.clearDay)
-                        .ticketRow()
-                }
-                if let line = selectedCategory {
-                    FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
-                              count: month.shownCount, total: month.shownTotal, clear: actions.clearCategory)
-                        .ticketRow()
-                }
+                filters
                 if !month.hasExpenses {
-                    Text("Sin gastos este mes")
-                        .ticketCaption()
-                        .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
-                        .overlay(alignment: .top) { Perforation() }
-                        .ticketRow()
+                    emptyLine("Sin gastos este mes")
+                } else if selectedDay != nil, month.shownCount == 0 {
+                    // A day with nothing in it left a blank under its filter (2026-11-18).
+                    emptyLine("Sin gastos este día")
                 }
             }
         }
         // The whole top of the screen turns the carousel's page with a sideways swipe.
         .contentShape(Rectangle())
         .gesture(pageSwipe)
+    }
+
+    /// The day or the category picked, over the list.
+    @ViewBuilder private var filters: some View {
+        if let day = selectedDay {
+            FilterRow(title: "Día \(day)", count: month.shownCount, total: month.shownTotal,
+                      clear: actions.clearDay)
+                .ticketRow()
+        }
+        if let line = selectedCategory {
+            FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
+                      count: month.shownCount, total: month.shownTotal, clear: actions.clearCategory)
+                .ticketRow()
+        }
+    }
+
+    private func emptyLine(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .ticketCaption()
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.tallRow, alignment: .leading)
+            .overlay(alignment: .top) { Perforation() }
+            .ticketRow()
     }
 }
 
@@ -814,7 +880,7 @@ private struct CurrencySuggestionRow: View {
     var body: some View {
         // With large text the button goes under the sentence instead of squeezing it.
         AdaptiveStack(spacing: Theme.Space.m, stackedSpacing: Theme.Space.s) {
-            NoteText("Casi todos tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
+            NoteText("La mayoría de tus pagos de este mes son en \(CurrencyPreference.spoken(code)).")
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: apply) {
@@ -884,18 +950,34 @@ private struct TopSearch: ViewModifier {
     }
 }
 
-/// After the main currency changes: the budget stays the same number, so offer to fix it.
+/// After the main currency changes: the budget stays the same number, so offer to fix it; and
+/// the fixed expenses left in the old currency are no longer set apart from it (2026-11-18).
 private struct BudgetCurrencyCheck: ViewModifier {
     @Binding var isPresented: Bool
     let currency: String
+    /// How many fixed expenses are in `previous`, the currency it was.
+    let fixedLeft: Int
+    let previous: String
     let onReview: () -> Void
+    let onFixed: () -> Void
+
+    private var message: String {
+        let budget = "Sigue siendo el mismo número, ahora en \(CurrencyPreference.spoken(currency))."
+        guard fixedLeft > 0 else { return budget }
+        let old = CurrencyPreference.spoken(previous)
+        let fixed = fixedLeft == 1
+            ? "Tu gasto fijo sigue en \(old) y ya no se aparta de lo que puedes gastar."
+            : "Tus \(fixedLeft) gastos fijos siguen en \(old) y ya no se apartan de lo que puedes gastar."
+        return budget + " " + fixed
+    }
 
     func body(content: Content) -> some View {
         content.alert("¿Y tu presupuesto?", isPresented: $isPresented) {
             Button("Cambiarlo", action: onReview)
+            if fixedLeft > 0 { Button("Ver gastos fijos", action: onFixed) }
             Button("Así está bien", role: .cancel) {}
         } message: {
-            Text("Sigue siendo el mismo número, ahora en \(CurrencyPreference.spoken(currency)).")
+            Text(message)
         }
     }
 }
@@ -997,13 +1079,24 @@ private struct CountsStore: ViewModifier {
 /// whose day came while the app was closed.
 private struct KeepsTime: ViewModifier {
     @Binding var now: Date
+    /// A past month on screen stays on screen when the month turns (2026-11-18): at midnight on
+    /// the 1st, or coming back in another month, September stayed «one month back» and became
+    /// October under the person's eyes.
+    @Binding var monthOffset: Int
     let context: ModelContext
     @Environment(\.scenePhase) private var scenePhase
+
+    /// The new «now», and the offset moved in the same update, so the month never flickers.
+    private func advance() {
+        let new = AppClock.now
+        monthOffset = ViewedMonth.offset(monthOffset, from: now, to: new)
+        now = new
+    }
 
     func body(content: Content) -> some View {
         content
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { now = AppClock.now }
+                if phase == .active { advance() }
                 // A budget or a fixed expense changed in «Más» also changes the widgets.
                 if phase == .background { WidgetBridge.refresh() }
             }
@@ -1016,8 +1109,20 @@ private struct KeepsTime: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
-                now = AppClock.now
+                advance()
             }
+    }
+}
+
+/// Which offset keeps a past month on screen when «now» moves to another month.
+enum ViewedMonth {
+    /// This month (0) follows «now»; a past one stays the same month, never past this one.
+    static func offset(_ offset: Int, from old: Date, to new: Date, calendar: Calendar = .current) -> Int {
+        guard offset < 0 else { return offset }
+        let from = MonthNavigator.bounds(of: old, calendar: calendar).start
+        let to = MonthNavigator.bounds(of: new, calendar: calendar).start
+        let months = calendar.dateComponents([.month], from: from, to: to).month ?? 0
+        return min(offset - months, 0)
     }
 }
 
@@ -1160,6 +1265,10 @@ private extension ExpenseListView {
 
     func delete(_ expense: Expense) {
         let snapshot = DeletedExpense(expense)
+        // Deleting a past month's last expense leaves that month on screen, empty, instead of
+        // jumping to this one under «Deshacer» (2026-11-18).
+        let viewed = viewedMonth(shownOffset)
+        if shownOffset < 0, MonthNavigator.isSameMonth(expense.date, as: viewed) { keptMonth = viewed }
         context.delete(expense)
         guard persist() else { return }
         countStore()
@@ -1375,8 +1484,11 @@ private struct HeroTotal: View {
     private var totalText: AttributedString {
         let formatted = formatMoney(summary.primary.amount, isoCode: summary.primary.isoCode,
                                     label: summary.primary.label)
-        let parts = MoneyText.splitCents(formatted,
-                                         decimalSeparator: Locale.current.decimalSeparator ?? ".")
+        // The separator of what wrote it: a currency is written the Mexican way («.») in any
+        // region; only a bare marker follows the phone's (2026-11-18: with «,» the cents never
+        // greyed out).
+        let separator = summary.primary.isoCode != nil ? "." : Locale.current.decimalSeparator ?? "."
+        let parts = MoneyText.splitCents(formatted, decimalSeparator: separator)
         var text = AttributedString(parts.head)
         var cents = AttributedString(parts.cents)
         cents.foregroundColor = Theme.muted
@@ -1387,7 +1499,7 @@ private struct HeroTotal: View {
 
     private var othersText: String {
         summary.others
-            .map { "\($0.label) \($0.amount.formatted(.number.precision(.fractionLength(2))))" }
+            .map { "\($0.label) \(plainAmount($0.amount))" }
             .formatted(.list(type: .and, width: .narrow))
     }
 
@@ -1501,28 +1613,35 @@ private struct WalletCard {
     let detail: String
 
     init(_ health: CaptureHealth) {
+        // What iOS 26's automation can catch, said the same way as the welcome (`CaptureCopy`).
         switch health {
         case .waiting:
             title = "Esperando tu primer pago"
-            detail = "Paga algo con Apple Pay y aparecerá aquí solo."
+            detail = CaptureCopy.waiting
         case .silent:
             title = "El atajo no ha anotado nada"
-            detail = "Si ya pagaste con Apple Pay, toca para revisarlo."
+            detail = CaptureCopy.silent
         default:
             title = "Conectar Wallet"
-            detail = "Cada pago con Apple Pay se anota solo."
+            detail = CaptureCopy.connect
         }
     }
 }
 
 private struct EmptyTicket: View {
     let hasBudget: Bool
-    let wallet: WalletCard
+    /// `nil` with «Avisar si no llegan pagos» off: no card asks to connect Wallet (2026-11-18).
+    let wallet: WalletCard?
     let onAdd: () -> Void
     let onBudget: () -> Void
     let onSetup: () -> Void
 
     private typealias Empty = Theme.Motion.Money.Empty
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    private var lead: String {
+        wallet == nil ? "Anota tu primer gasto y aparecerá aquí." : CaptureCopy.emptyLead
+    }
 
     var body: some View {
         // Only what moves follows the clock: the text and the button are drawn once.
@@ -1530,10 +1649,14 @@ private struct EmptyTicket: View {
             Text("Tu mes empieza aquí")
                 .ticketCaption(strong: true)
             if !hasBudget { monthStrip }
-            PlayOnceClock(until: Empty.end) { t in
-                ghostRow(moneySpan(t, Empty.ghost.lowerBound, Empty.ghost.upperBound))
+            // Only a drawing (hidden from VoiceOver): with the largest text it had no room and
+            // broke «TU PRIMER GASTO» into pieces (2026-11-18).
+            if !typeSize.isAccessibilitySize {
+                PlayOnceClock(until: Empty.end) { t in
+                    ghostRow(moneySpan(t, Empty.ghost.lowerBound, Empty.ghost.upperBound))
+                }
             }
-            Text("Anota un gasto, o conecta Wallet y cada pago con Apple Pay se anotará solo.")
+            Text(lead)
                 .font(.ticket(.callout))
                 .lineSpacing(Theme.Space.xxs)
                 .foregroundStyle(Theme.muted)
@@ -1595,7 +1718,9 @@ private struct EmptyTicket: View {
     /// one clock around both cards rebuilt their buttons and layout 30 times a second).
     @ViewBuilder private var steps: some View {
         let wallet = Empty.wallet
-        if hasBudget {
+        if self.wallet == nil {
+            if !hasBudget { budgetCard(Empty.budget, wide: true) }
+        } else if hasBudget {
             walletCard(wallet, wide: true)
         } else {
             let budget = Empty.budget
@@ -1619,7 +1744,7 @@ private struct EmptyTicket: View {
     }
 
     private func walletCard(_ progress: ClosedRange<Double>, wide: Bool) -> some View {
-        EmptyStepCard(kind: .wallet, title: self.wallet.title, detail: self.wallet.detail,
+        EmptyStepCard(kind: .wallet, title: self.wallet?.title ?? "", detail: self.wallet?.detail ?? "",
                       progress: progress, wide: wide, identifier: "vacio-wallet", action: onSetup)
     }
 }
@@ -1634,24 +1759,29 @@ private struct EmptyStepCard: View {
     let wide: Bool
     let identifier: String
     let action: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// The drawing beside the words; with the largest text, over them, so the words have the
+    /// card's whole width (2026-11-18: «presup/uesto» and «Conecta/r» broke in two).
+    private var sideBySide: Bool { wide && !typeSize.isAccessibilitySize }
 
     var body: some View {
         Button(action: action) {
-            let layout = wide ? AnyLayout(HStackLayout(spacing: Theme.Space.m))
-                              : AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.xs))
+            let layout = sideBySide ? AnyLayout(HStackLayout(spacing: Theme.Space.m))
+                                    : AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.xs))
             layout {
                 PlayOnceClock(until: Theme.Motion.Money.Empty.end) { t in
                     EmptyStepArt(kind: kind, progress: moneySpan(t, progress.lowerBound, progress.upperBound))
                 }
-                    .frame(width: wide ? Theme.Size.moneyExcelArt : nil, height: Theme.Size.emptyStepArt)
-                    .frame(maxWidth: wide ? nil : .infinity)
+                    .frame(width: sideBySide ? Theme.Size.moneyExcelArt : nil, height: Theme.Size.emptyStepArt)
+                    .frame(maxWidth: sideBySide ? nil : .infinity)
                     .background(Theme.ink.opacity(Theme.Opacity.moneyArtWash), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
                 VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                     Text(title).font(.ticket(.bodyStrong)).foregroundStyle(Theme.brass)
                     Text(detail).font(.ticket(.hint)).foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if wide { Spacer(minLength: Theme.Space.none) }
+                if sideBySide { Spacer(minLength: Theme.Space.none) }
             }
             .padding(Theme.Space.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1782,18 +1912,32 @@ private struct UndoBarPlacement: ViewModifier {
     let spoken: String
     let reduceMotion: Bool
     let expire: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// Longer with VoiceOver, and with the largest text, which is slower to read (2026-11-18).
+    private var seconds: Double {
+        UIAccessibility.isVoiceOverRunning || typeSize.isAccessibilitySize
+            ? Theme.Motion.undoLongSeconds : Theme.Motion.undoSeconds
+    }
 
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, Theme.Space.screen)
             // Right above the bottom bar: the safe area already ends at the bar.
             .padding(.bottom, Theme.Space.m)
+            // Read before the list under it, not after its last row (2026-11-18).
+            .accessibilitySortPriority(1)
             .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             .task(id: id) {
+                let total = seconds
+                // A delete from the expense's sheet comes as the sheet closes, and VoiceOver's
+                // own word for the screen changing cut the announcement short: said once the
+                // sheet is gone (2026-11-18).
+                let wait = UIAccessibility.isVoiceOverRunning ? Theme.Motion.undoAnnounceDelay : 0
+                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+                guard !Task.isCancelled else { return }
                 AccessibilityNotification.Announcement(spoken).post()
-                try? await Task.sleep(for: .seconds(UIAccessibility.isVoiceOverRunning
-                                                    ? Theme.Motion.undoLongSeconds
-                                                    : Theme.Motion.undoSeconds))
+                try? await Task.sleep(for: .seconds(total - wait))
                 guard !Task.isCancelled else { return }
                 withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { expire() }
             }
@@ -1805,20 +1949,38 @@ private struct UndoBar: View {
     let text: String
     var identifier = "deshacer-borrado"
     let undo: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// With the largest text «Deshacer» goes under the words, which wrap instead of being cut
+    /// to «Bor…» (2026-11-18).
+    private var stacked: Bool { typeSize.isAccessibilitySize }
+
+    private var layout: AnyLayout {
+        stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.none))
+                : AnyLayout(HStackLayout(spacing: Theme.Space.m))
+    }
+
+    /// A capsule on one line; on two or more, the card's curve, so the corners don't cut the words.
+    private var shape: AnyShape {
+        stacked ? AnyShape(RoundedRectangle(cornerRadius: Theme.Radius.card)) : AnyShape(Capsule())
+    }
 
     var body: some View {
-        HStack(spacing: Theme.Space.m) {
+        layout {
             Text(text)
                 .font(.ticket(.detail))
                 .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-            Spacer(minLength: Theme.Space.s)
+                .lineLimit(stacked ? nil : 1)
+                .fixedSize(horizontal: false, vertical: stacked)
+            if !stacked { Spacer(minLength: Theme.Space.s) }
             Button(action: undo) { LinkActionLabel("Deshacer", fillsWidth: false) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(identifier)
         }
         .padding(.horizontal, Theme.Space.l)
-        .glassEffect(.regular, in: Capsule())
+        .padding(.top, stacked ? Theme.Space.sm : Theme.Space.none)
+        .frame(maxWidth: stacked ? .infinity : nil, alignment: .leading)
+        .glassEffect(.regular, in: shape)
     }
 }
 
@@ -1831,9 +1993,12 @@ private struct SearchHeaderRow: View {
     /// What the search understands, one tap each: it reads phrases, not just names.
     private let examples = ["café", "uber de octubre", "más de 500"]
 
+    /// «5,000», like every other figure of the app (2026-11-18: it said «5000»).
+    private var countText: String { count.formatted(.number.locale(ExpenseListView.mexico)) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionLabel(count == 0 ? "Sin resultados" : "\(count) \(count == 1 ? "gasto" : "gastos")")
+            SectionLabel(count == 0 ? "Sin resultados" : "\(countText) \(count == 1 ? "gasto" : "gastos")")
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                 .accessibilityIdentifier("resultados-busqueda")
             if count == 0 {
@@ -1918,7 +2083,7 @@ struct DayGroup: Identifiable {
             let code = CurrencyResolver.isoCode(for: first.currencyMarker, primary: primary)
             let same = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == code }
             let sum = same.reduce(Decimal(0)) { $0 + $1.counted }
-            let number = sum.magnitude.formatted(.number.precision(.fractionLength(2)))
+            let number = plainAmount(sum.magnitude)
             let label = String((code ?? first.currencyMarker ?? "").prefix(4))
             return (sum < 0 ? "+" : "") + (label.isEmpty ? number : "\(label) \(number)")
         }
@@ -1948,8 +2113,12 @@ private struct DayDivider: View {
         if calendar.isDate(day, inSameDayAs: now) { return "Hoy · " + date }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(day, inSameDayAs: yesterday) { return "Ayer · " + date }
-        return day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
-            .locale(Locale(identifier: "es_MX")))
+        let style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+            .locale(Locale(identifier: "es_MX"))
+        // Another year says which (a search over every month, 2026-11-18): two «vie 17 oct»
+        // could be years apart.
+        guard calendar.isDate(day, equalTo: now, toGranularity: .year) else { return day.formatted(style.year()) }
+        return day.formatted(style)
     }
 
     @Environment(\.dynamicTypeSize) private var typeSize

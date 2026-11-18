@@ -6,14 +6,20 @@ public struct QuickEntry: Equatable, Sendable {
     /// `AmountParser` to read: a number is never made up, only found.
     public var amountText: String
     public var merchant: String?
+    /// The day said, or now when none was.
     public var date: Date
+    /// Whether the sentence named a day («ayer», «el 3»). Without one, `date` is only now: the
+    /// expense sheet keeps the date it already had (the month being browsed, one picked by
+    /// hand) instead of moving it to today (2026-11-18).
+    public var daySaid: Bool
     /// One of the person's payment sources, spelled as they set it up, or «Efectivo».
     public var source: String?
 
-    public init(amountText: String, merchant: String?, date: Date, source: String?) {
+    public init(amountText: String, merchant: String?, date: Date, source: String?, daySaid: Bool = false) {
         self.amountText = amountText
         self.merchant = merchant
         self.date = date
+        self.daySaid = daySaid
         self.source = source
     }
 }
@@ -26,10 +32,11 @@ public enum QuickEntryParser {
     public static func parse(_ sentence: String, sources: [String], now: Date,
                              calendar: Calendar = .current) -> QuickEntry? {
         var words = Words(sentence)
-        let date = takeDate(&words, now: now, calendar: calendar) ?? now
+        let said = takeDate(&words, now: now, calendar: calendar)
         guard let amount = takeAmount(&words) else { return nil }
         let source = takeSource(&words, among: sources)
-        return QuickEntry(amountText: amount, merchant: merchant(in: words), date: date, source: source)
+        return QuickEntry(amountText: amount, merchant: merchant(in: words), date: said ?? now, source: source,
+                          daySaid: said != nil)
     }
 
     /// What the model read, checked against the sentence: each part is used only when it is
@@ -51,7 +58,10 @@ public enum QuickEntryParser {
         }
         if plainDate == nil, let when, said.contains(when) {
             var words = Words(when)
-            if let date = takeDate(&words, now: now, calendar: calendar) { entry.date = date }
+            if let date = takeDate(&words, now: now, calendar: calendar) {
+                entry.date = date
+                entry.daySaid = true
+            }
         }
         if plainSource == nil, let payment, said.contains(payment) {
             var words = Words(payment)
@@ -93,10 +103,20 @@ public enum QuickEntryParser {
 
         init(_ text: String) {
             original = text.split(whereSeparator: \.isWhitespace)
+                .flatMap(Words.spellingEuro)
                 .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!¡?¿«»\"()")) }
                 .filter { !$0.isEmpty }
             folded = original.map(QuickEntryParser.fold)
             used = original.map { _ in false }
+        }
+
+        /// «12,50€», «€12,50» and a lone «€» as «12,50 euros»: the symbol read as the word, so
+        /// the amount is found and its currency kept (2026-11-18: «12,50€» had no amount, and
+        /// «12,50 €» was saved in the main currency).
+        static func spellingEuro(_ word: Substring) -> [Substring] {
+            guard word.contains("€") else { return [word] }
+            let rest = String(word.filter { $0 != "€" })
+            return rest.isEmpty ? ["euros"] : [Substring(rest), "euros"]
         }
 
         /// Whether `phrase` is in these words, whole and in order.

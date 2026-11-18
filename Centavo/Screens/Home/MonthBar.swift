@@ -123,6 +123,13 @@ struct MonthBar: View {
             Text(wholeMoney(pace.sum.budget)).foregroundStyle(Theme.ink)
         }
         .fixedSize(horizontal: false, vertical: true)
+        // One sentence for VoiceOver, not four stops («Llevas», «$2,366.00», «de», «$2,000»;
+        // 2026-11-18).
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Llevas \(money(pace.spent)) de \(money(pace.sum.budget))")
+        // Never the screen's own total: it only shows past the budget or in a month that is
+        // over, where the hero has its own figure.
+        .accessibilityIdentifier("llevas")
     }
 
     private var totalText: some View {
@@ -130,10 +137,6 @@ struct MonthBar: View {
             // Red past the budget: it stands alone, with no red bar beside it.
             .foregroundStyle(isOver ? Theme.danger : Theme.ink)
             .contentTransition(.numericText())
-            .accessibilityLabel(money(pace.spent))
-            // Never the screen's own total: it only shows past the budget or in a month that is
-            // over, where the hero has its own figure.
-            .accessibilityIdentifier("llevas")
     }
 
     /// The sentence under the figure, in three pieces (only the judgement in color), or `nil`

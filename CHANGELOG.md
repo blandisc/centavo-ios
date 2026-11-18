@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 ### Changed
+- **Fijos más seguros:** apagar «Se repite» en un gasto fijo ahora pregunta antes y lo deja como fijo detenido, sin bajar de golpe «Hoy puedes gastar». Guardar la renta del 31 ya no la mueve al 30.
+- **Borrar un fijo:** «Borrar gasto» sobre un fijo en marcha avisa que deja de repetirse y que lo ya anotado se queda.
+- **Sin duplicados:** tocar «Guardar» dos veces ya no anota el gasto dos veces.
+- **Dilo en una frase:** una frase sin día ya no cambia la fecha a hoy, el monto sale bien en iPhones con coma decimal y entiende «12,50€».
+- **Categoría que sigue al comercio:** si corriges el comercio, la categoría que se llenó sola cambia con él, y solo se recuerda la que eliges tú.
+- **Monto:** «230.» ya se puede guardar, y el resumen dice si el monto es cero o no se entiende.
+- **Fecha al guardar:** un gasto nuevo sin fecha elegida se guarda con la hora de «Guardar», así que ya no cae en el mes anterior pasada la medianoche.
+- **Descartar cambios:** «Cancelar» también pregunta si solo cambiaste la moneda, la fecha o «Se repite».
+- **Hoja de gasto:** el comercio ya no se autocorrige, deslizar los comercios sugeridos no cierra el teclado, la flecha «Siguiente» ya no mueve la moneda, otra moneda se muestra con su código y VoiceOver avisa al guardar.
+- **Bienvenida sin saltos:** un doble toque en «Empezar» o «Continuar» ya no se salta una página, y la demostración ya no brinca cuando llega el aviso de Wallet.
+- **Bienvenida con letra grande:** la barra de pasos, la demostración, la cadena de Wallet y el monto de «Gastos fijos» se apilan en vez de cortarse o salirse de la pantalla.
+- **Bienvenida con VoiceOver:** al cambiar de página se lee el título nuevo, el día del cobro se elige deslizando hacia arriba o hacia abajo, y se anuncia cada gasto fijo que agregas o quitas.
+- **Gastos fijos en la bienvenida:** «Continuar» agrega el gasto fijo que dejaste escrito, y si la app se cierra en «Listo» la bienvenida no vuelve a empezar ni guarda dos veces el mismo fijo.
+- **Sin presupuesto:** «Listo» ya no habla de una cifra en latón que «Hoy» no va a mostrar, y «Tu mes» dice que el presupuesto se puede dejar vacío.
+- **Conectar Wallet (iOS 26):** el botón «Abrir Atajos» y la guía flotante están en todos los pasos que se hacen en Atajos, no solo en el primero.
+- **Conectar Wallet con VoiceOver:** «Abrir Atajos» abre Atajos directo, sin la ventanita flotante que VoiceOver no puede leer, y cada cambio de paso se anuncia.
+- **Cómo funciona:** una historia que no cabe en la pantalla y se desplaza ya no pasa sola a la siguiente mientras la lees.
+- **Cómo funciona con «Reducir movimiento»:** al soltar un arrastre corto, la historia regresa a su lugar sin animación.
+- **Cómo funciona sin presupuesto:** «Cuánto puedes gastar hoy» y «Lo que sobra no se pierde» explican lo que haría un presupuesto en vez de señalar una cifra que no está en tu pantalla.
+- **Búsqueda con año:** «uber octubre 2024» o «uber 2024» encuentra los gastos de ese año, y los días de otro año en los resultados dicen cuál es.
+- **El mes no se mueve solo:** si estás viendo un mes pasado, sigue en pantalla a medianoche del día 1, al regresar a la app o al borrar su último gasto; y el día o la categoría que elegiste ya no se pierde al volver a la app.
+- **Promesa de Wallet según tu iOS:** en iOS 26, «Hoy» y su pantalla vacía dicen que se anotan los pagos hechos acercando el iPhone.
+- **Avisos más claros:** al cambiar de moneda principal, el aviso dice qué gastos fijos se quedan en la moneda anterior; tocar un día sin gastos dice «Sin gastos este día»; buscar sin gastos ya no muestra la pantalla vacía debajo.
+- **Sin Wallet de verdad:** con «Avisar si no llegan pagos» apagado, la pantalla vacía ya no pide conectar Wallet.
+- **Formato:** los montos en otra moneda se escriben al estilo mexicano («EUR 1,234.50»), los centavos del total salen en gris en cualquier región y el conteo de la búsqueda lleva comas («5,000 gastos»).
+- **Letra grande:** la barra de «Deshacer» y las tarjetas de la pantalla vacía ya no cortan palabras, y «Deshacer» dura más.
+- **VoiceOver:** «Anotar gasto» desde la firma de arriba; el mes se anuncia al cambiarlo; «Llevas $X de $Y» se lee de una vez; el doble toque en el boleto ya no elige un día al azar; «Deshacer» se anuncia ya cerrada la hoja.
+- **Detalles:** cerrar la búsqueda ya no repite la entrada del boleto; la ficha del día aparece con suavidad; la sugerencia de moneda dice «La mayoría de tus pagos»; el «+» deja la lista difuminada detrás.
+- **Primer pago:** la tarjeta «Llegó tu primer pago solo» ya aparece en «Hoy» cuando la automatización anota tu primer pago de Wallet.
+- **Siri:** si Al día no pudo abrir tus gastos un momento, «Anotar gasto», «Cuánto llevo» y las demás acciones lo vuelven a intentar en lugar de seguir fallando hasta cerrar la app.
+- **Siri:** un gasto dictado que no se pudo guardar queda pendiente en «Hoy» y Siri lo dice en español, en vez de un error técnico.
+- **Captura:** un importe de Wallet con cifras que no se pueden leer queda pendiente con su comercio y su tarjeta, y el aviso ya no te manda a cambiar «Importe» en Atajos.
+- **Captura:** si conectaste el pago completo, el aviso dice solo el monto («Anotado: MXN 300.00 en ALL 2 GO») y no repite el comercio.
+- **Ejemplos:** Siri y Atajos ponen montos de ejemplo sin decimales («por ejemplo 89»), que sirven escribas con punto o con coma.
+- **Importar CSV:** ya lee archivos guardados desde Excel o Numbers con «;» o tabulador como separador y montos con coma decimal («89,50»).
+- **Importar CSV:** si no entra ningún gasto, el aviso dice «No se agregó ningún gasto» y qué revisar, en vez de «Se agregaron 0 gastos».
+- **Ajustes:** sin gastos, «Exportar CSV» dice «Sin gastos todavía»; el archivo exportado incluye lo que llegó con la hoja abierta.
+- **Pagos y categorías:** abre y responde más rápido con un historial grande.
+- **Respaldo diario:** si una parte de tus datos no abre, el aviso explica que restaurar un respaldo lo arregla.
+- **Gastos fijos:** «Próximo:» de un fijo mensual ya muestra el cobro de este mes que aún no llega (la renta del 31 dice «30 nov», no «31 dic»), y la lista se ordena por esa fecha.
+- **Gasto fijo nuevo:** mientras escribes el monto, la flecha «Siguiente» te lleva a «Qué es».
+- **Quincena:** la hoja avisa que el primer cobro se anota en su fecha aunque no sea día 15 ni último.
+- **Letra grande:** con letra de accesibilidad, el resumen junto a «Guardar» se lee completo; «Guardar» queda abajo, a todo lo ancho.
+- **Monto:** una cifra grande se encoge para caber junto a la moneda en vez de cortarse.
 - **Después de conectar Wallet, «Hoy» ya no dice «Wallet sin conectar»:** dice «Esperando tu primer pago»; si a los 3 días no llega nada, «El atajo no ha anotado nada»; y cuando llega el primero, por un día: «Llegó tu primer pago solo: $47.50 en Oxxo».
 - **La bienvenida siempre termina en «Listo»**, también con «Omitir» o «Configurar ahora», y ahí explica lo que verás en «Hoy»: la cifra en latón, lo que sobra pasa a mañana y «No cuenta» manteniendo presionado un pago.
 - **«Configurar atajo» se llama «Conectar Wallet»** en el menú, Ajustes y la guía; los textos dicen «···» en vez de «Más», que no se ve en pantalla.

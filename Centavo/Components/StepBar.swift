@@ -9,6 +9,7 @@ struct StepBar: View {
     let label: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var sheen: CGFloat = -Theme.Size.moneySheenShare
 
     var body: some View {
@@ -31,20 +32,36 @@ struct StepBar: View {
                         .clipShape(Capsule())
                 }
             }
-            HStack {
-                Text("Paso \(Text("\(step) de \(of)").foregroundStyle(Theme.ink))")
-                Spacer(minLength: Theme.Space.s)
-                Text(label)
-            }
-            .font(.ticket(.microStrong))
-            .tracking(Theme.Tracking.action)
-            .textCase(.uppercase)
-            .foregroundStyle(Theme.muted)
+            caption
+                .font(.ticket(.microStrong))
+                .tracking(Theme.Tracking.action)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.muted)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Paso \(step) de \(of), \(label)")
         .onAppear(perform: cross)
         .onChange(of: step) { cross() }
+    }
+
+    /// «Paso N de M» and the step's name, one under the other with accessibility text
+    /// (2026-11-18): side by side each broke into two or three lines and the bar, which stays
+    /// put over the page, took a third of the screen.
+    @ViewBuilder private var caption: some View {
+        let number = Text("Paso \(Text("\(step) de \(of)").foregroundStyle(Theme.ink))")
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
+                number
+                Text(label)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } else {
+            HStack {
+                number
+                Spacer(minLength: Theme.Space.s)
+                Text(label)
+            }
+        }
     }
 
     /// Back to the start with no animation (it would run backwards over the bar), then across

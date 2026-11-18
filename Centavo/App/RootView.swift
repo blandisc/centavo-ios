@@ -27,9 +27,11 @@ struct RootView: View {
             }
         } else {
             // «Mi dinero» off (owner, 2026-11-18): no tab bar for one tab. The «+» stays at the
-            // bottom right, and the list leaves room under its last row for it.
+            // bottom right, and the list leaves room under its last row for it. A bar of the
+            // system's, not an inset: the list blurs under the «+» as it did under the tabs
+            // (2026-11-14); under a plain inset it was cut off sharp behind the glass.
             ExpenseListView(addRequests: addRequests)
-                .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: Theme.Space.none) {
+                .safeAreaBar(edge: .bottom, alignment: .trailing, spacing: Theme.Space.none) {
                     AddCircle(besideTabs: false) { addRequests += 1 }
                 }
         }
@@ -56,7 +58,7 @@ private struct AddCircle: View {
         .accessibilityLabel("Anotar gasto")
         .padding(.trailing, Theme.Space.xl)
         .padding(.bottom, besideTabs ? Theme.Space.tabBarDrop : Theme.Space.xs)
-        // Stays down with the keyboard up, behind it, like the tab bar.
+        // Stays down with the keyboard up, behind it, as the tab bar does.
         .ignoresSafeArea(.keyboard)
     }
 }

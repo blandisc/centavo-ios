@@ -25,18 +25,38 @@ struct QuickExpenseIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
-        // On the widgets before returning: Siri may suspend the app right after.
-        defer { WidgetBridge.refreshAfterIntent() }
-        let context = container.mainContext
-        _ = try? RecurringExpenses.logDue(in: context)
+        // The sentence is read before the store is asked for (it needs none), so what was said
+        // can be kept pending in «Hoy» when the store can't take it (2026-11-18, like Wallet).
         let sources = UserCatalog.decode(UserDefaults.standard.string(forKey: UserCatalog.sourcesKey) ?? "")
             .map(\.name)
         guard let entry = await QuickExpense.read(sentence, sources: sources) else {
             throw $sentence.needsValueError("No encontré cuánto fue en «\(sentence)». Dilo con la cantidad, por ejemplo: 230 de tacos.")
         }
-        switch try ExpenseRecorder.recordByHand(amountText: entry.amountText, merchant: entry.merchant ?? "",
-                                                card: entry.source, in: context, now: entry.date) {
+        // Only an amount that reads and isn't zero, as Siri says it back. `true`: kept.
+        // Dated now, not on the day said: a day said weeks back would fall out of the list.
+        func keepUnsaved() -> Bool {
+            guard let parsed = AmountParser.parse(entry.amountText), parsed.value != 0 else { return false }
+            UnreadNotice.noteUnsaved(amount: spoken(entry.amountText), merchant: entry.merchant, card: entry.source)
+            return true
+        }
+        // One more try at a store that failed earlier in this launch (`Store.forIntent`).
+        guard let container = Store.forIntent else {
+            throw keepUnsaved() ? CaptureError.storeUnavailableKept : CaptureError.storeUnavailable
+        }
+        // On the widgets before returning: Siri may suspend the app right after.
+        defer { WidgetBridge.refreshAfterIntent() }
+        let context = container.mainContext
+        _ = try? RecurringExpenses.logDue(in: context)
+        let outcome: CaptureOutcome
+        do {
+            outcome = try ExpenseRecorder.recordByHand(amountText: entry.amountText, merchant: entry.merchant ?? "",
+                                                       card: entry.source, in: context, now: entry.date)
+        } catch {
+            // It read (`recordByHand` only throws on saving), so it is always kept.
+            _ = keepUnsaved()
+            throw CaptureError.saveFailed
+        }
+        switch outcome {
         case .unreadable, .empty:
             throw $sentence.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
         case .maybeRepeated(let name), .saved(let name):

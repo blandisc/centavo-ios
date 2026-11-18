@@ -204,6 +204,15 @@ enum Store {
         #endif
     }
 
+    /// The store for an App Intent: the one this launch opened or, if that failed, one more
+    /// try (2026-11-18). A failure before the first unlock or with the disk full a moment is
+    /// remembered for the whole process (`opened`), and Siri runs where nobody can tap «Intentar
+    /// de nuevo»: without this, every intent but the Wallet ones stayed failing until the app
+    /// was closed. `retry()` never opens it twice.
+    static var forIntent: ModelContainer? {
+        (try? opened.get()) ?? (try? retry().get())
+    }
+
     /// For code with no screen to show an error on (the App Intent).
     static var container: ModelContainer {
         get throws { try opened.get() }

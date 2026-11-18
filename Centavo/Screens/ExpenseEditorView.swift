@@ -27,9 +27,11 @@ struct ExpenseEditorView: View {
     /// The amount as the sheet showed it on opening: left as it was, the amount isn't rewritten
     /// (0.125 shown as «0.13» became 0.13 when only the category changed).
     @State private var loadedAmountText: String?
-    /// What the sheet held right after `prefill` filled it: it has changes only once the
-    /// person touches something else, so «Cancelar» on a sheet nobody touched just closes.
-    @State private var prefilledState: String?
+    /// What a new expense's sheet held once it opened (after `prefill`, if any, filled it): it
+    /// has changes only once the person touches something, so «Cancelar» on a sheet nobody
+    /// touched just closes. Kept for every new one, not only a prefilled one: a currency, a
+    /// date or «Se repite» changed alone closed without asking (2026-11-18).
+    @State private var openedState: String?
     /// The expense's currency. New ones start in the month's currency.
     @State private var currency = CurrencyPreference.current
     /// A refund is saved as a negative amount (the decimal pad has no minus key).
@@ -42,11 +44,23 @@ struct ExpenseEditorView: View {
     @State private var card = ""
     @State private var category = ""
     @State private var date = AppClock.now
+    /// The date was picked (by hand or in a sentence). A new one left alone is saved at the
+    /// moment of «Guardar»: opened at 23:58 on the 31st and saved after midnight, it landed in
+    /// the month that had ended and seemed lost (2026-11-18).
+    @State private var dateChosen = false
     @State private var repeatsMonthly = false
     /// How often it comes back, once «Se repite» is on.
     @State private var rule = RepeatRule.monthly
     @State private var confirmingDelete: Expense?
+    /// «Borrar gasto» on a fixed expense still repeating: its own question, which says it stops.
+    @State private var confirmingFixedDelete: Expense?
     @State private var confirmingStop = false
+    /// «Se repite» turned off on a fixed expense still repeating, and «Dejar de repetir» said
+    /// yes to: «Guardar» goes on and stops it as that button does (2026-11-18).
+    @State private var stopConfirmed = false
+    /// A new expense already saved: a second tap on «Guardar» while the sheet goes down saved
+    /// it twice (2026-11-18).
+    @State private var savedOnce = false
     /// «Cancelar» or a swipe down with something changed: «¿Descartar cambios?».
     @State private var askingDiscard = false
     /// A save that didn't go through: said, and the sheet stays open with what was typed.
@@ -84,6 +98,13 @@ struct ExpenseEditorView: View {
     @State private var rememberedCategory: String?
     /// What a new expense from that merchant starts with: yours, else the catalog's guess.
     @State private var suggestedCategory: String?
+    /// The category was filled in from the merchant, not picked: another merchant changes it,
+    /// and saving doesn't teach it as a choice («Uber» filled «Transporte», the name was fixed
+    /// to «Oxxo» and Oxxo was learned as Transporte, 2026-11-18).
+    @State private var categoryAutofilled = false
+    /// What each merchant was last filed under, read once with the history: «Comercio» looks
+    /// it up on every key instead of going over every expense again (2026-11-18).
+    @State private var latestCategories: [String: String] = [:]
     /// Categories that stay in the short list once they were in it (the expense's own, one
     /// picked from «Ver todas»), so a tap never makes a tile jump away.
     @State private var pinnedCategories: [String] = []
@@ -138,28 +159,32 @@ struct ExpenseEditorView: View {
     /// Hidden and deleted categories: never filled in on their own.
     private var notAutoAssigned: [String] { UserCatalog.decodeNames(storedHidden) + UserCatalog.deletedNames }
 
-    /// What a new expense's fields hold, to compare with how `prefill` left them.
+    /// What a new expense's fields hold, to compare with how the sheet opened.
     private var fieldsState: String {
-        [amountText, currency, merchant, card, category, "\(counts)", "\(isRefund)", "\(date.timeIntervalSinceReferenceDate)"]
-            .joined(separator: "\u{1F}")
+        let flags = ["\(counts)", "\(isRefund)", "\(repeatsMonthly)", "\(date.timeIntervalSinceReferenceDate)"]
+        return ([amountText, currency, merchant, card, category] + flags).joined(separator: "\u{1F}")
     }
 
     /// Whether something was typed or changed since the sheet opened.
     private var hasChanges: Bool {
         guard let expense else {
-            if let prefilledState { return fieldsState != prefilledState }
+            if let openedState { return fieldsState != openedState }
             let changedCard = UserCatalog.same(card, defaultSource) ? "" : card
             return !(amountText + merchant + changedCard + category).trimmingCharacters(in: .whitespaces).isEmpty
                 || !counts || isRefund
         }
-        return (amountText != loadedAmountText && parsed?.value != expense.amount.magnitude)
+        // In parts: one long chain is slow for the CI's older type-checker.
+        let amountChanged = (amountText != loadedAmountText && parsed?.value != expense.amount.magnitude)
             || isRefund != (expense.amount < 0)
-            || counts == expense.isUncounted || (!counts && reason != (expense.reason ?? .reimbursed))
-            || merchant != expense.merchant || card != (expense.card ?? "")
-            || category != (expense.category ?? "") || date != expense.date
-            || repeatsMonthly != (expense.repeatsMonthly == true)
-            || (repeatsMonthly && rule != expense.rule)
-            || removesPlace
+        let kindChanged = counts == expense.isUncounted || (!counts && reason != (expense.reason ?? .reimbursed))
+        let namesChanged = merchant != expense.merchant || card != (expense.card ?? "")
+            || category != (expense.category ?? "")
+        // The currency as `load` read it: changed alone, «Cancelar» closed without asking (2026-11-18).
+        let loadedCurrency = CurrencyResolver.isoCode(for: expense.currencyMarker, primary: CurrencyPreference.current)
+            ?? CurrencyPreference.current
+        let repeatsChanged = repeatsMonthly != (expense.repeatsMonthly == true) || (repeatsMonthly && rule != expense.rule)
+        return amountChanged || kindChanged || namesChanged || currency != loadedCurrency
+            || date != expense.date || repeatsChanged || removesPlace
     }
 
     /// The correction being made to this expense's name or category, as it would reach the
@@ -177,7 +202,8 @@ struct ExpenseEditorView: View {
                                 replacing: expense.category)
     }
 
-    private var parsed: ParsedAmount? { AmountParser.parse(amountText) }
+    /// «230.» (a point just pressed) reads as 230 here: «Guardar» stays on (2026-11-18).
+    private var parsed: ParsedAmount? { AmountParser.parseTyped(amountText) }
     /// The offered currencies, plus this expense's own if it came in another (Wallet abroad).
     private var currencies: [String] {
         CurrencyPreference.offered.contains(currency)
@@ -191,9 +217,17 @@ struct ExpenseEditorView: View {
 
     /// What «Guardar» will keep, or what is still missing: «$230 · Tacos · Efectivo».
     private var saveSummary: String {
-        guard let parsed, parsed.value != 0 else { return "Falta el monto" }
+        // What is wrong with the amount, said apart: «0» or an unreadable one said «Falta el
+        // monto» with something typed in view (2026-11-18).
+        guard let parsed else {
+            return amountText.contains(where: \.isNumber) ? "No se entiende el monto" : "Falta el monto"
+        }
+        guard parsed.value != 0 else { return "El monto no puede ser cero" }
         guard !savedName.isEmpty else { return "Falta el comercio" }
-        let money = formatMoney(parsed.value.magnitude, isoCode: currency, label: currency)
+        // With its code when it isn't the main currency: pesos next to dollars read as «MX$230.00»,
+        // never a bare «$» (2026-11-02, 2026-11-18).
+        let money = formatMoney(parsed.value.magnitude, isoCode: currency, label: currency,
+                                main: CurrencyPreference.current)
         var parts = [(isRefund ? "+" : "") + money, savedName]
         let cardName = card.trimmingCharacters(in: .whitespaces)
         if !cardName.isEmpty { parts.append(cardName) }
@@ -271,7 +305,12 @@ struct ExpenseEditorView: View {
                 if expense != nil {
                     Section {
                         DestructiveRowButton("Borrar gasto", identifier: "borrar-gasto") {
-                            confirmingDelete = expense
+                            // A fixed expense still repeating stops with it: its question says so.
+                            if expense?.repeatsMonthly == true {
+                                confirmingFixedDelete = expense
+                            } else {
+                                confirmingDelete = expense
+                            }
                         }
                     } footer: {
                         walletOrigin
@@ -288,7 +327,10 @@ struct ExpenseEditorView: View {
             // the categories or the card closes it.
             .scrollDismissesKeyboard(.immediately)
             // iOS 26 ignores the line above in a sheet's form: a drag does it there.
-            .simultaneousGesture(DragGesture(minimumDistance: 24).onChanged { _ in
+            .simultaneousGesture(DragGesture(minimumDistance: 24).onChanged { drag in
+                // Only up or down: sideways is the merchant's suggestions scrolling, and closing
+                // the keyboard took them away mid-swipe (2026-11-18).
+                guard abs(drag.translation.height) > abs(drag.translation.width) else { return }
                 if amountFocused { amountFocused = false }
                 if merchantFocused { merchantFocused = false }
             })
@@ -303,7 +345,7 @@ struct ExpenseEditorView: View {
                     .accessibilityIdentifier("hoja-cancelar")
                 }
             }
-            .saveBar(saveSummary, enabled: canSave, action: save)
+            .saveBar(saveSummary, enabled: canSave && !savedOnce, action: save)
             .problemAlert(problem: $saveProblem)
             .alert("Dilo en una frase", isPresented: $askingSentence) {
                 TextField("230 de tacos ayer, en efectivo", text: $sentence) // ds-allow: campo dentro de una alerta del sistema; la alerta pone su letra
@@ -318,17 +360,10 @@ struct ExpenseEditorView: View {
                                name: expense?.displayName ?? expense?.merchant ?? "",
                                note: "Lo ya anotado se queda; el siguiente ya no llega.",
                                verb: "Dejar de repetir")
-            }, onConfirm: stopRepeating)
+            }, onConfirm: confirmStop)
+            .confirmsRemoval(of: $confirmingFixedDelete, question: fixedDeleteQuestion, onConfirm: deleteExpense)
             .confirmsDelete(of: $confirmingDelete, primaryCurrency: CurrencyPreference.current,
-                            undoable: onDelete != nil) { expense in
-                if let onDelete {
-                    onDelete(expense)
-                    dismiss()
-                } else {
-                    context.delete(expense)
-                    if persist() { dismiss() }
-                }
-            }
+                            undoable: onDelete != nil, onDelete: deleteExpense)
             }
         }
         .onAppear(perform: load)
@@ -343,6 +378,7 @@ struct ExpenseEditorView: View {
                     storedCategories = UserCatalog.encode(customCategories + [saved], keepingUnreadFrom: storedCategories)
                     UserCatalog.markDeleted(saved.name, false)
                     category = saved.name
+                    categoryAutofilled = false
                     pinnedCategories.append(saved.name)
                 }
             case .source:
@@ -361,11 +397,13 @@ struct ExpenseEditorView: View {
         .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
         .onChange(of: merchant) { _, new in
             refreshMerchant(new)
-            // Change the merchant and the category you last used for it fills in,
-            // but only while the field is empty — never overwrite a typed one. Only for a new
-            // expense: opening an uncategorized one must not quietly file it.
-            guard expense == nil, trimmedCategory.isEmpty, let suggestedCategory else { return }
-            category = suggestedCategory
+            // Change the merchant and the category you last used for it fills in, while the
+            // field is empty or holds only what was filled in for the merchant before — never
+            // overwrite a picked one. Only for a new expense: opening an uncategorized one must
+            // not quietly file it.
+            guard expense == nil, trimmedCategory.isEmpty || categoryAutofilled else { return }
+            category = suggestedCategory ?? ""
+            categoryAutofilled = suggestedCategory != nil
         }
         .onChange(of: amountText) { sentenceProblem = nil }
     }
@@ -381,18 +419,7 @@ struct ExpenseEditorView: View {
                     currencyMenu
                     // The decimal pad has no return key, and a keyboard bar does not show in
                     // this sheet: while the amount is typed, «Siguiente» lives in its row.
-                    if amountFocused {
-                        Button("Siguiente", systemImage: "arrow.right") { merchantFocused = true }
-                            .labelStyle(.iconOnly)
-                            .font(.ticket(.footnoteStrong))
-                            .foregroundStyle(Theme.brass)
-                            // The arrow on the card's edge, mirroring «0.00»; the target stays 44.
-                            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget,
-                                   alignment: .trailing)
-                            .contentShape(Rectangle())
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("siguiente-teclado")
-                    }
+                    nextKey
                 }
             }
             // In words and always in view on a new expense (owner, 2026-11-11): as an icon beside
@@ -407,6 +434,25 @@ struct ExpenseEditorView: View {
             }
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// «Siguiente», shown only while the amount is typed. Its room is always kept: put in and
+    /// taken out, it pushed «MXN ⌄» aside each time the keyboard came and went (2026-11-18).
+    private var nextKey: some View {
+        Button("Siguiente", systemImage: "arrow.right") { merchantFocused = true }
+            .labelStyle(.iconOnly)
+            .font(.ticket(.footnoteStrong))
+            .foregroundStyle(Theme.brass)
+            // The arrow on the card's edge, mirroring «0.00»; the target stays 44.
+            .frame(minWidth: Theme.Size.tapTarget, minHeight: Theme.Size.tapTarget,
+                   alignment: .trailing)
+            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .opacity(amountFocused ? Theme.Opacity.visible : Theme.Opacity.hidden)
+            .allowsHitTesting(amountFocused)
+            .accessibilityHidden(!amountFocused)
+            .animation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion), value: amountFocused)
+            .accessibilityIdentifier("siguiente-teclado")
     }
 
     /// The decimal pad cannot type "USD" or "€", so the currency is a choice next to the amount.
@@ -454,6 +500,9 @@ struct ExpenseEditorView: View {
         Section {
             TicketTextField("Comercio", text: $merchant, prompt: "Nombre del comercio", identifier: "comercio")
                 .textInputAutocapitalization(.words)
+                // «Oxxo» and «Rappi» are not in the dictionary: corrected, they no longer match
+                // what Wallet sends (2026-11-18).
+                .autocorrectionDisabled()
                 .focused($merchantFocused)
                 .submitLabel(.done)
                 .id(Self.merchantRow)
@@ -581,7 +630,7 @@ struct ExpenseEditorView: View {
                     }
                     .accessibilityIdentifier("motivo")
                 }
-                DatePicker(selection: $date, in: ...AppClock.now) {
+                DatePicker(selection: chosenDate, in: ...AppClock.now) {
                     SectionLabel("Fecha")
                 }
                 .accessibilityIdentifier("fecha")
@@ -615,13 +664,21 @@ struct ExpenseEditorView: View {
                                      + started.date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_MX")))
                                      + ". Para un aumento, deja de repetir este y agrega uno nuevo.")
                         }
-                    } else if expense?.isRepeat == true {
-                        HintText("Se anotó solo, de un gasto fijo.")
+                    } else if let copyHint {
+                        HintText(copyHint)
                     }
                 }
             }
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// Under «Más detalles» of a copy of a fixed expense. A stopped original is one of its own
+    /// copies, but it was written by hand: «Se anotó solo» was not true of it (2026-11-18).
+    private var copyHint: String? {
+        guard let expense, expense.isRepeat == true else { return nil }
+        let stoppedOriginal = expense.fixedID != nil && expense.fixedOf == expense.fixedID
+        return stoppedOriginal ? "Fue un gasto fijo; ya no se repite." : "Se anotó solo, de un gasto fijo."
     }
 
     /// «Llegó de Wallet · 28 oct 14:32», and the text exactly as it came, under what Wallet sent.
@@ -718,6 +775,7 @@ struct ExpenseEditorView: View {
         categoryChip(name, icon: CategoryStyle.icon(for: name, custom: customCategories),
                      selected: category == name, tint: colors.category(name)) {
             category = category == name ? "" : name
+            categoryAutofilled = false
             if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
         }
     }
@@ -817,6 +875,54 @@ struct ExpenseEditorView: View {
         if persist() { dismiss() }
     }
 
+    /// «Dejar de repetir» said yes to: on a copy, its original stops; on the original itself,
+    /// with «Se repite» turned off, «Guardar» goes on and stops it the same way.
+    private func confirmStop() {
+        if expense?.repeatsMonthly == true {
+            stopConfirmed = true
+            save()
+        } else {
+            stopRepeating()
+        }
+    }
+
+    /// The date as «Más detalles» changes it: picked, it is kept as it is on «Guardar».
+    private var chosenDate: Binding<Date> {
+        Binding(get: { date }, set: { new in
+            date = new
+            dateChosen = true
+        })
+    }
+
+    private func deleteExpense(_ expense: Expense) {
+        if let onDelete {
+            onDelete(expense)
+            dismiss()
+        } else {
+            context.delete(expense)
+            if persist() { dismiss() }
+        }
+    }
+
+    /// «¿Borrar este gasto fijo?»: one still repeating stops with it, and the question says so;
+    /// the plain one read as any expense's (2026-11-18).
+    private func fixedDeleteQuestion(_ expense: Expense) -> TicketQuestion {
+        let after = onDelete != nil ? "Podrás deshacerlo unos segundos." : "No se puede deshacer."
+        return TicketQuestion(title: "¿Borrar este gasto fijo?",
+                              figure: ledgerAmount(for: expense, primary: CurrencyPreference.current),
+                              name: expense.shownName,
+                              note: "Deja de repetirse; los cobros ya anotados se quedan. " + after)
+    }
+
+    /// Said once the sheet is down, for VoiceOver: the list's own focus change would cut it off
+    /// if said while the sheet goes (2026-11-18: saving said nothing at all).
+    private func announceSaved(_ text: String) {
+        Task { @MainActor in
+            try? await Task.sleep(for: Self.announceAfter)
+            AccessibilityNotification.Announcement(text).post()
+        }
+    }
+
     /// Every change someone makes is saved right then, not left to autosave: if it fails, it's
     /// said and nothing half-done stays behind.
     @discardableResult
@@ -835,6 +941,8 @@ struct ExpenseEditorView: View {
     private static let merchantRow = "comercio-renglon"
     /// The keyboard's rise: the form is moved once it is up, or the system's own scroll undoes it.
     private static let keyboardRise = Duration.milliseconds(350)
+    /// The sheet's way down, and a beat for VoiceOver to land on the list.
+    private static let announceAfter = Duration.milliseconds(700)
 
     private func reveal(merchant form: ScrollViewProxy) {
         Task { @MainActor in
@@ -849,27 +957,35 @@ struct ExpenseEditorView: View {
     private func refreshMerchant(_ typed: String) {
         let rules = CategoryRules(stored: storedRules)
         merchantMatches = MerchantSuggestions.matches(for: typed, history: pastExpenses)
-        rememberedCategory = CategoryMemory.remembered(for: typed, rules: rules, history: pastExpenses,
+        rememberedCategory = CategoryMemory.remembered(for: typed, rules: rules, latest: latestCategories,
                                                        hidden: notAutoAssigned)
+        // With nothing remembered only the catalog is left: an empty history spares a second
+        // pass over every expense on every key (2026-11-18, with 5,000 expenses).
         suggestedCategory = rememberedCategory
-            ?? CategoryMemory.suggestion(for: typed, rules: rules, history: pastExpenses, hidden: notAutoAssigned)
+            ?? CategoryMemory.suggestion(for: typed, rules: rules, history: [], hidden: notAutoAssigned)
     }
 
     private func load() {
         // One read of the history when the sheet opens, not a live query redrawn on every key.
         let history = (try? context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
         pastExpenses = history.map(\.categorized)
+        latestCategories = CategoryMemory.latest(in: pastExpenses)
         knownCategories = CategoryMemory.known(in: pastExpenses)
         knownCards = PaymentChoices.mostUsedCards(history.prefix(300).map(\.card))
         guard let expense else {
             if let initialDate { date = initialDate }
             card = defaultSource
+            dateChosen = initialDate != nil
             guard let prefill else {
                 refreshMerchant("")
+                openedState = fieldsState
                 amountFocused = true
                 return
             }
-            if let when = prefill.date { date = when }
+            if let when = prefill.date {
+                date = when
+                dateChosen = true
+            }
             if let name = prefill.card?.trimmingCharacters(in: .whitespaces), !name.isEmpty { card = name }
             if let code = prefill.currency { currency = code }
             isRefund = prefill.isRefund
@@ -879,9 +995,12 @@ struct ExpenseEditorView: View {
             refreshMerchant(merchant)
             // The category this shop usually gets, set here and not by `onChange(of: merchant)`
             // after: what the sheet opens with is not a change the person made.
-            if let suggestedCategory { category = suggestedCategory }
+            if let suggestedCategory {
+                category = suggestedCategory
+                categoryAutofilled = true
+            }
             amountText = prefill.amountText ?? ""
-            prefilledState = fieldsState
+            openedState = fieldsState
             // Only what is missing asks for the keyboard: the amount, when the notice had none.
             amountFocused = amountText.isEmpty
             return
@@ -940,12 +1059,18 @@ struct ExpenseEditorView: View {
             amountFocused = true
             return
         }
-        amountText = parsed.value.magnitude.formatted(.number.precision(.fractionLength(0...2)))
+        // Written as the field writes it, whatever the region: «1.234,5» (Spain) read as 1.23.
+        amountText = AmountTyping.text(for: parsed.value, decimals: 0...2)
         currency = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: CurrencyPreference.current)
         // After the amount: changing it clears the problem line.
         sentenceProblem = nil
         if let name = entry.merchant { merchant = name }
-        date = min(entry.date, AppClock.now)
+        // Only a day said moves it: «230 de tacos» keeps the month being browsed, or a date
+        // already picked (2026-11-18).
+        if entry.daySaid {
+            date = min(entry.date, AppClock.now)
+            dateChosen = true
+        }
         if let source = entry.source { card = source }
         sentence = ""
     }
@@ -962,26 +1087,46 @@ struct ExpenseEditorView: View {
     }
 
     /// Turning it on starts counting from the expense's own month; turning it off stops it.
-    private func setRepeats(_ expense: Expense) {
-        if repeatsMonthly {
-            let day = rule.kind == .months ? Calendar.current.component(.day, from: date) : nil
-            expense.repeatsThrough = RecurringExpenses.repeatsThrough(
-                for: date, rule: rule, day: day, wasRepeating: expense.repeatsMonthly == true,
-                current: expense.repeatsThrough)
-            expense.repeatsMonthly = true
-            expense.repeatRule = rule.stored
-            // The day of the month matters only to what repeats by months.
-            expense.repeatDay = day
-        } else {
-            expense.repeatsMonthly = nil
-            expense.repeatsThrough = nil
-            expense.repeatDay = nil
-            expense.repeatRule = nil
+    ///
+    /// - `dateUnchanged`: the date wasn't moved. A fixed expense already repeating by the same
+    ///   rule keeps the day asked for: rent «día 31» first charged on Nov 30 went to the 30th on
+    ///   any save, even one that only changed the amount (2026-11-18).
+    /// - Turned off on an original still repeating, it stops as «Dejar de repetir» does
+    ///   (`RecurringExpenses.stopRepeating`): with its fields only emptied, the rent became
+    ///   everyday spending and «Hoy puedes gastar» dropped at once (2026-11-18).
+    static func setRepeats(_ expense: Expense, repeats: Bool, rule: RepeatRule, date: Date,
+                           dateUnchanged: Bool = false) {
+        guard repeats else {
+            if expense.repeatsMonthly == true {
+                RecurringExpenses.stopRepeating(expense)
+            } else {
+                expense.repeatsMonthly = nil
+                expense.repeatsThrough = nil
+                expense.repeatDay = nil
+                expense.repeatRule = nil
+            }
+            return
         }
+        let keepsDay = dateUnchanged && expense.repeatsMonthly == true && expense.rule == rule
+        let asked = keepsDay ? expense.repeatDay : nil
+        let day = rule.kind == .months ? (asked ?? Calendar.current.component(.day, from: date)) : nil
+        expense.repeatsThrough = RecurringExpenses.repeatsThrough(
+            for: date, rule: rule, day: day, wasRepeating: expense.repeatsMonthly == true,
+            current: expense.repeatsThrough)
+        expense.repeatsMonthly = true
+        expense.repeatRule = rule.stored
+        // The day of the month matters only to what repeats by months.
+        expense.repeatDay = day
     }
 
     private func save() {
-        guard let parsed else { return }
+        guard let parsed, !savedOnce else { return }
+        // «Se repite» turned off on a fixed expense still repeating: asked first, as «Dejar de
+        // repetir» is (2026-11-18).
+        if let expense, expense.repeatsMonthly == true, !repeatsMonthly, !stopConfirmed {
+            confirmingStop = true
+            return
+        }
         let name = savedName
         // With no merchant typed the category names it; that is not a merchant to learn.
         let typedMerchant = !trimmedMerchant.isEmpty
@@ -1013,9 +1158,12 @@ struct ExpenseEditorView: View {
                 expense.categorySource = categoryName.isEmpty ? Expense.clearedCategory : nil
             }
             expense.category = categoryName.isEmpty ? nil : categoryName
+            let dateUnchanged = expense.date == date
             expense.date = date
             setCounts(expense)
-            if expense.isRepeat != true { setRepeats(expense) }
+            if expense.isRepeat != true {
+                Self.setRepeats(expense, repeats: repeatsMonthly, rule: rule, date: date, dateUnchanged: dateUnchanged)
+            }
             if removesPlace {
                 expense.latitude = nil
                 expense.longitude = nil
@@ -1031,7 +1179,11 @@ struct ExpenseEditorView: View {
                 UserCatalog.learnRule(sent: sent, name: name, category: categoryName,
                                       choseCategory: choseCategory, categoryIsTheirs: categoryIsTheirs)
             }
+            announceSaved("Cambios guardados")
         } else {
+            // Left alone, the date is the moment of «Guardar», not of opening the sheet.
+            if !dateChosen { date = AppClock.now }
+            let summary = saveSummary
             let new = Expense(
                 amount: value,
                 currencyMarker: currency,
@@ -1040,7 +1192,10 @@ struct ExpenseEditorView: View {
                 date: date,
                 category: categoryName.isEmpty ? nil : categoryName
             )
-            if typedMerchant, !categoryName.isEmpty { UserCatalog.learnCategory(categoryName, for: name) }
+            // Only a category picked is learned: one filled in from the merchant is not a choice.
+            if typedMerchant, !categoryName.isEmpty, !categoryAutofilled {
+                UserCatalog.learnCategory(categoryName, for: name)
+            }
             // A place picked from the suggestions reads as it did before.
             if typedMerchant {
                 var same = FetchDescriptor<Expense>(predicate: #Predicate { $0.merchant == name },
@@ -1049,10 +1204,16 @@ struct ExpenseEditorView: View {
                 new.displayName = (try? context.fetch(same))?.first?.displayName
             }
             setCounts(new)
-            setRepeats(new)
+            Self.setRepeats(new, repeats: repeatsMonthly, rule: rule, date: date)
+            savedOnce = true
             context.insert(new)
-            guard persist() else { return }
+            guard persist() else {
+                // Not saved: «Guardar» can be tried again with what was typed.
+                savedOnce = false
+                return
+            }
             onSave?()
+            announceSaved("Anotado: " + summary)
             // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.
             // After it's saved, so waiting for the place never holds the expense.
             if abs(date.timeIntervalSinceNow) < 15 * 60 {

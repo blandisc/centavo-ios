@@ -10,10 +10,14 @@ public struct SearchQuery: Equatable, Sendable {
     public var maxAmount: Decimal?
     /// Whether the bounds count themselves: «desde 200» and «hasta 100» do, «más de 200» doesn't.
     public var inclusive = false
-    /// The month asked for, the last one of that name that already came.
+    /// The month asked for, the last one of that name that already came; with a year, that
+    /// month of that year; a year alone, the whole year.
     public var interval: DateInterval?
     /// The month as it was said: «Don Julio» is a taquería as much as a month.
     public var monthWord: String?
+    /// The year asked for («uber octubre 2024», 2026-11-18): before, «2024» was looked for in
+    /// the names and the amount, and the months of other years could not be found.
+    public var year: Int?
 
     public init(words: [String] = [], category: String? = nil, minAmount: Decimal? = nil,
                 maxAmount: Decimal? = nil, interval: DateInterval? = nil) {
@@ -57,11 +61,12 @@ public enum ExpenseSearch {
             .map { fold(String($0)).trimmingCharacters(in: .punctuationCharacters.subtracting(CharacterSet(charactersIn: "$"))) }
             .filter { !$0.isEmpty }
         var query = SearchQuery()
+        var month: Int?
         var index = 0
         while index < words.count {
             let word = words[index]
-            if let month = months.firstIndex(of: word) {
-                query.interval = lastMonth(named: month + 1, now: now, calendar: calendar)
+            if let named = months.firstIndex(of: word) {
+                month = named + 1
                 query.monthWord = word
                 index += 1
                 continue
@@ -73,12 +78,20 @@ public enum ExpenseSearch {
                 index += length + 1
                 continue
             }
+            // A bare year, written as one («2024», not «2,024»). An expense of $2,024 still
+            // shows, as a «Don Julio» does for «julio» (`matches`).
+            if let said = yearWord(word) {
+                query.year = said
+                index += 1
+                continue
+            }
             // «1,250» is how the amount is written, not how it is kept.
             let plain = word.allSatisfy({ $0.isNumber || ",.".contains($0) })
                 ? AmountParser.parse(word).map { "\($0.value)" } ?? word : word
             if !stopWords.contains(word) { query.words.append(plain) }
             index += 1
         }
+        query.interval = interval(month: month, year: query.year, now: now, calendar: calendar)
         return query
     }
 
@@ -89,9 +102,11 @@ public enum ExpenseSearch {
         // The amount too, so «230» finds the 230.00 one.
         let haystack = fold([expense.merchant, expense.readableName, expense.category, expense.card,
                              "\(amount)"].compactMap { $0 }.joined(separator: " "))
-        // A month name is the month, unless the expense itself is called that («Don Julio»).
+        // A month name is the month, unless the expense itself is called that («Don Julio»); a
+        // year is the year, unless it is the amount («2024» finds the $2,024.00 one).
+        let dateWords = [query.monthWord, query.year.map { String($0) }].compactMap { $0 }
         if let interval = query.interval, !interval.contains(expense.date),
-           !(query.monthWord.map(haystack.contains) ?? false) { return false }
+           dateWords.isEmpty || !dateWords.allSatisfy(haystack.contains) { return false }
         if let category = query.category {
             guard let own = expense.category, fold(own) == fold(category) else { return false }
             return true
@@ -124,6 +139,32 @@ public enum ExpenseSearch {
         "de", "del", "en", "el", "la", "los", "las", "mis", "mi", "que", "con", "y", "a", "al",
         "gastos", "gasto", "pagos", "pago", "compras", "lo", "por", "este", "mes", "pesos",
     ]
+
+    /// The years a search reads as a year, not as an amount.
+    private static let years = 1990...2100
+
+    private static func yearWord(_ word: String) -> Int? {
+        guard word.count == 4, word.allSatisfy(\.isASCII), word.allSatisfy(\.isNumber),
+              let year = Int(word), years.contains(year) else { return nil }
+        return year
+    }
+
+    /// That month of that year; the last one of that name that already came without a year; the
+    /// whole year without a month.
+    private static func interval(month: Int?, year: Int?, now: Date, calendar: Calendar) -> DateInterval? {
+        switch (month, year) {
+        case let (month?, year?):
+            guard let date = calendar.date(from: DateComponents(year: year, month: month, day: 1)) else { return nil }
+            return calendar.dateInterval(of: .month, for: date)
+        case let (month?, nil):
+            return lastMonth(named: month, now: now, calendar: calendar)
+        case let (nil, year?):
+            guard let date = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) else { return nil }
+            return calendar.dateInterval(of: .year, for: date)
+        case (nil, nil):
+            return nil
+        }
+    }
 
     private static func lastMonth(named month: Int, now: Date, calendar: Calendar) -> DateInterval? {
         let current = calendar.component(.month, from: now)

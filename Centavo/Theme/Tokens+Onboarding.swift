@@ -20,6 +20,10 @@ extension Theme.Size {
     static let chainNode: CGFloat = 52
     /// Height of the brass line that runs between two nodes of that chain.
     static let chainLink: CGFloat = 2
+    /// With accessibility text the chain stacks (2026-11-18): the most a node grows, so its name
+    /// beside it keeps some width, and how long the line between two nodes runs.
+    static let chainNodeMax: CGFloat = 88
+    static let chainLinkRun: CGFloat = 16
     /// The floating guide's card, in points (rendered at `companionScale`): a portrait 3:4
     /// picture, big enough type that it still reads in the small Picture in Picture window.
     static let companionCard = CGSize(width: 360, height: 480)
@@ -106,6 +110,9 @@ extension Theme.Motion {
         static let fillDelay: Double = 0.35
         /// Seconds each node of the Wallet chain stays lit.
         static let chainBeat: Double = 0.9
+        /// With no slide to wait for («Reducir movimiento»), seconds before the new page's title
+        /// takes VoiceOver's focus and the buttons answer again: one drawing of the new page.
+        static let pageSettle: Double = 0.1
     }
 
     /// The floating guide: seconds each picture stays when it plays by itself.

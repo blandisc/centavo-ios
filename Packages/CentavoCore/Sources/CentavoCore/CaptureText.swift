@@ -39,6 +39,13 @@ public enum CaptureText {
         return (found.first { !$0.isWord } ?? found.first).map { ($0.text, $0.amount) }
     }
 
+    /// What to say of `text` back to the person: the piece the amount was read from («MXN
+    /// 300.00» in «ALL 2 GO MXN 300.00»), or `text` as it came when nothing read (2026-11-18).
+    /// The whole payment repeated the shop's name next to it, in capitals.
+    public static func shown(_ text: String) -> String {
+        figure(in: text)?.text ?? text
+    }
+
     /// ISO codes that are also words in a shop's name or a sentence: «ALL», «TOP», «CUP».
     static let codesThatAreWords: Set<String> = ["ALL", "BAM", "BOB", "CUP", "GEL", "MAD", "MOP", "PEN",
                                                   "SOS", "TOP", "TRY"]

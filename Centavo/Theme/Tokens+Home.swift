@@ -71,6 +71,9 @@ extension Theme.Motion {
     /// Seconds «Deshacer» stays after a delete; longer with VoiceOver, to reach it.
     static let undoSeconds: Double = 6
     static let undoLongSeconds: Double = 15
+    /// With VoiceOver, «Borraste…» is said this long after the bar comes: once the expense's
+    /// sheet has closed, whose own announcement cut it short (2026-11-18).
+    static let undoAnnounceDelay: Double = 0.6
     /// A panel folding or unfolding in place: slow enough to follow, no bounce.
     static let fold: Animation = .smooth(duration: foldSeconds)
     static let foldSeconds: Double = 0.42

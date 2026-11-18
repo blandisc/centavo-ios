@@ -7,6 +7,10 @@ struct WelcomeDemo: View {
     let currency: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The symbol's column grows with the text (2026-11-18): at 22 pt fixed, the symbol ran over
+    /// the name with accessibility text.
+    @ScaledMetric(relativeTo: .footnote) private var iconWidth = Theme.Size.iconColumnNarrow
     @State private var left: Decimal = Self.start
     @State private var rows: [Payment] = [Self.first]
     @State private var notice: Payment?
@@ -35,11 +39,7 @@ struct WelcomeDemo: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 // It moves by itself: say it is an example, or it reads as something you did
                 // (user research, 2026-10-29).
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Hoy puedes gastar").ticketCaption()
-                    Spacer(minLength: Theme.Space.s)
-                    Text("Ejemplo").ticketCaption()
-                }
+                header
                 Text(left.formatted(currencyStyle(currency).precision(.fractionLength(0))))
                     .font(.ticket(.display))
                     .tracking(Theme.Tracking.figure)
@@ -60,6 +60,23 @@ struct WelcomeDemo: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ejemplo: llega un pago de Wallet, se anota solo y baja lo que puedes gastar hoy.")
         .task { await play() }
+    }
+
+    /// «Hoy puedes gastar» and «Ejemplo», one under the other with accessibility text
+    /// (2026-11-18): side by side they cut each other.
+    @ViewBuilder private var header: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
+                Text("Hoy puedes gastar").ticketCaption()
+                Text("Ejemplo").ticketCaption()
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Hoy puedes gastar").ticketCaption()
+                Spacer(minLength: Theme.Space.s)
+                Text("Ejemplo").ticketCaption()
+            }
+        }
     }
 
     /// The month as the main screen's boleto: the days gone, filled; today, outlined, filling
@@ -88,41 +105,65 @@ struct WelcomeDemo: View {
     }
 
     /// Room for the notice is always kept, so the ticket does not jump when it comes and goes.
+    /// The room is the notice itself, hidden (2026-11-18): a row kept one line where the notice
+    /// takes two, and the ticket jumped with each payment.
     private var noticeSlot: some View {
         ZStack {
-            row(Self.first).hidden()
+            noticeCard(Self.longest).hidden()
             if let notice {
-                HStack(spacing: Theme.Space.s) {
-                    Image(systemName: "wallet.pass.fill").foregroundStyle(Theme.brass)
-                    VStack(alignment: .leading, spacing: Theme.Space.none) {
-                        Text("Wallet · ahora").font(.ticket(.caption)).foregroundStyle(Theme.muted)
-                        Text("\(notice.merchant) · \(money(notice.amount))")
-                            .font(.ticket(.footnoteStrong)).foregroundStyle(Theme.ink)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: Theme.Space.none)
-                }
-                .padding(.horizontal, Theme.Space.m)
-                .padding(.vertical, Theme.Space.s)
-                .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-                .transition(.asymmetric(
-                    insertion: .offset(y: -Theme.Size.noticeDrop).combined(with: .opacity),
-                    removal: .scale(scale: Theme.Size.noticeFold, anchor: .bottom).combined(with: .opacity)))
+                noticeCard(notice)
+                    .transition(.asymmetric(
+                        insertion: .offset(y: -Theme.Size.noticeDrop).combined(with: .opacity),
+                        removal: .scale(scale: Theme.Size.noticeFold, anchor: .bottom).combined(with: .opacity)))
             }
         }
     }
 
-    private func row(_ payment: Payment) -> some View {
+    /// The payment whose notice takes the most room, for the room kept.
+    private static let longest = coming.max { $0.merchant.count < $1.merchant.count } ?? first
+
+    private func noticeCard(_ payment: Payment) -> some View {
         HStack(spacing: Theme.Space.s) {
-            Image(systemName: payment.symbol)
+            Image(systemName: "wallet.pass.fill")
                 .foregroundStyle(Theme.brass)
-                .frame(width: Theme.Size.iconColumnNarrow)
-            Text(payment.merchant.uppercased())
-                .font(.ticket(.footnote))
-                .tracking(Theme.Tracking.name)
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-            Spacer(minLength: Theme.Space.s)
+                .frame(width: iconWidth)
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
+                Text("Wallet · ahora").font(.ticket(.caption)).foregroundStyle(Theme.muted)
+                // The amount is the point of the demo: on its own line with accessibility text,
+                // never cut off (2026-11-18).
+                if typeSize.isAccessibilitySize {
+                    Text(payment.merchant)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(money(payment.amount))
+                } else {
+                    Text("\(payment.merchant) · \(money(payment.amount))")
+                        .lineLimit(1)
+                }
+            }
+            .font(.ticket(.footnoteStrong))
+            .foregroundStyle(Theme.ink)
+            Spacer(minLength: Theme.Space.none)
+        }
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, Theme.Space.s)
+        .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+    }
+
+    private func row(_ payment: Payment) -> some View {
+        AdaptiveStack(spacing: Theme.Space.s) {
+            HStack(spacing: Theme.Space.s) {
+                Image(systemName: payment.symbol)
+                    .foregroundStyle(Theme.brass)
+                    .frame(width: iconWidth)
+                Text(payment.merchant.uppercased())
+                    .font(.ticket(.footnote))
+                    .tracking(Theme.Tracking.name)
+                    .foregroundStyle(Theme.ink)
+                    // Whole, on more lines, with accessibility text (2026-11-18).
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
+            }
+            if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Space.s) }
             Text(money(payment.amount))
                 .font(.ticket(.footnote))
                 .foregroundStyle(Theme.muted)
@@ -194,6 +235,7 @@ struct WelcomeDemo: View {
 /// dark and started over forever). Fully lit from the start with `MotionPolicy` still.
 struct WalletChain: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var node = Theme.Size.chainNode
     @State private var lit = 0
 
@@ -201,32 +243,8 @@ struct WalletChain: View {
                          ("checkmark", "Al día lo anota")]
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.none) {
-            ForEach(nodes.indices, id: \.self) { index in
-                if index > 0 {
-                    Capsule()
-                        .fill(lit >= index ? Theme.brass : Theme.dimmed)
-                        .frame(height: Theme.Size.chainLink)
-                        .padding(.top, node / 2) // ds-allow: the link runs through the middle of the node
-                }
-                VStack(spacing: Theme.Space.s) {
-                    Image(systemName: nodes[index].0)
-                        .font(Theme.Symbol.large)
-                        .foregroundStyle(lit >= index ? Theme.brass : Theme.faint)
-                        .frame(width: node, height: node)
-                        .background(lit >= index ? Theme.brass.opacity(Theme.Opacity.wash) : Theme.raised,
-                                    in: Circle())
-                        .overlay { Circle().strokeBorder(lit >= index ? Theme.brass : Theme.hairline) }
-                    Text(nodes[index].1)
-                        .font(.ticket(.caption))
-                        .foregroundStyle(lit >= index ? Theme.ink : Theme.muted)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(minWidth: node)
-            }
-        }
-        .padding(Theme.Space.l)
+        chain
+            .padding(Theme.Space.l)
         .frame(maxWidth: .infinity)
         .ticketPanel()
         .accessibilityElement(children: .ignore)
@@ -243,6 +261,67 @@ struct WalletChain: View {
                 withAnimation(Theme.Motion.Onboarding.light) { lit = index }
             }
         }
+    }
+
+    /// Across, or down with accessibility text (2026-11-18): three nodes side by side ran off
+    /// both edges of the panel, and the page only scrolls up and down.
+    @ViewBuilder private var chain: some View {
+        if typeSize.isAccessibilitySize {
+            let side = min(node, Theme.Size.chainNodeMax)
+            VStack(alignment: .leading, spacing: Theme.Space.none) {
+                ForEach(nodes.indices, id: \.self) { index in
+                    if index > 0 {
+                        link(index)
+                            .frame(width: Theme.Size.chainLink, height: Theme.Size.chainLinkRun)
+                            .frame(width: side) // the link runs under the middle of the node
+                    }
+                    HStack(spacing: Theme.Space.m) {
+                        circle(index, side: side)
+                        name(index)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(alignment: .top, spacing: Theme.Space.none) {
+                ForEach(nodes.indices, id: \.self) { index in
+                    if index > 0 {
+                        link(index)
+                            .frame(height: Theme.Size.chainLink)
+                            .padding(.top, node / 2) // ds-allow: the link runs through the middle of the node
+                    }
+                    VStack(spacing: Theme.Space.s) {
+                        circle(index, side: node)
+                        name(index)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(minWidth: node)
+                }
+            }
+        }
+    }
+
+    private func link(_ index: Int) -> some View {
+        Capsule().fill(lit >= index ? Theme.brass : Theme.dimmed)
+    }
+
+    private func circle(_ index: Int, side: CGFloat) -> some View {
+        Image(systemName: nodes[index].0)
+            .font(Theme.Symbol.large)
+            .foregroundStyle(lit >= index ? Theme.brass : Theme.faint)
+            .frame(width: side, height: side)
+            .background(lit >= index ? Theme.brass.opacity(Theme.Opacity.wash) : Theme.raised,
+                        in: Circle())
+            .overlay { Circle().strokeBorder(lit >= index ? Theme.brass : Theme.hairline) }
+    }
+
+    private func name(_ index: Int) -> some View {
+        Text(nodes[index].1)
+            .font(.ticket(.caption))
+            .foregroundStyle(lit >= index ? Theme.ink : Theme.muted)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -322,7 +401,20 @@ struct WelcomeFixedCalendar: View {
                 .accessibilityAddTraits(day == chosen ? .isSelected : [])
             }
         }
+        // One control for VoiceOver (2026-11-18): up to 31 buttons «Día N» to swipe through,
+        // with nothing saying they choose the charge's day. Swipe up or down to change it.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Día del cobro")
+        .accessibilityValue(spokenDay)
+        .accessibilityAdjustableAction { direction in
+            chosen = direction == .increment ? min(chosen + 1, days) : max(chosen - 1, 1)
+        }
         .sensoryFeedback(.selection, trigger: chosen)
+    }
+
+    private var spokenDay: String {
+        let taken = stamped.contains { min($0, days) == chosen }
+        return taken ? "el día \(chosen), con un fijo" : "el día \(chosen)"
     }
 }
 

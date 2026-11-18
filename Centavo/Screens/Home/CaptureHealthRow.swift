@@ -1,6 +1,44 @@
 import CentavoCore
 import SwiftUI
 
+/// What the capture promises, in one place for «Hoy» and its empty screen (2026-11-18). iOS 26's
+/// automation («Wallet») fires only for payments made by holding the iPhone up, so there it says
+/// that, as the welcome does: «cada pago con Apple Pay» sent people who bought online to blame
+/// the shortcut. iOS 27 catches every Apple Pay payment.
+enum CaptureCopy {
+    private static var catchesAll: Bool { ShortcutsVersion.isIOS27 }
+
+    /// `.waiting`: the guide was opened and no payment came yet.
+    static var waiting: String {
+        catchesAll ? "Paga algo con Apple Pay y aparecerá aquí solo."
+                   : "Paga acercando el iPhone y aparecerá aquí solo."
+    }
+
+    /// `.silent`: days after the guide, still nothing.
+    static var silent: String {
+        catchesAll ? "Si ya pagaste con Apple Pay, toca para revisarlo."
+                   : "Si ya pagaste acercando el iPhone, toca para revisarlo."
+    }
+
+    /// The empty screen's card, before connecting.
+    static var connect: String {
+        catchesAll ? "Cada pago con Apple Pay se anota solo."
+                   : "Cada pago que haces acercando el iPhone se anota solo."
+    }
+
+    /// «Wallet sin conectar», on «Hoy».
+    static var connectOnce: String {
+        catchesAll ? "Conéctalo una vez y cada pago con Apple Pay se anota solo."
+                   : "Conéctalo una vez y cada pago que hagas acercando el iPhone se anota solo."
+    }
+
+    /// The empty screen's first line.
+    static var emptyLead: String {
+        catchesAll ? "Anota un gasto, o conecta Wallet y cada pago con Apple Pay se anotará solo."
+                   : "Anota un gasto, o conecta Wallet y cada pago que hagas acercando el iPhone se anotará solo."
+    }
+}
+
 /// One quiet line under the carousel: when the last Wallet payment arrived, or that it is
 /// worth checking the automation. Tapping it opens the setup guide. The payments the capture
 /// couldn't write down have their own notice above it (`PendingPaymentsPanel`).
@@ -21,6 +59,12 @@ struct CaptureHealthRow: View {
         }
     }
 
+    /// What VoiceOver reads for the quiet line: «hace 3 horas», not «hace 3 h» (2026-11-18).
+    private var spokenText: String {
+        if case .recent(let date) = health { return "Wallet, último pago " + AppClock.relative(date) }
+        return text
+    }
+
     private var needsAttention: Bool { !health.isRecent }
 
     /// When it needs attention it is a short sentence and what to do, not a shouted caption.
@@ -30,15 +74,13 @@ struct CaptureHealthRow: View {
             return ("Sin pagos de Wallet desde hace \(days) días", "Si sí pagaste, toca para revisar el atajo.",
                     "exclamationmark.circle")
         case .waiting:
-            return ("Esperando tu primer pago", "Paga algo con Apple Pay y aparecerá aquí solo.", "hourglass")
+            return ("Esperando tu primer pago", CaptureCopy.waiting, "hourglass")
         case .silent:
-            return ("El atajo no ha anotado nada", "Si ya pagaste con Apple Pay, toca para revisarlo.",
-                    "exclamationmark.circle")
+            return ("El atajo no ha anotado nada", CaptureCopy.silent, "exclamationmark.circle")
         case .first:
             return (firstTitle, "Así se anotará cada uno.", "checkmark.circle")
         default:
-            return ("Wallet sin conectar", "Conéctalo una vez y cada pago con Apple Pay se anota solo.",
-                    "exclamationmark.circle")
+            return ("Wallet sin conectar", CaptureCopy.connectOnce, "exclamationmark.circle")
         }
     }
 
@@ -96,6 +138,8 @@ struct CaptureHealthRow: View {
                     .imageScale(.small)
                     // The width of a day divider's dash, so «Wallet» starts where «HOY» does.
                     .frame(width: glyphWidth, alignment: .leading)
+                    // Only a mark: VoiceOver read its name before the line (2026-11-18).
+                    .accessibilityHidden(true)
                 Text(text)
                     .font(.ticket(.caption))
                     .tracking(Theme.Tracking.label)
@@ -111,6 +155,7 @@ struct CaptureHealthRow: View {
             .padding(.vertical, Theme.Space.tuck)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(spokenText)
         .accessibilityIdentifier("salud-captura")
         .accessibilityHint("Abre la guía del atajo")
     }

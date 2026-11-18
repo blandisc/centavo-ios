@@ -16,6 +16,7 @@ struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     /// Payments the automation saved (only it keeps the raw Wallet text). Not proof that it
     /// works (they may have come in a backup or from another device): `CaptureCheck` only says
     /// when the last one was; the proof is `CaptureArrival`.
@@ -40,6 +41,9 @@ struct SetupGuideView: View {
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
+    /// The floating window is a video of pictures that VoiceOver can't read: with it on,
+    /// «Abrir Atajos» just opens Atajos and the guide stays here (QA, 2026-11-18).
+    private var floats: Bool { GuideCompanion.isSupported && !voiceOver }
 
     var body: some View {
         Group { content }
@@ -89,6 +93,11 @@ struct SetupGuideView: View {
             // lands on the step the person was on.
             .onChange(of: companion.step) { _, value in
                 if companion.isFloating { step = value }
+            }
+            // A swipe or «Paso siguiente» changes the page without a word: say which step it is.
+            .onChange(of: step) { _, value in
+                guard voiceOver, steps.indices.contains(value) else { return }
+                AccessibilityNotification.Announcement("Paso \(value + 1) de \(steps.count). \(steps[value].title)").post()
             }
             .onChange(of: captured.first?.persistentModelID) { _, _ in
                 if companion.isFloating { companion.stop() }
@@ -186,7 +195,7 @@ struct SetupGuideView: View {
     /// a plain «Abrir Atajos».
     private var launcher: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if GuideCompanion.isSupported {
+            if floats {
                 Text(companion.isFloating
                      ? "La guía flota sobre Atajos. Avanza con ⏩."
                      : "Esta guía te acompaña en una ventanita sobre Atajos.")
@@ -196,14 +205,13 @@ struct SetupGuideView: View {
             }
             Button {
                 let url = URL(string: "shortcuts://")!
-                if GuideCompanion.isSupported {
+                if floats {
                     companion.float(from: step, thenOpen: url)
                 } else {
                     openURL(url)
                 }
             } label: {
-                PrimaryButtonLabel("Abrir Atajos", systemImage: GuideCompanion.isSupported
-                                   ? "pip.enter" : "arrow.up.forward.app")
+                PrimaryButtonLabel("Abrir Atajos", systemImage: floats ? "pip.enter" : "arrow.up.forward.app")
             }
             .ticketProminent()
             .accessibilityIdentifier("guia-abrir-atajos")
@@ -216,7 +224,7 @@ struct SetupGuideView: View {
         // The layer the window floats from, hidden behind the dock: it has to be on screen,
         // but no thumbnail beside the button (owner, 2026-10-29).
         .background {
-            if GuideCompanion.isSupported {
+            if floats {
                 CompanionLayerView(companion: companion)
                     .frame(width: thumbWidth, height: thumbHeight)
                     .accessibilityHidden(true)
@@ -365,6 +373,8 @@ private struct GuideStep {
     var opensShortcuts = false
     let scene: ShortcutsScene
 
+    // Every step done inside Atajos carries the dock, as in iOS 27: whoever left the floating
+    // window halfway had no way back to it but going back to step 1 (QA, 2026-11-18).
     // Labels checked against Atajos in iOS 26 (es-MX): «Automatización», «Nueva automatización»,
     // «Wallet», «Ejecutar de inmediato», «Notificar al ejecutar», «Crear nuevo atajo».
     static let all: [GuideStep] = [
@@ -385,6 +395,7 @@ private struct GuideStep {
                    "En el buscador de abajo escribe «Wallet».",
                    "Toca «Wallet»: «Al realizar un pago sin contacto…»."],
             note: "En versiones anteriores de iOS se llamaba «Transacción».",
+            opensShortcuts: true,
             scene: .wallet
         ),
         GuideStep(
@@ -394,6 +405,7 @@ private struct GuideStep {
                    "Marca «Ejecutar de inmediato».",
                    "Si quieres un aviso cada vez que se anota un pago, activa «Notificar al ejecutar».",
                    "Toca «Siguiente»."],
+            opensShortcuts: true,
             scene: .runOptions
         ),
         GuideStep(
@@ -404,6 +416,7 @@ private struct GuideStep {
                 + "sin el importe del pago y no anota nada. Si ya lo hiciste, ve a "
                 + "«Automatización», desliza esa automatización a la izquierda, bórrala y "
                 + "empieza de nuevo.",
+            opensShortcuts: true,
             scene: .newShortcut
         ),
         GuideStep(
@@ -412,6 +425,7 @@ private struct GuideStep {
             lead: "La acción de Al día que guarda cada pago.",
             taps: ["Toca «Buscar acciones» y escribe «Registrar gasto».",
                    "Toca «Registrar gasto», la de Al día."],
+            opensShortcuts: true,
             scene: .addAction
         ),
         GuideStep(
@@ -424,6 +438,7 @@ private struct GuideStep {
                    "Se abre una lista: elige «Importe»."],
             note: "Este es el paso que nadie adivina: hay que tocar la burbuja una segunda vez "
                 + "para elegir qué dato del pago va en cada lugar.",
+            opensShortcuts: true,
             scene: .connect(field: "Importe", done: [])
         ),
         GuideStep(
@@ -436,6 +451,7 @@ private struct GuideStep {
                    "Arriba a la derecha, toca la palomita azul para guardar."],
             note: "La tarjeta es opcional. Si la quieres, toca la flechita de la acción para "
                 + "ver «Tarjeta» y conéctala igual, eligiendo la tarjeta en la lista.",
+            opensShortcuts: true,
             scene: .connect(field: "Comercio", done: ["Importe"])
         ),
         GuideStep(

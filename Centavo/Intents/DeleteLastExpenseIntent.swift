@@ -12,7 +12,8 @@ struct DeleteLastExpenseIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard case .success(let container) = Store.opened else { throw CaptureError.storeUnavailable }
+        // One more try at a store that failed earlier in this launch (`Store.forIntent`).
+        guard let container = Store.forIntent else { throw CaptureError.storeUnavailable }
         // The widgets drop it before returning: Siri may suspend the app right after.
         defer { WidgetBridge.refreshAfterIntent() }
         let context = container.mainContext
