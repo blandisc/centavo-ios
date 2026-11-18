@@ -178,7 +178,7 @@ struct SettingsView: View {
         if ignoresWallet { return "Aviso apagado" }
         switch health {
         case .never: return "Sin conectar"
-        case .waiting: return "Esperando el primer pago"
+        case .waiting: return "Esperando el primer pago · Toca si no terminaste"
         case .silent(let days): return "\(days) días sin el primer pago"
         case .recent, .first: return "Funciona"
         case .quiet(let days): return "\(days) días sin pagos"

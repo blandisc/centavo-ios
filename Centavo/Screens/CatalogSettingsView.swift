@@ -8,6 +8,7 @@ import SwiftUI
 struct CatalogSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.modelContext) private var context
     @AppStorage(UserCatalog.sourcesKey) private var storedSources = ""
     @AppStorage(UserCatalog.defaultSourceKey) private var defaultSource = ""
@@ -106,7 +107,8 @@ struct CatalogSettingsView: View {
 
     /// Three across on an iPhone, the same grid as the expense sheet (owner, 2026-11-11): at
     /// four, «Suscripciones» did not fit and came out in smaller letters than the rest.
-    private let columns = [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)]
+    /// One per row with accessibility sizes, where a name needs the whole width.
+    private var columns: [GridItem] { CategoryTile.columns(for: typeSize) }
 
     /// Under the ways of paying: with none, what to add; with some, only the marks that are on
     /// screen get their line (owner, 2026-11-11: it explained ★ and ))) to an empty square).

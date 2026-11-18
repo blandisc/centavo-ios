@@ -54,9 +54,10 @@ enum UnreadNotice {
     }
 
     /// A payment that read and couldn't be saved: what was read of it stays here.
-    static func noteUnsaved(amount: String, merchant: String?, card: String?,
+    static func noteUnsaved(amount: String, merchant: String?, card: String?, spentOn: Date? = nil,
                             now: Date = AppClock.now, defaults: UserDefaults = .standard) {
-        guard let payment = PendingPayment.unsaved(amount: amount, merchant: merchant, card: card, date: now) else { return }
+        guard let payment = PendingPayment.unsaved(amount: amount, merchant: merchant, card: card, date: now,
+                                                   spentOn: spentOn) else { return }
         add(payment, now: now, defaults: defaults)
     }
 

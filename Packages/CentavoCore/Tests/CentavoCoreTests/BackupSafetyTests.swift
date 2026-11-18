@@ -133,6 +133,6 @@ struct BackupSafetyTests {
     @Test("El aviso de «Hoy» dice dónde arreglarlo")
     func theWarningSaysWhere() {
         #expect(BackupSetupReminder.warning
-            == "El respaldo diario no está configurado en este iPhone. Configúralo en Más › Ajustes › Respaldo diario.")
+            == "El respaldo diario no está configurado en este iPhone. Configúralo en ··· › Ajustes › Respaldo diario.")
     }
 }

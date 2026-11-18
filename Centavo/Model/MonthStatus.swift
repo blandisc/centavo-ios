@@ -90,7 +90,7 @@ enum MonthStatus {
         var sentence = "Llevas \(money(summary.primary.amount, summary.primary)) este mes"
         if !summary.others.isEmpty {
             let others = summary.others
-                .map { "\($0.label) \($0.amount.formatted(.number.precision(.fractionLength(2))))" }
+                .map { "\($0.label) \(plainAmount($0.amount))" }
                 .formatted(.list(type: .and))
             sentence += ", más \(others) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")"
         }

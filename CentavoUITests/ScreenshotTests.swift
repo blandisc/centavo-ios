@@ -160,7 +160,10 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons["Ajustes"].waitForExistence(timeout: 5))
         app.buttons["Ajustes"].tap()
         let backup = app.buttons["ajustes-respaldo"]
-        XCTAssertTrue(backup.waitForExistence(timeout: 5))
+        // On an iPhone SE or a mini the row is below the fold, and a Form only builds the rows on
+        // screen (2026-11-18, «Dispositivos»): scroll to it.
+        for _ in 0..<6 where !backup.waitForExistence(timeout: 1) { app.swipeUp() }
+        XCTAssertTrue(backup.waitForExistence(timeout: 5), "No está «Respaldo» en Ajustes")
         snap("30-ajustes-respaldo")
         backup.tap()
         sleep(1)

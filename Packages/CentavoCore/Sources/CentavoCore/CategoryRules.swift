@@ -14,10 +14,12 @@ public enum MerchantKey {
     /// empty, or the «Sin comercio» the app writes when Wallet sent none.
     static func memory(_ name: String) -> String? {
         let key = normalized(name)
-        return key.isEmpty || key == normalized(placeholder) ? nil : key
+        return key.isEmpty || key == placeholderKey ? nil : key
     }
 
     static let placeholder = "Sin comercio"
+    /// Folded once, not on every name looked up.
+    private static let placeholderKey = normalized(placeholder)
 }
 
 /// The category the owner last chose for each merchant, in the order they chose it.

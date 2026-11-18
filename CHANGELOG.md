@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 ### Changed
+- **Siri con día:** si «Anotar en una frase» no puede guardar «230 de tacos el 30», el pendiente en «Hoy» se anota en el día que dijiste.
+- **CSV con tabuladores:** los montos con coma decimal («89,50») se leen bien, y un «1.234» dudoso ya no se adivina.
+- **Bienvenida:** si la app se cierra en «Listo», tu otro iPhone ya no la vuelve a mostrar y la renta no se agrega dos veces. Si la cierras antes de elegir moneda, vuelve a aparecer en lugar de dejarte en pesos.
+- **Borrar un fijo:** la pregunta aclara que ese cobro se borra y los siguientes se quedan.
+- **Euros:** «€ 12,50 café» se anota como 12,50 euros.
+- **iOS 26:** «Cómo funciona» y la comprobación de la guía hablan de pagar acercando el iPhone.
+- **Wallet a medias:** «Esperando tu primer pago» ofrece tocar para seguir la guía, también en Ajustes.
+- **Letra grande:** las categorías y formas de pago van una por renglón, con el nombre completo.
+- **VoiceOver:** al guardar se dice también cuánto puedes gastar hoy, y la moneda se lee como «pesos», «dólares» o «euros».
+- **Pegar montos:** «USD 25.00» cambia la moneda y «-$50» se marca como devolución.
+- **Importar:** se leen los CSV que Excel guarda en Windows-1252 o UTF-16.
+- **Comercios:** «Qué es» en «Gastos fijos» y en la bienvenida ya no corrige solo los nombres de marca.
+- **Formato:** los montos en otra moneda y la frase de Siri usan el formato mexicano en cualquier región; en «Gastos fijos» los pesos junto a dólares dicen «MX$».
+- **Sin presupuesto:** «Gastos fijos» y «No cuenta» ya no prometen apartar nada de «Hoy puedes gastar».
+- **Montos:** «230.» ya cuenta como 230 en «Presupuesto» y en «Gastos fijos».
+- **Widget con error:** el «+» del widget o del control ya no se pierde si la app abrió con error y luego se recupera.
+- **Bienvenida:** aparece en su lugar, sin subir sobre «Hoy».
 - **Fijos más seguros:** apagar «Se repite» en un gasto fijo ahora pregunta antes y lo deja como fijo detenido, sin bajar de golpe «Hoy puedes gastar». Guardar la renta del 31 ya no la mueve al 30.
 - **Borrar un fijo:** «Borrar gasto» sobre un fijo en marcha avisa que deja de repetirse y que lo ya anotado se queda.
 - **Sin duplicados:** tocar «Guardar» dos veces ya no anota el gasto dos veces.

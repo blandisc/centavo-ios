@@ -24,7 +24,6 @@ public enum CSVImporter {
         // A UTF-8 mark at the start would stick to «Fecha» and the header wouldn't be found.
         let text = text.unicodeScalars.first == "\u{FEFF}" ? String(text.unicodeScalars.dropFirst()) : text
         let delimiter = separator(of: text)
-        let number: (String) -> Decimal? = delimiter == ";" ? Self.commaDecimal : Self.number
         let rows = parse(text, delimiter: delimiter).filter { !$0.allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty } }
         guard let header = rows.first else { throw Failure.notOurFile }
         let names = header.map { $0.trimmingCharacters(in: .whitespaces) }
@@ -36,6 +35,13 @@ public enum CSVImporter {
         let card = column("Tarjeta"), category = column("Categoría")
         // Added later: a file from before has neither, and everything in it counts.
         let counts = column("Cuenta"), reason = column("Motivo")
+        let commaDecimals = readsWithDecimalComma(rows.dropFirst(), delimiter: delimiter, columns: [amount, counts])
+        let number: (String) -> Decimal?
+        if commaDecimals {
+            number = Self.commaDecimal
+        } else {
+            number = delimiter == "\t" ? Self.pointDecimal : Self.number
+        }
 
         var result = Result(records: [], skipped: 0)
         for row in rows.dropFirst() {
@@ -55,7 +61,7 @@ public enum CSVImporter {
             // the exporter writes it, with its decimal point: a bare «1» or an account number
             // from another spreadsheet is not a part.
             let countsText = field(counts)
-            let part = countsText.flatMap { $0.contains(".") || (delimiter == ";" && $0.contains(",")) ? number($0) : nil }
+            let part = countsText.flatMap { $0.contains(".") || (commaDecimals && $0.contains(",")) ? number($0) : nil }
             let counted = !isNo(countsText)
             result.records.append(ExpenseRecord(
                 date: parsedDate, merchant: field(merchant) ?? "Sin comercio", amount: value,
@@ -100,6 +106,32 @@ public enum CSVImporter {
         let marked = data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF])
         let encodings: [String.Encoding] = marked ? [.utf16] : [.utf8, .windowsCP1252, .isoLatin1]
         return encodings.lazy.compactMap { String(data: data, encoding: $0) }.first
+    }
+
+    /// Whether the amounts are written with a decimal comma. With «;», always (a spreadsheet
+    /// only saves it so where the comma is the decimal). With a tab, by what the amounts say:
+    /// Excel's «Texto Unicode» in a decimal-comma region writes `89,50`, and in Mexico `89.50`.
+    /// A comma file is written with quotes around a comma, so it never reads one this way.
+    static func readsWithDecimalComma<Rows: Sequence>(_ rows: Rows, delimiter: Unicode.Scalar,
+                                                      columns: [Int?]) -> Bool where Rows.Element == [String] {
+        if delimiter == ";" { return true }
+        guard delimiter == "\t" else { return false }
+        let indexes = columns.compactMap { $0 }
+        for row in rows {
+            for index in indexes where index < row.count {
+                let field = row[index].trimmingCharacters(in: .whitespaces)
+                if field.range(of: #"\d,\d{1,2}$"#, options: .regularExpression) != nil { return true }
+            }
+        }
+        return false
+    }
+
+    /// An amount in a tab file with a decimal point. A lone group of three after a point (`1.234`)
+    /// is not guessed: from a tab file it may be a thousand written with a decimal comma's
+    /// grouping, and what we write has two decimals. The row is counted as unreadable.
+    static func pointDecimal(_ text: String) -> Decimal? {
+        if text.range(of: #"^[-−]?\d{1,3}(\.\d{3})+$"#, options: .regularExpression) != nil { return nil }
+        return number(text)
     }
 
     /// What separates the fields, by the first line with something in it: «;» or a tab when

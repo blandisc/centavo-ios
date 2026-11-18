@@ -107,7 +107,7 @@ extension BackupRetention {
 public enum BackupSetupReminder {
     public static let text = "El respaldo diario no está configurado en este iPhone."
     /// What «Hoy» says, with where to fix it, like its other backup lines.
-    public static let warning = text + " Configúralo en Más › Ajustes › Respaldo diario."
+    public static let warning = text + " Configúralo en ··· › Ajustes › Respaldo diario."
 
     /// After «Ahora no», or after the person saw it on the backup's screen, «Hoy» stays quiet
     /// this long.

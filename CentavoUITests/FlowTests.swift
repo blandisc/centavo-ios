@@ -1361,7 +1361,9 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(check.label.contains("Ya funciona"), "Dice: \(check.label)")
         XCTAssertTrue(check.label.contains("Esperando un pago nuevo"), "Dice: \(check.label)")
         XCTAssertTrue(check.label.contains("Último pago"), "Dice: \(check.label)")
-        XCTAssertTrue(check.label.contains("Paga algo con Apple Pay para comprobar"), "Dice: \(check.label)")
+        // «con Apple Pay» in iOS 27, «acercando el iPhone» in iOS 26 (`CaptureCopy.proveIt`).
+        XCTAssertTrue(check.label.contains("Paga algo"), "Dice: \(check.label)")
+        XCTAssertTrue(check.label.contains("para comprobar"), "Dice: \(check.label)")
         snap("flujo-guia-pago-de-antes")
     }
 

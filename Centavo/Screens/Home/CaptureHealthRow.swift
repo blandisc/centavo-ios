@@ -8,10 +8,25 @@ import SwiftUI
 enum CaptureCopy {
     private static var catchesAll: Bool { ShortcutsVersion.isIOS27 }
 
-    /// `.waiting`: the guide was opened and no payment came yet.
+    /// `.waiting`: the guide was opened and no payment came yet. Opening the guide is all it
+    /// knows (iOS doesn't say whether the automation was made), so it offers a way back to it
+    /// for whoever stopped halfway (QA, 2026-11-18).
     static var waiting: String {
-        catchesAll ? "Paga algo con Apple Pay y aparecerá aquí solo."
-                   : "Paga acercando el iPhone y aparecerá aquí solo."
+        let pay = catchesAll ? "Paga algo con Apple Pay y aparecerá aquí solo."
+                             : "Paga acercando el iPhone y aparecerá aquí solo."
+        return pay + " ¿Te quedaste a medias? Toca para seguir."
+    }
+
+    /// The guide's check, when a payment from before the guide was opened is all there is.
+    static var proveIt: String {
+        catchesAll ? "Paga algo con Apple Pay para comprobar."
+                   : "Paga algo acercando el iPhone para comprobar."
+    }
+
+    /// «Se anota solo», in «Cómo funciona».
+    static var tutorial: String {
+        catchesAll ? "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+»."
+                   : "Cada pago que haces acercando el iPhone llega por Atajos y se anota. Lo demás, con «+»."
     }
 
     /// `.silent`: days after the guide, still nothing.
@@ -84,9 +99,11 @@ struct CaptureHealthRow: View {
         }
     }
 
-    /// «Llegó tu primer pago solo: $47.50 en Oxxo», from what the automation saved.
+    /// «Llegó tu primer pago solo: $47.50 en Oxxo», from what the automation saved with the
+    /// first one, not the latest (a refund later that day read as the first payment). A first
+    /// payment from before that was kept apart has no text: the title goes alone.
     private var firstTitle: String {
-        let text = UserDefaults.standard.string(forKey: CaptureArrival.textKey) ?? ""
+        let text = UserDefaults.standard.string(forKey: CaptureArrival.firstTextKey) ?? ""
         return text.isEmpty ? "Llegó tu primer pago solo" : "Llegó tu primer pago solo: \(text)"
     }
 

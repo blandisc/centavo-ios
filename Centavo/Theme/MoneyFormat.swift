@@ -20,6 +20,7 @@ func formatMoney(_ amount: Decimal, isoCode: String?, label: String, main: Strin
     if let isoCode {
         return amount.formatted(currencyStyle(isoCode, main: main))
     }
-    let digits = amount.magnitude.formatted(.number.precision(.fractionLength(2)))
+    // The Mexican way in any region, like every currency (2026-10-18; it followed the region).
+    let digits = amount.magnitude.formatted(.number.precision(.fractionLength(2)).locale(Locale(identifier: "es_MX")))
     return (amount < 0 ? "-" : "") + label + digits
 }

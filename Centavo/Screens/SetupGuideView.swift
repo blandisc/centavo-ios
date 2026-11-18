@@ -582,6 +582,11 @@ struct CaptureCheck: View {
         CaptureArrival.proof(session: session, arrived: arrived, lastKnown: latest?.date)
     }
 
+    /// «Último pago: hace 2 días. Paga algo acercando el iPhone para comprobar.»
+    private static func earlier(_ last: Date) -> String {
+        "Último pago: " + AppClock.relative(last) + ". " + CaptureCopy.proveIt
+    }
+
     private static var hint: String {
         ShortcutsVersion.isIOS27
             // The ready-made shortcut fails by being off, or by Wallet not notifying (Fable review,
@@ -619,7 +624,7 @@ struct CaptureCheck: View {
                         .foregroundStyle(Theme.ink)
                     if let last {
                         // A payment from before the guide was opened: said, and not taken as proof.
-                        Text("Último pago: " + AppClock.relative(last) + ". Paga algo con Apple Pay para comprobar.")
+                        Text(Self.earlier(last))
                             .font(.ticket(.detail))
                             .foregroundStyle(Theme.ink)
                     }

@@ -23,24 +23,57 @@ struct CategoryTile: View {
     @ScaledMetric(relativeTo: .body) private var tallHeight = Theme.Size.catalogTileHeight
     @ScaledMetric(relativeTo: .body) private var shortHeight = Theme.Size.categoryTile
 
-    var body: some View {
-        let height = twoLines ? tallHeight : shortHeight
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    private var symbolColor: Color { selected ? Theme.onBrass : isAction ? Theme.brass : color }
+    private var nameColor: Color { selected ? Theme.onBrass : isAction ? Theme.brass : Theme.ink }
+
+    private var symbol: some View {
+        Image(systemName: icon)
+            .font(Theme.Symbol.regular)
+            .foregroundStyle(symbolColor)
+            .frame(height: symbolBox)
+            .accessibilityHidden(true)
+    }
+
+    /// Icon over the name, the size of a square in the grid.
+    private var stacked: some View {
         VStack(spacing: Theme.Space.xs) {
-            Image(systemName: icon)
-                .font(Theme.Symbol.regular)
-                .foregroundStyle(selected ? Theme.onBrass : isAction ? Theme.brass : color)
-                .frame(height: symbolBox)
-                .accessibilityHidden(true)
+            symbol
             // One word stays on one line and shrinks a little rather than break («Suscripcione/s»).
             Text(name)
                 .font(.ticket(.detail))
-                .foregroundStyle(selected ? Theme.onBrass : isAction ? Theme.brass : Theme.ink)
+                .foregroundStyle(nameColor)
                 .multilineTextAlignment(.center)
                 .lineLimit(twoLines && name.contains(" ") ? 2 : 1)
                 .minimumScaleFactor(Theme.MinimumScale.figure)
         }
-        .padding(.horizontal, Theme.Space.xs)
-        .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
+    }
+
+    /// With accessibility sizes, one tile per row: the icon beside the whole name, which wraps
+    /// instead of shrinking (2026-11-18: «Transporte» was cut to «Transp…»).
+    private var wide: some View {
+        HStack(spacing: Theme.Space.m) {
+            symbol
+                .frame(minWidth: symbolBox)
+            Text(name)
+                .font(.ticket(.detail))
+                .foregroundStyle(nameColor)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, Theme.Space.xs)
+    }
+
+    var body: some View {
+        let height = twoLines ? tallHeight : shortHeight
+        let large = typeSize.isAccessibilitySize
+        Group {
+            if large { wide } else { stacked }
+        }
+        .padding(.horizontal, large ? Theme.Space.m : Theme.Space.xs)
+        .frame(maxWidth: .infinity, minHeight: height, maxHeight: large ? nil : height)
         .background(selected ? Theme.brass : isAction ? Color.clear : Theme.raised,
                     in: RoundedRectangle(cornerRadius: Theme.Radius.control))
         .overlay {
@@ -62,6 +95,16 @@ struct CategoryTile: View {
         }
         .opacity(dimmed ? Theme.Opacity.unselected : Theme.Opacity.visible)
         .contentShape(Rectangle())
+    }
+}
+
+extension CategoryTile {
+    /// The grid the tiles go in, in the expense sheet and in «Pagos y categorías»: squares
+    /// side by side, or one per row with accessibility sizes, where a name needs the width.
+    static func columns(for typeSize: DynamicTypeSize) -> [GridItem] {
+        typeSize.isAccessibilitySize
+            ? [GridItem(.flexible(), spacing: Theme.Space.s)]
+            : [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)]
     }
 }
 

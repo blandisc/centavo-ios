@@ -28,6 +28,29 @@ import Testing
         #expect(back.records.map(\.amount) == [Decimal(string: "89.5")!])
     }
 
+    @Test func tabsWithADecimalCommaReadAsComma() throws {
+        let text = header.replacingOccurrences(of: ",", with: "\t") + """
+
+        2026-10-17T15:52:11-06:00\tOxxo\t89,50\tMXN\t\t\t\t
+        2026-10-18T10:00:00-06:00\tLiverpool\t1.234,56\tMXN\t\t\t600,00\t
+        2026-10-19T10:00:00-06:00\tRenta\t1.234\tMXN\t\t\t\t
+        """
+        let back = try CSVImporter.records(from: text)
+        #expect(back.records.map(\.amount) == [Decimal(string: "89.5")!, Decimal(string: "1234.56")!])
+        #expect(back.records.last?.countedAmount == 600)
+        #expect(back.skipped == 1)
+    }
+
+    @Test func aLoneThousandInATabFileIsNotGuessed() throws {
+        // Excel in a decimal-comma region, with no cents anywhere: «1.234» is a thousand there.
+        let text = header.replacingOccurrences(of: ",", with: "\t")
+            + "\n2026-10-17T15:52:11-06:00\tRenta\t1.234\tMXN\t\t\t\t"
+            + "\n2026-10-18T10:00:00-06:00\tOxxo\t89\tMXN\t\t\t\t\n"
+        let back = try CSVImporter.records(from: text)
+        #expect(back.records.map(\.amount) == [89])
+        #expect(back.skipped == 1)
+    }
+
     @Test func ourOwnCommasStayCommas() {
         #expect(CSVImporter.separator(of: header + "\nx;y;z;w;v;u;t;s;r\n") == ",")
         #expect(CSVImporter.separator(of: "\n\n" + header.replacingOccurrences(of: ",", with: ";")) == ";")

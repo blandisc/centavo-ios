@@ -102,7 +102,7 @@ public enum QuickEntryParser {
         var used: [Bool]
 
         init(_ text: String) {
-            original = text.split(whereSeparator: \.isWhitespace)
+            original = Words.symbolAfterFigure(text.split(whereSeparator: \.isWhitespace))
                 .flatMap(Words.spellingEuro)
                 .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!¡?¿«»\"()")) }
                 .filter { !$0.isEmpty }
@@ -117,6 +117,21 @@ public enum QuickEntryParser {
             guard word.contains("€") else { return [word] }
             let rest = String(word.filter { $0 != "€" })
             return rest.isEmpty ? ["euros"] : [Substring(rest), "euros"]
+        }
+
+        /// «€ 12,50» as «12,50 €»: the amount only looks for its currency in the word after it.
+        static func symbolAfterFigure(_ words: [Substring]) -> [Substring] {
+            var words = words
+            var index = 0
+            while index + 1 < words.count {
+                if words[index].allSatisfy({ $0 == "€" }), words[index + 1].contains(where: \.isNumber) {
+                    words.swapAt(index, index + 1)
+                    index += 2
+                } else {
+                    index += 1
+                }
+            }
+            return words
         }
 
         /// Whether `phrase` is in these words, whole and in order.

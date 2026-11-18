@@ -75,6 +75,7 @@ import Testing
         ("gasté 12,50€ en Mercadona", "Mercadona"),
         ("12,50 € Mercadona", "Mercadona"),
         ("€12,50 café", "Café"),
+        ("€ 12,50 café", "Café"),
     ] as [(String, String)])
     func theEuroSignIsTheCurrency(sentence: String, merchant: String) throws {
         let entry = try #require(parse(sentence), "«\(sentence)»")

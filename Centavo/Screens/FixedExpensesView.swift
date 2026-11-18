@@ -12,6 +12,7 @@ struct FixedExpensesView: View {
     @Query(filter: #Predicate<Expense> { $0.isRepeat == true }) private var copies: [Expense]
     @AppStorage(FixedPlan.key) private var storedPlans = ""
     @AppStorage(CurrencyPreference.key) private var storedCurrency = ""
+    @AppStorage(BudgetStore.key) private var storedBudget = ""
     @AppStorage(UserCatalog.categoriesKey) private var storedCategories = ""
     @AppStorage(UserCatalog.categoryColorsKey) private var storedCategoryColors = ""
     /// The new fixed expense being written, with the name of a suggestion if one was tapped.
@@ -24,11 +25,24 @@ struct FixedExpensesView: View {
     @State private var saveProblem: SaveProblem?
 
     private var primary: String { CurrencyPreference.resolve(storedCurrency) }
+    /// Without a budget there is no «Hoy puedes gastar» to set anything apart from (2026-11-18).
+    private var hasBudget: Bool { BudgetStore.amount(from: storedBudget) != nil }
+
+    private var explainerText: String {
+        let what = "La renta, la luz, tus suscripciones. Anótalos una vez: Al día los registra solos el día que toca"
+        return hasBudget ? what + " y desde hoy los aparta de lo que puedes gastar." : what + "."
+    }
+
+    /// Under the month's bar: what is set apart, or what a budget would do.
+    private var setApartNote: String? {
+        guard hasBudget else { return "Con un presupuesto, Al día aparta lo que falta de tus fijos." }
+        return coming > 0 ? "Lo que está por venir ya se apartó de «Hoy puedes gastar»." : nil
+    }
     private var items: [FixedItem] { FixedOutlook.items(originals: originals, plans: FixedPlan.decode(storedPlans)) }
 
     private func money(_ amount: Decimal, _ currency: String) -> String {
         let iso = CurrencyResolver.isoCode(for: currency, primary: primary)
-        return formatMoney(amount, isoCode: iso, label: currency)
+        return formatMoney(amount, isoCode: iso, label: currency, main: primary)
     }
 
     /// What already arrived this month, in the main currency.
@@ -180,7 +194,7 @@ struct FixedExpensesView: View {
                 Text("Lo que pagas siempre")
                     .font(.ticket(.headline))
                     .foregroundStyle(Theme.ink)
-                Text("La renta, la luz, tus suscripciones. Anótalos una vez: Al día los registra solos el día que toca y desde hoy los aparta de lo que puedes gastar.")
+                Text(explainerText)
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -221,7 +235,9 @@ struct FixedExpensesView: View {
                 Spacer()
                 summaryFigure("Por venir", money(coming, primary), trailing: true)
             }
-            NoteText("Lo que está por venir ya se apartó de «Hoy puedes gastar».", color: Theme.faint)
+            if let setApartNote {
+                NoteText(setApartNote, color: Theme.faint)
+            }
         }
         .padding(.vertical, Theme.Space.s)
         .accessibilityElement(children: .combine)
@@ -353,7 +369,7 @@ struct FixedPlanSheet: View {
     }
 
     private var amount: Decimal? {
-        guard let value = AmountParser.parse(amountText)?.value, value > 0 else { return nil }
+        guard let value = AmountParser.parseTyped(amountText)?.value, value > 0 else { return nil }
         return value
     }
 
@@ -398,6 +414,8 @@ struct FixedPlanSheet: View {
                               prompt: Text("Renta, limpieza, Netflix…").foregroundStyle(Theme.faint))
                         .ticketField()
                         .textInputAutocapitalization(.sentences)
+                        // Names like «Netflix» or «Totalplay» are not in the dictionary (2026-11-18).
+                        .autocorrectionDisabled()
                         .focused($nameFocused)
                         .submitLabel(.done)
                         .accessibilityIdentifier("fijo-nombre")

@@ -137,6 +137,23 @@ import Testing
         #expect(fill.card == nil)
     }
 
+    @Test func aDaySaidToSiriIsTheDayTheSheetStartsOn() throws {
+        let said = now.addingTimeInterval(-20 * 24 * 3600)
+        let payment = try #require(PendingPayment.unsaved(amount: "$230", merchant: "Tacos", card: nil,
+                                                          date: now, spentOn: said))
+        #expect(payment.prefill(primary: "MXN").date == said)
+        // It still arrived now: it is ordered and ages out from its arrival.
+        #expect(PendingPayments.current([payment], now: now.addingTimeInterval(15 * 24 * 3600)) == [payment])
+    }
+
+    @Test func whatEarlierVersionsKeptStillReadsWithoutTheDaySaid() throws {
+        let kept = PendingPayments.encode([PendingPayment.unsaved(amount: "$89", merchant: "Oxxo", card: nil, date: now)!])
+        let read = PendingPayments.decode(kept)
+        #expect(read.count == 1)
+        #expect(read.first?.spentOn == nil)
+        #expect(read.first?.prefill(primary: "MXN").date == now)
+    }
+
     @Test func aNoticeWithOnlyANameFillsTheShopAndLeavesTheAmountEmpty() {
         let fill = PendingPayment(kind: .unread, text: "Google", date: now).prefill(primary: "MXN")
         #expect(fill == ExpensePrefill(merchant: "Google", date: now))

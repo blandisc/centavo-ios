@@ -112,11 +112,18 @@ enum BudgetSync {
     static func markOnboarded() { cloud.set("1", forKey: "onboarded") }
 
     /// Whether this iCloud already has someone's setup: the welcome was done, or a budget or
-    /// currency is there. The expenses themselves may still be on their way.
+    /// another choice is there. The expenses themselves may still be on their way.
     static var hasSetupElsewhere: Bool {
         cloud.synchronize()
-        return cloud.string(forKey: "onboarded") == "1"
-            || keys.contains { !(cloud.string(forKey: $0) ?? "").isEmpty }
+        return isSetUp { cloud.string(forKey: $0) }
+    }
+
+    /// `hasSetupElsewhere` over what iCloud holds (`value`). The currency alone is not a setup:
+    /// this same phone may have put it there, and a welcome closed halfway never came back,
+    /// leaving pesos for someone who uses dollars (2026-11-18).
+    static func isSetUp(_ value: (String) -> String?) -> Bool {
+        value("onboarded") == "1"
+            || keys.contains { $0 != CurrencyPreference.key && !(value($0) ?? "").isEmpty }
     }
 
     /// Every change on this phone, including clearing it.

@@ -60,7 +60,7 @@ enum DailyBackup {
             case .halfRestored where !Features.money: "No se pudieron restaurar tus gastos, pero una parte de tus datos ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
             // With «Mi dinero» hidden its screen, the one that says restoring fixes it, can't be
             // reached: said here (2026-11-18).
-            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, restaura un respaldo en Más › Ajustes › Respaldo diario: lo que no abría queda guardado aparte en este iPhone, sin borrarse. Restaurar también regresa tus gastos al día de ese respaldo."
+            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, restaura un respaldo en ··· › Ajustes › Respaldo diario: lo que no abría queda guardado aparte en este iPhone, sin borrarse. Restaurar también regresa tus gastos al día de ese respaldo."
             case .moneyNotReady: "No se pudo abrir «Mi dinero» para restaurarlo. Tus gastos no cambiaron. Si «Mi dinero» no abría, quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
             case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
             case .noPlaceForCopy: "Antes de restaurar hay que guardar una copia de lo que hay en este iPhone, y no hay una carpeta donde ponerla. No se cambió nada."
@@ -98,7 +98,7 @@ enum DailyBackup {
         BackupAsideNote(stored: UserDefaults.standard.string(forKey: asideKey))
     }
 
-    static let asideWarning = "Tu último respaldo se guardó aparte. Revísalo en Más › Ajustes › Respaldo diario."
+    static let asideWarning = "Tu último respaldo se guardó aparte. Revísalo en ··· › Ajustes › Respaldo diario."
 
     /// Three days without a backup (or none yet, once it's set up) is worth a line.
     static func isOverdue(now: Date = AppClock.now) -> Bool {
@@ -142,13 +142,13 @@ enum DailyBackup {
     /// can be tried without a password in the Keychain.
     static func notice(now: Date = AppClock.now) -> String? {
         if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
-            return "El último respaldo no se pudo hacer. Revísalo en Más › Ajustes › Respaldo diario."
+            return "El último respaldo no se pudo hacer. Revísalo en ··· › Ajustes › Respaldo diario."
         }
-        if isOverdue(now: now) { return "Llevas más de 3 días sin respaldo. Revísalo en Más › Ajustes › Respaldo diario." }
+        if isOverdue(now: now) { return "Llevas más de 3 días sin respaldo. Revísalo en ··· › Ajustes › Respaldo diario." }
         // Written on the phone but not up in iCloud (full, or no network for a day): the date in
         // «Último respaldo» alone would say it's fine (2026-11-02, second audit).
         if BackupCloud.isStuck(cloudState(), writtenAt: lastBackup, now: now) {
-            return "El último respaldo no ha subido a iCloud; puede que no haya espacio. Revísalo en Más › Ajustes › Respaldo diario."
+            return "El último respaldo no ha subido a iCloud; puede que no haya espacio. Revísalo en ··· › Ajustes › Respaldo diario."
         }
         // Saved, but not as the file of the day: it stays said until the person looks at it or
         // a daily file is written again. Last, so it never hides the three above.

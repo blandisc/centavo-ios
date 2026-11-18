@@ -368,6 +368,8 @@ struct OnboardingView: View {
                               prompt: Text("Renta, Netflix…").foregroundStyle(Theme.faint))
                         .ticketField()
                         .textInputAutocapitalization(.words)
+                        // Names like «Netflix» or «Totalplay» are not in the dictionary (2026-11-18).
+                        .autocorrectionDisabled()
                         .focused($focused, equals: .name)
                         .submitLabel(.next)
                         .onSubmit { focused = .amount }
@@ -670,12 +672,18 @@ struct OnboardingView: View {
         // date; one whose day is still to come waits for it (a plan), and is never logged as a
         // charge of the month before.
         var plans: [FixedPlan] = []
+        // What was already running before this save, read once: compared inside the loop, two
+        // twins typed in this same welcome (two «Colegiatura» of 3000 on the 5th) found each
+        // other and the second was dropped (independent review, 2026-11-18).
+        let running = runningFixed()
         for item in fixed {
             let first = Self.firstCharge(day: item.day)
             let plan = FixedPlan(merchant: item.name, amount: "\(item.amount)", currency: currency,
                                  category: MerchantCatalog.category(for: item.name), rule: nil, firstDate: first,
                                  day: item.day)
             if first <= AppClock.now {
+                // Started by an earlier run of the welcome: not a second rent.
+                guard !Self.isRunning(plan, in: running) else { continue }
                 let expense = RecurringExpenses.original(from: plan)
                 expense.repeatDay = item.day
                 context.insert(expense)
@@ -693,11 +701,26 @@ struct OnboardingView: View {
             // Saved: closing the app now doesn't bring the welcome back from the start
             // (2026-11-18). Only once it is on disk, or what didn't save would be lost with it.
             onboarded = true
+            // And iCloud knows, so a second phone doesn't start the welcome over (and type the
+            // same rent again) when the app closed here before «Ver mi día».
+            if Store.syncsBudget { BudgetSync.markOnboarded() }
         } catch {
             // Left in the context: the next autosave tries again, and the welcome can't hold
             // the person back for it. Nothing is rolled back, so nothing typed is lost.
             saveFailed = true
         }
+    }
+
+    /// The fixed expenses already running, as (name, amount, day). A fetch that fails answers
+    /// «none»: starting one twice can be undone, not starting it can't be seen.
+    private func runningFixed() -> [(merchant: String, amount: Decimal, day: Int?)] {
+        let running = try? context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.repeatsMonthly == true }))
+        return (running ?? []).map { ($0.merchant, $0.amount, $0.repeatDay) }
+    }
+
+    /// Started by an earlier run of the welcome: same name, amount and day.
+    static func isRunning(_ plan: FixedPlan, in running: [(merchant: String, amount: Decimal, day: Int?)]) -> Bool {
+        running.contains { $0.merchant == plan.merchant && $0.amount == plan.value && $0.day == plan.day }
     }
 
     /// The plans not stored yet: same name, amount and day is the same fixed expense.

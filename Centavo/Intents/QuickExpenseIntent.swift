@@ -33,10 +33,12 @@ struct QuickExpenseIntent: AppIntent {
             throw $sentence.needsValueError("No encontré cuánto fue en «\(sentence)». Dilo con la cantidad, por ejemplo: 230 de tacos.")
         }
         // Only an amount that reads and isn't zero, as Siri says it back. `true`: kept.
-        // Dated now, not on the day said: a day said weeks back would fall out of the list.
+        // Dated now, not on the day said: a day said weeks back would fall out of the list. The
+        // day said goes with it (`spentOn`), so writing it down from «Hoy» lands on that day.
         func keepUnsaved() -> Bool {
             guard let parsed = AmountParser.parse(entry.amountText), parsed.value != 0 else { return false }
-            UnreadNotice.noteUnsaved(amount: spoken(entry.amountText), merchant: entry.merchant, card: entry.source)
+            UnreadNotice.noteUnsaved(amount: spoken(entry.amountText), merchant: entry.merchant, card: entry.source,
+                                     spentOn: entry.daySaid ? min(entry.date, AppClock.now) : nil)
             return true
         }
         // One more try at a store that failed earlier in this launch (`Store.forIntent`).

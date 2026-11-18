@@ -22,9 +22,13 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     public var amount: String?
     public var merchant: String?
     public var card: String?
+    /// The day the person said it was spent («230 de tacos el 30»), when it isn't the day it
+    /// arrived. `date` stays the arrival, which orders the list and ages it out; the sheet
+    /// starts on this day. Absent in what earlier versions kept.
+    public var spentOn: Date?
 
     public init(id: UUID = UUID(), kind: Kind, text: String, date: Date,
-                amount: String? = nil, merchant: String? = nil, card: String? = nil) {
+                amount: String? = nil, merchant: String? = nil, card: String? = nil, spentOn: Date? = nil) {
         self.id = id
         self.kind = kind
         self.text = text
@@ -32,6 +36,7 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
         self.amount = amount
         self.merchant = merchant
         self.card = card
+        self.spentOn = spentOn
     }
 
     /// The longest text kept of a notice: a line of a notification, not a document.
@@ -51,8 +56,9 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// A payment that read and couldn't be saved: «$319 en Google». `nil` with nothing to show.
+    /// `spentOn`: the day that was said, when one was (see `spentOn`).
     public static func unsaved(amount: String, merchant: String?, card: String?, date: Date,
-                               id: UUID = UUID()) -> PendingPayment? {
+                               spentOn: Date? = nil, id: UUID = UUID()) -> PendingPayment? {
         let amountLine = clean(amount).first.map { String($0.prefix(maxText)) }
         let shop = clean(merchant ?? "").first.map { String($0.prefix(maxText)) }
         let cardName = clean(card ?? "").first.map { String($0.prefix(maxText)) }
@@ -64,7 +70,7 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
         case (nil, nil): return nil
         }
         return PendingPayment(id: id, kind: .unsaved, text: text, date: date,
-                              amount: amountLine, merchant: shop, card: cardName)
+                              amount: amountLine, merchant: shop, card: cardName, spentOn: spentOn)
     }
 
     /// Only a name arrived, with no figure and no currency («Oxxo»): the one kind of notice a
@@ -78,7 +84,7 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     /// that couldn't be saved; of a notice with no amount, its text as the shop when it looks
     /// like a name. `primary`: the currency a bare «$» stands for.
     public func prefill(primary: String) -> ExpensePrefill {
-        var fill = ExpensePrefill(date: date)
+        var fill = ExpensePrefill(date: spentOn ?? date)
         switch kind {
         case .unsaved:
             if let amount, let read = CaptureText.amount(in: amount), read.value != 0 {

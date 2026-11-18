@@ -27,7 +27,7 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         case .figure: "Tu presupuesto, menos tus fijos, entre los días del mes. A eso se suma o resta lo que te sobró o te pasaste antes: esa es la cifra de arriba, y baja con cada pago."
         case .bar: "Cada celda es un día. Se llena con lo que gastas; si un día te pasas, se pinta de rojo. Los días por venir van punteados."
         case .leftover: "Lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
-        case .wallet: "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+»."
+        case .wallet: CaptureCopy.tutorial
         case .uncounted: "Un pago a tu tarjeta o un traspaso: mantenlo presionado y elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
         case .categories: "Abajo ves tus categorías. Toca una para ver solo esos gastos."
         case .backup: "Guarda una copia cada noche, cerrada con tu contraseña. Se activa en «··· › Ajustes › Respaldo diario»."

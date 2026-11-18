@@ -19,6 +19,9 @@ struct CentavoApp: App {
 
     /// What `Store.opened` said, kept here so «Intentar de nuevo» can swap the error for the app.
     @State private var store = Store.opened
+    /// A widget's «+» or the control's «Anotar gasto» that came while the store was down: kept,
+    /// and opened again once «Intentar de nuevo» brings the app back (2026-11-18).
+    @State private var pendingLink: URL?
 
     var body: some Scene {
         WindowGroup {
@@ -28,6 +31,9 @@ struct CentavoApp: App {
                     RootView().modelContainer(container)
                 case .failure(let error):
                     StoreErrorView(trouble: StoreFiles.trouble(of: error), retry: retryStore)
+                        .onOpenURL { url in
+                            if url.scheme == "centavo" { pendingLink = url }
+                        }
                 }
             }
             .preferredColorScheme(.dark)
@@ -41,6 +47,17 @@ struct CentavoApp: App {
         store = Store.retry()
         guard case .success = store else { return false }
         WidgetBridge.refresh()
+        if let link = pendingLink {
+            pendingLink = nil
+            // Once «Hoy» is up to take it (its `onOpenURL`), as `AddExpenseLink` opens it.
+            Task { @MainActor in
+                try? await Task.sleep(for: Self.screenUp)
+                _ = await UIApplication.shared.open(link)
+            }
+        }
         return true
     }
+
+    /// A beat for the main screen to replace the error before the link is opened again.
+    private static let screenUp = Duration.milliseconds(400)
 }

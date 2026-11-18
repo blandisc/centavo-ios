@@ -67,4 +67,15 @@ import Testing
         let history = [entry("CINEPOLIS", 0), entry("Cinépolis", 5)]
         #expect(MerchantSuggestions.matches(for: "cine", history: history) == ["Cinépolis"])
     }
+
+    @Test func anIndexBuiltOnceSuggestsTheSame() {
+        let history = [entry("Carnes Ramos"), entry("Ramos"), entry("Ramos"), entry("CINEPOLIS", 0),
+                       entry("Cinépolis", 5), entry("Sin comercio"), entry("  ")]
+        let index = MerchantSuggestions.Index(history)
+        for typed in ["", "ram", "Ramos", "cine", "zzz"] {
+            #expect(MerchantSuggestions.matches(for: typed, in: index)
+                    == MerchantSuggestions.matches(for: typed, history: history), "«\(typed)»")
+        }
+        #expect(MerchantSuggestions.matches(for: "", in: MerchantSuggestions.Index()).isEmpty)
+    }
 }

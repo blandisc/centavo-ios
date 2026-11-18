@@ -28,7 +28,7 @@ struct BudgetSheet: View {
     @FocusState private var focused: Bool
 
     private var amount: Decimal? {
-        guard let value = AmountParser.parse(text)?.value, value > 0 else { return nil }
+        guard let value = AmountParser.parseTyped(text)?.value, value > 0 else { return nil }
         return value
     }
 

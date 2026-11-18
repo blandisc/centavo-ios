@@ -373,9 +373,15 @@ struct ExpenseListView: View {
                 BudgetStore.settleHistory()
                 // Siri learns the categories it can be asked about («¿Cuánto llevo en Café?»).
                 CentavoShortcuts.updateAppShortcutParameters()
+                // Decided before the currency: the welcome asks for it itself. A reinstall or a
+                // new phone: the expenses are still coming from iCloud.
+                let welcomes = !onboarded && newestRows.isEmpty && Onboarding.isAllowed
+                    && !(Store.syncsBudget && BudgetSync.hasSetupElsewhere)
                 // Never chosen: settle it once, from what the payments are in (pesos if none),
-                // so it cannot drift with the phone's settings.
-                if !CurrencyPreference.offered.contains(storedCurrency) {
+                // so it cannot drift with the phone's settings. Not under the welcome: written
+                // now, it went up to iCloud and a welcome closed halfway never came back
+                // (2026-11-18). Until it is chosen, `primaryCurrency` shows pesos all the same.
+                if !welcomes, !CurrencyPreference.offered.contains(storedCurrency) {
                     let latest = (try? context.fetch(HomeModel.newest(100))) ?? []
                     storedCurrency = CurrencySuggestion.dominant(
                         markers: latest.map(\.currencyMarker),
@@ -384,11 +390,18 @@ struct ExpenseListView: View {
                 }
                 if GuideDebug.opensAtLaunch { showingSetup = true }
                 openRequestedSheet()
-                guard !onboarded else { return }
-                // A reinstall or a new phone: the expenses are still coming from iCloud.
-                let setUpElsewhere = Store.syncsBudget && BudgetSync.hasSetupElsewhere
-                if newestRows.isEmpty && Onboarding.isAllowed && !setUpElsewhere {
-                    showingOnboarding = true
+                // Done here before iCloud had the mark (2026-11-02): say so now, or a second phone
+                // with only the currency in iCloud would start the welcome over (independent
+                // review, 2026-11-18).
+                guard !onboarded else {
+                    if Store.syncsBudget { BudgetSync.markOnboarded() }
+                    return
+                }
+                if welcomes {
+                    // In place, not sliding up over a «Hoy» that was already drawn (2026-11-18).
+                    var appears = Transaction()
+                    appears.disablesAnimations = true
+                    withTransaction(appears) { showingOnboarding = true }
                 } else {
                     onboarded = true
                 }
@@ -1296,8 +1309,10 @@ private extension ExpenseListView {
         guard case .success(let url) = result else { return "No se pudo abrir el archivo." }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else {
-            return "No se pudo leer el archivo."
+        // In whatever encoding the spreadsheet saved it: Excel's «CSV» is Windows-1252 and its
+        // «Unicode» UTF-16 (2026-11-18).
+        guard let data = try? Data(contentsOf: url), let text = CSVImporter.text(from: data) else {
+            return "No se pudo leer el archivo. Guárdalo como CSV UTF-8 desde Excel y vuelve a intentar."
         }
         if let doubtful = try? ExpenseImporter.preview(text, in: context).leftOut, doubtful > 0 {
             pendingImport = PendingImport(text: text, question: .init(looksRepeated: doubtful))
@@ -1484,11 +1499,9 @@ private struct HeroTotal: View {
     private var totalText: AttributedString {
         let formatted = formatMoney(summary.primary.amount, isoCode: summary.primary.isoCode,
                                     label: summary.primary.label)
-        // The separator of what wrote it: a currency is written the Mexican way («.») in any
-        // region; only a bare marker follows the phone's (2026-11-18: with «,» the cents never
-        // greyed out).
-        let separator = summary.primary.isoCode != nil ? "." : Locale.current.decimalSeparator ?? "."
-        let parts = MoneyText.splitCents(formatted, decimalSeparator: separator)
+        // Money is written the Mexican way («.») in any region, a bare marker too (2026-11-18:
+        // with «,» the cents never greyed out).
+        let parts = MoneyText.splitCents(formatted, decimalSeparator: ".")
         var text = AttributedString(parts.head)
         var cents = AttributedString(parts.cents)
         cents.foregroundColor = Theme.muted

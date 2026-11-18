@@ -23,6 +23,8 @@ struct ExpenseEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @State private var amountText = ""
     /// The amount as the sheet showed it on opening: left as it was, the amount isn't rewritten
     /// (0.125 shown as «0.13» became 0.13 when only the category changed).
@@ -87,10 +89,16 @@ struct ExpenseEditorView: View {
     @State private var readingSentence = false
     /// Said when a sentence had no amount in it, instead of doing nothing.
     @State private var sentenceProblem: String?
+    /// Said when what was pasted in the amount named a currency this sheet doesn't offer.
+    /// Only emptying the amount clears it: the field's own rewrite of the paste is a change too.
+    @State private var pasteProblem: String?
 
     // Read once when the sheet opens, or when «Comercio» changes: rebuilding them from the
     // whole history on every key typed was felt with thousands of expenses (audit R10).
+    @AppStorage(BudgetStore.key) private var storedBudget = ""
     @State private var pastExpenses: [CategorizedExpense] = []
+    /// The merchants of `pastExpenses`, folded once for the suggestions.
+    @State private var merchantIndex = MerchantSuggestions.Index()
     @State private var knownCategories: [String] = []
     @State private var knownCards: [String] = []
     @State private var merchantMatches: [String] = []
@@ -183,8 +191,9 @@ struct ExpenseEditorView: View {
         let loadedCurrency = CurrencyResolver.isoCode(for: expense.currencyMarker, primary: CurrencyPreference.current)
             ?? CurrencyPreference.current
         let repeatsChanged = repeatsMonthly != (expense.repeatsMonthly == true) || (repeatsMonthly && rule != expense.rule)
-        return amountChanged || kindChanged || namesChanged || currency != loadedCurrency
-            || date != expense.date || repeatsChanged || removesPlace
+        let whenChanged = currency != loadedCurrency || date != expense.date
+        let contentChanged = amountChanged || kindChanged || namesChanged
+        return contentChanged || whenChanged || repeatsChanged || removesPlace
     }
 
     /// The correction being made to this expense's name or category, as it would reach the
@@ -405,7 +414,10 @@ struct ExpenseEditorView: View {
             category = suggestedCategory ?? ""
             categoryAutofilled = suggestedCategory != nil
         }
-        .onChange(of: amountText) { sentenceProblem = nil }
+        .onChange(of: amountText) { _, new in
+            sentenceProblem = nil
+            if new.isEmpty { pasteProblem = nil }
+        }
     }
 
     // MARK: Sections
@@ -413,8 +425,11 @@ struct ExpenseEditorView: View {
     private var amountSection: some View {
         Section {
             AdaptiveStack {
-                AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "monto")
+                AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "monto",
+                                 onPaste: takePasted)
                     .focused($amountFocused)
+                    // The figure gives way, not «MXN ⌄» (2026-11-18).
+                    .layoutPriority(1)
                 HStack(spacing: Theme.Space.s) {
                     currencyMenu
                     // The decimal pad has no return key, and a keyboard bar does not show in
@@ -431,9 +446,38 @@ struct ExpenseEditorView: View {
             if let sentenceProblem {
                 NoteText(sentenceProblem)
                     .accessibilityIdentifier("frase-sin-monto")
+            } else if let pasteProblem {
+                NoteText(pasteProblem)
+                    .accessibilityIdentifier("pegado-sin-moneda")
             }
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// «Hoy puedes gastar» is named only where there is one: with a budget (2026-11-18).
+    private var uncountedHint: String {
+        let hasBudget = BudgetStore.amount(from: storedBudget) != nil
+        return hasBudget ? "Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar»."
+            : "Se queda en la lista con su monto, pero no suma a lo que llevas."
+    }
+
+    /// «USD 25.00» or «-$50» pasted in the amount: the field keeps the figure, and the sheet
+    /// keeps the rest (2026-11-18: the currency and the sign were lost). A minus is money that
+    /// came back, shown open so it is seen before saving. A bare «$» is the main currency.
+    private func takePasted(_ pasted: ParsedAmount) {
+        if pasted.value < 0 {
+            isRefund = true
+            counts = true
+            showsDetails = true
+        }
+        guard let marker = pasted.currencyMarker, !CurrencyResolver.isAmbiguous(marker) else { return }
+        let code = CurrencyResolver.isoCode(for: marker, primary: CurrencyPreference.current)
+        if let code, currencies.contains(code) {
+            currency = code
+            pasteProblem = nil
+        } else {
+            pasteProblem = "No reconocí la moneda de lo que pegaste. Elígela junto al monto."
+        }
     }
 
     /// «Siguiente», shown only while the amount is typed. Its room is always kept: put in and
@@ -481,7 +525,8 @@ struct ExpenseEditorView: View {
         .buttonStyle(.borderless)
         .fixedSize()
         .accessibilityLabel("Moneda")
-        .accessibilityValue(currency)
+        // «pesos», not «M X N» spelled out (2026-11-18).
+        .accessibilityValue(CurrencyPreference.spoken(currency))
         .accessibilityIdentifier("moneda")
     }
 
@@ -652,7 +697,7 @@ struct ExpenseEditorView: View {
                     case .refund:
                         HintText("Una devolución resta de lo que llevas.")
                     case .uncounted:
-                        HintText("Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar».")
+                        HintText(uncountedHint)
                     case .expense:
                         EmptyView()
                     }
@@ -736,14 +781,15 @@ struct ExpenseEditorView: View {
     /// How many fit side by side, measured from the grid: what of the rest fills the last row
     /// of the ones in view.
     @State private var categoryColumns = 1
-    private var categoryGridColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)]
-    }
+    private var categoryGridColumns: [GridItem] { CategoryTile.columns(for: typeSize) }
+    /// One per row with accessibility sizes (`CategoryTile.columns`), whatever was measured.
+    private var columnsInView: Int { typeSize.isAccessibilitySize ? 1 : categoryColumns }
 
     /// How many of the rest fit in the last row of the ones in view: they show there from the
     /// start, and the others go in a row of their own behind «Ver más».
     private func categoryFill(_ split: (shown: [String], rest: [String])) -> Int {
-        let open = (categoryColumns - split.shown.count % categoryColumns) % categoryColumns
+        let columns = columnsInView
+        let open = (columns - split.shown.count % columns) % columns
         return min(open, split.rest.count)
     }
 
@@ -836,8 +882,7 @@ struct ExpenseEditorView: View {
     private var sourceGrid: some View {
         let sources = paymentSources
         let names = PaymentChoices.names(sources: sources, known: knownCards, current: card)
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: Theme.Size.categoryGridMinimum), spacing: Theme.Space.s)],
-                         spacing: Theme.Space.s) {
+        return LazyVGrid(columns: CategoryTile.columns(for: typeSize), spacing: Theme.Space.s) {
             ForEach(names, id: \.self) { name in
                 categoryChip(name, icon: PaymentChoices.icon(for: name, sources: sources),
                              selected: UserCatalog.same(card, name), kind: "tarjeta", tint: colors.source(name)) {
@@ -911,15 +956,23 @@ struct ExpenseEditorView: View {
         return TicketQuestion(title: "¿Borrar este gasto fijo?",
                               figure: ledgerAmount(for: expense, primary: CurrencyPreference.current),
                               name: expense.shownName,
-                              note: "Deja de repetirse; los cobros ya anotados se quedan. " + after)
+                              note: "Deja de repetirse. Este cobro se borra; los siguientes ya anotados se quedan. " + after)
     }
 
     /// Said once the sheet is down, for VoiceOver: the list's own focus change would cut it off
     /// if said while the sheet goes (2026-11-18: saving said nothing at all).
+    /// With a budget, today's figure follows, worked out from what was just saved:
+    /// «Anotado: $89.00 · Oxxo. Hoy puedes gastar $180.», as Siri says it.
     private func announceSaved(_ text: String) {
+        guard voiceOver else { return }
+        var today: String?
+        if let budget = MonthStatus.savedBudget {
+            today = try? MonthStatus.todaySentence(in: context, budget: budget)
+        }
+        let spoken = [text + ".", today].compactMap { $0 }.joined(separator: " ")
         Task { @MainActor in
             try? await Task.sleep(for: Self.announceAfter)
-            AccessibilityNotification.Announcement(text).post()
+            AccessibilityNotification.Announcement(spoken).post()
         }
     }
 
@@ -956,7 +1009,7 @@ struct ExpenseEditorView: View {
 
     private func refreshMerchant(_ typed: String) {
         let rules = CategoryRules(stored: storedRules)
-        merchantMatches = MerchantSuggestions.matches(for: typed, history: pastExpenses)
+        merchantMatches = MerchantSuggestions.matches(for: typed, in: merchantIndex)
         rememberedCategory = CategoryMemory.remembered(for: typed, rules: rules, latest: latestCategories,
                                                        hidden: notAutoAssigned)
         // With nothing remembered only the catalog is left: an empty history spares a second
@@ -969,6 +1022,7 @@ struct ExpenseEditorView: View {
         // One read of the history when the sheet opens, not a live query redrawn on every key.
         let history = (try? context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
         pastExpenses = history.map(\.categorized)
+        merchantIndex = MerchantSuggestions.Index(pastExpenses)
         latestCategories = CategoryMemory.latest(in: pastExpenses)
         knownCategories = CategoryMemory.known(in: pastExpenses)
         knownCards = PaymentChoices.mostUsedCards(history.prefix(300).map(\.card))
