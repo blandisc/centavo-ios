@@ -139,10 +139,11 @@ struct WhereItGoes: View {
         }
     }
 
-    /// The name drawn: the category's own (the person's words), or «Otras», «Sin categoría».
+    /// The name drawn: the category's own (the person's words, or the app's own translated), or «Otras», «Sin categoría».
     private static func name(of share: CategoryShare) -> String {
         if share.isRest { return String(localized: "Otras") }
-        return share.category ?? String(localized: "Sin categoría")
+        // The app's own names in the iPhone's language; stored in Spanish (2026-11-18).
+        return share.category.map { CategoryStyle.shown($0) } ?? String(localized: "Sin categoría")
     }
 }
 

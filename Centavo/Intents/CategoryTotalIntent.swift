@@ -37,7 +37,11 @@ struct CategoryEntity: AppEntity {
 
     let id: String
 
-    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(id)") }
+    /// The app's own categories in the iPhone's language; the identity stays the stored name.
+    var displayRepresentation: DisplayRepresentation {
+        let shown = CategoryStyle.shown(id)
+        return DisplayRepresentation(title: "\(shown)")
+    }
 }
 
 struct CategoryQuery: EntityStringQuery {
@@ -52,10 +56,19 @@ struct CategoryQuery: EntityStringQuery {
     /// What Siri heard: a category by its name, whole or in part.
     func entities(matching string: String) async throws -> [CategoryEntity] {
         let names = await CategoryNames.all()
-        if let exact = CategoryPick.validate(string, among: names) { return [CategoryEntity(id: exact)] }
+        // Said in the iPhone's language («groceries»), it is the one stored in Spanish (2026-11-18).
+        let said = CategoryStyle.stored(string)
+        if let exact = CategoryPick.validate(said, among: names) { return [CategoryEntity(id: exact)] }
         let folded = UserCatalog.fold(string)
-        let partial = names.filter { UserCatalog.fold($0).contains(folded) || folded.contains(UserCatalog.fold($0)) }
+        let partial = names.filter { name in
+            Self.loosely(folded, UserCatalog.fold(name)) || Self.loosely(folded, UserCatalog.fold(CategoryStyle.shown(name)))
+        }
         return partial.map(CategoryEntity.init)
+    }
+
+    /// «cafecitos» and «café»: one holds the other.
+    private static func loosely(_ said: String, _ name: String) -> Bool {
+        name.contains(said) || said.contains(name)
     }
 }
 

@@ -151,7 +151,7 @@ struct CatalogSettingsView: View {
                                     confirmingRemoval = .source(source)
                                 }
                             } label: {
-                                CategoryTile(name: source.name, icon: source.icon, color: colors.source(source.name),
+                                CategoryTile(name: CategoryStyle.shown(source.name), icon: source.icon, color: colors.source(source.name),
                                             badge: isDefault ? "star.fill" : nil, twoLines: true)
                             }
                             .accessibilityLabel(Self.sourceLabel(source.name, isDefault: isDefault))
@@ -168,10 +168,10 @@ struct CatalogSettingsView: View {
                                 }
                                 ColorMenu(selection: color(card, .source))
                             } label: {
-                                CategoryTile(name: card, icon: Self.guessIcon(card), color: colors.source(card),
+                                CategoryTile(name: CategoryStyle.shown(card), icon: Self.guessIcon(card), color: colors.source(card),
                                             badge: "wave.3.right", twoLines: true)
                             }
-                            .accessibilityLabel("\(card), llegó en tus pagos")
+                            .accessibilityLabel("\(CategoryStyle.shown(card)), llegó en tus pagos")
                             .accessibilityIdentifier("fuente-\(card)")
                         }
                         Button { editing = .source(nil) } label: {
@@ -208,7 +208,7 @@ struct CatalogSettingsView: View {
                                     }
                                 }
                             } label: {
-                                CategoryTile(name: item.name, icon: item.icon, color: colors.category(item.name),
+                                CategoryTile(name: CategoryStyle.shown(item.name), icon: item.icon, color: colors.category(item.name),
                                             badge: shown.wrappedValue ? nil : "eye.slash",
                                             dimmed: !shown.wrappedValue, twoLines: true)
                             }
@@ -367,7 +367,7 @@ struct CatalogSettingsView: View {
                 note = String(localized: "Los gastos que ya la tienen no cambian.")
             }
             return TicketQuestion(
-                title: String(localized: "¿Borrar esta forma de pago?"), name: source?.name,
+                title: String(localized: "¿Borrar esta forma de pago?"), name: source.map { CategoryStyle.shown($0.name) },
                 detail: count > 0 ? Self.haveIt(count) : nil, note: note)
         case .category(let category):
             let count = used.count(category: category?.name ?? "")
@@ -378,7 +378,7 @@ struct CatalogSettingsView: View {
                 note = String(localized: "Los gastos que ya la tienen no cambian.")
             }
             return TicketQuestion(
-                title: String(localized: "¿Borrar esta categoría?"), name: category?.name,
+                title: String(localized: "¿Borrar esta categoría?"), name: category.map { CategoryStyle.shown($0.name) },
                 detail: count > 0 ? Self.haveIt(count) : nil, note: note)
         }
     }
@@ -391,15 +391,18 @@ struct CatalogSettingsView: View {
     }
 
     /// What VoiceOver says of a card: its name, and whether it is the default one.
+    /// The app's own names («Efectivo») in the iPhone's language.
     static func sourceLabel(_ name: String, isDefault: Bool) -> String {
-        if isDefault { return String(localized: "\(name), por defecto") }
-        return name
+        let title = CategoryStyle.shown(name)
+        if isDefault { return String(localized: "\(title), por defecto") }
+        return title
     }
 
     /// What VoiceOver says of a category: its name, and whether it is hidden when writing one down.
     static func categoryLabel(_ name: String, shown: Bool) -> String {
-        if shown { return name }
-        return String(localized: "\(name), oculta")
+        let title = CategoryStyle.shown(name)
+        if shown { return title }
+        return String(localized: "\(title), oculta")
     }
 
     /// The menu's first button: hide it when writing one down, or show it again.

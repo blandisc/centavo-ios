@@ -1,3 +1,4 @@
+import CentavoCore
 import Foundation
 
 /// The categories offered with one tap, each with its icon and its usual color (a place in
@@ -17,6 +18,17 @@ enum CategoryStyle {
         ("Hogar", "house", 7),
         ("Compras", "bag", 3),
     ]
+
+    /// A stored category or payment name as the person reads it: the app's own names
+    /// («Despensa», «Efectivo») in the iPhone's language, anything else as it is. Storage keeps
+    /// the Spanish (`BuiltInName`, 2026-11-18).
+    static func shown(_ stored: String) -> String { BuiltInName.shown(stored) }
+
+    /// A category typed or picked, as it is stored: «Groceries» is «Despensa».
+    static func stored(_ typed: String) -> String { BuiltInName.category(typed) }
+
+    /// A card or cash typed or picked, as it is stored: «Cash» is «Efectivo».
+    static func storedPayment(_ typed: String) -> String { BuiltInName.paymentSource(typed) }
 
     /// The usual color of one of the app's own categories; `nil` for one someone made.
     static func colorIndex(for category: String) -> Int? {

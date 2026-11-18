@@ -221,8 +221,11 @@ struct ExpenseEditorView: View {
 
     private var trimmedMerchant: String { merchant.trimmingCharacters(in: .whitespaces) }
     private var trimmedCategory: String { category.trimmingCharacters(in: .whitespaces) }
-    /// The name it is saved with: the merchant, or with none typed, the category («Comida»).
-    private var savedName: String { trimmedMerchant.isEmpty ? trimmedCategory : trimmedMerchant }
+    /// The name it is saved with: the merchant, or with none typed, the category («Comida»), as
+    /// the person reads it («Groceries» in English): it is a name, not the category (2026-11-18).
+    private var savedName: String {
+        trimmedMerchant.isEmpty ? CategoryStyle.shown(trimmedCategory) : trimmedMerchant
+    }
 
     /// What «Guardar» will keep, or what is still missing: «$230 · Tacos · Efectivo».
     private var saveSummary: String {
@@ -240,7 +243,7 @@ struct ExpenseEditorView: View {
                                 main: CurrencyPreference.current)
         var parts = [(isRefund ? "+" : "") + money, savedName]
         let cardName = card.trimmingCharacters(in: .whitespaces)
-        if !cardName.isEmpty { parts.append(cardName) }
+        if !cardName.isEmpty { parts.append(CategoryStyle.shown(cardName)) }
         if !counts { parts.append(String(localized: "No cuenta")) }
         return parts.joined(separator: " · ")
     }
@@ -584,7 +587,7 @@ struct ExpenseEditorView: View {
             if let shown = expense?.displayName, shown != expense?.merchant, merchant == expense?.merchant {
                 HintText("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
             } else if trimmedMerchant.isEmpty, !trimmedCategory.isEmpty {
-                HintText("Sin comercio, se guarda como «\(trimmedCategory)».")
+                HintText("Sin comercio, se guarda como «\(savedName)».")
             }
         }
         .listRowBackground(Theme.surface)
@@ -920,7 +923,8 @@ struct ExpenseEditorView: View {
                     card = UserCatalog.same(card, name) ? "" : name
                 }
             }
-            categoryChip("Nueva", icon: "plus", selected: false, isAction: true, identifier: "nueva-forma-de-pago") {
+            categoryChip(String(localized: "Nueva"), icon: "plus", selected: false, isAction: true,
+                         identifier: "nueva-forma-de-pago") {
                 creating = .source
             }
             .accessibilityLabel("Nueva forma de pago")
@@ -935,7 +939,9 @@ struct ExpenseEditorView: View {
                               tint: Color = Theme.brass, isAction: Bool = false, identifier: String? = nil,
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            CategoryTile(name: name, icon: icon, color: tint, selected: selected, isAction: isAction)
+            // The app's own names in the iPhone's language; the identifier keeps the stored one.
+            CategoryTile(name: CategoryStyle.shown(name), icon: icon, color: tint, selected: selected,
+                         isAction: isAction)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])

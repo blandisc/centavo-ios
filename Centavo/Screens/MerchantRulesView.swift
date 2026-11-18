@@ -206,14 +206,16 @@ struct MerchantRulesView: View {
 extension MerchantRule {
     /// The quiet line under the text it arrives as: «Se anota como Tacos Pepe · Comida».
     var summary: String {
-        var filed = category
+        // The app's own names in the iPhone's language; stored in Spanish (2026-11-18).
+        let shownCategory = category.map { CategoryStyle.shown($0) }
+        var filed = shownCategory
         if filed == nil, goesUncategorized { filed = String(localized: "sin categoría") }
         if let name {
             let named = String(localized: "Se anota como \(name)")
             guard let filed else { return named }
             return "\(named) · \(filed)"
         }
-        if let category { return String(localized: "Va a \(category)") }
+        if let shownCategory { return String(localized: "Va a \(shownCategory)") }
         return String(localized: "Se queda sin categoría")
     }
 
@@ -273,7 +275,7 @@ struct MerchantRuleSheet: View {
             switch self {
             case .automatic: String(localized: "Automática")
             case .uncategorized: String(localized: "Sin categoría")
-            case .category(let name): name
+            case .category(let name): CategoryStyle.shown(name)
             }
         }
 
@@ -392,7 +394,7 @@ struct MerchantRuleSheet: View {
         Menu {
             Picker("Categoría", selection: $filing) {
                 Text(Filing.automatic.title).tag(Filing.automatic)
-                ForEach(offered, id: \.self) { Text($0).tag(Filing.category($0)) }
+                ForEach(offered, id: \.self) { Text(CategoryStyle.shown($0)).tag(Filing.category($0)) }
                 Text(Filing.uncategorized.title).tag(Filing.uncategorized)
             }
         } label: {

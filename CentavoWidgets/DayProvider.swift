@@ -19,11 +19,12 @@ struct DayEntry: TimelineEntry {
         budget: 12_000, isoCode: "MXN", label: "$", takenAt: .now, spent: 8_140, spentToday: 84,
         reserved: 1_200, slices: sampleSlices))
 
-    /// The gallery's categories, in the phone's language (they are only a sample).
+    /// The gallery's categories, stored in Spanish as the app's own always are: the widget
+    /// shows them in the phone's language (`BuiltInName.shown`).
     private static let sampleSlices: [WidgetSnapshot.Slice] = [
-        WidgetSnapshot.Slice(name: String(localized: "Comida"), amount: 2_450),
-        WidgetSnapshot.Slice(name: String(localized: "Despensa"), amount: 1_980),
-        WidgetSnapshot.Slice(name: String(localized: "Transporte"), amount: 1_320),
+        WidgetSnapshot.Slice(name: "Comida", amount: 2_450),
+        WidgetSnapshot.Slice(name: "Despensa", amount: 1_980),
+        WidgetSnapshot.Slice(name: "Transporte", amount: 1_320),
         WidgetSnapshot.Slice(name: nil, amount: 2_390, isRest: true),
     ]
 }

@@ -278,7 +278,9 @@ struct WhereItGoesView: View {
     /// The name a slice prints: «Otras» for the rest, «Sin categoría» for one without.
     private static func name(of slice: WidgetSnapshot.Slice) -> String {
         if slice.isRest { return String(localized: "Otras") }
-        return slice.name ?? String(localized: "Sin categoría")
+        // The snapshot keeps the stored name; the app's own are shown in the iPhone's language
+        // (2026-11-18).
+        return slice.name.map { BuiltInName.shown($0) } ?? String(localized: "Sin categoría")
     }
 
     private var today: some View {

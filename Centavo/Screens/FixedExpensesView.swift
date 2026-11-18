@@ -184,7 +184,9 @@ struct FixedExpensesView: View {
         let tile = CategoryIconTile(
             icon: category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) } ?? "repeat",
             color: category.map(colors.category), background: Theme.raised)
-        let meta: String = [category, item.ruleText].compactMap { $0 }.joined(separator: " · ")
+        // The app's own names in the iPhone's language; stored in Spanish (2026-11-18).
+        let shownCategory: String? = category.map { CategoryStyle.shown($0) }
+        let meta: String = [shownCategory, item.ruleText].compactMap { $0 }.joined(separator: " · ")
         let name: String = item.name
         let nextLine: String? = item.next.map { nextText($0, starts: item.original == nil) }
         return ExpenseRowLayout(name: name, tile: tile) {
@@ -448,12 +450,12 @@ struct FixedPlanSheet: View {
     /// What the category menu shows: the one picked, or that none is.
     private var categoryValue: String {
         if category.isEmpty { return String(localized: "Sin categoría") }
-        return category
+        return CategoryStyle.shown(category)
     }
 
     private var cardValue: String {
         if card.isEmpty { return String(localized: "Sin especificar") }
-        return card
+        return CategoryStyle.shown(card)
     }
 
     /// A new fixed expense, or one still to start being changed.
@@ -497,7 +499,8 @@ struct FixedPlanSheet: View {
                     TicketMenuPicker("Categoría", selection: categoryChoice, value: categoryValue) {
                         Text("Sin categoría").tag("")
                         ForEach(categories, id: \.self) { name in
-                            Label(name, systemImage: CategoryStyle.icon(for: name, custom: customCategories)).tag(name)
+                            Label(CategoryStyle.shown(name), systemImage: CategoryStyle.icon(for: name, custom: customCategories))
+                                .tag(name)
                         }
                     }
                     .accessibilityIdentifier("fijo-categoria")
@@ -505,7 +508,8 @@ struct FixedPlanSheet: View {
                         Text("Sin especificar").tag("")
                         ForEach(PaymentChoices.names(sources: sources, known: knownCards, current: card),
                                 id: \.self) { name in
-                            Label(name, systemImage: PaymentChoices.icon(for: name, sources: sources)).tag(name)
+                            Label(CategoryStyle.shown(name), systemImage: PaymentChoices.icon(for: name, sources: sources))
+                                .tag(name)
                         }
                     }
                     .accessibilityIdentifier("fijo-tarjeta")

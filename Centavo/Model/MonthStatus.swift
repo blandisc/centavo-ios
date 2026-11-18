@@ -121,13 +121,18 @@ enum MonthStatus {
     static func categorySentence(_ category: String, in context: ModelContext, now: Date = AppClock.now,
                                  primary: String = primaryCurrency) throws -> String {
         let summary = try summarize(in: context, now: now, primary: primary)
-        let wanted = UserCatalog.fold(category)
+        // Said in the iPhone's language («Groceries»), it is the one stored in Spanish, and it
+        // is said back in that language (2026-11-18).
+        let stored = CategoryStyle.stored(category)
+        let wanted = UserCatalog.fold(stored)
         let match = summary.categories.first { $0.category.map(UserCatalog.fold) == wanted }
         guard let match, match.amount != 0, let name = match.category else {
-            return String(localized: "Este mes no llevas nada en \(category).")
+            let said = CategoryStyle.shown(stored)
+            return String(localized: "Este mes no llevas nada en \(said).")
         }
         let spent = money(match.amount, summary.primary)
-        return String(localized: "Llevas \(spent) en \(name) este mes.")
+        let shownName = CategoryStyle.shown(name)
+        return String(localized: "Llevas \(spent) en \(shownName) este mes.")
     }
 
     private static func summarize(in context: ModelContext, now: Date,

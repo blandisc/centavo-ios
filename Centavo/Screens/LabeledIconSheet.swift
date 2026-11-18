@@ -42,6 +42,11 @@ struct LabeledIconSheet: View {
     @ScaledMetric(relativeTo: .body) private var iconColumn = Theme.Size.iconColumnWide
 
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
+    /// The name as it is kept: one of the app's own typed in the iPhone's language («Groceries»,
+    /// «Cash») is kept in Spanish, so it is never a second one (2026-11-18).
+    private var stored: String {
+        colorKind == .source ? CategoryStyle.storedPayment(trimmed) : CategoryStyle.stored(trimmed)
+    }
     /// What the save bar says: what is missing, or the name that will be saved.
     private var saveSummary: String {
         if trimmed.isEmpty { return String(localized: "Falta el nombre") }
@@ -49,7 +54,8 @@ struct LabeledIconSheet: View {
         return trimmed
     }
     private var isTaken: Bool {
-        taken.contains { UserCatalog.same($0, trimmed) && !UserCatalog.same($0, initial?.name ?? "") }
+        let wanted = stored
+        return taken.contains { UserCatalog.same($0, wanted) && !UserCatalog.same($0, initial?.name ?? "") }
     }
 
     var body: some View {
@@ -146,7 +152,8 @@ struct LabeledIconSheet: View {
             .ticketBarTitle(title)
             .saveBar(saveSummary,
                      enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
-                let item = LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon)
+                let saved = stored
+                let item = LabeledIcon(name: saved, icon: icon.isEmpty ? (icons.first ?? "tag") : icon)
                 if let commit {
                     guard commit(item) else {
                         saveFailed = true
@@ -156,11 +163,11 @@ struct LabeledIconSheet: View {
                     onSave(item)
                 }
                 // A renamed one leaves its old name's color behind.
-                if let old = initial?.name, !UserCatalog.same(old, trimmed) {
+                if let old = initial?.name, !UserCatalog.same(old, saved) {
                     UserCatalog.setColor(nil, for: old, key: colorKind.key)
                 }
-                CatalogColors.set(color, for: trimmed, kind: colorKind)
-                onSetDefault?(trimmed, usesByDefault)
+                CatalogColors.set(color, for: saved, kind: colorKind)
+                onSetDefault?(saved, usesByDefault)
                 dismiss()
             }
             .toolbar {
@@ -181,7 +188,7 @@ struct LabeledIconSheet: View {
         }
         .presentationDetents([.large])
         .onAppear {
-            name = initial?.name ?? ""
+            name = initial.map { CategoryStyle.shown($0.name) } ?? ""
             icon = initial?.icon ?? (icons.first ?? "tag")
             usesByDefault = isDefault
             let colors = CatalogColors.current
@@ -202,7 +209,7 @@ struct LabeledIconSheet: View {
         } else {
             title = String(localized: "¿Borrar esta categoría?")
         }
-        return TicketQuestion(title: title, name: initial?.name ?? "",
+        return TicketQuestion(title: title, name: initial.map { CategoryStyle.shown($0.name) } ?? "",
                               note: String(localized: "Los gastos que ya la tienen no cambian."))
     }
 

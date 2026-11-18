@@ -216,7 +216,10 @@ final class HomeModel {
     static func searchCandidates(for query: SearchQuery) -> FetchDescriptor<Expense> {
         let newestFirst = [SortDescriptor(\Expense.date, order: .reverse)]
         guard query.category == nil else { return FetchDescriptor(sortBy: newestFirst) }
-        let wordy = query.words.filter { $0.contains { !$0.isNumber && $0 != "." } }
+        let lettered = query.words.filter { $0.contains { !$0.isNumber && $0 != "." } }
+        // A word of the English of one of the app's own names («groceries») is not in the
+        // store, which keeps the Spanish («Despensa»): it never narrows (2026-11-18).
+        let wordy = lettered.filter { word in !BuiltInName.inTranslation(word) }
         if let word = wordy.max(by: { $0.count < $1.count }) {
             return FetchDescriptor(predicate: names(containing: word), sortBy: newestFirst)
         }

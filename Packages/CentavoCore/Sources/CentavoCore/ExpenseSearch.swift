@@ -100,15 +100,24 @@ public enum ExpenseSearch {
         if let min = query.minAmount, query.inclusive ? amount < min : amount <= min { return false }
         if let max = query.maxAmount, query.inclusive ? amount > max : amount >= max { return false }
         // The amount too, so «230» finds the 230.00 one.
-        let haystack = fold([expense.merchant, expense.readableName, expense.category, expense.card,
-                             "\(amount)"].compactMap { $0 }.joined(separator: " "))
+        // The app's own category and «Efectivo» as they are shown too («groceries» finds
+        // «Despensa»); in Spanish that is the same name (2026-11-18).
+        let filed = [expense.category, expense.card].compactMap { $0 }
+        let shown = filed.map { BuiltInName.shown($0) }.filter { !filed.contains($0) }
+        let fields: [String?] = [expense.merchant, expense.readableName, expense.category, expense.card]
+        var words: [String] = fields.compactMap { $0 }
+        words += shown
+        words.append("\(amount)")
+        let haystack = fold(words.joined(separator: " "))
         // A month name is the month, unless the expense itself is called that («Don Julio»); a
         // year is the year, unless it is the amount («2024» finds the $2,024.00 one).
         let dateWords = [query.monthWord, query.year.map { String($0) }].compactMap { $0 }
         if let interval = query.interval, !interval.contains(expense.date),
            dateWords.isEmpty || !dateWords.allSatisfy(haystack.contains) { return false }
         if let category = query.category {
-            guard let own = expense.category, fold(own) == fold(category) else { return false }
+            // Asked for in the iPhone's language («Groceries»), it is the one stored in Spanish.
+            let wanted = fold(BuiltInName.category(category))
+            guard let own = expense.category, fold(own) == fold(category) || fold(own) == wanted else { return false }
             return true
         }
         return query.words.allSatisfy(haystack.contains)

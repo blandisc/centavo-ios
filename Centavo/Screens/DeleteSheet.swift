@@ -54,8 +54,9 @@ struct TicketQuestion {
     /// «¿Borrar este gasto?», with the expense as the list writes it.
     fileprivate init(deleting expense: Expense, primaryCurrency: String, undoable: Bool) {
         let day = expense.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
-        let details = [expense.category, expense.card, day]
-            .compactMap { $0 }
+        // The app's own names («Despensa», «Efectivo») in the iPhone's language.
+        let filed = [expense.category, expense.card].compactMap { $0 }.map { CategoryStyle.shown($0) }
+        let details = (filed + [day])
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
         let note: String

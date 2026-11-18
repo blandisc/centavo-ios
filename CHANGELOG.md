@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Changed
+- **Categorías en inglés:** en un iPhone en inglés, las categorías de la app y «Efectivo» se ven como Groceries, Food, Coffee, Transportation, Utilities, Subscriptions, Going out, Clothes, Health, Home, Shopping, Rent y Cash, en «Hoy», «En qué se va», la hoja del gasto, «Pagos y categorías», fijos, «Lo que recuerdo», Siri y los widgets. Se siguen guardando en español: respaldo, CSV e iCloud no cambian.
+- **Escribir «Groceries» o «Cash»** usa Despensa y Efectivo en vez de crear otra, y buscar «groceries» encuentra los gastos de Despensa.
 - **Letra de accesibilidad en «Hoy»:** la cabecera pone la fecha y el folio en dos líneas ordenadas; el encabezado de cada día ya no deja el «·» colgando; cada gasto muestra su monto junto al nombre o justo debajo, y el ícono de la tarjeta ya no queda solo.
 - **iPhone chicos (SE, mini):** la guía de Wallet muestra los pasos escritos antes del dibujo de Atajos, sin desplazar.
 - **Guía:** «Conecta el importe» y «Conecta el comercio» ya no dejan un hueco vacío, y el emblema se alinea con el título.

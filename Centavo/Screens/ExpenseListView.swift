@@ -817,7 +817,7 @@ private struct HomeHeader: View {
     /// The picked category's name: its own, or «Otras», «Sin categoría».
     private static func filterName(_ line: CategoryShare) -> String {
         if line.isRest { return String(localized: "Otras") }
-        return line.category ?? String(localized: "Sin categoría")
+        return line.category.map { CategoryStyle.shown($0) } ?? String(localized: "Sin categoría")
     }
 
     private func emptyLine(_ text: LocalizedStringKey) -> some View {
@@ -884,10 +884,11 @@ private struct HomeLedger: View {
                                 Button {
                                     actions.setCategory(name, expense)
                                 } label: {
+                                    let shown = CategoryStyle.shown(name)
                                     if expense.category == name {
-                                        Label(name, systemImage: "checkmark")
+                                        Label(shown, systemImage: "checkmark")
                                     } else {
-                                        Text(name)
+                                        Text(shown)
                                     }
                                 }
                             }
@@ -1911,8 +1912,9 @@ private struct LedgerRow: View {
         }
         if isRefund { parts.append(String(localized: "Devolución")) }
         if expense.isFixed { parts.append(String(localized: "Fijo")) }
-        parts.append(expense.category)
-        if withCard { parts.append(expense.card) }
+        // The app's own names in the iPhone's language; stored in Spanish (2026-11-18).
+        parts.append(expense.category.map { CategoryStyle.shown($0) })
+        if withCard { parts.append(expense.card.map { CategoryStyle.shown($0) }) }
         let shown = parts.compactMap { $0 }.filter { !$0.isEmpty }
         // A no-break space before the dot: a wrapped line never starts with «·».
         return shown.isEmpty ? nil : shown.joined(separator: "\u{00A0}· ")

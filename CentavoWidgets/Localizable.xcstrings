@@ -229,14 +229,50 @@
         }
       }
     },
+    "Café" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coffee"
+          }
+        }
+      }
+    },
+    "Casa" : {
+      "comment" : "Built-in category name read as «Hogar» (BuiltInName), stored in Spanish and shown translated; also the VoiceOver name of the house icon (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
+          }
+        }
+      }
+    },
     "Comida" : {
-      "comment" : "Sample category in the widget gallery preview (DayEntry.sample)",
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Food"
+          }
+        }
+      }
+    },
+    "Compras" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets. General shopping (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shopping"
           }
         }
       }
@@ -278,13 +314,25 @@
       }
     },
     "Despensa" : {
-      "comment" : "Sample category in the widget gallery preview (DayEntry.sample)",
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Groceries"
+          }
+        }
+      }
+    },
+    "Efectivo" : {
+      "comment" : "Built-in payment method (cash), stored in Spanish and shown translated (BuiltInName): the expense sheet, Pagos y categorías, fixed expenses, «Hoy» (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cash"
           }
         }
       }
@@ -333,6 +381,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fixed %@"
+          }
+        }
+      }
+    },
+    "Hogar" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
           }
         }
       }
@@ -553,6 +613,18 @@
         }
       }
     },
+    "Renta" : {
+      "comment" : "Built-in category name read as «Hogar» (BuiltInName), stored in Spanish and shown translated; also a suggested fixed expense in the welcome (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rent"
+          }
+        }
+      }
+    },
     "Ritmo del presupuesto" : {
       "comment" : "Option of the medium widget's «Mostrar» setting: the month bar (HoyMediumLayout.pace)",
       "extractionState" : "manual",
@@ -565,6 +637,18 @@
         }
       }
     },
+    "Ropa" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clothes"
+          }
+        }
+      }
+    },
     "Rosa" : {
       "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
       "extractionState" : "manual",
@@ -573,6 +657,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pink"
+          }
+        }
+      }
+    },
+    "Salidas" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets. Bars, movies, nights out (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Going out"
+          }
+        }
+      }
+    },
+    "Salud" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Health"
+          }
+        }
+      }
+    },
+    "Servicios" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets. Power, water, gas, phone, internet (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilities"
           }
         }
       }
@@ -613,6 +733,18 @@
         }
       }
     },
+    "Suscripciones" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscriptions"
+          }
+        }
+      }
+    },
     "Te pasaste" : {
       "comment" : "Widget caption over the amount past the budget; the line under the figure says «on your budget» (DayState.caption)",
       "extractionState" : "manual",
@@ -638,7 +770,7 @@
       }
     },
     "Transporte" : {
-      "comment" : "Sample category in the widget gallery preview (DayEntry.sample)",
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets (widgets: «En qué se va» and the gallery sample)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {

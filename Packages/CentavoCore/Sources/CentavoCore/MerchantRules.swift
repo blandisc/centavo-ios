@@ -105,7 +105,9 @@ public enum MerchantRules {
                                    comment: "Lo que dice una regla que deja el gasto sin categoría")
         return rules.filter { rule in
             let filed = rule.category ?? (rule.goesUncategorized ? uncategorized : nil)
-            return [rule.sent, rule.written, rule.name, filed]
+            // The app's own category as it is shown too («groceries» finds «Despensa»).
+            let shown = rule.category.map { BuiltInName.shown($0) }
+            return [rule.sent, rule.written, rule.name, filed, shown]
                 .contains { $0.map { MerchantKey.normalized($0).contains(wanted) } ?? false }
         }
     }

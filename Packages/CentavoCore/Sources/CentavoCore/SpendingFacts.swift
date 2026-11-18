@@ -200,7 +200,8 @@ public enum SpendingFacts {
                   sofar.amount - usual >= monthTotal * Decimal(0.05) else { continue }
             let percent = Int(NSDecimalNumber(decimal: (sofar.amount / usual - 1) * 100).doubleValue.rounded())
             let figure = "\(percent) %"
-            let name = sofar.name
+            // The app's own category in the iPhone's language; stored in Spanish (2026-11-18).
+            let name = BuiltInName.shown(sofar.name)
             let line = String(localized: "\(name) va \(figure) arriba de lo normal a estas alturas del mes.",
                               bundle: .main, comment: "Nota del mes: la categoría y cuánto va arriba de lo normal («35 %»)")
             found.append((SpendingFact(

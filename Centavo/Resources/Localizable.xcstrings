@@ -2845,6 +2845,18 @@
         }
       }
     },
+    "Café" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coffee"
+          }
+        }
+      }
+    },
     "Calendario" : {
       "comment" : "Hoy · carousel page dot (VoiceOver)",
       "extractionState" : "manual",
@@ -2978,13 +2990,13 @@
       }
     },
     "Casa" : {
-      "comment" : "VoiceOver name of an icon to pick: house",
+      "comment" : "Built-in category name read as «Hogar» (BuiltInName), stored in Spanish and shown translated; also the VoiceOver name of the house icon",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "House"
+            "value" : "Home"
           }
         }
       }
@@ -3133,6 +3145,18 @@
         }
       }
     },
+    "Comida" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Food"
+          }
+        }
+      }
+    },
     "Compra algo, en línea o acercando el teléfono, y vuelve aquí." : {
       "comment" : "Connect Wallet (iOS 27): add the ready-made shortcut. instruction 4.",
       "extractionState" : "manual",
@@ -3153,6 +3177,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Buy something, online or by holding your phone near the reader."
+          }
+        }
+      }
+    },
+    "Compras" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets. General shopping",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shopping"
           }
         }
       }
@@ -3865,6 +3901,18 @@
         }
       }
     },
+    "Despensa" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groceries"
+          }
+        }
+      }
+    },
     "Después" : {
       "comment" : "Bienvenida (OnboardingView): botón secundario para dejar Wallet para después.",
       "extractionState" : "manual",
@@ -4281,6 +4329,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Editor"
+          }
+        }
+      }
+    },
+    "Efectivo" : {
+      "comment" : "Built-in payment method (cash), stored in Spanish and shown translated (BuiltInName): the expense sheet, Pagos y categorías, fixed expenses, «Hoy»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cash"
           }
         }
       }
@@ -6033,6 +6093,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Story %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Hogar" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
           }
         }
       }
@@ -9194,7 +9266,7 @@
       }
     },
     "Renta" : {
-      "comment" : "Bienvenida (OnboardingView): gasto fijo sugerido (llena el nombre).",
+      "comment" : "Built-in category name read as «Hogar» (BuiltInName), stored in Spanish and shown translated; also a suggested fixed expense in the welcome",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9421,6 +9493,18 @@
         }
       }
     },
+    "Ropa" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clothes"
+          }
+        }
+      }
+    },
     "Rosa" : {
       "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
       "extractionState" : "manual",
@@ -9429,6 +9513,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pink"
+          }
+        }
+      }
+    },
+    "Salidas" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets. Bars, movies, nights out",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Going out"
+          }
+        }
+      }
+    },
+    "Salud" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Health"
           }
         }
       }
@@ -9837,6 +9945,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Week"
+          }
+        }
+      }
+    },
+    "Servicios" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets. Power, water, gas, phone, internet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilities"
           }
         }
       }
@@ -10305,6 +10425,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add up in %@"
+          }
+        }
+      }
+    },
+    "Suscripciones" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscriptions"
           }
         }
       }
@@ -10869,6 +11001,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Total %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Transporte" : {
+      "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transportation"
           }
         }
       }

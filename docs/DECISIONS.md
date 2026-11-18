@@ -970,6 +970,13 @@ Pedido del dueño: que la app salga también en inglés. Un iPhone en inglés la
 - **Capturas en inglés:** a mano, con «ingles» al correr la CI (`EnglishScreenshotTests`, artefacto `capturas-ingles`): bienvenida, «Hoy», sus hojas y la guía, solo con argumentos e identificadores.
 - **Pendiente:** las capturas de Atajos en inglés para la guía de iOS 27 (las imágenes `guia27-*` son del Atajos en español).
 
+### Las categorías y «Efectivo» se guardan en español y se traducen al mostrarse
+Un iPhone en inglés veía «ROPA», «DESPENSA» en «Hoy»: los nombres de la app son datos guardados, no textos de pantalla.
+- **Se guardan siempre en español:** gastos, la memoria de comercios, reglas, colores, respaldo, CSV e iCloud siguen con «Despensa», «Efectivo»… Íconos, colores y memoria siguen comparando con ese nombre; un iPhone en español y otro en inglés con el mismo iCloud ven lo mismo, cada uno en su idioma.
+- **Se traducen solo al mostrarse** (`BuiltInName.shown` en CentavoCore; en la app, `CategoryStyle.shown`): las 11 categorías de un toque, «Casa» y «Renta» y «Efectivo», sin importar mayúsculas ni acentos; cualquier otro nombre, tal cual. En español la pantalla queda idéntica letra por letra (un nombre cuya traducción es él mismo se muestra como se guardó). Filas de «Hoy» y lo que lee VoiceOver, «En qué se va», el filtro, la hoja del gasto, «Pagos y categorías», fijos, «Lo que recuerdo», borrar, la nota del mes, Siri y los widgets (traducen con su propio catálogo).
+- **Lo que se escribe o se dice en inglés se guarda en español** (`BuiltInName.category` / `paymentSource`): «Groceries» es «Despensa» y «Cash» es «Efectivo», así nunca aparece una categoría repetida. La búsqueda encuentra «groceries» en los gastos de Despensa (y la tienda no descarta por esa palabra). Un gasto sin comercio se llama como la categoría en el idioma del iPhone: es un nombre, no la categoría.
+- **El CSV no se traduce:** es un formato. Inglés: Groceries, Food, Coffee, Transportation, Utilities, Subscriptions, Going out, Clothes, Health, Home (Hogar y Casa), Shopping, Rent, Cash.
+
 ## 2026-11-18 · iPhone chico y letra de accesibilidad
 Capturas reales de un iPhone SE (3.ª gen.) y un 13 mini.
 - **La cabecera del ticket deja de crecer en `accessibility2`** (`TicketHead.largestType`), como `Signature` y los días del boleto: más grande, «VIE 20 DE NOV» se partía en dos y el folio quedaba en una tercera línea. Con letra de accesibilidad va en una línea si cabe y, si no, en dos: el día arriba y el folio abajo. En los tamaños normales no cambia.
