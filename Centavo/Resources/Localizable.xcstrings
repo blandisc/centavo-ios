@@ -1441,6 +1441,18 @@
         }
       }
     },
+    "Ajustar presupuesto" : {
+      "comment" : "Brass link action that opens the budget sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjust budget"
+          }
+        }
+      }
+    },
     "Ajustes" : {
       "comment" : "Ajustes (SettingsView): screen title.",
       "extractionState" : "manual",
