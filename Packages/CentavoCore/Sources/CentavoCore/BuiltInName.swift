@@ -24,7 +24,7 @@ public enum BuiltInName {
     /// `display`: the translation of a canonical name (the catalog's, by default; tests pass
     /// their own).
     public static func shown(_ stored: String, display: (String) -> String = BuiltInName.localized) -> String {
-        guard let canonical = builtIn(stored, among: categories + [cash]) else { return stored }
+        guard let canonical = builtIn(stored, among: all) else { return stored }
         let translated = display(canonical)
         return translated == canonical ? stored : translated
     }
@@ -46,7 +46,7 @@ public enum BuiltInName {
     public static func inTranslation(_ word: String, display: (String) -> String = BuiltInName.localized) -> Bool {
         let wanted = fold(word)
         guard !wanted.isEmpty else { return false }
-        return (categories + [cash]).contains { name in
+        return all.contains { name in
             let translated = display(name)
             return translated != name && fold(translated).contains(wanted)
         }
@@ -84,9 +84,18 @@ public enum BuiltInName {
         return names.first { fold(display($0)) == wanted } ?? typed
     }
 
+    /// Every own name, by its folded spelling: folded once, not on each search keystroke and row
+    /// (independent review, 2026-11-18).
+    private static let folded: [String: String] = {
+        var map: [String: String] = [:]
+        for name in categories + [cash] { map[fold(name)] = name }
+        return map
+    }()
+    private static let all = categories + [cash]
+
     private static func builtIn(_ name: String, among names: [String]) -> String? {
-        let wanted = fold(name)
-        return names.first { fold($0) == wanted }
+        guard let found = folded[fold(name)], names.contains(found) else { return nil }
+        return found
     }
 
     private static func fold(_ text: String) -> String {

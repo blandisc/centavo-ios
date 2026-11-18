@@ -44,8 +44,12 @@ struct LabeledIconSheet: View {
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     /// The name as it is kept: one of the app's own typed in the iPhone's language («Groceries»,
     /// «Cash») is kept in Spanish, so it is never a second one (2026-11-18).
+    /// A name left as it was shown keeps the name it had: in English a source of its own called
+    /// «Cash» (or a category «Casa») went through the translation and came back as another
+    /// («Efectivo», «Hogar»), renaming its expenses into it (independent review, 2026-11-18).
     private var stored: String {
-        colorKind == .source ? CategoryStyle.storedPayment(trimmed) : CategoryStyle.stored(trimmed)
+        if let initial, UserCatalog.same(trimmed, CategoryStyle.shown(initial.name)) { return initial.name }
+        return colorKind == .source ? CategoryStyle.storedPayment(trimmed) : CategoryStyle.stored(trimmed)
     }
     /// What the save bar says: what is missing, or the name that will be saved.
     private var saveSummary: String {

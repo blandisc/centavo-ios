@@ -242,13 +242,13 @@
       }
     },
     "Casa" : {
-      "comment" : "Built-in category name read as «Hogar» (BuiltInName), stored in Spanish and shown translated; also the VoiceOver name of the house icon (widgets: «En qué se va» and the gallery sample)",
+      "comment" : "Built-in category name (an alias of «Hogar», kept apart: «House» so it is not a second «Home»); also the VoiceOver name of the house icon",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Home"
+            "value" : "House"
           }
         }
       }
