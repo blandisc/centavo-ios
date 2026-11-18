@@ -30,7 +30,7 @@ struct WelcomeDemo: View {
     private static let coming = [
         Payment(merchant: "Café del Sol", symbol: "cup.and.saucer", amount: 65),
         Payment(merchant: "Uber", symbol: "car", amount: 89),
-        Payment(merchant: "Farmacia", symbol: "cross.case", amount: 120),
+        Payment(merchant: String(localized: "Farmacia"), symbol: "cross.case", amount: 120),
     ]
 
     var body: some View {
@@ -239,8 +239,11 @@ struct WalletChain: View {
     @ScaledMetric(relativeTo: .body) private var node = Theme.Size.chainNode
     @State private var lit = 0
 
-    private let nodes = [("wallet.pass", "Pagas"), ("square.2.layers.3d", "Atajos avisa"),
-                         ("checkmark", "Al día lo anota")]
+    private let nodes: [(String, String)] = [
+        ("wallet.pass", String(localized: "Pagas")),
+        ("square.2.layers.3d", String(localized: "Atajos avisa")),
+        ("checkmark", String(localized: "Al día lo anota")),
+    ]
 
     var body: some View {
         chain
@@ -397,7 +400,7 @@ struct WelcomeFixedCalendar: View {
                 }
                 .buttonStyle(.plain)
                 .animation(Theme.Motion.animation(Theme.Motion.settle, reduceMotion: reduceMotion), value: isStamped)
-                .accessibilityLabel(isStamped ? "Día \(day), con un fijo" : "Día \(day)")
+                .accessibilityLabel(spokenCell(day, stamped: isStamped))
                 .accessibilityAddTraits(day == chosen ? .isSelected : [])
             }
         }
@@ -414,7 +417,14 @@ struct WelcomeFixedCalendar: View {
 
     private var spokenDay: String {
         let taken = stamped.contains { min($0, days) == chosen }
-        return taken ? "el día \(chosen), con un fijo" : "el día \(chosen)"
+        let day = chosen
+        if taken { return String(localized: "el día \(day), con un fijo") }
+        return String(localized: "el día \(day)")
+    }
+
+    private func spokenCell(_ day: Int, stamped: Bool) -> String {
+        if stamped { return String(localized: "Día \(day), con un fijo") }
+        return String(localized: "Día \(day)")
     }
 }
 

@@ -13,6 +13,22 @@ struct ExpenseRowLayout<Meta: View, Amount: View>: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// A literal name: looked up in the catalog.
+    init(name: LocalizedStringResource, tile: CategoryIconTile,
+         @ViewBuilder meta: () -> Meta, @ViewBuilder amount: () -> Amount) {
+        self.init(name: String(localized: name), tile: tile, meta: meta, amount: amount)
+    }
+
+    /// The name as it arrives (the bank's, the person's), shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(name: S, tile: CategoryIconTile,
+                            @ViewBuilder meta: () -> Meta, @ViewBuilder amount: () -> Amount) {
+        self.name = String(name)
+        self.tile = tile
+        self.meta = meta()
+        self.amount = amount()
+    }
+
     private var nameText: some View {
         // One line, as the bank sends it; the full name is in the expense sheet.
         Text(name)
@@ -58,7 +74,11 @@ struct ExpenseMetaText: View {
     let text: Text
 
     init(_ text: Text) { self.text = text }
-    init(_ string: String) { self.text = Text(string) }
+    /// A literal: looked up in the catalog.
+    init(_ string: LocalizedStringResource) { self.text = Text(String(localized: string)) }
+    /// Text made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ string: S) { self.text = Text(String(string)) }
 
     var body: some View {
         text

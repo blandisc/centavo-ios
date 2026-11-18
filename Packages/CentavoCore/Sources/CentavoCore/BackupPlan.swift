@@ -133,40 +133,105 @@ public struct BackupAsideNote: Equatable, Sendable, Codable {
     }
 
     /// «el respaldo del 10 nov», with the year when it isn't this one; «el respaldo anterior»
-    /// when the day isn't known.
+    /// when the day isn't known. The Spanish phrase `reason` is made of; the screens use
+    /// `reason`, written whole in each language.
     public func otherBackup(now: Date, timeZone: TimeZone = .current) -> String {
+        guard let day = shownDay(now: now, timeZone: timeZone) else { return "el respaldo anterior" }
+        return "el respaldo del " + day
+    }
+
+    /// The day of the file it was compared with, as the person reads it: «10 nov», «31 dic
+    /// 2025» («Nov 10» in English). `nil` when the day isn't known or doesn't exist.
+    func shownDay(now: Date, timeZone: TimeZone = .current) -> String? {
         let pieces = (day ?? "").split(separator: "-").compactMap { Int($0) }
+        let locale = DisplayLocale.current
         var calendar = BackupRetention.calendar(in: timeZone)
-        calendar.locale = Locale(identifier: "es_MX")
+        calendar.locale = locale
         guard pieces.count == 3,
               let date = calendar.date(from: DateComponents(year: pieces[0], month: pieces[1], day: pieces[2], hour: 12)),
-              calendar.component(.day, from: date) == pieces[2] else { return "el respaldo anterior" }
+              calendar.component(.day, from: date) == pieces[2] else { return nil }
+        let sameYear = pieces[0] == calendar.component(.year, from: now)
         let formatter = DateFormatter()
         formatter.calendar = calendar
-        formatter.locale = calendar.locale
+        formatter.locale = locale
         formatter.timeZone = timeZone
-        formatter.dateFormat = pieces[0] == calendar.component(.year, from: now) ? "d MMM" : "d MMM yyyy"
+        if DisplayLocale.isSpanish(locale) {
+            formatter.dateFormat = sameYear ? "d MMM" : "d MMM yyyy"
+        } else {
+            formatter.setLocalizedDateFormatFromTemplate(sameYear ? "dMMM" : "dMMMyyyy")
+        }
         // «nov.» in some systems: the dot would read as the end of the sentence.
-        return "el respaldo del " + formatter.string(from: date).replacingOccurrences(of: ".", with: "")
+        return formatter.string(from: date).replacingOccurrences(of: ".", with: "")
     }
 
     /// Why it went apart, in one short line under «Respaldo guardado aparte» (2026-11-11: the
     /// note was some fifty words in a row): «Este iPhone tiene 118 gastos; el respaldo del 10
-    /// nov, 131.» What to do about it are the two buttons under it.
+    /// nov, 131.» What to do about it are the two buttons under it. Each case is one whole
+    /// sentence, with the day or without it, so it translates.
     /// - Parameter namesMoney: «Mi dinero» may be named; off while it is switched off (2026-11-18).
     public func reason(now: Date, timeZone: TimeZone = .current, namesMoney: Bool = true) -> String {
-        let other = otherBackup(now: now, timeZone: timeZone)
+        let shown = shownDay(now: now, timeZone: timeZone)
         switch kind {
         case .fewer:
-            guard let here, let there else { return "Este iPhone tiene menos gastos que \(other)." }
-            return "Este iPhone tiene \(here) \(here == 1 ? "gasto" : "gastos"); \(other), \(there)."
+            return Self.fewerReason(here: here, there: there, day: shown)
         case .noMoney:
-            return namesMoney ? "Este iPhone no tiene «Mi dinero»; \(other), sí."
-                : "Este iPhone tiene menos datos que \(other)."
+            if namesMoney { return Self.noMoneyReason(day: shown) }
+            return Self.lessDataReason(day: shown)
         case .unreadable:
-            return other.prefix(1).uppercased() + other.dropFirst()
-                + " no se pudo abrir para compararlo: tiene otra contraseña o no ha bajado de iCloud."
+            return Self.unreadableReason(day: shown)
         }
+    }
+
+    private static func fewerReason(here: Int?, there: Int?, day: String?) -> String {
+        guard let here, let there else {
+            if let day {
+                return String(localized: "Este iPhone tiene menos gastos que el respaldo del \(day).", bundle: .main,
+                              comment: "Respaldo guardado aparte; el día del otro respaldo («10 nov»)")
+            }
+            return String(localized: "Este iPhone tiene menos gastos que el respaldo anterior.", bundle: .main,
+                          comment: "Respaldo guardado aparte, sin saber el día del otro respaldo")
+        }
+        if let day {
+            if here == 1 {
+                return String(localized: "Este iPhone tiene 1 gasto; el respaldo del \(day), \(there).", bundle: .main,
+                              comment: "Respaldo guardado aparte: el día del otro respaldo y cuántos gastos tiene")
+            }
+            return String(localized: "Este iPhone tiene \(here) gastos; el respaldo del \(day), \(there).", bundle: .main,
+                          comment: "Respaldo guardado aparte: gastos aquí, el día del otro respaldo y cuántos tiene")
+        }
+        if here == 1 {
+            return String(localized: "Este iPhone tiene 1 gasto; el respaldo anterior, \(there).", bundle: .main,
+                          comment: "Respaldo guardado aparte: cuántos gastos tiene el otro respaldo")
+        }
+        return String(localized: "Este iPhone tiene \(here) gastos; el respaldo anterior, \(there).", bundle: .main,
+                      comment: "Respaldo guardado aparte: gastos aquí y en el otro respaldo")
+    }
+
+    private static func noMoneyReason(day: String?) -> String {
+        if let day {
+            return String(localized: "Este iPhone no tiene «Mi dinero»; el respaldo del \(day), sí.", bundle: .main,
+                          comment: "Respaldo guardado aparte; el día del otro respaldo («10 nov»)")
+        }
+        return String(localized: "Este iPhone no tiene «Mi dinero»; el respaldo anterior, sí.", bundle: .main,
+                      comment: "Respaldo guardado aparte, sin saber el día del otro respaldo")
+    }
+
+    private static func lessDataReason(day: String?) -> String {
+        if let day {
+            return String(localized: "Este iPhone tiene menos datos que el respaldo del \(day).", bundle: .main,
+                          comment: "Respaldo guardado aparte; el día del otro respaldo («10 nov»)")
+        }
+        return String(localized: "Este iPhone tiene menos datos que el respaldo anterior.", bundle: .main,
+                      comment: "Respaldo guardado aparte, sin saber el día del otro respaldo")
+    }
+
+    private static func unreadableReason(day: String?) -> String {
+        if let day {
+            return String(localized: "El respaldo del \(day) no se pudo abrir para compararlo: tiene otra contraseña o no ha bajado de iCloud.",
+                          bundle: .main, comment: "Respaldo guardado aparte; el día del otro respaldo («10 nov»)")
+        }
+        return String(localized: "El respaldo anterior no se pudo abrir para compararlo: tiene otra contraseña o no ha bajado de iCloud.",
+                      bundle: .main, comment: "Respaldo guardado aparte, sin saber el día del otro respaldo")
     }
 }
 

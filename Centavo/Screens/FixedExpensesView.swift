@@ -29,14 +29,23 @@ struct FixedExpensesView: View {
     private var hasBudget: Bool { BudgetStore.amount(from: storedBudget) != nil }
 
     private var explainerText: String {
-        let what = "La renta, la luz, tus suscripciones. Anótalos una vez: Al día los registra solos el día que toca"
-        return hasBudget ? what + " y desde hoy los aparta de lo que puedes gastar." : what + "."
+        if hasBudget {
+            return String(localized: "La renta, la luz, tus suscripciones. Anótalos una vez: Al día los registra solos el día que toca y desde hoy los aparta de lo que puedes gastar.")
+        }
+        return String(localized: "La renta, la luz, tus suscripciones. Anótalos una vez: Al día los registra solos el día que toca.")
     }
 
     /// Under the month's bar: what is set apart, or what a budget would do.
     private var setApartNote: String? {
-        guard hasBudget else { return "Con un presupuesto, Al día aparta lo que falta de tus fijos." }
-        return coming > 0 ? "Lo que está por venir ya se apartó de «Hoy puedes gastar»." : nil
+        guard hasBudget else { return String(localized: "Con un presupuesto, Al día aparta lo que falta de tus fijos.") }
+        guard coming > 0 else { return nil }
+        return String(localized: "Lo que está por venir ya se apartó de «Hoy puedes gastar».")
+    }
+
+    /// Over the suggestions: none yet, or some already there.
+    private var suggestionsHeader: String {
+        if items.isEmpty { return String(localized: "Empieza con uno") }
+        return String(localized: "¿Te falta alguno?")
     }
     private var items: [FixedItem] { FixedOutlook.items(originals: originals, plans: FixedPlan.decode(storedPlans)) }
 
@@ -62,10 +71,28 @@ struct FixedExpensesView: View {
         var id: String { name }
     }
 
+    /// A common fixed expense offered with one tap: `id` names it for the tests in any
+    /// language, `name` is what is shown and written.
+    private struct Suggestion: Hashable {
+        let id: String
+        let name: String
+    }
+
     /// Common fixed expenses, one tap each, not already there.
-    private var suggestions: [String] {
-        ["Renta", "Luz", "Internet", "Celular", "Netflix", "Spotify", "Gimnasio", "Agua", "Gas"]
-            .filter { name in !items.contains { UserCatalog.same($0.name, name) } }
+    private var suggestions: [Suggestion] {
+        Self.commonFixed.filter { suggestion in !items.contains { UserCatalog.same($0.name, suggestion.name) } }
+    }
+
+    private static var commonFixed: [Suggestion] {
+        [Suggestion(id: "Renta", name: String(localized: "Renta")),
+         Suggestion(id: "Luz", name: String(localized: "Luz")),
+         Suggestion(id: "Internet", name: "Internet"),
+         Suggestion(id: "Celular", name: String(localized: "Celular")),
+         Suggestion(id: "Netflix", name: "Netflix"),
+         Suggestion(id: "Spotify", name: "Spotify"),
+         Suggestion(id: "Gimnasio", name: String(localized: "Gimnasio")),
+         Suggestion(id: "Agua", name: String(localized: "Agua")),
+         Suggestion(id: "Gas", name: String(localized: "Gas"))]
     }
 
     var body: some View {
@@ -120,7 +147,7 @@ struct FixedExpensesView: View {
                         suggestionChips
                             .listRowBackground(Color.clear)
                     } header: {
-                        Text(items.isEmpty ? "Empieza con uno" : "¿Te falta alguno?").ticketCaption()
+                        Text(suggestionsHeader).ticketCaption()
                     }
                 }
             }
@@ -134,16 +161,7 @@ struct FixedExpensesView: View {
                         .accessibilityIdentifier("hoja-listo")
                 }
             }
-            .confirmsRemoval(of: $confirming, question: { item in
-                let running = item.original != nil
-                return TicketQuestion(title: running ? "¿Dejar de repetir este gasto fijo?" : "¿Borrar este gasto fijo?",
-                                      figure: money(item.amount, item.currency),
-                                      name: item.name,
-                                      detail: item.ruleText,
-                                      note: running ? "Lo ya anotado se queda; los siguientes ya no llegan."
-                                        : "Todavía no se anota nada; ya no empezará.",
-                                      verb: running ? "Dejar de repetir" : "Borrar")
-            }) { item in
+            .confirmsRemoval(of: $confirming, question: removalQuestion) { item in
                 if let original = item.original {
                     stop(original)
                 } else if let plan = item.plan {
@@ -166,13 +184,14 @@ struct FixedExpensesView: View {
         let tile = CategoryIconTile(
             icon: category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) } ?? "repeat",
             color: category.map(colors.category), background: Theme.raised)
-        return ExpenseRowLayout(name: item.name, tile: tile) {
+        let meta: String = [category, item.ruleText].compactMap { $0 }.joined(separator: " · ")
+        let name: String = item.name
+        let nextLine: String? = item.next.map { nextText($0, starts: item.original == nil) }
+        return ExpenseRowLayout(name: name, tile: tile) {
             VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-                ExpenseMetaText(([category, item.ruleText].compactMap { $0 }).joined(separator: " · "))
-                if let next = item.next {
-                    Text((item.original == nil ? "Empieza: " : "Próximo: ")
-                         + next.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
-                            .locale(Locale(identifier: "es_MX"))))
+                ExpenseMetaText(meta)
+                if let nextLine {
+                    Text(nextLine)
                         .font(.ticket(.hint))
                         .foregroundStyle(item.coming.isEmpty ? Theme.muted : Theme.ink)
                 }
@@ -184,6 +203,28 @@ struct FixedExpensesView: View {
                 .fixedSize()
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// «Próximo: lun 3 nov», or «Empieza: …» for one still to start.
+    private func nextText(_ next: Date, starts: Bool) -> String {
+        let day = next.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(Locale.current))
+        if starts { return String(localized: "Empieza: \(day)") }
+        return String(localized: "Próximo: \(day)")
+    }
+
+    /// What «Dejar de repetir» or «Borrar» asks first.
+    private func removalQuestion(_ item: FixedItem) -> TicketQuestion {
+        let figure = money(item.amount, item.currency)
+        if item.original != nil {
+            return TicketQuestion(title: String(localized: "¿Dejar de repetir este gasto fijo?"),
+                                  figure: figure, name: item.name, detail: item.ruleText,
+                                  note: String(localized: "Lo ya anotado se queda; los siguientes ya no llegan."),
+                                  verb: String(localized: "Dejar de repetir"))
+        }
+        return TicketQuestion(title: String(localized: "¿Borrar este gasto fijo?"),
+                              figure: figure, name: item.name, detail: item.ruleText,
+                              note: String(localized: "Todavía no se anota nada; ya no empezará."),
+                              verb: String(localized: "Borrar"))
     }
 
     /// What the screen is for, said once at the top: a new person did not know (owner, 2026-10-29).
@@ -247,9 +288,9 @@ struct FixedExpensesView: View {
     private var suggestionChips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Space.s) {
-                ForEach(suggestions, id: \.self) { name in
-                    TicketChip(name, systemImage: "plus", identifier: "sugerencia-fijo-\(name)") {
-                        adding = NewFixed(name: name)
+                ForEach(suggestions, id: \.self) { suggestion in
+                    TicketChip(suggestion.name, systemImage: "plus", identifier: "sugerencia-fijo-\(suggestion.id)") {
+                        adding = NewFixed(name: suggestion.name)
                     }
                 }
             }
@@ -259,7 +300,7 @@ struct FixedExpensesView: View {
         .scrollClipDisabled()
     }
 
-    private func summaryFigure(_ label: String, _ amount: String, trailing: Bool = false) -> some View {
+    private func summaryFigure(_ label: LocalizedStringResource, _ amount: String, trailing: Bool = false) -> some View {
         VStack(alignment: trailing ? .trailing : .leading, spacing: Theme.Space.xxxs) {
             Text(label).ticketKey()
             Text(amount)
@@ -374,6 +415,13 @@ struct FixedPlanSheet: View {
     }
 
     private var name: String { merchant.trimmingCharacters(in: .whitespaces) }
+    /// What the save bar says: what is missing, or «Renta · Cada mes, el día 1».
+    private var saveSummary: String {
+        if amount == nil { return String(localized: "Falta el monto") }
+        if name.isEmpty { return String(localized: "Falta qué es") }
+        let repeats = FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first ?? ""
+        return "\(name) · \(repeats)"
+    }
 
     /// The first charge's moment: 9:00 of the day picked, like the welcome's fixed expenses.
     private var firstDate: Date {
@@ -386,11 +434,32 @@ struct FixedPlanSheet: View {
     private var firstChargeNote: String {
         let quincena = rule.kind == .semimonthly
         if firstDate > AppClock.now {
-            return "Hasta su primer cobro no se anota nada."
-                + (quincena ? " Ese día se anota, aunque no sea día 15 ni último." : "")
+            if quincena {
+                return String(localized: "Hasta su primer cobro no se anota nada. Ese día se anota, aunque no sea día 15 ni último.")
+            }
+            return String(localized: "Hasta su primer cobro no se anota nada.")
         }
-        let offDay = quincena ? ", aunque no sea día 15 ni último," : ","
-        return "El primer cobro ya llegó: se anota con su fecha\(offDay) y los que hayan llegado después."
+        if quincena {
+            return String(localized: "El primer cobro ya llegó: se anota con su fecha, aunque no sea día 15 ni último, y los que hayan llegado después.")
+        }
+        return String(localized: "El primer cobro ya llegó: se anota con su fecha, y los que hayan llegado después.")
+    }
+
+    /// What the category menu shows: the one picked, or that none is.
+    private var categoryValue: String {
+        if category.isEmpty { return String(localized: "Sin categoría") }
+        return category
+    }
+
+    private var cardValue: String {
+        if card.isEmpty { return String(localized: "Sin especificar") }
+        return card
+    }
+
+    /// A new fixed expense, or one still to start being changed.
+    private var barTitle: LocalizedStringResource {
+        if editing == nil { return "Nuevo gasto fijo" }
+        return "Gasto fijo"
     }
 
     private var latest: Date { Calendar.current.date(byAdding: .year, value: 1, to: AppClock.now) ?? AppClock.now }
@@ -425,15 +494,14 @@ struct FixedPlanSheet: View {
                 .listRowBackground(Theme.surface)
 
                 Section {
-                    TicketMenuPicker("Categoría", selection: categoryChoice,
-                                     value: categoryChoice.wrappedValue.isEmpty ? "Sin categoría" : categoryChoice.wrappedValue) {
+                    TicketMenuPicker("Categoría", selection: categoryChoice, value: categoryValue) {
                         Text("Sin categoría").tag("")
                         ForEach(categories, id: \.self) { name in
                             Label(name, systemImage: CategoryStyle.icon(for: name, custom: customCategories)).tag(name)
                         }
                     }
                     .accessibilityIdentifier("fijo-categoria")
-                    TicketMenuPicker("Forma de pago", selection: $card, value: card.isEmpty ? "Sin especificar" : card) {
+                    TicketMenuPicker("Forma de pago", selection: $card, value: cardValue) {
                         Text("Sin especificar").tag("")
                         ForEach(PaymentChoices.names(sources: sources, known: knownCards, current: card),
                                 id: \.self) { name in
@@ -457,14 +525,14 @@ struct FixedPlanSheet: View {
                 } header: {
                     Text("Cada cuándo").ticketCaption()
                 } footer: {
-                    HintText(FixedWording.howItRepeats(rule, from: firstDate) + " " + firstChargeNote)
+                    HintText("\(FixedWording.howItRepeats(rule, from: firstDate)) \(firstChargeNote)")
                 }
                 .listRowBackground(Theme.surface)
             }
             .ticketForm()
             .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle(editing == nil ? "Nuevo gasto fijo" : "Gasto fijo")
+            .ticketBarTitle(barTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
@@ -474,8 +542,7 @@ struct FixedPlanSheet: View {
                     .accessibilityIdentifier("hoja-cancelar")
                 }
             }
-            .saveBar(amount == nil ? "Falta el monto" : name.isEmpty ? "Falta qué es"
-                        : "\(name) · " + FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first!,
+            .saveBar(saveSummary,
                      enabled: amount != nil && !name.isEmpty, action: save)
             .onAppear(perform: load)
             .problemAlert(problem: $problem)
@@ -503,7 +570,7 @@ struct FixedPlanSheet: View {
         // plan, and saving would make a second one (independent review, 2026-11-02).
         if let editing, !FixedPlan.saved.contains(where: { $0.id == editing.id }) {
             problem = SaveProblem(title: "No se guardó el gasto fijo",
-                                  detail: "Ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo.")
+                                  detail: String(localized: "Ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo."))
             return
         }
         let categoryName = category.trimmingCharacters(in: .whitespaces)

@@ -6,8 +6,15 @@ struct SectionLabel: View {
     let text: String
     var color: Color = Theme.ink
 
-    init(_ text: String, color: Color = Theme.ink) {
-        self.text = text
+    /// A literal: looked up in the catalog («Es una devolución» → "Is a refund").
+    init(_ text: LocalizedStringResource, color: Color = Theme.ink) {
+        self.init(String(localized: text), color: color)
+    }
+
+    /// Text made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ text: S, color: Color = Theme.ink) {
+        self.text = String(text)
         self.color = color
     }
 
@@ -25,8 +32,15 @@ struct SectionLabel: View {
 struct HintText: View {
     let text: Text
 
-    init(_ text: String) {
-        self.text = Text(text)
+    /// A literal: looked up in the catalog.
+    init(_ text: LocalizedStringResource) {
+        self.text = Text(String(localized: text))
+    }
+
+    /// Text made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ text: S) {
+        self.text = Text(String(text))
     }
 
     /// For a footer with symbols in it: «★ ya viene elegida…».
@@ -48,8 +62,15 @@ struct NoteText: View {
     let text: String
     var color: Color = Theme.muted
 
-    init(_ text: String, color: Color = Theme.muted) {
-        self.text = text
+    /// A literal: looked up in the catalog.
+    init(_ text: LocalizedStringResource, color: Color = Theme.muted) {
+        self.init(String(localized: text), color: color)
+    }
+
+    /// Text made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ text: S, color: Color = Theme.muted) {
+        self.text = String(text)
         self.color = color
     }
 
@@ -69,8 +90,15 @@ struct WarningText: View {
     let text: String
     var style: TicketStyle = .detail
 
-    init(_ text: String, style: TicketStyle = .detail) {
-        self.text = text
+    /// A literal: looked up in the catalog.
+    init(_ text: LocalizedStringResource, style: TicketStyle = .detail) {
+        self.init(String(localized: text), style: style)
+    }
+
+    /// Text made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ text: S, style: TicketStyle = .detail) {
+        self.text = String(text)
         self.style = style
     }
 
@@ -90,8 +118,16 @@ struct WarningText: View {
     static let symbol = "exclamationmark.triangle"
 
     /// The same, for a warning that is one part of a longer line (the row's «¿Repetida?»).
-    static func inline(_ text: String) -> Text {
-        Text("\(Text(Image(systemName: symbol)).foregroundStyle(Theme.brass)) \(text)").foregroundStyle(Theme.ink)
+    static func inline(_ text: LocalizedStringResource) -> Text {
+        inline(String(localized: text))
+    }
+
+    /// The same, for text made at run time.
+    @_disfavoredOverload
+    static func inline<S: StringProtocol>(_ text: S) -> Text {
+        let mark = Text(Image(systemName: symbol)).foregroundStyle(Theme.brass)
+        let words = String(text)
+        return Text("\(mark) \(words)").foregroundStyle(Theme.ink)
     }
 }
 
@@ -105,8 +141,15 @@ struct IconRow<Trailing: View>: View {
 
     @ScaledMetric(relativeTo: .body) private var iconColumn = Theme.Size.iconColumn
 
-    init(_ title: String, systemImage: String, @ViewBuilder trailing: @escaping () -> Trailing) {
-        self.title = title
+    /// A literal: looked up in the catalog.
+    init(_ title: LocalizedStringResource, systemImage: String, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.init(String(localized: title), systemImage: systemImage, trailing: trailing)
+    }
+
+    /// A name made at run time (a card, a category), shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, systemImage: String, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.title = String(title)
         self.systemImage = systemImage
         self.trailing = trailing
     }
@@ -128,8 +171,13 @@ struct IconRow<Trailing: View>: View {
 }
 
 extension IconRow where Trailing == EmptyView {
-    init(_ title: String, systemImage: String) {
-        self.init(title, systemImage: systemImage) { EmptyView() }
+    init(_ title: LocalizedStringResource, systemImage: String) {
+        self.init(String(localized: title), systemImage: systemImage) { EmptyView() }
+    }
+
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, systemImage: String) {
+        self.init(String(title), systemImage: systemImage) { EmptyView() }
     }
 }
 

@@ -42,6 +42,13 @@ struct LockView: View {
         return state.pace == nil ? money.whole(state.figure) : signed
     }
 
+    /// The word under the ring's figure: «abre» before the first time, «mes» without a budget.
+    private var ringWord: String {
+        if state.isNeverOpened { return String(localized: "abre") }
+        if state.pace == nil { return String(localized: "mes") }
+        return String(localized: "hoy")
+    }
+
     private var circular: some View {
         Gauge(value: todayUsed) {
             Text("Hoy")
@@ -52,7 +59,7 @@ struct LockView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(Theme.MinimumScale.ringFigure)
                     .widgetAccentable()
-                Text(state.isNeverOpened ? "abre" : state.pace == nil ? "mes" : "hoy")
+                Text(ringWord)
                     .font(.widget(.captionTiny))
                     .textCase(.uppercase)
                     .tracking(Theme.Tracking.compactLabel)
@@ -71,7 +78,7 @@ struct LockView: View {
         VStack(alignment: .leading, spacing: Theme.Space.widgetHair) {
             Caption(text: state.caption, color: ink.lockCaption, style: .captionSmall)
             if state.isNeverOpened {
-                Caption(text: "Abre Al día una vez", color: ink.primary, style: .captionSmall)
+                Caption(text: String(localized: "Abre Al día una vez"), color: ink.primary, style: .captionSmall)
                     .widgetAccentable()
             } else {
                 Text(state.pace == nil ? money.whole(state.figure) : signed)
@@ -84,7 +91,9 @@ struct LockView: View {
             if let pace = state.pace {
                 MonthStrip(pace: pace, ink: ink, height: Theme.Size.widgetStripThin)
             } else if case .noBudget(_, let today) = state {
-                Caption(text: "Sin presupuesto · hoy \(money.whole(today))", color: ink.lockCaption, style: .captionTiny)
+                let spentToday = money.whole(today)
+                Caption(text: String(localized: "Sin presupuesto · hoy \(spentToday)"), color: ink.lockCaption,
+                        style: .captionTiny)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,8 +110,12 @@ struct LockView: View {
             case .neverOpened: Text("Al día · ábrela una vez")
             case .noBudget(let spent, _): Text("Al día · llevas \(money.whole(spent))")
             case .overBudget: Text("Al día · te pasaste \(money.whole(state.figure))")
-            case .fixedOverBudget: Text(state.figure > 0 ? "Al día · fijos pasan por \(money.whole(state.figure))"
-                                        : "Al día · fijos: todo el presupuesto")
+            case .fixedOverBudget:
+                if state.figure > 0 {
+                    Text("Al día · fijos pasan por \(money.whole(state.figure))")
+                } else {
+                    Text("Al día · fijos: todo el presupuesto")
+                }
             case .overToday, .normal: Text("Al día \(signed) hoy")
             }
         }

@@ -67,8 +67,15 @@ struct PrimaryButtonLabel: View {
     var systemImage: String?
     var kind: TicketButtonKind = .primary
 
-    init(_ title: String, systemImage: String? = nil, kind: TicketButtonKind = .primary) {
-        self.title = title
+    /// A literal: looked up in the catalog.
+    init(_ title: LocalizedStringResource, systemImage: String? = nil, kind: TicketButtonKind = .primary) {
+        self.init(String(localized: title), systemImage: systemImage, kind: kind)
+    }
+
+    /// A title chosen at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, systemImage: String? = nil, kind: TicketButtonKind = .primary) {
+        self.title = String(title)
         self.systemImage = systemImage
         self.kind = kind
     }
@@ -96,8 +103,15 @@ struct SecondaryButton: View {
     var identifier: String?
     let action: () -> Void
 
-    init(_ title: String, identifier: String? = nil, action: @escaping () -> Void) {
-        self.title = title
+    /// A literal: looked up in the catalog.
+    init(_ title: LocalizedStringResource, identifier: String? = nil, action: @escaping () -> Void) {
+        self.init(String(localized: title), identifier: identifier, action: action)
+    }
+
+    /// A title chosen at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, identifier: String? = nil, action: @escaping () -> Void) {
+        self.title = String(title)
         self.identifier = identifier
         self.action = action
     }
@@ -129,8 +143,17 @@ struct LinkActionLabel: View {
     /// `false` for one beside other content (the undo bar), so it only takes its width.
     var fillsWidth = true
 
-    init(_ title: String, systemImage: String? = nil, alignment: Alignment = .center, fillsWidth: Bool = true) {
-        self.title = title
+    /// A literal: looked up in the catalog.
+    init(_ title: LocalizedStringResource, systemImage: String? = nil, alignment: Alignment = .center,
+         fillsWidth: Bool = true) {
+        self.init(String(localized: title), systemImage: systemImage, alignment: alignment, fillsWidth: fillsWidth)
+    }
+
+    /// A title chosen at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, systemImage: String? = nil, alignment: Alignment = .center,
+                            fillsWidth: Bool = true) {
+        self.title = String(title)
         self.systemImage = systemImage
         self.alignment = alignment
         self.fillsWidth = fillsWidth
@@ -161,8 +184,15 @@ struct DestructiveRowButton: View {
     var identifier: String?
     let action: () -> Void
 
-    init(_ title: String, identifier: String? = nil, action: @escaping () -> Void) {
-        self.title = title
+    /// A literal: looked up in the catalog.
+    init(_ title: LocalizedStringResource, identifier: String? = nil, action: @escaping () -> Void) {
+        self.init(String(localized: title), identifier: identifier, action: action)
+    }
+
+    /// A title chosen at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, identifier: String? = nil, action: @escaping () -> Void) {
+        self.title = String(title)
         self.identifier = identifier
         self.action = action
     }

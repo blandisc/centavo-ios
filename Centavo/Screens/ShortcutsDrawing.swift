@@ -89,7 +89,7 @@ struct ShortcutsDrawing: View {
         }
     }
 
-    private func tabItem(_ title: String, _ icon: String, selected: Bool) -> some View {
+    private func tabItem(_ title: LocalizedStringResource, _ icon: String, selected: Bool) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon).font(.title3)
             Text(title).font(.caption2)
@@ -152,7 +152,7 @@ struct ShortcutsDrawing: View {
         }
     }
 
-    private func option(_ title: String, checked: Bool) -> some View {
+    private func option(_ title: LocalizedStringResource, checked: Bool) -> some View {
         HStack {
             Text(title)
             Spacer()
@@ -293,7 +293,7 @@ struct ShortcutsDrawing: View {
         }
     }
 
-    private func row(_ title: String, _ icon: String) -> some View {
+    private func row(_ title: LocalizedStringResource, _ icon: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon).foregroundStyle(Theme.Shortcuts.blue).frame(width: 22)
             Text(title)
@@ -345,14 +345,21 @@ private struct ConnectAnimation: View {
 
     /// The subtitle under the drawing, numbered like the steps below it.
     private func caption(_ phase: Phase) -> String {
+        let name = ShortcutsWord.shown(field)
         switch phase {
-        case .start, .tapWord: "1 · Toca «\(field)» en azul"
-        case .tapSuggestion: ShortcutsVersion.isIOS27
-            ? "2 · «Seleccionar variable» y toca el bloque de Wallet"
-            : "2 · Toca «Entrada del atajo»"
-        case .tapBubble: "3 · Toca la burbuja otra vez"
-        case .pickProperty: "4 · Elige «\(field)»"
-        case .connected: "Listo: «\(field)» quedó conectado"
+        case .start, .tapWord:
+            return String(localized: "1 · Toca «\(name)» en azul")
+        case .tapSuggestion:
+            if ShortcutsVersion.isIOS27 {
+                return String(localized: "2 · «Seleccionar variable» y toca el bloque de Wallet")
+            }
+            return String(localized: "2 · Toca «Entrada del atajo»")
+        case .tapBubble:
+            return String(localized: "3 · Toca la burbuja otra vez")
+        case .pickProperty:
+            return String(localized: "4 · Elige «\(name)»")
+        case .connected:
+            return String(localized: "Listo: «\(name)» quedó conectado")
         }
     }
 
@@ -423,7 +430,7 @@ private struct ConnectAnimation: View {
     private var propertyList: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(["Tarjeta", "Comercio", "Importe"], id: \.self) { property in
-                Text(property)
+                Text(ShortcutsWord.shown(property))
                     .padding(.horizontal, 12).padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .tapTarget(property == field)
@@ -486,12 +493,12 @@ private struct ActionCard: View {
     private func tokenView(_ token: Token, isRinged: Bool) -> some View {
         switch token {
         case .placeholder(let text):
-            Text(text)
+            Text(ShortcutsWord.shown(text))
                 .fixedSize()
                 .foregroundStyle(Theme.Shortcuts.blue)
                 .tapTarget(isRinged)
         case .variable(let text):
-            Label(text, systemImage: "creditcard.fill")
+            Label(ShortcutsWord.shown(text), systemImage: "creditcard.fill")
                 .labelStyle(.titleAndIcon)
                 .font(.footnote)
                 .lineLimit(1)
@@ -500,6 +507,21 @@ private struct ActionCard: View {
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(Theme.Shortcuts.blue.opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
                 .tapTarget(isRinged)
+        }
+    }
+}
+
+/// The words the drawings use to tell the fields apart («Importe», «Entrada del atajo»), as the
+/// phone's Atajos shows them: the fields' own names, the ones the intent's parameters carry.
+private enum ShortcutsWord {
+    static func shown(_ name: String) -> String {
+        switch name {
+        case "Importe": String(localized: "Importe")
+        case "Comercio": String(localized: "Comercio")
+        case "Tarjeta": String(localized: "Tarjeta")
+        case "Entrada del atajo": String(localized: "Entrada del atajo")
+        case "Wallet": String(localized: "Wallet")
+        default: name
         }
     }
 }

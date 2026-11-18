@@ -17,9 +17,17 @@ struct TicketMenuPicker<Value: Hashable, Label: View, Options: View>: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    init(_ title: String, selection: Binding<Value>, value: String,
+    /// A literal title: looked up in the catalog. `value` is shown as it is.
+    init(_ title: LocalizedStringResource, selection: Binding<Value>, value: String,
          @ViewBuilder options: @escaping () -> Options, @ViewBuilder label: @escaping () -> Label) {
-        self.title = title
+        self.init(String(localized: title), selection: selection, value: value, options: options, label: label)
+    }
+
+    /// A title made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, selection: Binding<Value>, value: String,
+                            @ViewBuilder options: @escaping () -> Options, @ViewBuilder label: @escaping () -> Label) {
+        self.title = String(title)
         _selection = selection
         self.value = value
         self.options = options
@@ -70,9 +78,17 @@ struct TicketMenuPicker<Value: Hashable, Label: View, Options: View>: View {
 
 extension TicketMenuPicker where Label == SectionLabel {
     /// The usual row of a form: the title as a `SectionLabel` («TIPO», «MOTIVO»).
-    init(_ title: String, selection: Binding<Value>, value: String,
+    init(_ title: LocalizedStringResource, selection: Binding<Value>, value: String,
          @ViewBuilder options: @escaping () -> Options) {
-        self.init(title, selection: selection, value: value, options: options) { SectionLabel(title) }
+        self.init(String(localized: title), selection: selection, value: value, options: options)
+    }
+
+    /// The same, with a title made at run time.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, selection: Binding<Value>, value: String,
+                            @ViewBuilder options: @escaping () -> Options) {
+        let shown = String(title)
+        self.init(shown, selection: selection, value: value, options: options) { SectionLabel(shown) }
     }
 }
 

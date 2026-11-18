@@ -55,10 +55,18 @@ private struct SaveBar: View {
 }
 
 extension View {
-    /// Puts the sheet's «Guardar» at the bottom (see `SaveBar`).
-    func saveBar(_ summary: String, enabled: Bool, identifier: String = "hoja-guardar",
+    /// Puts the sheet's «Guardar» at the bottom (see `SaveBar`). A literal summary is looked
+    /// up in the catalog.
+    func saveBar(_ summary: LocalizedStringResource, enabled: Bool, identifier: String = "hoja-guardar",
                  action: @escaping () -> Void) -> some View {
-        modifier(SaveBarPlacement(bar: SaveBar(summary: summary, enabled: enabled,
+        saveBar(String(localized: summary), enabled: enabled, identifier: identifier, action: action)
+    }
+
+    /// The same, with a summary made at run time («$89.00 en Oxxo»), shown as it is.
+    @_disfavoredOverload
+    func saveBar<S: StringProtocol>(_ summary: S, enabled: Bool, identifier: String = "hoja-guardar",
+                                    action: @escaping () -> Void) -> some View {
+        modifier(SaveBarPlacement(bar: SaveBar(summary: String(summary), enabled: enabled,
                                                identifier: identifier, action: action)))
     }
 }

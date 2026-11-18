@@ -33,14 +33,15 @@ struct TicketQuestion {
     /// What happens after, under the ticket: «No se puede deshacer.». Optional.
     var note: String?
     /// The red button: «Borrar», «Quitar», «Dejar de repetir», «Descartar».
-    var verb = "Borrar"
+    var verb: String
     /// The quiet button that changes nothing: «Conservar», «Seguir editando».
-    var keep = "Conservar"
+    var keep: String
     /// `false` only for an expense, whose name is written as in the list, without «».
     fileprivate var quotesName = true
 
     init(title: String, figure: String? = nil, name: String? = nil, detail: String? = nil,
-         note: String? = nil, verb: String = "Borrar", keep: String = "Conservar") {
+         note: String? = nil, verb: String = String(localized: "Borrar"),
+         keep: String = String(localized: "Conservar")) {
         self.title = title
         self.figure = figure
         self.name = name
@@ -52,17 +53,23 @@ struct TicketQuestion {
 
     /// «¿Borrar este gasto?», with the expense as the list writes it.
     fileprivate init(deleting expense: Expense, primaryCurrency: String, undoable: Bool) {
-        let details = [expense.category, expense.card,
-                       expense.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))]
+        let day = expense.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
+        let details = [expense.category, expense.card, day]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
-        self.init(title: "¿Borrar este gasto?",
+        let note: String
+        if undoable {
+            note = String(localized: "Podrás deshacerlo unos segundos.")
+        } else {
+            note = String(localized: "No se puede deshacer.")
+        }
+        self.init(title: String(localized: "¿Borrar este gasto?"),
                   figure: ledgerAmount(for: expense, primary: primaryCurrency),
                   // Written as in the list, so it reads as the same expense.
                   name: expense.shownName,
                   detail: details.isEmpty ? nil : details,
-                  note: undoable ? "Podrás deshacerlo unos segundos." : "No se puede deshacer.")
+                  note: note)
         quotesName = false
     }
 

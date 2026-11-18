@@ -98,7 +98,9 @@ enum DailyBackup {
         BackupAsideNote(stored: UserDefaults.standard.string(forKey: asideKey))
     }
 
-    static let asideWarning = "Tu último respaldo se guardó aparte. Revísalo en ··· › Ajustes › Respaldo diario."
+    static var asideWarning: String {
+        String(localized: "Tu último respaldo se guardó aparte. Revísalo en ··· › Ajustes › Respaldo diario.")
+    }
 
     /// Three days without a backup (or none yet, once it's set up) is worth a line.
     static func isOverdue(now: Date = AppClock.now) -> Bool {
@@ -142,13 +144,15 @@ enum DailyBackup {
     /// can be tried without a password in the Keychain.
     static func notice(now: Date = AppClock.now) -> String? {
         if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
-            return "El último respaldo no se pudo hacer. Revísalo en ··· › Ajustes › Respaldo diario."
+            return String(localized: "El último respaldo no se pudo hacer. Revísalo en ··· › Ajustes › Respaldo diario.")
         }
-        if isOverdue(now: now) { return "Llevas más de 3 días sin respaldo. Revísalo en ··· › Ajustes › Respaldo diario." }
+        if isOverdue(now: now) {
+            return String(localized: "Llevas más de 3 días sin respaldo. Revísalo en ··· › Ajustes › Respaldo diario.")
+        }
         // Written on the phone but not up in iCloud (full, or no network for a day): the date in
         // «Último respaldo» alone would say it's fine (2026-11-02, second audit).
         if BackupCloud.isStuck(cloudState(), writtenAt: lastBackup, now: now) {
-            return "El último respaldo no ha subido a iCloud; puede que no haya espacio. Revísalo en ··· › Ajustes › Respaldo diario."
+            return String(localized: "El último respaldo no ha subido a iCloud; puede que no haya espacio. Revísalo en ··· › Ajustes › Respaldo diario.")
         }
         // Saved, but not as the file of the day: it stays said until the person looks at it or
         // a daily file is written again. Last, so it never hides the three above.

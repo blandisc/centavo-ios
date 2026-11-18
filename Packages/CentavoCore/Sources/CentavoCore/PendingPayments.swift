@@ -64,7 +64,9 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
         let cardName = clean(card ?? "").first.map { String($0.prefix(maxText)) }
         let text: String
         switch (amountLine, shop) {
-        case (let amount?, let shop?): text = "\(amount) en \(shop)"
+        case (let amount?, let shop?):
+            text = String(localized: "\(amount) en \(shop)", bundle: .main,
+                          comment: "Pago pendiente de anotar: el monto y el comercio («$319 en Google»)")
         case (let amount?, nil): text = amount
         case (nil, let shop?): text = shop
         case (nil, nil): return nil
@@ -191,9 +193,26 @@ public enum PendingPayments {
         let count = list.count
         let kinds = Set(list.map(\.kind))
         guard kinds.count == 1, let kind = kinds.first else {
-            return count == 1 ? "1 pago sin anotar" : "\(count) pagos sin anotar"
+            if count == 1 {
+                return String(localized: "1 pago sin anotar", bundle: .main,
+                              comment: "Hoy: pagos de Wallet que esperan, de los dos tipos")
+            }
+            return String(localized: "\(count) pagos sin anotar", bundle: .main,
+                          comment: "Hoy: pagos de Wallet que esperan, de los dos tipos")
         }
-        let what = kind == .unread ? "leer" : "guardar"
-        return count == 1 ? "1 pago no se pudo \(what)" : "\(count) pagos no se pudieron \(what)"
+        if kind == .unread {
+            if count == 1 {
+                return String(localized: "1 pago no se pudo leer", bundle: .main,
+                              comment: "Hoy: avisos de Wallet sin monto legible")
+            }
+            return String(localized: "\(count) pagos no se pudieron leer", bundle: .main,
+                          comment: "Hoy: avisos de Wallet sin monto legible")
+        }
+        if count == 1 {
+            return String(localized: "1 pago no se pudo guardar", bundle: .main,
+                          comment: "Hoy: pagos que se leyeron y no se pudieron guardar")
+        }
+        return String(localized: "\(count) pagos no se pudieron guardar", bundle: .main,
+                      comment: "Hoy: pagos que se leyeron y no se pudieron guardar")
     }
 }

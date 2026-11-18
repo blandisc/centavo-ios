@@ -16,9 +16,9 @@ enum WhereItGoesStyle: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .bar: "Lista"
-        case .mosaic: "Mosaico"
-        case .hidden: "Mínima"
+        case .bar: String(localized: "Lista")
+        case .mosaic: String(localized: "Mosaico")
+        case .hidden: String(localized: "Mínima")
         }
     }
 
@@ -127,7 +127,8 @@ struct WhereItGoes: View {
         return shares.map { share in
             CategoryLine(
                 share: share,
-                name: share.isRest ? "Otras" : share.category ?? "Sin categoría",
+                name: Self.name(of: share),
+                key: share.isRest ? "Otras" : share.category ?? "Sin categoría",
                 icon: share.isRest ? "ellipsis"
                     : share.category.map { CategoryStyle.icon(for: $0, custom: custom) } ?? "questionmark",
                 // Each category keeps its own color all month and every month; «Otras» and
@@ -137,24 +138,38 @@ struct WhereItGoes: View {
             )
         }
     }
+
+    /// The name drawn: the category's own (the person's words), or «Otras», «Sin categoría».
+    private static func name(of share: CategoryShare) -> String {
+        if share.isRest { return String(localized: "Otras") }
+        return share.category ?? String(localized: "Sin categoría")
+    }
 }
 
 /// One category as drawn: its name, icon and color.
 private struct CategoryLine: Identifiable {
     let share: CategoryShare
     let name: String
+    /// The name as stored, in Spanish for «Otras» and «Sin categoría» in every language: the
+    /// tests find each part by it (`parte-…`).
+    let key: String
     let icon: String
     let color: Color
-    var id: String { name }
+    var id: String { key }
 
     var percent: String { share.share.formatted(.percent.precision(.fractionLength(0))) }
     /// Text on a block of this color: dark on the bright ones, light on the grey.
     var textColor: Color { share.isRest ? Theme.ink : Theme.onBrass }
 
     func spoken(_ money: (Decimal) -> String) -> String {
-        share.isRest
-            ? "Otras \(share.restCount) categorías: \(money(share.amount)), \(percent) de lo gastado"
-            : "\(name): \(money(share.amount)), \(percent) de lo gastado"
+        let amount = money(share.amount)
+        let shownPercent = percent
+        if share.isRest {
+            let count = share.restCount
+            return String(localized: "Otras \(count) categorías: \(amount), \(shownPercent) de lo gastado")
+        }
+        let shownName = name
+        return String(localized: "\(shownName): \(amount), \(shownPercent) de lo gastado")
     }
 }
 
@@ -301,7 +316,7 @@ private struct ShareBarLine: View {
         .frame(minHeight: rowHeight)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("parte-\(line.name)")
+        .accessibilityIdentifier("parte-\(line.key)")
     }
 }
 
@@ -389,6 +404,12 @@ private struct MosaicTileDress: ViewModifier {
     let onToggle: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// What a tap on the block does, for VoiceOver.
+    private var hint: String {
+        if isSelected { return String(localized: "Muestra todo el mes") }
+        return String(localized: "Muestra sus gastos")
+    }
+
     func body(content: Content) -> some View {
         content
             .background(line.color, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
@@ -401,8 +422,11 @@ private struct MosaicTileDress: ViewModifier {
             // Pressed and held, a block shows all of it: its name in full, its amount and its share,
             // which the block may have had no room for.
             .contextMenu {
-                Button(isSelected ? "Quitar filtro" : "Ver sus gastos",
-                       systemImage: isSelected ? "xmark" : "list.bullet", action: onToggle)
+                if isSelected {
+                    Button("Quitar filtro", systemImage: "xmark", action: onToggle)
+                } else {
+                    Button("Ver sus gastos", systemImage: "list.bullet", action: onToggle)
+                }
             } preview: {
                 MosaicDetail(line: line, amount: money(line.share.amount))
             }
@@ -411,9 +435,9 @@ private struct MosaicTileDress: ViewModifier {
                        value: isSelected || anySelected)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(line.spoken(money))
-            .accessibilityHint(isSelected ? "Muestra todo el mes" : "Muestra sus gastos")
+            .accessibilityHint(hint)
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-            .accessibilityIdentifier("parte-\(line.name)")
+            .accessibilityIdentifier("parte-\(line.key)")
     }
 }
 

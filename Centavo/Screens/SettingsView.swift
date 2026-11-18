@@ -37,8 +37,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Moneda").ticketCaption()
                 } footer: {
-                    HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. "
-                             + "La vista (Lista, Mosaico o Mínima) se elige en «···».")
+                    HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. La vista (Lista, Mosaico o Mínima) se elige en «···».")
                 }
                 .listRowBackground(Theme.surface)
 
@@ -74,8 +73,11 @@ struct SettingsView: View {
                 } header: {
                     Text("Wallet").ticketCaption()
                 } footer: {
-                    HintText("Si no usas Wallet, apaga el aviso y la pantalla principal deja de pedirte que lo conectes. «Dónde pagas» usa la ubicación del iPhone al anotar."
-                             + (locationDenied ? " La ubicación está apagada para Al día en Ajustes del iPhone." : ""))
+                    if locationDenied {
+                        HintText("Si no usas Wallet, apaga el aviso y la pantalla principal deja de pedirte que lo conectes. «Dónde pagas» usa la ubicación del iPhone al anotar. La ubicación está apagada para Al día en Ajustes del iPhone.")
+                    } else {
+                        HintText("Si no usas Wallet, apaga el aviso y la pantalla principal deja de pedirte que lo conectes. «Dónde pagas» usa la ubicación del iPhone al anotar.")
+                    }
                 }
                 .listRowBackground(Theme.surface)
 
@@ -100,9 +102,13 @@ struct SettingsView: View {
                     Text("Tus datos").ticketCaption()
                 } footer: {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos: si alguno parece repetido (mismo día y monto, con otro nombre o tarjeta), pregunta antes de agregarlo. El CSV es para tu hoja de cálculo: no guarda todo (ni \(Features.money ? "«Mi dinero», ni " : "")tus ajustes, ni tus gastos fijos), así que no sustituye al respaldo diario.")
+                        if Features.money {
+                            HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos: si alguno parece repetido (mismo día y monto, con otro nombre o tarjeta), pregunta antes de agregarlo. El CSV es para tu hoja de cálculo: no guarda todo (ni «Mi dinero», ni tus ajustes, ni tus gastos fijos), así que no sustituye al respaldo diario.")
+                        } else {
+                            HintText("Se exportan todos los meses. Importar acepta el mismo archivo y no duplica gastos: si alguno parece repetido (mismo día y monto, con otro nombre o tarjeta), pregunta antes de agregarlo. El CSV es para tu hoja de cálculo: no guarda todo (ni tus ajustes, ni tus gastos fijos), así que no sustituye al respaldo diario.")
+                        }
                         // Which build this is, to tell whether the iPhone has the latest (2026-10-30).
-                        HintText(AppVersion.line)
+                        HintText(AppVersion.shownLine)
                             .accessibilityIdentifier("version")
                     }
                 }
@@ -167,21 +173,21 @@ struct SettingsView: View {
 
     /// «Hoy», «Hace 4 días» or what's missing. Muted always: the guide's line is the warning.
     private var backupText: String {
-        guard DailyBackup.isSetUp else { return "Sin configurar" }
-        guard let last = DailyBackup.lastBackup else { return "Sin respaldo" }
-        if AppClock.isToday(last) { return "Hoy" }
-        let text = AppClock.relative(last, locale: Locale(identifier: "es_MX"))
+        guard DailyBackup.isSetUp else { return String(localized: "Sin configurar") }
+        guard let last = DailyBackup.lastBackup else { return String(localized: "Sin respaldo") }
+        if AppClock.isToday(last) { return String(localized: "Hoy") }
+        let text = AppClock.relative(last, locale: .current)
         return text.prefix(1).uppercased() + text.dropFirst()
     }
 
     private var healthText: String {
-        if ignoresWallet { return "Aviso apagado" }
+        if ignoresWallet { return String(localized: "Aviso apagado") }
         switch health {
-        case .never: return "Sin conectar"
-        case .waiting: return "Esperando el primer pago · Toca si no terminaste"
-        case .silent(let days): return "\(days) días sin el primer pago"
-        case .recent, .first: return "Funciona"
-        case .quiet(let days): return "\(days) días sin pagos"
+        case .never: return String(localized: "Sin conectar")
+        case .waiting: return String(localized: "Esperando el primer pago · Toca si no terminaste")
+        case .silent(let days): return String(localized: "\(days) días sin el primer pago")
+        case .recent, .first: return String(localized: "Funciona")
+        case .quiet(let days): return String(localized: "\(days) días sin pagos")
         }
     }
 }

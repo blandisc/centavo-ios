@@ -10,6 +10,10 @@ on:
         description: "También las capturas en iPhone SE, 13 mini, 17 Pro y 17 Pro Max"
         type: boolean
         default: false
+      ingles:
+        description: "También las capturas en inglés (EnglishScreenshotTests)"
+        type: boolean
+        default: false
 
 env:
   XCODEGEN_VERSION: "2.46.0"
@@ -64,6 +68,11 @@ jobs:
           xcodebuild -project Centavo.xcodeproj -scheme Centavo -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/dd \
             CODE_SIGNING_ALLOWED=NO -jobs 4 build
+
+      # Every text the build extracted has its English in the catalogs (2026-11-18,
+      # docs/DECISIONS.md): a new Spanish sentence without one fails here.
+      - name: Textos en inglés
+        run: python3 Tools/check-l10n.py build/dd
 
       # Lo que no se ve en el build: que la tipografía, el ícono y el modo oscuro
       # de verdad viajen dentro de la app.
@@ -263,5 +272,57 @@ jobs:
         if: always()
         with:
           name: ${{ steps.nombre.outputs.valor }}
+          path: build/capturas
+          retention-days: 14
+
+  # La app en inglés, pantalla por pantalla (2026-11-18): las mismas pantallas que las capturas,
+  # con el iPhone en inglés. Solo a mano, con «ingles».
+  ingles:
+    name: Capturas en inglés
+    if: github.event_name == 'workflow_dispatch' && inputs.ingles
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Elegir el Xcode más nuevo
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Instalar xcodegen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Elegir el simulador
+        id: sim
+        run: echo "udid=$(Tools/ci-simulador.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Correr las capturas en inglés
+        run: |
+          xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:CentavoUITests/EnglishScreenshotTests \
+            -retry-tests-on-failure -test-iterations 2 \
+            -resultBundlePath build/result.xcresult \
+            CODE_SIGNING_ALLOWED=NO -jobs 4
+
+      - name: Exportar las capturas
+        if: always()
+        run: |
+          mkdir -p build/capturas
+          xcrun xcresulttool export attachments --path build/result.xcresult --output-path build/capturas
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas-ingles
           path: build/capturas
           retention-days: 14

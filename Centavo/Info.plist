@@ -60,6 +60,12 @@
 			</dict>
 		</dict>
 	</array>
+	<!-- Spanish first, and English from the String Catalogs in Resources (2026-11-18). -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>es</string>
+		<string>en</string>
+	</array>
 	<key>CentavoCommit</key>
 	<string>$(CENTAVO_COMMIT)</string>
 </dict>

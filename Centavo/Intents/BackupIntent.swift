@@ -23,9 +23,9 @@ struct BackupIntent: AppIntent {
             return .result(dialog: "Ya se está guardando un respaldo.")
         }
         // Written apart (this phone has less than the backup in the folder): said here too.
-        let dialog: IntentDialog = DailyBackup.aside == nil
-            ? "Respaldo guardado."
-            : "Respaldo guardado aparte. Revísalo en Ajustes de Al día."
-        return .result(dialog: dialog)
+        if DailyBackup.aside == nil {
+            return .result(dialog: "Respaldo guardado.")
+        }
+        return .result(dialog: "Respaldo guardado aparte. Revísalo en Ajustes de Al día.")
     }
 }

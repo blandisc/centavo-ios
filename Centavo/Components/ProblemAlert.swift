@@ -4,12 +4,25 @@ import SwiftUI
 /// The title names the thing — «No se guardó el corte» — so the alert reads from its first
 /// line; the detail calms first: «Nada cambió. Intenta otra vez.» (owner, 2026-11-16, D2-A).
 struct SaveProblem: Equatable {
-    static let unchanged = "Nada cambió. Intenta otra vez."
+    static let unchanged = String(localized: "Nada cambió. Intenta otra vez.")
     /// For a save that can fail more than once in a row: how to get out of it.
-    static let unchangedPersisting = "Nada cambió. Intenta otra vez; si sigue, cierra la app y vuelve a abrirla."
+    static let unchangedPersisting = String(localized: "Nada cambió. Intenta otra vez; si sigue, cierra la app y vuelve a abrirla.")
 
     let title: String
     var detail: String = SaveProblem.unchanged
+
+    /// A literal title: looked up in the catalog. The detail is shown as it is: pass
+    /// `String(localized: "…")` for one of its own.
+    init(title: LocalizedStringResource, detail: String = SaveProblem.unchanged) {
+        self.init(title: String(localized: title), detail: detail)
+    }
+
+    /// A title made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(title: S, detail: String = SaveProblem.unchanged) {
+        self.title = String(title)
+        self.detail = detail
+    }
 }
 
 extension View {
@@ -25,10 +38,18 @@ extension View {
         }
     }
 
-    /// The same alert when it's always the same thing that didn't save.
-    func problemAlert(_ title: String, isPresented: Binding<Bool>,
+    /// The same alert when it's always the same thing that didn't save. A literal title is
+    /// looked up in the catalog; the detail is shown as it is.
+    func problemAlert(_ title: LocalizedStringResource, isPresented: Binding<Bool>,
                       detail: String = SaveProblem.unchanged) -> some View {
-        alert(title, isPresented: isPresented) {
+        problemAlert(String(localized: title), isPresented: isPresented, detail: detail)
+    }
+
+    /// The same, with a title made at run time.
+    @_disfavoredOverload
+    func problemAlert<S: StringProtocol>(_ title: S, isPresented: Binding<Bool>,
+                                         detail: String = SaveProblem.unchanged) -> some View {
+        alert(String(title), isPresented: isPresented) {
             Button("Aceptar", role: .cancel) {}
         } message: {
             Text(detail)

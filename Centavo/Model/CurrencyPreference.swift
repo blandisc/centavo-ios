@@ -30,9 +30,9 @@ enum CurrencyPreference {
     /// "pesos", inside a sentence.
     static func spoken(_ code: String) -> String {
         switch code {
-        case "MXN": "pesos"
-        case "USD": "dólares"
-        case "EUR": "euros"
+        case "MXN": String(localized: "pesos", comment: "A currency inside a sentence: «Sumar en pesos».")
+        case "USD": String(localized: "dólares", comment: "A currency inside a sentence: «Sumar en dólares».")
+        case "EUR": String(localized: "euros", comment: "A currency inside a sentence: «Sumar en euros».")
         default: code
         }
     }
@@ -61,14 +61,14 @@ enum CurrencyPreference {
     /// "Peso mexicano".
     static func singular(_ code: String) -> String {
         switch code {
-        case "MXN": "Peso mexicano"
-        case "USD": "Dólar de EE. UU."
-        case "EUR": "Euro"
-        case "GBP": "Libra esterlina"
-        case "CAD": "Dólar canadiense"
-        case "JPY": "Yen japonés"
-        case "CHF": "Franco suizo"
-        default: Locale(identifier: "es_MX").localizedString(forCurrencyCode: code)?.capitalizedFirst ?? code
+        case "MXN": String(localized: "Peso mexicano")
+        case "USD": String(localized: "Dólar de EE. UU.")
+        case "EUR": String(localized: "Euro")
+        case "GBP": String(localized: "Libra esterlina")
+        case "CAD": String(localized: "Dólar canadiense")
+        case "JPY": String(localized: "Yen japonés")
+        case "CHF": String(localized: "Franco suizo")
+        default: Locale.current.localizedString(forCurrencyCode: code)?.capitalizedFirst ?? code
         }
     }
 }

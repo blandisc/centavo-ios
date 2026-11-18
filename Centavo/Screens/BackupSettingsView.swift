@@ -86,9 +86,9 @@ struct BackupSettingsView: View {
                 Text(problem ?? "")
             }
             .confirmsRemoval(of: $removingCopy, question: { copy in
-                TicketQuestion(title: "¿Borrar esta copia?", name: copy.title(now: AppClock.now),
-                               detail: "Antes de restaurar",
-                               note: "Es lo que había en este iPhone antes de esa restauración. No se puede deshacer.")
+                TicketQuestion(title: String(localized: "¿Borrar esta copia?"), name: copy.title(now: AppClock.now),
+                               detail: String(localized: "Antes de restaurar"),
+                               note: String(localized: "Es lo que había en este iPhone antes de esa restauración. No se puede deshacer."))
             }) { copy in
                 DailyBackup.removeStranded(copy)
                 copies = DailyBackup.strandedCopies()
@@ -151,8 +151,7 @@ struct BackupSettingsView: View {
                     typedPassword = ""
                 }
             } message: {
-                Text(wrongTry ? "Esa contraseña no abre este respaldo. Prueba otra vez."
-                              : "Escribe la contraseña con la que se guardó este respaldo.")
+                Text(passwordAsk)
             }
             // On its own view: two pickers of the same kind on one view can hide each other.
             .background {
@@ -160,7 +159,7 @@ struct BackupSettingsView: View {
                     movingCopy = nil
                     copies = DailyBackup.strandedCopies()
                     if case .failure = result {
-                        fail("No se guardó la copia", "Sigue guardada dentro de Al día. Intenta otra vez.")
+                        fail("No se guardó la copia", String(localized: "Sigue guardada dentro de Al día. Intenta otra vez."))
                     }
                 }
             }
@@ -243,11 +242,13 @@ struct BackupSettingsView: View {
         } header: {
             Text("Contraseña").ticketCaption()
         } footer: {
-            HintText(!hasPassword
-                     ? "Guárdala también en la app Contraseñas: si pierdes este iPhone, la vas a necesitar para abrir tu respaldo en otro. Sin ella, nadie puede abrirlo."
-                     : changingPassword
-                     ? "Los respaldos que ya tienes se abren con la contraseña anterior. Guárdala también."
-                     : "Sin ella el respaldo no se puede abrir, ni por ti ni por nadie. Guárdala también en la app Contraseñas.")
+            if !hasPassword {
+                HintText("Guárdala también en la app Contraseñas: si pierdes este iPhone, la vas a necesitar para abrir tu respaldo en otro. Sin ella, nadie puede abrirlo.")
+            } else if changingPassword {
+                HintText("Los respaldos que ya tienes se abren con la contraseña anterior. Guárdala también.")
+            } else {
+                HintText("Sin ella el respaldo no se puede abrir, ni por ti ni por nadie. Guárdala también en la app Contraseñas.")
+            }
         }
         .listRowBackground(Theme.surface)
     }
@@ -256,7 +257,7 @@ struct BackupSettingsView: View {
         Section {
             Button { choosingFolder = true } label: {
                 IconRow("Carpeta", systemImage: "folder") {
-                    Text(folderName ?? "Elegir")
+                    Text(folderName ?? String(localized: "Elegir"))
                         .font(.ticket(.detail))
                         .foregroundStyle(folderName == nil ? Theme.brass : Theme.muted)
                 }
@@ -285,7 +286,7 @@ struct BackupSettingsView: View {
                 restoreInsteadButton
             }
         } footer: {
-            HintText(aside == nil ? lastText : lastText + "\n" + Self.asideHint)
+            HintText(nowFooter)
         }
         .listRowBackground(Theme.surface)
     }
@@ -304,7 +305,7 @@ struct BackupSettingsView: View {
     }
 
     /// One way out of a backup apart: when it applies, quiet, over what it does, in brass.
-    private func asideChoice(_ when: String, _ action: String) -> some View {
+    private func asideChoice(_ when: LocalizedStringResource, _ action: LocalizedStringResource) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(when)
                 .font(.ticket(.detail))
@@ -350,12 +351,19 @@ struct BackupSettingsView: View {
         aside.reason(now: now, namesMoney: Features.money)
     }
 
-    static let asideHint = "El respaldo anterior sigue en tu carpeta, sin cambios."
+    static var asideHint: String { String(localized: "El respaldo anterior sigue en tu carpeta, sin cambios.") }
 
     /// `expenses`: what this phone has right now, which may no longer be what the note said.
     static func trustQuestion(expenses: Int?) -> String {
-        let has = expenses.map { "Este iPhone tiene ahora " + count($0, "gasto", "gastos") + ". " } ?? ""
-        return has + "El respaldo de hoy se guardará con lo que hay en este iPhone, aunque tenga menos. El respaldo que tenía más no se borra: queda guardado con «reemplazado» en el nombre."
+        let rest = String(localized: "El respaldo de hoy se guardará con lo que hay en este iPhone, aunque tenga menos. El respaldo que tenía más no se borra: queda guardado con «reemplazado» en el nombre.")
+        guard let expenses else { return rest }
+        let has: String
+        if expenses == 1 {
+            has = String(localized: "Este iPhone tiene ahora 1 gasto.")
+        } else {
+            has = String(localized: "Este iPhone tiene ahora \(expenses) gastos.")
+        }
+        return has + " " + rest
     }
 
     private var dailySection: some View {
@@ -374,9 +382,11 @@ struct BackupSettingsView: View {
 
     /// How to make the nightly automation: on this screen, and said again when a restored phone
     /// starts backing up (the automation doesn't travel either).
-    static let automationSteps = ["1. Abre Atajos → Automatización → «+».",
-                                  "2. Elige «Hora del día»: 21:00, diario, y «Ejecutar de inmediato».",
-                                  "3. Agrega la acción «Respaldar Al día»."]
+    static var automationSteps: [String] {
+        [String(localized: "1. Abre Atajos → Automatización → «+»."),
+         String(localized: "2. Elige «Hora del día»: 21:00, diario, y «Ejecutar de inmediato»."),
+         String(localized: "3. Agrega la acción «Respaldar Al día».")]
+    }
 
     /// Copies «antes de restaurar» that earlier restores left inside the app, where Archivos
     /// doesn't show them (2026-11-11): each can be restored, taken out to Archivos or deleted.
@@ -429,22 +439,41 @@ struct BackupSettingsView: View {
 
     /// Why «Guardar contraseña» is off, once there's something typed to say it about.
     private var passwordProblem: String? {
-        if !newPassword.isEmpty, newPassword.count < Self.minimumLength { return "Mínimo \(Self.minimumLength) caracteres." }
-        if !repeated.isEmpty, repeated != newPassword { return "No coinciden." }
+        if !newPassword.isEmpty, newPassword.count < Self.minimumLength {
+            let minimum = Self.minimumLength
+            return String(localized: "Mínimo \(minimum) caracteres.")
+        }
+        if !repeated.isEmpty, repeated != newPassword { return String(localized: "No coinciden.") }
         return nil
     }
 
+    /// The password alert's line: the first ask, or a retry after one that didn't open it.
+    private var passwordAsk: String {
+        if wrongTry { return String(localized: "Esa contraseña no abre este respaldo. Prueba otra vez.") }
+        return String(localized: "Escribe la contraseña con la que se guardó este respaldo.")
+    }
+
+    /// Under «Respaldar ahora»: the last backup, and with one apart, that the earlier one is kept.
+    private var nowFooter: String {
+        guard aside != nil else { return lastText }
+        return lastText + "\n" + Self.asideHint
+    }
+
     private var lastText: String {
-        guard let last else { return hasPassword && folderName != nil ? "Todavía no hay respaldo." : "Primero la contraseña y la carpeta." }
-        var text = "Último respaldo: " + AppClock.relative(last, locale: Locale(identifier: "es_MX"))
+        guard let last else {
+            if hasPassword && folderName != nil { return String(localized: "Todavía no hay respaldo.") }
+            return String(localized: "Primero la contraseña y la carpeta.")
+        }
+        let when = AppClock.relative(last, locale: .current)
+        var text: String
         switch cloud {
-        case .uploading: text += ". Guardado, aún no sube a iCloud."
-        case .failed: text += ". Guardado en el iPhone, pero no pudo subir a iCloud: revisa que tengas espacio."
-        case .local: text += ". Está solo en este iPhone: elige una carpeta en iCloud Drive."
-        case .uploaded, nil: break
+        case .uploading: text = String(localized: "Último respaldo: \(when). Guardado, aún no sube a iCloud.")
+        case .failed: text = String(localized: "Último respaldo: \(when). Guardado en el iPhone, pero no pudo subir a iCloud: revisa que tengas espacio.")
+        case .local: text = String(localized: "Último respaldo: \(when). Está solo en este iPhone: elige una carpeta en iCloud Drive.")
+        case .uploaded, nil: text = String(localized: "Último respaldo: \(when)")
         }
         if let failed = DailyBackup.lastFailure, failed > last {
-            text += "\nEl último intento no se pudo hacer."
+            text += "\n" + String(localized: "El último intento no se pudo hacer.")
         }
         return text
     }
@@ -452,8 +481,11 @@ struct BackupSettingsView: View {
     private func savePassword() {
         guard passwordIsValid else { return }
         guard BackupPassword.save(newPassword) else {
-            fail("No se guardó la contraseña",
-                 hasPassword ? "La anterior sigue igual. Intenta otra vez." : "Intenta otra vez. Sin contraseña no se puede respaldar.")
+            if hasPassword {
+                fail("No se guardó la contraseña", String(localized: "La anterior sigue igual. Intenta otra vez."))
+            } else {
+                fail("No se guardó la contraseña", String(localized: "Intenta otra vez. Sin contraseña no se puede respaldar."))
+            }
             return
         }
         newPassword = ""
@@ -465,7 +497,7 @@ struct BackupSettingsView: View {
     /// «Cambiar contraseña» asks the owner first (2026-11-02 audit): whoever holds the phone
     /// shouldn't be able to lock the next backups with a password only they know.
     private func startChanging() async {
-        guard await OwnerCheck.confirm(reason: "Para cambiar la contraseña del respaldo.") else { return }
+        guard await OwnerCheck.confirm(reason: String(localized: "Para cambiar la contraseña del respaldo.")) else { return }
         shownPassword = nil
         changingPassword = true
     }
@@ -478,13 +510,13 @@ struct BackupSettingsView: View {
 
     /// Restoring opens a backup with the saved password and replaces everything: the owner first.
     private func startRestoring() async {
-        guard await OwnerCheck.confirm(reason: "Para restaurar un respaldo.") else { return }
+        guard await OwnerCheck.confirm(reason: String(localized: "Para restaurar un respaldo.")) else { return }
         choosingFile = true
     }
 
     private func reveal() async {
         if shownPassword != nil { shownPassword = nil; return }
-        if await BackupPassword.unlock(reason: "Para mostrar la contraseña del respaldo.") {
+        if await BackupPassword.unlock(reason: String(localized: "Para mostrar la contraseña del respaldo.")) {
             shownPassword = BackupPassword.read()
         }
     }
@@ -515,7 +547,7 @@ struct BackupSettingsView: View {
     /// the phone shouldn't be able to make a phone with less the backup of every day.
     private func trustThisPhone() async {
         guard !working else { return }
-        guard await OwnerCheck.confirm(reason: "Para respaldar desde este iPhone aunque tenga menos.") else { return }
+        guard await OwnerCheck.confirm(reason: String(localized: "Para respaldar desde este iPhone aunque tenga menos.")) else { return }
         // Again: «Respaldar ahora» may have been tapped while Face ID was asking.
         guard !working else { return }
         working = true
@@ -566,7 +598,7 @@ struct BackupSettingsView: View {
         // ago, when this phone has none yet).
         let saved = BackupPassword.read()
         guard let password = saved ?? openedWith else {
-            fail("No se pudo restaurar", "Abre el respaldo otra vez. No se cambió nada.")
+            fail("No se pudo restaurar", String(localized: "Abre el respaldo otra vez. No se cambió nada."))
             return
         }
         working = true
@@ -587,9 +619,11 @@ struct BackupSettingsView: View {
             } catch DailyBackup.Failure.noPlaceForCopy {
                 needsCopyFolder = payload
             } catch DailyBackup.Failure.halfRestored {
-                let place = chosen?.lastPathComponent ?? folderName
-                fail("No se pudo restaurar", message(for: DailyBackup.Failure.halfRestored)
-                     + (place.map { " Está en «\($0)»." } ?? ""))
+                var detail = message(for: DailyBackup.Failure.halfRestored)
+                if let place = chosen?.lastPathComponent ?? folderName {
+                    detail += " " + String(localized: "Está en «\(place)».")
+                }
+                fail("No se pudo restaurar", detail)
             } catch {
                 fail("No se pudo restaurar", message(for: error))
             }
@@ -611,7 +645,7 @@ struct BackupSettingsView: View {
         case (.safetyCopy(let payload), let url?):
             restore(payload, copyInto: url)
         case (.safetyCopy, nil):
-            fail("No se restauró nada", "Sin una carpeta donde guardar la copia de lo que hay en este iPhone, Al día no reemplaza tus datos.")
+            fail("No se restauró nada", String(localized: "Sin una carpeta donde guardar la copia de lo que hay en este iPhone, Al día no reemplaza tus datos."))
         case (.keepBackingUp, let url?):
             if useFolder(url) { finishSetUp(localOnly: !DailyBackup.isInCloud(url)) }
         case (.backup, let url?):
@@ -628,7 +662,7 @@ struct BackupSettingsView: View {
             aside = DailyBackup.aside
             return true
         } catch {
-            fail("No se pudo usar esa carpeta", "Elige otra.")
+            fail("No se pudo usar esa carpeta", String(localized: "Elige otra."))
             return false
         }
     }
@@ -638,10 +672,10 @@ struct BackupSettingsView: View {
     /// already there), and the folder is the file's own if it can be written to, or one picked.
     private func keepBackingUp() async {
         guard !working else { return }
-        guard await OwnerCheck.confirm(reason: "Para seguir respaldando en este iPhone.") else { return }
+        guard await OwnerCheck.confirm(reason: String(localized: "Para seguir respaldando en este iPhone.")) else { return }
         if BackupPassword.lookup() == .missing {
             guard let openedWith, BackupPassword.save(openedWith) else {
-                fail("No se guardó la contraseña", "Créala en esta pantalla, en «Contraseña», y elige la carpeta.")
+                fail("No se guardó la contraseña", String(localized: "Créala en esta pantalla, en «Contraseña», y elige la carpeta."))
                 return
             }
             hasPassword = true
@@ -665,18 +699,20 @@ struct BackupSettingsView: View {
     }
 
     static func setUpText(folder: String, localOnly: Bool) -> String {
-        var text = "Este iPhone ya respalda en «\(folder)». Toca «Respaldar ahora» para hacer el primero."
+        var text = String(localized: "Este iPhone ya respalda en «\(folder)». Toca «Respaldar ahora» para hacer el primero.")
         if localOnly {
-            text += " Esa carpeta está solo en este iPhone: si lo pierdes, el respaldo se pierde con él. Mejor elige una dentro de iCloud Drive."
+            text += " " + String(localized: "Esa carpeta está solo en este iPhone: si lo pierdes, el respaldo se pierde con él. Mejor elige una dentro de iCloud Drive.")
         }
-        return text + "\n\nFalta crear en este iPhone la automatización de cada día:\n" + automationSteps.joined(separator: "\n")
+        let missing = String(localized: "Falta crear en este iPhone la automatización de cada día:")
+        let steps = automationSteps.joined(separator: "\n")
+        return "\(text)\n\n\(missing)\n\(steps)"
     }
 
     // MARK: Copies left inside the app
 
     private func restoreCopy(_ copy: BackupSafetyCopy) async {
         guard let url = DailyBackup.ownDocuments?.appending(path: copy.name) else { return }
-        guard await OwnerCheck.confirm(reason: "Para restaurar un respaldo.") else { return }
+        guard await OwnerCheck.confirm(reason: String(localized: "Para restaurar un respaldo.")) else { return }
         open(url, password: BackupPassword.read())
     }
 
@@ -697,16 +733,25 @@ struct BackupSettingsView: View {
     }
 
     static func question(_ what: String, plan: BackupSafetyPlan, folder: String?) -> String {
-        let replaces = what + "\n\nReemplaza todo lo que hay en este iPhone, y en tus otros dispositivos si usan Al día con iCloud. "
+        let replaces = String(localized: "Reemplaza todo lo que hay en este iPhone, y en tus otros dispositivos si usan Al día con iCloud.")
+        let copy: String
         switch plan {
         case .copyToFolder:
-            return replaces + "Antes se guarda una copia de lo actual en tu carpeta" + (folder.map { " «\($0)»." } ?? ".")
+            if let folder {
+                copy = String(localized: "Antes se guarda una copia de lo actual en tu carpeta «\(folder)».")
+            } else {
+                copy = String(localized: "Antes se guarda una copia de lo actual en tu carpeta.")
+            }
         case .askWhere:
-            return replaces + "Antes hay que guardar una copia de lo actual donde puedas verla: al tocar «Restaurar» eliges la carpeta en Archivos. Si no eliges ninguna, no se restaura nada."
+            copy = String(localized: "Antes hay que guardar una copia de lo actual donde puedas verla: al tocar «Restaurar» eliges la carpeta en Archivos. Si no eliges ninguna, no se restaura nada.")
         case .nothingToCopy:
-            return replaces + "Este iPhone no tiene gastos, ni " + (Features.money ? "«Mi dinero», ni " : "")
-                + "presupuesto o listas tuyas, así que no hay nada que guardar antes."
+            if Features.money {
+                copy = String(localized: "Este iPhone no tiene gastos, ni «Mi dinero», ni presupuesto o listas tuyas, así que no hay nada que guardar antes.")
+            } else {
+                copy = String(localized: "Este iPhone no tiene gastos, ni presupuesto o listas tuyas, así que no hay nada que guardar antes.")
+            }
         }
+        return "\(what)\n\n\(replaces) \(copy)"
     }
 
     private var doneText: String {
@@ -714,21 +759,36 @@ struct BackupSettingsView: View {
     }
 
     static func done(_ outcome: RestoreOutcome) -> String {
-        var text = outcome.summary.expenseCount == 1 ? "Se restauró 1 gasto y tus ajustes."
-            : "Se restauraron \(outcome.summary.expenseCount) gastos y tus ajustes."
-        if let copy = outcome.copy {
-            text += " Lo que había antes quedó en la carpeta «\(copy.folderName)», como «\(copy.name)». Se abre con "
-                + (outcome.copyUsesSavedPassword ? "la contraseña del respaldo de este iPhone." : "la misma contraseña de este respaldo.")
+        let count = outcome.summary.expenseCount
+        var text: String
+        if count == 1 {
+            text = String(localized: "Se restauró 1 gasto y tus ajustes.")
         } else {
-            text += " Este iPhone estaba vacío: no había nada que guardar antes."
+            text = String(localized: "Se restauraron \(count) gastos y tus ajustes.")
+        }
+        if let copy = outcome.copy {
+            let folder = copy.folderName
+            let name = copy.name
+            text += " " + String(localized: "Lo que había antes quedó en la carpeta «\(folder)», como «\(name)».")
+            if outcome.copyUsesSavedPassword {
+                text += " " + String(localized: "Se abre con la contraseña del respaldo de este iPhone.")
+            } else {
+                text += " " + String(localized: "Se abre con la misma contraseña de este respaldo.")
+            }
+        } else {
+            text += " " + String(localized: "Este iPhone estaba vacío: no había nada que guardar antes.")
         }
         guard outcome.offersSetUp else { return text }
-        text += "\n\n" + BackupSetupReminder.text + " «Seguir respaldando aquí» "
-            + (outcome.hasPassword ? "usa la contraseña que ya tiene este iPhone"
-                                   : "guarda en este iPhone la contraseña con la que abriste este respaldo")
-            + " y usa su misma carpeta, o te pide elegirla.\n\nTambién hay que crear aquí la automatización de cada día:\n"
-            + automationSteps.joined(separator: "\n")
-        return text
+        let keep: String
+        if outcome.hasPassword {
+            keep = String(localized: "«Seguir respaldando aquí» usa la contraseña que ya tiene este iPhone y usa su misma carpeta, o te pide elegirla.")
+        } else {
+            keep = String(localized: "«Seguir respaldando aquí» guarda en este iPhone la contraseña con la que abriste este respaldo y usa su misma carpeta, o te pide elegirla.")
+        }
+        let automation = String(localized: "También hay que crear aquí la automatización de cada día:")
+        let steps = automationSteps.joined(separator: "\n")
+        let reminder = BackupSetupReminder.text
+        return "\(text)\n\n\(reminder) \(keep)\n\n\(automation)\n\(steps)"
     }
 
     /// `true` while there's something to show: an alert's flag from an optional.
@@ -737,28 +797,38 @@ struct BackupSettingsView: View {
     }
 
     /// An alert that says what didn't work in its title, and why or what to do below.
-    private func fail(_ title: String, _ detail: String) {
-        problemTitle = title
+    private func fail(_ title: LocalizedStringResource, _ detail: String) {
+        problemTitle = String(localized: title)
         problem = detail
     }
 
-    /// «1 gasto», «3 gastos».
+    /// «1 gasto», «3 gastos», in the phone's language.
+    private static func expenseCount(_ number: Int) -> String {
+        if number == 1 { return String(localized: "1 gasto") }
+        return String(localized: "\(number) gastos")
+    }
+
+    /// «1 cuenta», «3 cortes»: only for «Mi dinero», which stays in Spanish while it's hidden.
     private static func count(_ number: Int, _ one: String, _ many: String) -> String {
         number == 1 ? "1 \(one)" : "\(number) \(many)"
     }
 
     private func message(for error: Error) -> String {
         if let failure = error as? DailyBackup.Failure { return String(localized: failure.localizedStringResource) }
-        return "Algo falló al guardar. No se cambió nada."
+        return String(localized: "Algo falló al guardar. No se cambió nada.")
     }
 
     private static func describe(_ summary: BackupSummary) -> String {
-        let mx = Locale(identifier: "es_MX")
-        let made = summary.createdAt.formatted(.dateTime.day().month(.wide).year().hour().minute().locale(mx))
-        var text = "Del \(made): " + count(summary.expenseCount, "gasto", "gastos")
+        let made = summary.createdAt.formatted(.dateTime.day().month(.wide).year().hour().minute().locale(.current))
+        let expenses = expenseCount(summary.expenseCount)
+        var text: String
         if let first = summary.firstExpense, let lastOne = summary.lastExpense {
-            let style = Date.FormatStyle.dateTime.month(.abbreviated).year().locale(mx)
-            text += " (de \(first.formatted(style)) a \(lastOne.formatted(style)))"
+            let style = Date.FormatStyle.dateTime.month(.abbreviated).year().locale(.current)
+            let from = first.formatted(style)
+            let to = lastOne.formatted(style)
+            text = String(localized: "Del \(made): \(expenses) (de \(from) a \(to))")
+        } else {
+            text = String(localized: "Del \(made): \(expenses)")
         }
         // «Mi dinero» off (2026-11-18): restoring still brings it back whole, without naming it.
         guard Features.money else { return text + "." }

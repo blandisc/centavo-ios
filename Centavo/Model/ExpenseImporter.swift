@@ -18,30 +18,39 @@ enum ExpenseImporter {
         /// Nothing added is not said as a success (2026-11-18): «Se agregaron 0 gastos» read like
         /// it worked. When nothing was there either, it says what to look at.
         var text: String {
-            let first: String
-            switch added {
-            case 0: first = "No se agregó ningún gasto."
-            case 1: first = "Se agregó 1 gasto."
-            default: first = "Se agregaron \(added) gastos."
+            var parts = [addedText]
+            if alreadyThere == 1 {
+                parts.append(String(localized: "1 ya estaba."))
+            } else if alreadyThere > 1 {
+                parts.append(String(localized: "\(alreadyThere) ya estaban."))
             }
-            var parts = [first]
-            if alreadyThere > 0 {
-                parts.append(alreadyThere == 1 ? "1 ya estaba." : "\(alreadyThere) ya estaban.")
+            if leftOut == 1 {
+                parts.append(String(localized: "1 se dejó fuera por parecer repetido."))
+            } else if leftOut > 1 {
+                parts.append(String(localized: "\(leftOut) se dejaron fuera por parecer repetidos."))
             }
-            if leftOut > 0 {
-                parts.append(leftOut == 1 ? "1 se dejó fuera por parecer repetido."
-                             : "\(leftOut) se dejaron fuera por parecer repetidos.")
-            }
-            if unreadable > 0 {
-                parts.append(unreadable == 1 ? "1 renglón no se pudo leer."
-                             : "\(unreadable) renglones no se pudieron leer.")
+            if unreadable == 1 {
+                parts.append(String(localized: "1 renglón no se pudo leer."))
+            } else if unreadable > 1 {
+                parts.append(String(localized: "\(unreadable) renglones no se pudieron leer."))
             }
             if added == 0 && alreadyThere == 0 && leftOut == 0 {
-                parts.append(unreadable > 0
-                             ? "Revisa que las fechas y los montos estén como en la exportación de Al día."
-                             : "El archivo no trae renglones con gastos.")
+                if unreadable > 0 {
+                    parts.append(String(localized: "Revisa que las fechas y los montos estén como en la exportación de Al día."))
+                } else {
+                    parts.append(String(localized: "El archivo no trae renglones con gastos."))
+                }
             }
             return parts.joined(separator: " ")
+        }
+
+        /// The first sentence: how many came in.
+        private var addedText: String {
+            switch added {
+            case 0: String(localized: "No se agregó ningún gasto.")
+            case 1: String(localized: "Se agregó 1 gasto.")
+            default: String(localized: "Se agregaron \(added) gastos.")
+            }
         }
     }
 
@@ -59,13 +68,14 @@ enum ExpenseImporter {
         var looksRepeated: Int
 
         var message: String {
-            looksRepeated == 1
-                ? "1 parece repetido: mismo día, hora y monto que un gasto que ya tienes, con otro nombre o tarjeta. ¿Agregarlo también?"
-                : "\(looksRepeated) parecen repetidos: mismo día, hora y monto que gastos que ya tienes, con otro nombre o tarjeta. ¿Agregarlos también?"
+            if looksRepeated == 1 {
+                return String(localized: "1 parece repetido: mismo día, hora y monto que un gasto que ya tienes, con otro nombre o tarjeta. ¿Agregarlo también?")
+            }
+            return String(localized: "\(looksRepeated) parecen repetidos: mismo día, hora y monto que gastos que ya tienes, con otro nombre o tarjeta. ¿Agregarlos también?")
         }
 
-        static let onlyNew = "Solo los nuevos"
-        static let all = "Agregar todos"
+        static var onlyNew: String { String(localized: "Solo los nuevos") }
+        static var all: String { String(localized: "Agregar todos") }
     }
 
     /// What the file would do, without saving anything: how many rows are new, already here,

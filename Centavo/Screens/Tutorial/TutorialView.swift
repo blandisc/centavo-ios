@@ -11,27 +11,27 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .figure: "Cuánto puedes gastar hoy"
-        case .bar: "Tu mes en un boleto"
-        case .leftover: "Lo que sobra no se pierde"
-        case .wallet: "Se anota solo"
-        case .uncounted: "Lo que no es gasto"
-        case .categories: "En qué se va"
-        case .backup: "Tu respaldo"
-        case .done: "Ya sabes cómo funciona"
+        case .figure: String(localized: "Cuánto puedes gastar hoy")
+        case .bar: String(localized: "Tu mes en un boleto")
+        case .leftover: String(localized: "Lo que sobra no se pierde")
+        case .wallet: String(localized: "Se anota solo")
+        case .uncounted: String(localized: "Lo que no es gasto")
+        case .categories: String(localized: "En qué se va")
+        case .backup: String(localized: "Tu respaldo")
+        case .done: String(localized: "Ya sabes cómo funciona")
         }
     }
 
     var text: String {
         switch self {
-        case .figure: "Tu presupuesto, menos tus fijos, entre los días del mes. A eso se suma o resta lo que te sobró o te pasaste antes: esa es la cifra de arriba, y baja con cada pago."
-        case .bar: "Cada celda es un día. Se llena con lo que gastas; si un día te pasas, se pinta de rojo. Los días por venir van punteados."
-        case .leftover: "Lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
+        case .figure: String(localized: "Tu presupuesto, menos tus fijos, entre los días del mes. A eso se suma o resta lo que te sobró o te pasaste antes: esa es la cifra de arriba, y baja con cada pago.")
+        case .bar: String(localized: "Cada celda es un día. Se llena con lo que gastas; si un día te pasas, se pinta de rojo. Los días por venir van punteados.")
+        case .leftover: String(localized: "Lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan.")
         case .wallet: CaptureCopy.tutorial
-        case .uncounted: "Un pago a tu tarjeta o un traspaso: mantenlo presionado y elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
-        case .categories: "Abajo ves tus categorías. Toca una para ver solo esos gastos."
-        case .backup: "Guarda una copia cada noche, cerrada con tu contraseña. Se activa en «··· › Ajustes › Respaldo diario»."
-        case .done: "Mira tu cifra cada mañana y deja que los pagos se anoten solos. Estas historias siguen en «··· › Cómo funciona»."
+        case .uncounted: String(localized: "Un pago a tu tarjeta o un traspaso: mantenlo presionado y elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto.")
+        case .categories: String(localized: "Abajo ves tus categorías. Toca una para ver solo esos gastos.")
+        case .backup: String(localized: "Guarda una copia cada noche, cerrada con tu contraseña. Se activa en «··· › Ajustes › Respaldo diario».")
+        case .done: String(localized: "Mira tu cifra cada mañana y deja que los pagos se anoten solos. Estas historias siguen en «··· › Cómo funciona».")
         }
     }
 
@@ -41,9 +41,9 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
     func text(hasBudget: Bool) -> String {
         switch self {
         case .figure where !hasBudget:
-            "Con un presupuesto, Al día lo reparte entre los días del mes, menos tus fijos, y arriba te dice cuánto puedes gastar hoy. Sin él, arriba ves lo que llevas en el mes."
+            String(localized: "Con un presupuesto, Al día lo reparte entre los días del mes, menos tus fijos, y arriba te dice cuánto puedes gastar hoy. Sin él, arriba ves lo que llevas en el mes.")
         case .leftover where !hasBudget:
-            "Con un presupuesto, lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
+            String(localized: "Con un presupuesto, lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan.")
         default:
             text
         }
@@ -255,11 +255,17 @@ struct TutorialView: View {
             .accessibilityHidden(isFirst)
             .accessibilityIdentifier("tutorial-anterior")
             Button { index == stories.count - 1 ? dismiss() : tap(index + 1) } label: {
-                PrimaryButtonLabel(index == stories.count - 1 ? "Listo" : "Siguiente")
+                PrimaryButtonLabel(nextTitle)
             }
             .ticketProminent()
             .accessibilityIdentifier("tutorial-siguiente")
         }
+    }
+
+    /// «Siguiente», and «Listo» on the last story.
+    private var nextTitle: String {
+        if index == stories.count - 1 { return String(localized: "Listo") }
+        return String(localized: "Siguiente")
     }
 
     // MARK: Moving

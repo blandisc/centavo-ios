@@ -117,7 +117,7 @@ struct MerchantRulesView: View {
         } label: {
             HStack(spacing: Theme.Space.xs) {
                 // Swapped at once: blended while the rows move, both read as one blur.
-                Text(showsCategoryOnly ? "Ver menos" : "Ver todos")
+                Text(foldTitle)
                     .contentTransition(.identity)
                 Spacer(minLength: Theme.Space.s)
                 Image(systemName: "chevron.down") // ds-allow: parte de «Ver todos ⌄»
@@ -130,9 +130,18 @@ struct MerchantRulesView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint(showsCategoryOnly ? "Esconde los comercios que solo tienen categoría"
-                           : "Muestra los comercios que solo tienen categoría")
+        .accessibilityHint(foldHint)
         .accessibilityIdentifier("recuerdo-ver-todos")
+    }
+
+    private var foldTitle: String {
+        if showsCategoryOnly { return String(localized: "Ver menos") }
+        return String(localized: "Ver todos")
+    }
+
+    private var foldHint: String {
+        if showsCategoryOnly { return String(localized: "Esconde los comercios que solo tienen categoría") }
+        return String(localized: "Muestra los comercios que solo tienen categoría")
     }
 
     private var footer: some View {
@@ -140,8 +149,9 @@ struct MerchantRulesView: View {
     }
 
     /// «Solo su categoría · 147».
-    static func header(_ title: String, _ count: Int) -> String {
-        "\(title) · \(count.formatted(.number.locale(Locale(identifier: "es_MX"))))"
+    static func header(_ title: LocalizedStringResource, _ count: Int) -> String {
+        let shown = String(localized: title)
+        return "\(shown) · \(count.formatted(.number.locale(Locale(identifier: "es_MX"))))"
     }
 
     private func ruleRow(_ rule: MerchantRule) -> some View {
@@ -174,10 +184,13 @@ struct MerchantRulesView: View {
     }
 
     private func row(_ rule: MerchantRule) -> some View {
-        ExpenseRowLayout(name: rule.arrivesAs,
-                         tile: CategoryIconTile(icon: rule.category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) } ?? "tag",
-                                                color: rule.category.map(colors.category))) {
-            ExpenseMetaText(rule.summary)
+        // In steps: one expression with the row's overloads took the CI too long to check.
+        let icon: String = rule.category.map { CategoryStyle.icon(for: $0, custom: UserCatalog.decode(storedCategories)) } ?? "tag"
+        let tile = CategoryIconTile(icon: icon, color: rule.category.map(colors.category))
+        let name: String = rule.arrivesAs
+        let summary: String = rule.summary
+        return ExpenseRowLayout(name: name, tile: tile) {
+            ExpenseMetaText(summary)
         } amount: {
             // Stacked with the largest text, where an arrow on a line of its own says nothing.
             if !typeSize.isAccessibilitySize {
@@ -193,19 +206,22 @@ struct MerchantRulesView: View {
 extension MerchantRule {
     /// The quiet line under the text it arrives as: «Se anota como Tacos Pepe · Comida».
     var summary: String {
-        let filed = category ?? (goesUncategorized ? "sin categoría" : nil)
+        var filed = category
+        if filed == nil, goesUncategorized { filed = String(localized: "sin categoría") }
         if let name {
-            return (["Se anota como \(name)"] + [filed].compactMap { $0 }).joined(separator: " · ")
+            let named = String(localized: "Se anota como \(name)")
+            guard let filed else { return named }
+            return "\(named) · \(filed)"
         }
-        if let category { return "Va a \(category)" }
-        return "Se queda sin categoría"
+        if let category { return String(localized: "Va a \(category)") }
+        return String(localized: "Se queda sin categoría")
     }
 
     /// What «Olvidar» asks first.
     var forgetQuestion: TicketQuestion {
-        TicketQuestion(title: "¿Olvidar este comercio?", name: arrivesAs, detail: summary,
-                       note: "Los gastos ya anotados no cambian. Lo próximo que llegue así se anota como lo mande Wallet.",
-                       verb: "Olvidar")
+        TicketQuestion(title: String(localized: "¿Olvidar este comercio?"), name: arrivesAs, detail: summary,
+                       note: String(localized: "Los gastos ya anotados no cambian. Lo próximo que llegue así se anota como lo mande Wallet."),
+                       verb: String(localized: "Olvidar"))
     }
 }
 
@@ -255,8 +271,8 @@ struct MerchantRuleSheet: View {
 
         var title: String {
             switch self {
-            case .automatic: "Automática"
-            case .uncategorized: "Sin categoría"
+            case .automatic: String(localized: "Automática")
+            case .uncategorized: String(localized: "Sin categoría")
             case .category(let name): name
             }
         }
@@ -286,7 +302,7 @@ struct MerchantRuleSheet: View {
     }
 
     private var summary: String {
-        if remembersNothing { return "Sin nombre ni categoría: se olvida" }
+        if remembersNothing { return String(localized: "Sin nombre ni categoría: se olvida") }
         return [givenName ?? rule.arrivesAs, filing == .automatic ? nil : filing.title]
             .compactMap { $0 }.joined(separator: " · ")
     }

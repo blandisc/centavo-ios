@@ -16,11 +16,11 @@ struct RepeatRulePicker: View {
 
     private var countText: String {
         switch (rule.kind, rule.count) {
-        case (.weeks, 1): "Cada semana"
-        case (.weeks, let n): "Cada \(n) semanas"
-        case (.months, 1): "Cada mes"
-        case (.months, let n): "Cada \(n) meses"
-        case (.semimonthly, _): "Cada quincena"
+        case (.weeks, 1): String(localized: "Cada semana")
+        case (.weeks, let n): String(localized: "Cada \(n) semanas")
+        case (.months, 1): String(localized: "Cada mes")
+        case (.months, let n): String(localized: "Cada \(n) meses")
+        case (.semimonthly, _): String(localized: "Cada quincena")
         }
     }
 
@@ -46,7 +46,7 @@ enum FixedWording {
     /// «Cada lunes: se anota solo ese día, y lo que falta del mes se aparta de «Hoy puedes gastar».»
     static func howItRepeats(_ rule: RepeatRule, from date: Date) -> String {
         let when = rule.describe(anchor: date)
-        return when.prefix(1).uppercased() + when.dropFirst()
-            + ": se anota solo ese día, y lo que falta del mes se aparta de «Hoy puedes gastar»."
+        let shown: String = when.prefix(1).uppercased() + when.dropFirst()
+        return String(localized: "\(shown): se anota solo ese día, y lo que falta del mes se aparta de «Hoy puedes gastar».")
     }
 }

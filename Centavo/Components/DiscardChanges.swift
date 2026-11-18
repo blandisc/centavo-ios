@@ -51,8 +51,10 @@ private struct ConfirmsDiscard: ViewModifier {
                     .accessibilityHidden(true)
             }
             .confirmsRemoval(isPresented: $isAsking, question: {
-                TicketQuestion(title: "¿Descartar cambios?", note: "Lo que cambiaste no se guarda.",
-                               verb: "Descartar", keep: "Seguir editando")
+                TicketQuestion(title: String(localized: "¿Descartar cambios?"),
+                               note: String(localized: "Lo que cambiaste no se guarda."),
+                               verb: String(localized: "Descartar"),
+                               keep: String(localized: "Seguir editando"))
             }, onConfirm: discard)
     }
 }

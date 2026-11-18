@@ -1,0 +1,222 @@
+{
+  "sourceLanguage" : "es",
+  "strings" : {
+    "Anota esto en ${applicationName}" : {
+      "comment" : "Siri phrase for Add in one sentence",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note this in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Anota un gasto en ${applicationName}" : {
+      "comment" : "Siri phrase for Add expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log an expense in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Anotar en una frase en ${applicationName}" : {
+      "comment" : "Siri phrase for Add in one sentence",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add in one sentence in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Anotar gasto en ${applicationName}" : {
+      "comment" : "Siri phrase for Add expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add expense in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Apunta un gasto en ${applicationName}" : {
+      "comment" : "Siri phrase for Add in one sentence",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jot down an expense in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Borra el último gasto en ${applicationName}" : {
+      "comment" : "Siri phrase for deleting the last expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the last expense in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Borrar el último gasto en ${applicationName}" : {
+      "comment" : "Siri phrase for deleting the last expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete my last expense in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto he gastado en ${applicationName}" : {
+      "comment" : "Siri phrase for the month total",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What have I spent in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto he gastado en ${category} en ${applicationName}" : {
+      "comment" : "Siri phrase for the category total",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What have I spent on ${category} in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto llevo en ${applicationName}" : {
+      "comment" : "Siri phrase for the month total",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much have I spent in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto llevo en ${category} en ${applicationName}" : {
+      "comment" : "Siri phrase for the category total",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much have I spent on ${category} in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto llevo por categoría en ${applicationName}" : {
+      "comment" : "Siri phrase for the category total",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much have I spent by category in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto me queda en ${applicationName}" : {
+      "comment" : "Siri phrase for the month total",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much do I have left in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto puedo gastar hoy con ${applicationName}" : {
+      "comment" : "Siri phrase for how much I can spend today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much can I spend today with ${applicationName}"
+          }
+        }
+      }
+    },
+    "Cuánto puedo gastar hoy en ${applicationName}" : {
+      "comment" : "Siri phrase for how much I can spend today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much can I spend today in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Gasté en ${applicationName}" : {
+      "comment" : "Siri phrase for Add expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I spent money in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Quita el último gasto de ${applicationName}" : {
+      "comment" : "Siri phrase for deleting the last expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the last expense from ${applicationName}"
+          }
+        }
+      }
+    },
+    "Qué puedo gastar hoy en ${applicationName}" : {
+      "comment" : "Siri phrase for how much I can spend today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What can I spend today in ${applicationName}"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

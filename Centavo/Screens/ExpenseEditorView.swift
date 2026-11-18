@@ -135,9 +135,9 @@ struct ExpenseEditorView: View {
         case expense, refund, uncounted
         var title: String {
             switch self {
-            case .expense: "Gasto"
-            case .refund: "Devolución"
-            case .uncounted: "No cuenta"
+            case .expense: String(localized: "Gasto")
+            case .refund: String(localized: "Devolución")
+            case .uncounted: String(localized: "No cuenta")
             }
         }
     }
@@ -229,10 +229,11 @@ struct ExpenseEditorView: View {
         // What is wrong with the amount, said apart: «0» or an unreadable one said «Falta el
         // monto» with something typed in view (2026-11-18).
         guard let parsed else {
-            return amountText.contains(where: \.isNumber) ? "No se entiende el monto" : "Falta el monto"
+            if amountText.contains(where: \.isNumber) { return String(localized: "No se entiende el monto") }
+            return String(localized: "Falta el monto")
         }
-        guard parsed.value != 0 else { return "El monto no puede ser cero" }
-        guard !savedName.isEmpty else { return "Falta el comercio" }
+        guard parsed.value != 0 else { return String(localized: "El monto no puede ser cero") }
+        guard !savedName.isEmpty else { return String(localized: "Falta el comercio") }
         // With its code when it isn't the main currency: pesos next to dollars read as «MX$230.00»,
         // never a bare «$» (2026-11-02, 2026-11-18).
         let money = formatMoney(parsed.value.magnitude, isoCode: currency, label: currency,
@@ -240,7 +241,7 @@ struct ExpenseEditorView: View {
         var parts = [(isRefund ? "+" : "") + money, savedName]
         let cardName = card.trimmingCharacters(in: .whitespaces)
         if !cardName.isEmpty { parts.append(cardName) }
-        if !counts { parts.append("No cuenta") }
+        if !counts { parts.append(String(localized: "No cuenta")) }
         return parts.joined(separator: " · ")
     }
 
@@ -253,11 +254,33 @@ struct ExpenseEditorView: View {
 
     /// What «Más detalles» holds, said on its row while it is closed: «Hoy · Gasto».
     private var detailsSummary: String {
-        var parts = [AppClock.isToday(date) ? "Hoy"
-                     : date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))]
+        let day: String
+        if AppClock.isToday(date) {
+            day = String(localized: "Hoy")
+        } else {
+            day = date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
+        }
+        var parts = [day]
         parts.append(kind.wrappedValue.title)
-        if repeatsMonthly || expense?.isRepeat == true { parts.append("Fijo") }
+        if repeatsMonthly || expense?.isRepeat == true { parts.append(String(localized: "Fijo")) }
         return parts.joined(separator: " · ")
+    }
+
+    /// What VoiceOver says of «Más detalles»: open, or what it holds while closed.
+    private var detailsValue: String {
+        if showsDetails { return String(localized: "Abierto") }
+        return detailsSummary
+    }
+
+    private var detailsHint: String {
+        if showsDetails { return String(localized: "Oculta el tipo, la fecha y si se repite") }
+        return String(localized: "Muestra el tipo, la fecha y si se repite")
+    }
+
+    /// The sheet's title: a new expense or one being corrected.
+    private var barTitle: LocalizedStringResource {
+        if expense == nil { return "Nuevo gasto" }
+        return "Editar gasto"
     }
 
     var body: some View {
@@ -344,7 +367,7 @@ struct ExpenseEditorView: View {
                 if merchantFocused { merchantFocused = false }
             })
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle(expense == nil ? "Nuevo gasto" : "Editar gasto")
+            .ticketBarTitle(barTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
@@ -365,10 +388,10 @@ struct ExpenseEditorView: View {
                 Text("Cuánto, dónde, qué día y cómo pagaste: «230 de tacos ayer, en efectivo». Revisa lo que se llenó antes de guardar.")
             }
             .confirmsRemoval(isPresented: $confirmingStop, question: {
-                TicketQuestion(title: "¿Dejar de repetir este gasto fijo?",
+                TicketQuestion(title: String(localized: "¿Dejar de repetir este gasto fijo?"),
                                name: expense?.displayName ?? expense?.merchant ?? "",
-                               note: "Lo ya anotado se queda; el siguiente ya no llega.",
-                               verb: "Dejar de repetir")
+                               note: String(localized: "Lo ya anotado se queda; el siguiente ya no llega."),
+                               verb: String(localized: "Dejar de repetir"))
             }, onConfirm: confirmStop)
             .confirmsRemoval(of: $confirmingFixedDelete, question: fixedDeleteQuestion, onConfirm: deleteExpense)
             .confirmsDelete(of: $confirmingDelete, primaryCurrency: CurrencyPreference.current,
@@ -456,9 +479,10 @@ struct ExpenseEditorView: View {
 
     /// «Hoy puedes gastar» is named only where there is one: with a budget (2026-11-18).
     private var uncountedHint: String {
-        let hasBudget = BudgetStore.amount(from: storedBudget) != nil
-        return hasBudget ? "Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar»."
-            : "Se queda en la lista con su monto, pero no suma a lo que llevas."
+        if BudgetStore.amount(from: storedBudget) != nil {
+            return String(localized: "Se queda en la lista con su monto, pero no suma a lo que llevas ni a «Hoy puedes gastar».")
+        }
+        return String(localized: "Se queda en la lista con su monto, pero no suma a lo que llevas.")
     }
 
     /// «USD 25.00» or «-$50» pasted in the amount: the field keeps the figure, and the sheet
@@ -476,7 +500,7 @@ struct ExpenseEditorView: View {
             currency = code
             pasteProblem = nil
         } else {
-            pasteProblem = "No reconocí la moneda de lo que pegaste. Elígela junto al monto."
+            pasteProblem = String(localized: "No reconocí la moneda de lo que pegaste. Elígela junto al monto.")
         }
     }
 
@@ -543,7 +567,7 @@ struct ExpenseEditorView: View {
 
     private var merchantSection: some View {
         Section {
-            TicketTextField("Comercio", text: $merchant, prompt: "Nombre del comercio", identifier: "comercio")
+            TicketTextField("Comercio", text: $merchant, prompt: String(localized: "Nombre del comercio"), identifier: "comercio")
                 .textInputAutocapitalization(.words)
                 // «Oxxo» and «Rappi» are not in the dictionary: corrected, they no longer match
                 // what Wallet sends (2026-11-18).
@@ -612,8 +636,7 @@ struct ExpenseEditorView: View {
                     .tint(Theme.brass)
                     .accessibilityIdentifier("cambiar-los-otros")
                 } footer: {
-                    HintText("Los que llegaron como «\(expense.merchant)» quedan como este. "
-                             + "El que tenga otra categoría puesta por ti la conserva.")
+                    HintText("Los que llegaron como «\(expense.merchant)» quedan como este. El que tenga otra categoría puesta por ti la conserva.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -627,8 +650,7 @@ struct ExpenseEditorView: View {
             Text("Forma de pago · opcional").ticketCaption()
         } footer: {
             if paymentSources.isEmpty {
-                HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto "
-                     + "en «··· › Categorías» ya vendrá elegida.")
+                HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto en «··· › Categorías» ya vendrá elegida.")
             }
         }
         .listRowBackground(Theme.surface)
@@ -657,9 +679,8 @@ struct ExpenseEditorView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityValue(showsDetails ? "Abierto" : detailsSummary)
-            .accessibilityHint(showsDetails ? "Oculta el tipo, la fecha y si se repite"
-                               : "Muestra el tipo, la fecha y si se repite")
+            .accessibilityValue(detailsValue)
+            .accessibilityHint(detailsHint)
             .accessibilityIdentifier("mas-detalles")
 
             if showsDetails {
@@ -705,9 +726,8 @@ struct ExpenseEditorView: View {
                         HintText(FixedWording.howItRepeats(rule, from: date))
                         if let started = expense, started.repeatsMonthly == true {
                             // The original is the first charge too: its amount is that charge's.
-                            HintText("Cambiar el monto cambia también el primer cobro, del "
-                                     + started.date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_MX")))
-                                     + ". Para un aumento, deja de repetir este y agrega uno nuevo.")
+                            let firstCharge = started.date.formatted(.dateTime.day().month(.wide).locale(Locale.current))
+                            HintText("Cambiar el monto cambia también el primer cobro, del \(firstCharge). Para un aumento, deja de repetir este y agrega uno nuevo.")
                         }
                     } else if let copyHint {
                         HintText(copyHint)
@@ -723,14 +743,15 @@ struct ExpenseEditorView: View {
     private var copyHint: String? {
         guard let expense, expense.isRepeat == true else { return nil }
         let stoppedOriginal = expense.fixedID != nil && expense.fixedOf == expense.fixedID
-        return stoppedOriginal ? "Fue un gasto fijo; ya no se repite." : "Se anotó solo, de un gasto fijo."
+        if stoppedOriginal { return String(localized: "Fue un gasto fijo; ya no se repite.") }
+        return String(localized: "Se anotó solo, de un gasto fijo.")
     }
 
     /// «Llegó de Wallet · 28 oct 14:32», and the text exactly as it came, under what Wallet sent.
     @ViewBuilder private var walletOrigin: some View {
         if let expense, expense.rawAmount != nil || expense.rawNotice != nil {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                HintText("Llegó de Wallet · " + Self.stamp(expense.date))
+                HintText("Llegó de Wallet · \(Self.stamp(expense.date))")
                 if let notice = expense.rawNotice?.trimmingCharacters(in: .whitespacesAndNewlines), !notice.isEmpty {
                     HintText("«\(notice)»")
                 } else if let raw = expense.rawAmount {
@@ -742,9 +763,9 @@ struct ExpenseEditorView: View {
         }
     }
 
-    /// «28 oct 14:32», in es-MX whatever the phone's language.
+    /// «28 oct 14:32», the day in the iPhone's language and the time on a 24-hour clock.
     static func stamp(_ date: Date) -> String {
-        let day = date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))
+        let day = date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let time = date.formatted(Date.VerbatimFormatStyle(
             format: "\(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits)",
             timeZone: .current, calendar: .current))
@@ -858,7 +879,7 @@ struct ExpenseEditorView: View {
                 } label: {
                     HStack(spacing: Theme.Space.xs) {
                         // Swapped at once: blended while the button moves, both read as one blur.
-                        Text(showsAllCategories ? "Ver menos" : "Ver \(count) más")
+                        Text(moreTitle(count))
                             .contentTransition(.identity)
                         Image(systemName: "chevron.down") // ds-allow: parte de «Ver 6 más ⌄»
                             .rotationEffect(.degrees(showsAllCategories ? 180 : 0))
@@ -870,11 +891,21 @@ struct ExpenseEditorView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityHint(showsAllCategories ? "Muestra solo las más usadas"
-                                   : "\(count) categorías más")
+                .accessibilityHint(moreHint(count))
                 .accessibilityIdentifier("ver-todas-categorias")
             }
         }
+    }
+
+    /// «Ver 6 más» or «Ver menos», on the button that opens the rest of the categories.
+    private func moreTitle(_ count: Int) -> String {
+        if showsAllCategories { return String(localized: "Ver menos") }
+        return String(localized: "Ver \(count) más")
+    }
+
+    private func moreHint(_ count: Int) -> String {
+        if showsAllCategories { return String(localized: "Muestra solo las más usadas") }
+        return String(localized: "\(count) categorías más")
     }
 
     /// The cards and cash set up in «Pagos y categorías», plus any other a payment came
@@ -952,11 +983,16 @@ struct ExpenseEditorView: View {
     /// «¿Borrar este gasto fijo?»: one still repeating stops with it, and the question says so;
     /// the plain one read as any expense's (2026-11-18).
     private func fixedDeleteQuestion(_ expense: Expense) -> TicketQuestion {
-        let after = onDelete != nil ? "Podrás deshacerlo unos segundos." : "No se puede deshacer."
-        return TicketQuestion(title: "¿Borrar este gasto fijo?",
+        let note: String
+        if onDelete != nil {
+            note = String(localized: "Deja de repetirse. Este cobro se borra; los siguientes ya anotados se quedan. Podrás deshacerlo unos segundos.")
+        } else {
+            note = String(localized: "Deja de repetirse. Este cobro se borra; los siguientes ya anotados se quedan. No se puede deshacer.")
+        }
+        return TicketQuestion(title: String(localized: "¿Borrar este gasto fijo?"),
                               figure: ledgerAmount(for: expense, primary: CurrencyPreference.current),
                               name: expense.shownName,
-                              note: "Deja de repetirse. Este cobro se borra; los siguientes ya anotados se quedan. " + after)
+                              note: note)
     }
 
     /// Said once the sheet is down, for VoiceOver: the list's own focus change would cut it off
@@ -1108,7 +1144,7 @@ struct ExpenseEditorView: View {
         let sources = paymentSources.map(\.name)
         guard let entry = await QuickExpense.read(text, sources: sources),
               let parsed = AmountParser.parse(entry.amountText) else {
-            sentenceProblem = "No hay un monto en «\(text)». Escríbelo arriba."
+            sentenceProblem = String(localized: "No hay un monto en «\(text)». Escríbelo arriba.")
             sentence = ""
             amountFocused = true
             return
@@ -1233,7 +1269,7 @@ struct ExpenseEditorView: View {
                 UserCatalog.learnRule(sent: sent, name: name, category: categoryName,
                                       choseCategory: choseCategory, categoryIsTheirs: categoryIsTheirs)
             }
-            announceSaved("Cambios guardados")
+            announceSaved(String(localized: "Cambios guardados"))
         } else {
             // Left alone, the date is the moment of «Guardar», not of opening the sheet.
             if !dateChosen { date = AppClock.now }
@@ -1267,7 +1303,7 @@ struct ExpenseEditorView: View {
                 return
             }
             onSave?()
-            announceSaved("Anotado: " + summary)
+            announceSaved(String(localized: "Anotado: \(summary)"))
             // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.
             // After it's saved, so waiting for the place never holds the expense.
             if abs(date.timeIntervalSinceNow) < 15 * 60 {

@@ -1,0 +1,894 @@
+{
+  "sourceLanguage" : "es",
+  "strings" : {
+    "%@ abajo" : {
+      "comment" : "Green part inside «Vas $200 abajo…»: must appear word for word inside the «Vas %@ abajo» sentences (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ under"
+          }
+        }
+      }
+    },
+    "%@ arriba" : {
+      "comment" : "Red part inside «Vas $200 arriba…»: must appear word for word inside the «Vas %@ arriba» sentences (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ over"
+          }
+        }
+      }
+    },
+    "%@. En qué se va: %@" : {
+      "comment" : "VoiceOver for the «En qué se va» widget: the day's sentence, then the list «Food $2,450, Groceries $1,980 and Other $2,390» (WhereItGoesView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@. Where it goes: %2$@"
+          }
+        }
+      }
+    },
+    "Abre Al día en la hoja para anotar un gasto." : {
+      "comment" : "App Intent description (OpenAddExpenseIntent)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens Al día to the sheet for adding an expense."
+          }
+        }
+      }
+    },
+    "Abre Al día para anotar un gasto a mano." : {
+      "comment" : "Description of the «Anotar gasto» control in the controls gallery (AddExpenseControl)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens Al día to add an expense by hand."
+          }
+        }
+      }
+    },
+    "Abre Al día una vez" : {
+      "comment" : "Widgets before the app was ever opened (LockView, NeverOpenedBox)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Al día once"
+          }
+        }
+      }
+    },
+    "Abre Al día una vez para ver cuánto puedes gastar hoy" : {
+      "comment" : "VoiceOver for the widgets before the app was ever opened (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Al día once to see how much you can spend today"
+          }
+        }
+      }
+    },
+    "Abrir para anotar un gasto" : {
+      "comment" : "App Intent title (OpenAddExpenseIntent): the widget «+» and the Control Center control",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open to Add an Expense"
+          }
+        }
+      }
+    },
+    "Actualizado hace %lld días" : {
+      "comment" : "Widget note when the app hasn't refreshed it for several days (DayEntry.staleNote)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updated %lld days ago"
+          }
+        }
+      }
+    },
+    "Actualizado hace 1 día" : {
+      "comment" : "Widget note when the app hasn't refreshed it for a day (DayEntry.staleNote)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updated 1 day ago"
+          }
+        }
+      }
+    },
+    "Al día" : {
+      "comment" : "App name (brand, not translated): caption of the widget before the app was ever opened (DayState.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día"
+          }
+        }
+      }
+    },
+    "Al día %@ hoy" : {
+      "comment" : "Inline Lock Screen widget: what you can spend today, with «−» when over (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día %@ today"
+          }
+        }
+      }
+    },
+    "Al día · fijos pasan por %@" : {
+      "comment" : "Inline Lock Screen widget: fixed expenses go past the budget by this much (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día · fixed over by %@"
+          }
+        }
+      }
+    },
+    "Al día · fijos: todo el presupuesto" : {
+      "comment" : "Inline Lock Screen widget: fixed expenses take the whole budget (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día · fixed: whole budget"
+          }
+        }
+      }
+    },
+    "Al día · llevas %@" : {
+      "comment" : "Inline Lock Screen widget without a budget: spent this month (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día · %@ spent"
+          }
+        }
+      }
+    },
+    "Al día · te pasaste %@" : {
+      "comment" : "Inline Lock Screen widget past the budget (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día · over by %@"
+          }
+        }
+      }
+    },
+    "Al día · ábrela una vez" : {
+      "comment" : "Inline Lock Screen widget before the app was ever opened (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día · open it once"
+          }
+        }
+      }
+    },
+    "Anotar gasto" : {
+      "comment" : "Control Center control name and label, and VoiceOver label of the widget «+» (AddExpenseControl, AddButton)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add expense"
+          }
+        }
+      }
+    },
+    "Azul" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blue"
+          }
+        }
+      }
+    },
+    "Comida" : {
+      "comment" : "Sample category in the widget gallery preview (DayEntry.sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Food"
+          }
+        }
+      }
+    },
+    "Coral" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coral"
+          }
+        }
+      }
+    },
+    "Cuánto puedes gastar hoy. El mediano muestra la barra del mes o en qué se va: mantenlo presionado › Editar widget." : {
+      "comment" : "Home screen widget description in the gallery (HoyWidget)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much you can spend today. The medium one shows the month bar or where it goes: touch and hold › Edit Widget."
+          }
+        }
+      }
+    },
+    "Deberías llevar %@" : {
+      "comment" : "Widget: what you should have spent by today when you're ahead of pace; the amount is drawn brighter (keyText)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Should be at %@"
+          }
+        }
+      }
+    },
+    "Despensa" : {
+      "comment" : "Sample category in the widget gallery preview (DayEntry.sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groceries"
+          }
+        }
+      }
+    },
+    "Elige qué muestra el widget mediano." : {
+      "comment" : "Description of the widget's settings (HoyConfiguration)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose what the medium widget shows."
+          }
+        }
+      }
+    },
+    "En qué se va" : {
+      "comment" : "Option of the medium widget's «Mostrar» setting, and the caption over the category breakdown (HoyMediumLayout, WhereItGoesView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where it goes"
+          }
+        }
+      }
+    },
+    "Fijar presupuesto" : {
+      "comment" : "Widget box without a budget; tapping opens the budget sheet (SetBudgetBox)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set budget"
+          }
+        }
+      }
+    },
+    "Fijos %@" : {
+      "comment" : "Medium widget key: fixed expenses this month, uppercase (keyText)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed %@"
+          }
+        }
+      }
+    },
+    "Hoy" : {
+      "comment" : "Label of the Lock Screen ring gauge (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        }
+      }
+    },
+    "Hoy puedes gastar" : {
+      "comment" : "Widget name in the gallery and the widget intent's title; also the caption over today's figure (HoyWidget, HoyBloqueoWidget, HoyConfiguration, DayState.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can spend today"
+          }
+        }
+      }
+    },
+    "Hoy puedes gastar %@" : {
+      "comment" : "VoiceOver for the widgets on a normal day (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can spend %@ today"
+          }
+        }
+      }
+    },
+    "Hoy te pasaste" : {
+      "comment" : "Widget caption over the amount past today's limit (DayState.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Over today by"
+          }
+        }
+      }
+    },
+    "Hoy te pasaste por %@" : {
+      "comment" : "VoiceOver for the widgets past today's amount (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ over for today"
+          }
+        }
+      }
+    },
+    "Llevas %@" : {
+      "comment" : "Widget key under the bar, uppercase; the amount is drawn brighter (keyText)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent %@"
+          }
+        }
+      }
+    },
+    "Llevas %@ de %@" : {
+      "comment" : "Medium widget line under the day strip: spent this month of the budget; each amount drawn in its own color (HoyView.dataLine)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "Llevas %@ este mes, hoy %@" : {
+      "comment" : "VoiceOver for the widgets without a budget (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’ve spent %1$@ this month, %2$@ today"
+          }
+        }
+      }
+    },
+    "Llevas en %@" : {
+      "comment" : "Widget caption over this month's spending without a budget; %@ is the month name, «noviembre» (DayState.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent in %@"
+          }
+        }
+      }
+    },
+    "Lo que llevas hoy contra lo que puedes gastar hoy." : {
+      "comment" : "Lock Screen widget description in the gallery (HoyBloqueoWidget)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you’ve spent today against what you can spend today."
+          }
+        }
+      }
+    },
+    "Mostrar" : {
+      "comment" : "Widget setting (Edit Widget): what the medium widget shows (HoyConfiguration)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show"
+          }
+        }
+      }
+    },
+    "Ocre" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ochre"
+          }
+        }
+      }
+    },
+    "Oliva" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olive"
+          }
+        }
+      }
+    },
+    "Otras" : {
+      "comment" : "Slice with every category past the first four, in the «En qué se va» widget (WhereItGoesView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other"
+          }
+        }
+      }
+    },
+    "Para ver cuánto puedes gastar hoy" : {
+      "comment" : "Under «Abre Al día una vez» in the widget (NeverOpenedBox)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To see how much you can spend today"
+          }
+        }
+      }
+    },
+    "Para ver cuánto te queda" : {
+      "comment" : "Under «Fijar presupuesto» in the widget (SetBudgetBox)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To see what’s left"
+          }
+        }
+      }
+    },
+    "Podrías llevar %@" : {
+      "comment" : "Widget: what you could have spent by today when you're under pace; the amount is drawn brighter (keyText)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could be at %@"
+          }
+        }
+      }
+    },
+    "Presupuesto %@" : {
+      "comment" : "Medium widget key: the month's budget, uppercase (keyText)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget %@"
+          }
+        }
+      }
+    },
+    "Ritmo del presupuesto" : {
+      "comment" : "Option of the medium widget's «Mostrar» setting: the month bar (HoyMediumLayout.pace)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget pace"
+          }
+        }
+      }
+    },
+    "Rosa" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pink"
+          }
+        }
+      }
+    },
+    "Sin categoría" : {
+      "comment" : "Slice of expenses without a category, in the «En qué se va» widget (WhereItGoesView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No category"
+          }
+        }
+      }
+    },
+    "Sin categorías este mes" : {
+      "comment" : "«En qué se va» widget when nothing was spent this month (WhereItGoesView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No categories this month"
+          }
+        }
+      }
+    },
+    "Sin presupuesto · hoy %@" : {
+      "comment" : "Lock Screen rectangular widget without a budget: what was spent today (LockView)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No budget · %@ today"
+          }
+        }
+      }
+    },
+    "Te pasaste" : {
+      "comment" : "Widget caption over the amount past the budget; the line under the figure says «on your budget» (DayState.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Over by"
+          }
+        }
+      }
+    },
+    "Te pasaste del presupuesto por %@" : {
+      "comment" : "VoiceOver for the widgets past the budget (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ over budget"
+          }
+        }
+      }
+    },
+    "Transporte" : {
+      "comment" : "Sample category in the widget gallery preview (DayEntry.sample)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transportation"
+          }
+        }
+      }
+    },
+    "Turquesa" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turquoise"
+          }
+        }
+      }
+    },
+    "Tus fijos pasan el presupuesto por %@" : {
+      "comment" : "VoiceOver for the widgets when fixed expenses go past the budget (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your fixed expenses are %@ over budget"
+          }
+        }
+      }
+    },
+    "Tus fijos pasan por" : {
+      "comment" : "Widget caption over the amount fixed expenses go past the budget; the line under the figure says «on your budget» (DayState.caption)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed go over by"
+          }
+        }
+      }
+    },
+    "Tus fijos se llevan todo el presupuesto" : {
+      "comment" : "VoiceOver for the widgets when fixed expenses take the whole budget (DayState.spoken)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your fixed expenses take up the whole budget"
+          }
+        }
+      }
+    },
+    "Vas %@ abajo" : {
+      "comment" : "Small widget line; «%@ under» is drawn in green (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ under"
+          }
+        }
+      }
+    },
+    "Vas %@ abajo\ndel ritmo" : {
+      "comment" : "Medium widget, two lines on the right; keep the line break; «%@ under» is drawn in green (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ under\npace"
+          }
+        }
+      }
+    },
+    "Vas %@ abajo del ritmo" : {
+      "comment" : "Medium widget line under the day strip; «%@ under» is drawn in green (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ under pace"
+          }
+        }
+      }
+    },
+    "Vas %@ arriba" : {
+      "comment" : "Small widget line; «%@ over» is drawn in red (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ over"
+          }
+        }
+      }
+    },
+    "Vas %@ arriba\ndel ritmo" : {
+      "comment" : "Medium widget, two lines on the right; keep the line break; «%@ over» is drawn in red (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ over\npace"
+          }
+        }
+      }
+    },
+    "Vas %@ arriba del ritmo" : {
+      "comment" : "Medium widget line under the day strip; «%@ over» is drawn in red (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re %@ over pace"
+          }
+        }
+      }
+    },
+    "Vas al ritmo" : {
+      "comment" : "Widget line: spending is on pace for the month (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right on pace"
+          }
+        }
+      }
+    },
+    "Verde" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Green"
+          }
+        }
+      }
+    },
+    "Violeta" : {
+      "comment" : "Color name for a category or payment method, read by VoiceOver and shown in the Color menu (Theme.categoryColorNames)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Violet"
+          }
+        }
+      }
+    },
+    "abre" : {
+      "comment" : "Small word under the Lock Screen ring before the app was ever opened, uppercase (LockView.ringWord)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "open"
+          }
+        }
+      }
+    },
+    "del presupuesto" : {
+      "comment" : "Widget line under the figure past the budget: «Te pasaste / $500 / del presupuesto» (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on your budget"
+          }
+        }
+      }
+    },
+    "el presupuesto" : {
+      "comment" : "Widget line under the figure: «Tus fijos pasan por / $500 / el presupuesto» (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on your budget"
+          }
+        }
+      }
+    },
+    "hoy" : {
+      "comment" : "Small word under the Lock Screen ring: the figure is today's, uppercase (LockView.ringWord)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "today"
+          }
+        }
+      }
+    },
+    "hoy %@" : {
+      "comment" : "Widget line under the month's figure without a budget: spent today (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ today"
+          }
+        }
+      }
+    },
+    "mes" : {
+      "comment" : "Small word under the Lock Screen ring: the figure is this month's (no budget), uppercase (LockView.ringWord)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "month"
+          }
+        }
+      }
+    },
+    "tus fijos se llevan todo" : {
+      "comment" : "Widget line under $0 when fixed expenses take the whole budget (Verdict)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fixed take it all"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

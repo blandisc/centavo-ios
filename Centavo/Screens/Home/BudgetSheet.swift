@@ -102,9 +102,9 @@ struct BudgetSheet: View {
         // Taking the budget off empties the boleto and the day's amount: asked first (audit
         // 2026-11-02), like every other delete.
         .confirmsRemoval(isPresented: $confirmingRemoval, question: {
-            TicketQuestion(title: "¿Quitar el presupuesto?",
-                           note: "La pantalla principal deja de decir cuánto puedes gastar al día. Tus gastos no se tocan.",
-                           verb: "Quitar")
+            TicketQuestion(title: String(localized: "¿Quitar el presupuesto?"),
+                           note: String(localized: "La pantalla principal deja de decir cuánto puedes gastar al día. Tus gastos no se tocan."),
+                           verb: String(localized: "Quitar"))
         }) {
             // Written down with its day: the months before keep the budget they had.
             BudgetStore.noteChange(from: stored, to: "")
@@ -127,9 +127,11 @@ struct BudgetSheet: View {
 
     /// «$8,000 al mes · $267 por día», beside «Guardar»: what is about to be saved.
     private var summary: String {
-        guard let amount else { return "Falta el monto" }
-        guard let pace = pace(amount, .carry) else { return "\(whole(amount)) al mes" }
-        return "\(whole(amount)) al mes · \(whole(max(pace.dailyBase, 0))) por día"
+        guard let amount else { return String(localized: "Falta el monto") }
+        let monthly = whole(amount)
+        guard let pace = pace(amount, .carry) else { return String(localized: "\(monthly) al mes") }
+        let daily = whole(max(pace.dailyBase, 0))
+        return String(localized: "\(monthly) al mes · \(daily) por día")
     }
 
     /// What the number gives, while it is typed: a day's amount and what the month carries.

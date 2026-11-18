@@ -51,26 +51,43 @@ enum DayState {
 
     /// The widget in one sentence, for VoiceOver: the lock screen and the home screen alike.
     func spoken(_ money: Money) -> String {
+        let amount = money.whole(figure)
         switch self {
-        case .neverOpened: "Abre Al día una vez para ver cuánto puedes gastar hoy"
-        case .noBudget(let spent, let today): "Llevas \(money.whole(spent)) este mes, hoy \(money.whole(today))"
-        case .overBudget: "Te pasaste del presupuesto por \(money.whole(figure))"
-        case .overToday: "Hoy te pasaste por \(money.whole(figure))"
-        case .fixedOverBudget: figure > 0 ? "Tus fijos pasan el presupuesto por \(money.whole(figure))"
-            : "Tus fijos se llevan todo el presupuesto"
-        case .normal: "Hoy puedes gastar \(money.whole(figure))"
+        case .neverOpened:
+            return String(localized: "Abre Al día una vez para ver cuánto puedes gastar hoy")
+        case .noBudget(let spent, let today):
+            let month = money.whole(spent)
+            let day = money.whole(today)
+            return String(localized: "Llevas \(month) este mes, hoy \(day)")
+        case .overBudget:
+            return String(localized: "Te pasaste del presupuesto por \(amount)")
+        case .overToday:
+            return String(localized: "Hoy te pasaste por \(amount)")
+        case .fixedOverBudget:
+            if figure > 0 { return String(localized: "Tus fijos pasan el presupuesto por \(amount)") }
+            return String(localized: "Tus fijos se llevan todo el presupuesto")
+        case .normal:
+            return String(localized: "Hoy puedes gastar \(amount)")
         }
     }
 
     /// The caption over the big figure.
     var caption: String {
         switch self {
-        case .neverOpened: "Al día"
-        case .noBudget: "Llevas en " + Date.now.formatted(.dateTime.month(.wide).locale(Locale(identifier: "es_MX")))
-        case .overBudget: "Te pasaste"
-        case .overToday: "Hoy te pasaste"
-        case .fixedOverBudget: figure > 0 ? "Tus fijos pasan por" : "Hoy puedes gastar"
-        case .normal: "Hoy puedes gastar"
+        case .neverOpened:
+            return String(localized: "Al día")
+        case .noBudget:
+            let month = Date.now.formatted(.dateTime.month(.wide).locale(Locale.current))
+            return String(localized: "Llevas en \(month)")
+        case .overBudget:
+            return String(localized: "Te pasaste")
+        case .overToday:
+            return String(localized: "Hoy te pasaste")
+        case .fixedOverBudget:
+            if figure > 0 { return String(localized: "Tus fijos pasan por") }
+            return String(localized: "Hoy puedes gastar")
+        case .normal:
+            return String(localized: "Hoy puedes gastar")
         }
     }
 
@@ -178,7 +195,6 @@ struct Verdict: View {
     }
 
     private var content: Text? {
-        let tail = twoLines ? "\ndel ritmo" : ""
         switch state {
         case .neverOpened:
             return nil
@@ -187,20 +203,42 @@ struct Verdict: View {
         case .overBudget:
             return Text("del presupuesto").foregroundStyle(ink.muted)
         case .fixedOverBudget(let pace):
-            return Text((pace.fixedOverBudgetShown ?? 0) > 0 ? "el presupuesto" : "tus fijos se llevan todo")
-                .foregroundStyle(ink.muted)
+            if (pace.fixedOverBudgetShown ?? 0) > 0 { return Text("el presupuesto").foregroundStyle(ink.muted) }
+            return Text("tus fijos se llevan todo").foregroundStyle(ink.muted)
         case .overToday(let pace), .normal(let pace):
             guard let rhythm = pace.rhythm else {
                 if twoLines { return nil }
-                let lead = Text(pace.isAheadOfPace ? "Deberías llevar " : "Podrías llevar ").foregroundStyle(ink.muted)
-                return Text("\(lead)\(Text(money.whole(pace.expectedToDate)).foregroundStyle(ink.primary))")
+                let expected = money.whole(pace.expectedToDate)
+                let line: KeyLine = pace.isAheadOfPace ? .shouldBe : .couldBe
+                return keyText(line, expected, ink: ink)
             }
             if rhythm.magnitude < 1 { return Text("Vas al ritmo").foregroundStyle(ink.muted) }
-            let gap = Text("\(money.whole(rhythm.magnitude)) \(rhythm > 0 ? "abajo" : "arriba")")
-                .foregroundStyle(rhythm > 0 ? ink.good : ink.danger)
-            let rest = Text(endsWithRhythm ? " del ritmo" : tail).foregroundStyle(ink.muted)
-            return Text("\(Text("Vas ").foregroundStyle(ink.muted))\(gap)\(rest)")
+            return rhythmText(rhythm)
         }
+    }
+
+    /// «Vas $200 abajo del ritmo», one sentence per key, with «$200 abajo» in green (or
+    /// «arriba», in red) wherever the language puts it.
+    private func rhythmText(_ rhythm: Decimal) -> Text {
+        let amount = money.whole(rhythm.magnitude)
+        if rhythm > 0 {
+            let gap = String(localized: "\(amount) abajo")
+            return tinted(underSentence(amount), ink.muted, [Tint(text: gap, color: ink.good)])
+        }
+        let gap = String(localized: "\(amount) arriba")
+        return tinted(overSentence(amount), ink.muted, [Tint(text: gap, color: ink.danger)])
+    }
+
+    private func underSentence(_ amount: String) -> String {
+        if endsWithRhythm { return String(localized: "Vas \(amount) abajo del ritmo") }
+        if twoLines { return String(localized: "Vas \(amount) abajo\ndel ritmo") }
+        return String(localized: "Vas \(amount) abajo")
+    }
+
+    private func overSentence(_ amount: String) -> String {
+        if endsWithRhythm { return String(localized: "Vas \(amount) arriba del ritmo") }
+        if twoLines { return String(localized: "Vas \(amount) arriba\ndel ritmo") }
+        return String(localized: "Vas \(amount) arriba")
     }
 
 }
@@ -344,9 +382,44 @@ struct WidgetHatch: Shape {
     }
 }
 
-/// «LLEVAS $8,140»: a label in grey and its figure in ink.
-func keyText(_ label: String, _ value: String, ink: Ink) -> Text {
-    Text("\(Text(label + " ").foregroundStyle(ink.muted))\(Text(value).foregroundStyle(ink.primary))")
+/// «LLEVAS $8,140»: the whole sentence in grey and its figure in ink (one key per sentence).
+func keyText(_ line: KeyLine, _ value: String, ink: Ink) -> Text {
+    let sentence: String
+    switch line {
+    case .spent: sentence = String(localized: "Llevas \(value)")
+    case .fixed: sentence = String(localized: "Fijos \(value)")
+    case .budget: sentence = String(localized: "Presupuesto \(value)")
+    case .shouldBe: sentence = String(localized: "Deberías llevar \(value)")
+    case .couldBe: sentence = String(localized: "Podrías llevar \(value)")
+    }
+    return tinted(sentence, ink.muted, [Tint(text: value, color: ink.primary)])
+}
+
+/// Which `keyText` line: each one is a whole sentence in the catalog («Llevas $8,140»).
+enum KeyLine {
+    case spent, fixed, budget, shouldBe, couldBe
+}
+
+/// One part of a sentence drawn in its own color (`tinted`).
+struct Tint {
+    let text: String
+    let color: Color
+    /// Look for it from the end: for a second figure that may print the same as the first.
+    var fromEnd = false
+}
+
+/// A whole sentence from the catalog in `base`, with each of `tints` (which come from inside
+/// it) in its color, wherever the language put them. A tint that isn't found stays in `base`.
+func tinted(_ sentence: String, _ base: Color, _ tints: [Tint]) -> Text {
+    var attributed = AttributedString(sentence)
+    attributed.foregroundColor = base
+    for tint in tints {
+        let options: String.CompareOptions = tint.fromEnd ? [.backwards] : []
+        if let range = attributed.range(of: tint.text, options: options) {
+            attributed[range].foregroundColor = tint.color
+        }
+    }
+    return Text(attributed)
 }
 
 /// The brass «+» that opens «Anotar gasto» in the app.
@@ -397,7 +470,8 @@ extension DayEntry {
     /// «Actualizado hace X», only once what the app left is a day old or more.
     var staleNote: String? {
         guard let days = snapshot?.daysOld(at: date) else { return nil }
-        return days == 1 ? "Actualizado hace 1 día" : "Actualizado hace \(days) días"
+        if days == 1 { return String(localized: "Actualizado hace 1 día") }
+        return String(localized: "Actualizado hace \(days) días")
     }
 
     /// The widget in one sentence for VoiceOver, with how old it is when it is old.
@@ -412,7 +486,8 @@ struct NeverOpenedBox: View {
     var subtitle = false
 
     var body: some View {
-        TicketBox(title: "Abre Al día una vez", detail: subtitle ? "Para ver cuánto puedes gastar hoy" : nil, ink: ink)
+        let detail: String? = subtitle ? String(localized: "Para ver cuánto puedes gastar hoy") : nil
+        return TicketBox(title: String(localized: "Abre Al día una vez"), detail: detail, ink: ink)
     }
 }
 
@@ -422,7 +497,8 @@ struct SetBudgetBox: View {
     var subtitle = false
 
     var body: some View {
-        TicketBox(title: "Fijar presupuesto", detail: subtitle ? "Para ver cuánto te queda" : nil, ink: ink)
+        let detail: String? = subtitle ? String(localized: "Para ver cuánto te queda") : nil
+        return TicketBox(title: String(localized: "Fijar presupuesto"), detail: detail, ink: ink)
     }
 }
 

@@ -14,10 +14,12 @@ struct ShortcutInstallView: View {
 
     /// iOS 27: the «Notificación» automation replaces the «Transacción» one; with both, every
     /// purchase arrives twice, each with its own text (2026-11-02, second audit).
-    nonisolated static let removeOldAutomation = "Si ya tenías la automatización de «Transacción» con Al día, bórrala en Atajos: "
-        + "con las dos, cada compra se anotaría dos veces."
+    nonisolated static let removeOldAutomation = String(
+        localized: "Si ya tenías la automatización de «Transacción» con Al día, bórrala en Atajos: con las dos, cada compra se anotaría dos veces.")
 
-    private static let file = Bundle.main.url(forResource: "Registrar aviso de Wallet", withExtension: "shortcut")
+    /// The shortcut's own name, from the file: Atajos shows it as it is, in any language.
+    private static let shortcutName: String = "Registrar aviso de Wallet"
+    private static let file = Bundle.main.url(forResource: shortcutName, withExtension: "shortcut")
 
     var body: some View {
         ScrollView {
@@ -51,7 +53,7 @@ struct ShortcutInstallView: View {
                 .ticketPanel()
 
                 if let file = Self.file {
-                    ShareLink(item: file, preview: SharePreview("Registrar aviso de Wallet")) {
+                    ShareLink(item: file, preview: SharePreview(Self.shortcutName)) {
                         PrimaryButtonLabel("Agregar a Atajos", systemImage: "plus.square.on.square")
                     }
                     .ticketProminent()
@@ -68,7 +70,7 @@ struct ShortcutInstallView: View {
         }
     }
 
-    private func instruction(_ number: String, _ text: String) -> some View {
+    private func instruction(_ number: String, _ text: LocalizedStringResource) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
             Text(number)
                 .foregroundStyle(Theme.brass)

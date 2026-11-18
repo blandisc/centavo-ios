@@ -25,6 +25,11 @@ settings:
     # reasonable time»). Any expression over 300 ms is warned about, and `Tools/verify.sh` fails
     # on that warning, so it is split before it is pushed.
     OTHER_SWIFT_FLAGS: "$(inherited) -Xfrontend -warn-long-expression-type-checking=300"
+    # English too (2026-11-18, docs/DECISIONS.md): every literal the person sees is extracted
+    # at build time (the `.stringsdata` that `Tools/check-l10n.py` reads), and the String
+    # Catalogs (`*.xcstrings`, source language Spanish) hold the English.
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
 targets:
   Centavo:
     type: application
@@ -37,6 +42,10 @@ targets:
       - target: CentavoWidgets
     scheme:
       testTargets: [CentavoTests, CentavoUITests]
+      # The tests run in Spanish (Mexico) whatever the Mac's language: they assert the Spanish
+      # copy byte for byte. The UI tests also pass their own -AppleLanguages / -AppleLocale.
+      language: es
+      region: MX
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blandisc.centavo
@@ -77,6 +86,8 @@ targets:
       path: CentavoWidgets/Info.plist
       properties:
         CFBundleDisplayName: Al día
+        # Spanish first; English from CentavoWidgets/Localizable.xcstrings (2026-11-18).
+        CFBundleLocalizations: [es, en]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CentavoCommit: $(CENTAVO_COMMIT)

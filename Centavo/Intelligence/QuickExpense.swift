@@ -12,8 +12,11 @@ enum QuickExpense {
     static func spokenDay(_ date: Date, now: Date = AppClock.now, calendar: Calendar = .current) -> String? {
         if calendar.isDate(date, inSameDayAs: now) { return nil }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
-           calendar.isDate(date, inSameDayAs: yesterday) { return "ayer" }
-        return "el " + date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated)
-            .locale(Locale(identifier: "es_MX")))
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            return String(localized: "ayer", comment: "Siri: the day of an expense, after a comma")
+        }
+        // In the iPhone's language: it is only said, never read back.
+        let shown = date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).locale(.current))
+        return String(localized: "el \(shown)", comment: "Siri: the day of an expense, e.g. «el viernes 16 de oct.»")
     }
 }

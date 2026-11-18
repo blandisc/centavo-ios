@@ -24,9 +24,19 @@ struct AmountInputField: View {
     /// figure; the screen decides what to do with the rest (2026-11-18).
     var onPaste: ((ParsedAmount) -> Void)?
 
-    init(_ title: String, text: Binding<String>, prompt: String = "0", size: Size = .regular,
+    /// A literal title (what VoiceOver calls the field): looked up in the catalog. The prompt
+    /// is a figure («0.00») and is shown as it is.
+    init(_ title: LocalizedStringResource, text: Binding<String>, prompt: String = "0", size: Size = .regular,
          identifier: String? = nil, onPaste: ((ParsedAmount) -> Void)? = nil) {
-        self.title = title
+        self.init(String(localized: title), text: text, prompt: prompt, size: size,
+                  identifier: identifier, onPaste: onPaste)
+    }
+
+    /// A title made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, text: Binding<String>, prompt: String = "0", size: Size = .regular,
+                            identifier: String? = nil, onPaste: ((ParsedAmount) -> Void)? = nil) {
+        self.title = String(title)
         self._text = text
         self.prompt = prompt
         self.size = size
@@ -56,8 +66,16 @@ struct TicketTextField: View {
     var prompt: String
     var identifier: String?
 
-    init(_ title: String, text: Binding<String>, prompt: String, identifier: String? = nil) {
-        self.title = title
+    /// A literal title (what VoiceOver calls the field): looked up in the catalog. The prompt
+    /// is shown as it is: pass `String(localized: "…")` when it is words, not a name.
+    init(_ title: LocalizedStringResource, text: Binding<String>, prompt: String, identifier: String? = nil) {
+        self.init(String(localized: title), text: text, prompt: prompt, identifier: identifier)
+    }
+
+    /// A title made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, text: Binding<String>, prompt: String, identifier: String? = nil) {
+        self.title = String(title)
         self._text = text
         self.prompt = prompt
         self.identifier = identifier

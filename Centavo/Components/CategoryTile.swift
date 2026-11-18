@@ -19,6 +19,28 @@ struct CategoryTile: View {
     var dimmed = false
     var twoLines = false
 
+    /// A literal name («Nueva»): looked up in the catalog.
+    init(name: LocalizedStringResource, icon: String, color: Color = Theme.brass, selected: Bool = false,
+         isAction: Bool = false, badge: String? = nil, dimmed: Bool = false, twoLines: Bool = false) {
+        self.init(name: String(localized: name), icon: icon, color: color, selected: selected,
+                  isAction: isAction, badge: badge, dimmed: dimmed, twoLines: twoLines)
+    }
+
+    /// A name made at run time (the person's category or card), shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(name: S, icon: String, color: Color = Theme.brass, selected: Bool = false,
+                            isAction: Bool = false, badge: String? = nil, dimmed: Bool = false,
+                            twoLines: Bool = false) {
+        self.name = String(name)
+        self.icon = icon
+        self.color = color
+        self.selected = selected
+        self.isAction = isAction
+        self.badge = badge
+        self.dimmed = dimmed
+        self.twoLines = twoLines
+    }
+
     @ScaledMetric(relativeTo: .body) private var symbolBox = Theme.Size.categorySymbol
     @ScaledMetric(relativeTo: .body) private var tallHeight = Theme.Size.catalogTileHeight
     @ScaledMetric(relativeTo: .body) private var shortHeight = Theme.Size.categoryTile

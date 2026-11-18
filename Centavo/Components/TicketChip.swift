@@ -10,9 +10,18 @@ struct TicketChip: View {
     var identifier: String?
     let action: () -> Void
 
-    init(_ title: String, systemImage: String? = nil, selected: Bool = false, identifier: String? = nil,
-         action: @escaping () -> Void) {
-        self.title = title
+    /// A literal: looked up in the catalog.
+    init(_ title: LocalizedStringResource, systemImage: String? = nil, selected: Bool = false,
+         identifier: String? = nil, action: @escaping () -> Void) {
+        self.init(String(localized: title), systemImage: systemImage, selected: selected,
+                  identifier: identifier, action: action)
+    }
+
+    /// A suggestion made at run time (a merchant, a category), shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ title: S, systemImage: String? = nil, selected: Bool = false,
+                            identifier: String? = nil, action: @escaping () -> Void) {
+        self.title = String(title)
         self.systemImage = systemImage
         self.selected = selected
         self.identifier = identifier

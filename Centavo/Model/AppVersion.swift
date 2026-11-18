@@ -12,4 +12,16 @@ enum AppVersion {
         let commit = info["CentavoCommit"] as? String
         return (["Al día \(version)", "compilación \(build)"] + (commit.map { [$0] } ?? [])).joined(separator: " · ")
     }
+
+    /// The same line in the phone's language, for «Ajustes». `line` stays as it is: it goes
+    /// into every backup (`writtenBy`).
+    static var shownLine: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info["CFBundleVersion"] as? String ?? "—"
+        guard let commit = info["CentavoCommit"] as? String else {
+            return String(localized: "Al día \(version) · compilación \(build)")
+        }
+        return String(localized: "Al día \(version) · compilación \(build) · \(commit)")
+    }
 }

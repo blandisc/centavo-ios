@@ -92,7 +92,9 @@ struct OnboardingView: View {
             // The step bar stays put while the pages slide under it, and only fills its next part
             // (audit 2026-11-02: it slid away with each page).
             .safeAreaInset(edge: .top, spacing: Theme.Space.none) {
-                StepBar(step: min(page + 1, steps), of: steps, label: Self.labels[min(page, Self.labels.count - 1)])
+                let label: String = Self.labels[min(page, Self.labels.count - 1)]
+                let current: Int = min(page + 1, steps)
+                StepBar(step: current, of: steps, label: label)
                     .padding(.horizontal, Theme.Space.screen)
                     .padding(.top, Theme.Space.xl)
                     .background(Theme.background)
@@ -156,14 +158,19 @@ struct OnboardingView: View {
         .background(Theme.background)
     }
 
-    private var setUpTitle: String { ShortcutsVersion.isIOS27 ? "Agregar a Atajos" : "Configurar ahora" }
+    private var setUpTitle: String {
+        if ShortcutsVersion.isIOS27 { return String(localized: "Agregar a Atajos") }
+        return String(localized: "Configurar ahora")
+    }
 
     private var primaryTitle: String {
         switch page {
-        case 0: "Empezar"
-        case 3: setUpTitle
-        case pages - 1: thenGuide ? setUpTitle : "Ver mi día"
-        default: "Continuar"
+        case 0: return String(localized: "Empezar")
+        case 3: return setUpTitle
+        case pages - 1:
+            if thenGuide { return setUpTitle }
+            return String(localized: "Ver mi día")
+        default: return String(localized: "Continuar")
         }
     }
 
@@ -183,7 +190,10 @@ struct OnboardingView: View {
     }
 
     /// Each page's name on the step bar; the end is «Listo».
-    private static let labels = ["Bienvenida", "Tu mes", "Gastos fijos", "Conecta Wallet", "Listo"]
+    private static let labels: [String] = [
+        String(localized: "Bienvenida"), String(localized: "Tu mes"), String(localized: "Gastos fijos"),
+        String(localized: "Conecta Wallet"), String(localized: "Listo"),
+    ]
 
     private func go(to target: Int) {
         guard !moving, (0..<pages).contains(target), target != page else { return }
@@ -218,14 +228,20 @@ struct OnboardingView: View {
                 .onboardingRise(2)
             // One line that doesn't lose cash (user research, 2026-10-29).
             // iOS 26's automation fires only for payments made by holding the iPhone up.
-            Text(ShortcutsVersion.isIOS27
-                 ? "Cada compra con Apple Pay se anota sola; lo demás, con «+». Tú solo miras la cifra."
-                 : "Cada pago que haces acercando el iPhone se anota solo; lo demás, con «+». Tú solo miras la cifra.")
+            Text(welcomeLine)
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .onboardingRise(3)
         }
+    }
+
+    /// iOS 26's automation fires only for payments made by holding the iPhone up.
+    private var welcomeLine: String {
+        if ShortcutsVersion.isIOS27 {
+            return String(localized: "Cada compra con Apple Pay se anota sola; lo demás, con «+». Tú solo miras la cifra.")
+        }
+        return String(localized: "Cada pago que haces acercando el iPhone se anota solo; lo demás, con «+». Tú solo miras la cifra.")
     }
 
     private var budgetPage: some View {
@@ -306,8 +322,7 @@ struct OnboardingView: View {
         if let pace, let budget, pace.dailyBase > 0 {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
-                    Text(fixedTotal > 0 ? "(\(whole(budget)) − fijos) ÷ \(pace.daysInMonth) días ="
-                                        : "\(whole(budget)) ÷ \(pace.daysInMonth) días =")
+                    Text(dailySum(budget: budget, days: pace.daysInMonth))
                         .font(.ticket(.footnote))
                         .foregroundStyle(Theme.muted)
                     Text(whole(pace.dailyBase))
@@ -332,20 +347,32 @@ struct OnboardingView: View {
         }
     }
 
+    /// The sum over the daily figure: «(budget − fijos) ÷ N días =», or without fixed expenses.
+    private func dailySum(budget: Decimal, days: Int) -> String {
+        let amount = whole(budget)
+        if fixedTotal > 0 { return String(localized: "(\(amount) − fijos) ÷ \(days) días =") }
+        return String(localized: "\(amount) ÷ \(days) días =")
+    }
+
     private var fixedTotal: Decimal { fixed.reduce(0) { $0 + $1.amount } }
 
     /// Common fixed expenses not added yet: a tap fills the name and asks for the amount.
     private var fixedSuggestions: [String] {
         let taken = Set(fixed.map { $0.name.lowercased() })
-        return ["Renta", "Luz", "Internet", "Celular", "Netflix", "Spotify", "Gimnasio", "Agua"]
-            .filter { !taken.contains($0.lowercased()) }
+        return Self.commonFixed.filter { !taken.contains($0.lowercased()) }
     }
+
+    /// Shown in the person's language: a tap only fills the name, which they can change.
+    private static let commonFixed: [String] = [
+        String(localized: "Renta"), String(localized: "Luz"), "Internet", String(localized: "Celular"),
+        "Netflix", "Spotify", String(localized: "Gimnasio"), String(localized: "Agua"),
+    ]
 
     private var fixedPage: some View {
         page(title: "¿Qué pagas cada mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 // Without a budget there is nothing to set them apart from (2026-11-18).
-                Text(budget != nil ? "Se anotan solos cada mes y se apartan de lo que puedes gastar." : "Se anotan solos cada mes.")
+                Text(fixedIntro)
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -427,6 +454,11 @@ struct OnboardingView: View {
         }
     }
 
+    private var fixedIntro: String {
+        if budget != nil { return String(localized: "Se anotan solos cada mes y se apartan de lo que puedes gastar.") }
+        return String(localized: "Se anotan solos cada mes.")
+    }
+
     /// What the fixed expenses leave each day, or by how much they pass the budget: never a bare $0.
     @ViewBuilder private var fixedEffect: some View {
         if let pace, let budget {
@@ -452,9 +484,7 @@ struct OnboardingView: View {
         page(title: "¿Y si cada pago se anota solo?") {
             WalletChain()
                 .onboardingRise(2)
-            Text(ShortcutsVersion.isIOS27
-                 ? "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: lo agregas una vez y lo enciendes."
-                 : "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos.")
+            Text(walletLine)
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -464,6 +494,13 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onboardingRise(4)
         }
+    }
+
+    private var walletLine: String {
+        if ShortcutsVersion.isIOS27 {
+            return String(localized: "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: lo agregas una vez y lo enciendes.")
+        }
+        return String(localized: "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos.")
     }
 
     /// The end: «Listo», and what each day gets — never «Hoy puedes gastar», which mid-month
@@ -516,12 +553,12 @@ struct OnboardingView: View {
         return (figure ? Self.figureLines : Self.noFigureLines) + Self.alwaysLines
     }
 
-    static let figureLines = [
-        "La cifra en latón es lo que puedes gastar hoy.",
-        "Lo que te sobre pasa a mañana.",
+    static let figureLines: [String] = [
+        String(localized: "La cifra en latón es lo que puedes gastar hoy."),
+        String(localized: "Lo que te sobre pasa a mañana."),
     ]
-    static let noFigureLines = ["Cada gasto que anotes aparece en «Hoy», con el total del mes."]
-    static let alwaysLines = ["¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta»."]
+    static let noFigureLines: [String] = [String(localized: "Cada gasto que anotes aparece en «Hoy», con el total del mes.")]
+    static let alwaysLines: [String] = [String(localized: "¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta».")]
 
     @ViewBuilder private var doneFigure: some View {
         if let pace, let budget {
@@ -530,7 +567,7 @@ struct OnboardingView: View {
                     Text("Cada día tienes").ticketCaption(strong: true)
                     MoneyCountUp(value: wholeDecimal(pace.dailyBase), currency: currency)
                         .accessibilityIdentifier("bienvenida-cada-dia")
-                    Text(fixedTotal > 0 ? "Presupuesto \(whole(budget)) · fijos \(whole(fixedTotal))" : "Presupuesto \(whole(budget))")
+                    Text(doneSum(budget: budget))
                         .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
@@ -548,6 +585,16 @@ struct OnboardingView: View {
         }
     }
 
+    /// «Presupuesto $8,000 · fijos $2,000», or the budget alone.
+    private func doneSum(budget: Decimal) -> String {
+        let total = whole(budget)
+        if fixedTotal > 0 {
+            let reserved = whole(fixedTotal)
+            return String(localized: "Presupuesto \(total) · fijos \(reserved)")
+        }
+        return String(localized: "Presupuesto \(total)")
+    }
+
     private func wholeDecimal(_ value: Decimal) -> Decimal {
         var input = value, output = Decimal()
         NSDecimalRound(&output, &input, 0, .down)
@@ -558,7 +605,7 @@ struct OnboardingView: View {
 
     /// Every step's shell under the step bar: the question as the title, then the content, each
     /// block rising in after the one above it.
-    private func page<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func page<Content: View>(title: LocalizedStringResource, @ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 Text(title)
@@ -594,7 +641,7 @@ struct OnboardingView: View {
                 // half by the line break (2026-11-18).
                 AdaptiveStack(spacing: Theme.Space.xs) {
                     Text(item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2))))
-                    Text(typeSize.isAccessibilitySize ? "día \(item.day)" : "· día \(item.day)")
+                    Text(dayText(item.day))
                 }
                 .font(.ticket(.footnote))
                 .foregroundStyle(Theme.muted)
@@ -604,7 +651,8 @@ struct OnboardingView: View {
                 withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
                     fixed.removeAll { $0.id == item.id }
                 }
-                say("Gasto fijo quitado: \(item.name).")
+                let name = item.name
+                say(String(localized: "Gasto fijo quitado: \(name)."))
             }
             .labelStyle(.iconOnly)
             .foregroundStyle(Theme.faint)
@@ -612,6 +660,12 @@ struct OnboardingView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, Theme.Space.xxs)
+    }
+
+    /// «día 15», after the amount with «·», or on its own line with accessibility text.
+    private func dayText(_ day: Int) -> String {
+        if typeSize.isAccessibilitySize { return String(localized: "día \(day)") }
+        return String(localized: "· día \(day)")
     }
 
     // MARK: Saving
@@ -642,7 +696,9 @@ struct OnboardingView: View {
         focused = nil
         // The new row lands under the calendar, out of VoiceOver's way: said (2026-11-18).
         let amount = item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))
-        say("Gasto fijo agregado: \(item.name), \(amount), el día \(item.day).")
+        let name = item.name
+        let day = item.day
+        say(String(localized: "Gasto fijo agregado: \(name), \(amount), el día \(day)."))
     }
 
     /// Spoken with VoiceOver on only.

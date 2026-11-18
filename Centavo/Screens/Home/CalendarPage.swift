@@ -28,6 +28,12 @@ struct CalendarPage: View {
 
     private static let columns = 7
 
+    /// What a tap on a day does, for VoiceOver; a day that has not come says nothing.
+    private static func hint(for day: MonthCalendar.Day) -> String {
+        if day.state == .future { return "" }
+        return String(localized: "Muestra los gastos de ese día")
+    }
+
     private var rows: [[MonthCalendar.Cell]] {
         var cells = model.cells
         while cells.count % Self.columns != 0 { cells.append(.padding) }
@@ -66,7 +72,7 @@ struct CalendarPage: View {
                                 // A day that has not come has nothing to show.
                                 .disabled(day.state == .future)
                                 .accessibilityAddTraits(selectedDay == day.number ? .isSelected : [])
-                                .accessibilityHint(day.state == .future ? "" : "Muestra los gastos de ese día")
+                                .accessibilityHint(Self.hint(for: day))
                             }
                         }
                     }
@@ -105,12 +111,23 @@ private struct DayCell: View {
         }
     }
 
-    private var spokenState: String {
+    /// «Día 12, hoy: gastaste $310.00», one whole sentence for each case (the catalog).
+    private var spoken: String {
+        let number = day.number
         switch day.state {
-        case .future: "todavía no llega"
-        case .empty: "sin gastos"
-        case .refund: "devolvieron \(day.total.magnitude.formatted(currencyStyle(currency)))"
-        case .spent: "gastaste \(day.total.formatted(currencyStyle(currency)))"
+        case .future:
+            return String(localized: "Día \(number): todavía no llega")
+        case .empty:
+            if day.isToday { return String(localized: "Día \(number), hoy: sin gastos") }
+            return String(localized: "Día \(number): sin gastos")
+        case .refund:
+            let amount = day.total.magnitude.formatted(currencyStyle(currency))
+            if day.isToday { return String(localized: "Día \(number), hoy: devolvieron \(amount)") }
+            return String(localized: "Día \(number): devolvieron \(amount)")
+        case .spent:
+            let amount = day.total.formatted(currencyStyle(currency))
+            if day.isToday { return String(localized: "Día \(number), hoy: gastaste \(amount)") }
+            return String(localized: "Día \(number): gastaste \(amount)")
         }
     }
 
@@ -150,6 +167,6 @@ private struct DayCell: View {
                 }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Día \(day.number)\(day.isToday ? ", hoy" : ""): \(spokenState)")
+            .accessibilityLabel(spoken)
     }
 }

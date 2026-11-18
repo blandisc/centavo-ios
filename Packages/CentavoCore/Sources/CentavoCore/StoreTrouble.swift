@@ -41,15 +41,20 @@ public enum StoreTrouble: Equatable, Sendable {
         }
     }
 
-    public var title: String { "Al día no pudo abrir tus gastos" }
+    public var title: String {
+        String(localized: "Al día no pudo abrir tus gastos", bundle: .main,
+               comment: "Título de la pantalla cuando el almacén de gastos no abre")
+    }
 
     /// What happened and what to do, without promising what isn't known.
     public var explanation: String {
         switch self {
         case .noSpace:
-            "El iPhone casi no tiene espacio libre, y sin espacio Al día no puede abrir tus gastos. Libera espacio en Ajustes › General › Almacenamiento del iPhone y toca «Intentar de nuevo». Tus gastos deberían seguir en este iPhone. No desinstales la app: perderías tus gastos."
+            String(localized: "El iPhone casi no tiene espacio libre, y sin espacio Al día no puede abrir tus gastos. Libera espacio en Ajustes › General › Almacenamiento del iPhone y toca «Intentar de nuevo». Tus gastos deberían seguir en este iPhone. No desinstales la app: perderías tus gastos.",
+                   bundle: .main, comment: "Pantalla de error al abrir los gastos: el iPhone no tiene espacio")
         case .unknown:
-            "Tus gastos deberían seguir en este iPhone. Toca «Intentar de nuevo». Si sigue igual, cierra Al día por completo y ábrela otra vez, o reinicia el iPhone. No desinstales la app: perderías tus gastos."
+            String(localized: "Tus gastos deberían seguir en este iPhone. Toca «Intentar de nuevo». Si sigue igual, cierra Al día por completo y ábrela otra vez, o reinicia el iPhone. No desinstales la app: perderías tus gastos.",
+                   bundle: .main, comment: "Pantalla de error al abrir los gastos: causa desconocida")
         }
     }
 

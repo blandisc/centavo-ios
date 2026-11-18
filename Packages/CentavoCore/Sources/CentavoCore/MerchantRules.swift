@@ -101,8 +101,10 @@ public enum MerchantRules {
     public static func matching(_ rules: [MerchantRule], query: String) -> [MerchantRule] {
         let wanted = MerchantKey.normalized(query)
         guard !wanted.isEmpty else { return rules }
+        let uncategorized = String(localized: "Sin categoría", bundle: .main,
+                                   comment: "Lo que dice una regla que deja el gasto sin categoría")
         return rules.filter { rule in
-            let filed = rule.category ?? (rule.goesUncategorized ? "Sin categoría" : nil)
+            let filed = rule.category ?? (rule.goesUncategorized ? uncategorized : nil)
             return [rule.sent, rule.written, rule.name, filed]
                 .contains { $0.map { MerchantKey.normalized($0).contains(wanted) } ?? false }
         }

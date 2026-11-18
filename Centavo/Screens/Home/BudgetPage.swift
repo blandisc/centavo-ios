@@ -157,36 +157,75 @@ struct BudgetPage: View {
     }
 
     /// What VoiceOver reads for the ticket, sentence by sentence (one expression was too much
-    /// for the compiler).
+    /// for the compiler). Each sentence is whole, for the catalog.
     private func spokenTicket(_ pace: BudgetPace, share: Double, isOver: Bool, remainingText: String) -> String {
-        var parts = ["Presupuesto de \(money(pace.budget)). Has gastado \(money(pace.spent)), "
-                     + "el \(share.formatted(.percent.precision(.fractionLength(0))))."]
+        let budgetText = money(pace.budget)
+        let spentText = money(pace.spent)
+        let shareText = share.formatted(.percent.precision(.fractionLength(0)))
+        var parts = [String(localized: "Presupuesto de \(budgetText). Has gastado \(spentText), el \(shareText).")]
         if isOver {
-            parts.append("Te pasaste por \(wholeMoney(pace.overspentShown)).")
+            let over = wholeMoney(pace.overspentShown)
+            parts.append(String(localized: "Te pasaste por \(over)."))
         } else if pace.remaining >= 0 {
             // Fixed expenses past the budget, charged: below zero without overspending; the
             // fixed sentence below says it.
-            parts.append((isCurrentMonth ? "Te quedan " : "Te quedaron ") + "\(remainingText).")
+            if isCurrentMonth {
+                parts.append(String(localized: "Te quedan \(remainingText)."))
+            } else {
+                parts.append(String(localized: "Te quedaron \(remainingText)."))
+            }
         }
         if isCurrentMonth {
-            parts.append("A hoy \(pace.isAheadOfPace ? "deberías" : "podrías") llevar \(wholeMoney(pace.expectedShown)).")
-            if pace.reserved > 0 { parts.append("Se apartan \(money(pace.reserved)) de gastos fijos por venir.") }
-            if let start = pace.countsFrom {
-                let day = start.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_MX")))
-                parts.append("Tu presupuesto cuenta desde el \(day).")
-            }
-            if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
-                parts.append("Vas \(wholeMoney(rhythm.magnitude)) " + (rhythm > 0 ? "abajo" : "arriba") + " del ritmo.")
-            }
-            if !isOver, let excess = pace.fixedOverBudgetShown {
-                parts.append(excess > 0 ? "Tus fijos pasan el presupuesto por \(wholeMoney(excess))."
-                             : "Tus fijos se llevan todo el presupuesto.")
-            } else if !isOver {
-                parts.append(pace.isOverToday ? "Hoy te pasaste por \(wholeMoney(pace.dailyAllowance.magnitude))."
-                             : "Hoy puedes gastar \(wholeMoney(pace.dailyAllowance)).")
+            parts.append(contentsOf: spokenToday(pace, isOver: isOver))
+        }
+        if outside != 0 {
+            let outsideText = money(outside)
+            parts.append(String(localized: "Fuera del presupuesto, \(outsideText)."))
+        }
+        return parts.joined(separator: " ")
+    }
+
+    /// The sentences only this month has: the pace, what is set apart, and today.
+    private func spokenToday(_ pace: BudgetPace, isOver: Bool) -> [String] {
+        var parts: [String] = []
+        let expected = wholeMoney(pace.expectedShown)
+        if pace.isAheadOfPace {
+            parts.append(String(localized: "A hoy deberías llevar \(expected)."))
+        } else {
+            parts.append(String(localized: "A hoy podrías llevar \(expected)."))
+        }
+        if pace.reserved > 0 {
+            let reserved = money(pace.reserved)
+            parts.append(String(localized: "Se apartan \(reserved) de gastos fijos por venir."))
+        }
+        if let start = pace.countsFrom {
+            let day = start.formatted(.dateTime.day().month(.wide).locale(Locale.current))
+            parts.append(String(localized: "Tu presupuesto cuenta desde el \(day)."))
+        }
+        if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
+            let gap = wholeMoney(rhythm.magnitude)
+            if rhythm > 0 {
+                parts.append(String(localized: "Vas \(gap) abajo del ritmo."))
+            } else {
+                parts.append(String(localized: "Vas \(gap) arriba del ritmo."))
             }
         }
-        if outside != 0 { parts.append("Fuera del presupuesto, \(money(outside)).") }
-        return parts.joined(separator: " ")
+        if !isOver, let excess = pace.fixedOverBudgetShown {
+            if excess > 0 {
+                let excessText = wholeMoney(excess)
+                parts.append(String(localized: "Tus fijos pasan el presupuesto por \(excessText)."))
+            } else {
+                parts.append(String(localized: "Tus fijos se llevan todo el presupuesto."))
+            }
+        } else if !isOver {
+            if pace.isOverToday {
+                let over = wholeMoney(pace.dailyAllowance.magnitude)
+                parts.append(String(localized: "Hoy te pasaste por \(over)."))
+            } else {
+                let allowance = wholeMoney(pace.dailyAllowance)
+                parts.append(String(localized: "Hoy puedes gastar \(allowance)."))
+            }
+        }
+        return parts
     }
 }

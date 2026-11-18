@@ -37,7 +37,12 @@ struct DeleteLastExpenseIntent: AppIntent {
     @MainActor
     private func describe(_ expense: Expense) -> String {
         let code = ExpenseRecorder.spokenCurrency(expense.currencyMarker, primary: MonthStatus.primaryCurrency)
-        let day = QuickExpense.spokenDay(expense.date).map { ", de \($0)" } ?? ""
-        return "\(formatMoney(expense.amount, isoCode: code, label: code, main: CurrencyPreference.current)) en \(expense.shownName)\(day)"
+        let money = formatMoney(expense.amount, isoCode: code, label: code, main: CurrencyPreference.current)
+        let name = expense.shownName
+        if let day = QuickExpense.spokenDay(expense.date) {
+            return String(localized: "\(money) en \(name), de \(day)",
+                          comment: "Siri: the expense to delete, e.g. «$89.00 en Oxxo, de ayer»")
+        }
+        return String(localized: "\(money) en \(name)", comment: "Siri: the expense to delete, e.g. «$89.00 en Oxxo»")
     }
 }

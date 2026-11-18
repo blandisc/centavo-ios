@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Names something and gives it an icon: a new category, or a card or cash to pay with.
 struct LabeledIconSheet: View {
-    let title: String
-    let prompt: String
+    let title: LocalizedStringResource
+    let prompt: LocalizedStringResource
     let icons: [String]
     /// Names already taken, which cannot be used twice.
     let taken: [String]
@@ -42,6 +42,12 @@ struct LabeledIconSheet: View {
     @ScaledMetric(relativeTo: .body) private var iconColumn = Theme.Size.iconColumnWide
 
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
+    /// What the save bar says: what is missing, or the name that will be saved.
+    private var saveSummary: String {
+        if trimmed.isEmpty { return String(localized: "Falta el nombre") }
+        if isTaken { return String(localized: "Ya tienes una con ese nombre") }
+        return trimmed
+    }
     private var isTaken: Bool {
         taken.contains { UserCatalog.same($0, trimmed) && !UserCatalog.same($0, initial?.name ?? "") }
     }
@@ -138,7 +144,7 @@ struct LabeledIconSheet: View {
             .scrollDismissesKeyboard(.immediately)
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(title)
-            .saveBar(trimmed.isEmpty ? "Falta el nombre" : isTaken ? "Ya tienes una con ese nombre" : trimmed,
+            .saveBar(saveSummary,
                      enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
                 let item = LabeledIcon(name: trimmed, icon: icon.isEmpty ? (icons.first ?? "tag") : icon)
                 if let commit {
@@ -167,10 +173,7 @@ struct LabeledIconSheet: View {
             }
             .problemAlert("No se cambió el nombre", isPresented: $saveFailed)
             .confirmsRemoval(isPresented: $confirmingDelete, question: {
-                deleteQuestion ?? TicketQuestion(
-                    title: colorKind == .source ? "¿Borrar esta forma de pago?" : "¿Borrar esta categoría?",
-                    name: initial?.name ?? "",
-                    note: "Los gastos que ya la tienen no cambian.")
+                deleteQuestion ?? plainDeleteQuestion
             }) {
                 onDelete?()
                 dismiss()
@@ -191,31 +194,76 @@ struct LabeledIconSheet: View {
         .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
     }
 
+    /// What «Borrar» asks when the caller gave no question of its own.
+    private var plainDeleteQuestion: TicketQuestion {
+        let title: String
+        if colorKind == .source {
+            title = String(localized: "¿Borrar esta forma de pago?")
+        } else {
+            title = String(localized: "¿Borrar esta categoría?")
+        }
+        return TicketQuestion(title: title, name: initial?.name ?? "",
+                              note: String(localized: "Los gastos que ya la tienen no cambian."))
+    }
+
     /// What can be changed here, as it is now.
     private var snapshot: [String] { [name, icon, "\(usesByDefault)", "\(color)"] }
     private var hasChanges: Bool { loaded.map { $0 != snapshot } ?? false }
 }
 
-/// What VoiceOver says for each icon that can be picked, in es-MX, instead of the symbol's
-/// technical name («cart.fill»).
+/// What VoiceOver says for each icon that can be picked, in the iPhone's language, instead of
+/// the symbol's technical name («cart.fill»). One `return` per symbol: a dictionary literal of
+/// localized strings is slow for the CI's type-checker.
 enum IconLabel {
     static func name(for symbol: String) -> String {
-        names[symbol] ?? "Ícono"
+        switch symbol {
+        case "cart": return String(localized: "Carrito")
+        case "fork.knife": return String(localized: "Cubiertos")
+        case "cup.and.saucer": return String(localized: "Taza")
+        case "car": return String(localized: "Coche")
+        case "bus": return String(localized: "Autobús")
+        case "fuelpump": return String(localized: "Gasolina")
+        case "bolt": return String(localized: "Rayo")
+        case "drop": return String(localized: "Gota")
+        case "wifi": return String(localized: "Wifi")
+        case "iphone": return String(localized: "Teléfono")
+        case "play.rectangle": return String(localized: "Video")
+        case "music.note": return String(localized: "Música")
+        case "gamecontroller": return String(localized: "Control de videojuegos")
+        case "wineglass": return String(localized: "Copa")
+        case "tshirt": return String(localized: "Playera")
+        case "bag": return String(localized: "Bolsa")
+        case "gift": return String(localized: "Regalo")
+        case "cross.case": return String(localized: "Botiquín")
+        case "pills": return String(localized: "Medicinas")
+        case "heart": return String(localized: "Corazón")
+        case "dumbbell": return String(localized: "Pesa")
+        case "house": return String(localized: "Casa")
+        case "bed.double": return String(localized: "Cama")
+        case "pawprint": return String(localized: "Huella")
+        case "graduationcap": return String(localized: "Birrete")
+        case "book": return String(localized: "Libro")
+        case "airplane": return String(localized: "Avión")
+        case "suitcase": return String(localized: "Maleta")
+        case "wrench.and.screwdriver": return String(localized: "Herramientas")
+        case "scissors": return String(localized: "Tijeras")
+        case "sparkles": return String(localized: "Destellos")
+        case "figure.2.and.child.holdinghands": return String(localized: "Familia")
+        case "briefcase": return String(localized: "Portafolio")
+        case "building.2": return String(localized: "Edificio")
+        case "leaf": return String(localized: "Hoja")
+        case "tag": return String(localized: "Etiqueta")
+        case "creditcard": return String(localized: "Tarjeta")
+        case "creditcard.fill": return String(localized: "Tarjeta rellena")
+        case "wallet.pass": return "Wallet"
+        case "banknote": return String(localized: "Billete")
+        case "dollarsign.circle": return String(localized: "Signo de dinero")
+        case "building.columns": return String(localized: "Banco")
+        case "applelogo": return "Apple"
+        case "giftcard": return String(localized: "Tarjeta de regalo")
+        case "person.2": return String(localized: "Personas")
+        case "star": return String(localized: "Estrella")
+        default: return String(localized: "Ícono")
+        }
     }
-
-    private static let names: [String: String] = [
-        "cart": "Carrito", "fork.knife": "Cubiertos", "cup.and.saucer": "Taza", "car": "Coche",
-        "bus": "Autobús", "fuelpump": "Gasolina", "bolt": "Rayo", "drop": "Gota", "wifi": "Wifi",
-        "iphone": "Teléfono", "play.rectangle": "Video", "music.note": "Música",
-        "gamecontroller": "Control de videojuegos", "wineglass": "Copa", "tshirt": "Playera",
-        "bag": "Bolsa", "gift": "Regalo", "cross.case": "Botiquín", "pills": "Medicinas",
-        "heart": "Corazón", "dumbbell": "Pesa", "house": "Casa", "bed.double": "Cama",
-        "pawprint": "Huella", "graduationcap": "Birrete", "book": "Libro", "airplane": "Avión",
-        "suitcase": "Maleta", "wrench.and.screwdriver": "Herramientas", "scissors": "Tijeras",
-        "sparkles": "Destellos", "figure.2.and.child.holdinghands": "Familia",
-        "briefcase": "Portafolio", "building.2": "Edificio", "leaf": "Hoja", "tag": "Etiqueta",
-        "creditcard": "Tarjeta", "creditcard.fill": "Tarjeta rellena", "wallet.pass": "Wallet",
-        "banknote": "Billete", "dollarsign.circle": "Signo de dinero", "building.columns": "Banco",
-        "applelogo": "Apple", "giftcard": "Tarjeta de regalo", "person.2": "Personas", "star": "Estrella",
-    ]
 }

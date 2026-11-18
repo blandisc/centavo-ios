@@ -81,76 +81,67 @@ private struct FrameView: View {
 extension GuideFrame {
     // iOS 27, from real screenshots (see GuideScreenshotsTests).
     static let newShortcut: [GuideFrame] = [
-        GuideFrame(caption: "Abre la app Atajos y toca el botón «+» de abajo. Si antes aparece "
-                   + "«Novedades de Atajos», toca «Continuar».", screen: .photo("guia27-01-mas"),
+        GuideFrame(caption: String(localized: "Abre la app Atajos y toca el botón «+» de abajo. Si antes aparece «Novedades de Atajos», toca «Continuar»."), screen: .photo("guia27-01-mas"),
                    focus: CGRect(x: 0.167, y: 0.673, width: 0.667, height: 0.327)),
-        GuideFrame(caption: "Si se abre «Describir un atajo», no escribas nada: toca «Editar», arriba a la derecha.",
+        GuideFrame(caption: String(localized: "Si se abre «Describir un atajo», no escribas nada: toca «Editar», arriba a la derecha."),
                    screen: .photo("guia27-01b-editar"),
                    focus: CGRect(x: 0, y: 0, width: 1, height: 0.746)),
     ]
     static let pickNotification: [GuideFrame] = [
-        GuideFrame(caption: "Abajo, toca «Automatización».", screen: .photo("guia27-02-automatizacion"),
+        GuideFrame(caption: String(localized: "Abajo, toca «Automatización»."), screen: .photo("guia27-02-automatizacion"),
                    focus: CGRect(x: 0, y: 0.106, width: 0.689, height: 0.638)),
         // «No elijas Wallet» read as the opposite of the next step's title (research, 2026-10-29).
-        GuideFrame(caption: "En «Apps», toca «Notificación», la de la campana roja. "
-                   + "Wallet va en el siguiente paso.", screen: .photo("guia27-03-notificacion"),
+        GuideFrame(caption: String(localized: "En «Apps», toca «Notificación», la de la campana roja. Wallet va en el siguiente paso."), screen: .photo("guia27-03-notificacion"),
                    focus: CGRect(x: 0, y: 0.407, width: 1, height: 0.568)),
     ]
     static let pickWalletApp: [GuideFrame] = [
-        GuideFrame(caption: "Toca la palabra «App», en azul tenue, justo debajo de «Al recibir una notificación de».",
+        GuideFrame(caption: String(localized: "Toca la palabra «App», en azul tenue, justo debajo de «Al recibir una notificación de»."),
                    screen: .photo("guia27-04-app"),
                    focus: CGRect(x: 0, y: 0.172, width: 1, height: 0.815)),
-        GuideFrame(caption: "Baja casi hasta el final de la lista y toca «Wallet».", screen: .photo("guia27-05-wallet"),
+        GuideFrame(caption: String(localized: "Baja casi hasta el final de la lista y toca «Wallet»."), screen: .photo("guia27-05-wallet"),
                    focus: CGRect(x: 0, y: 0.262, width: 1, height: 0.738)),
-        GuideFrame(caption: "Así debe verse: «Al recibir una notificación de Wallet».",
+        GuideFrame(caption: String(localized: "Así debe verse: «Al recibir una notificación de Wallet»."),
                    screen: .photo("guia27-06-con-wallet"), isResult: true),
     ]
     static let addNoticeAction: [GuideFrame] = [
-        GuideFrame(caption: "Abajo, toca «Buscar», escribe «Registrar aviso» y toca «Registrar aviso de Wallet». "
-                   + "(Si sale un aviso del teclado, toca «Continuar».)",
+        GuideFrame(caption: String(localized: "Abajo, toca «Buscar», escribe «Registrar aviso» y toca «Registrar aviso de Wallet». (Si sale un aviso del teclado, toca «Continuar».)"),
                    screen: .photo("guia27-07-accion")),
     ]
     // One action per frame and the words on screen, not Atajos' own («burbuja», «variable»):
     // every person in the 2026-10-29 research got lost here.
     static let connectNotice: [GuideFrame] = [
-        GuideFrame(caption: "Junto a «Registrar», toca la palabra «Notificación» en azul tenue. Es solo de ejemplo: "
-                   + "todavía no está conectada.",
+        GuideFrame(caption: String(localized: "Junto a «Registrar», toca la palabra «Notificación» en azul tenue. Es solo de ejemplo: todavía no está conectada."),
                    screen: .photo("guia27-08-campo"),
                    focus: CGRect(x: 0, y: 0.163, width: 1, height: 0.837)),
         // The row starts on «Seleccionar variable»: say it is not that one, or people stop there.
-        GuideFrame(caption: "Arriba del teclado sale una fila que empieza con «Seleccionar variable». No es esa: "
-                   + "deslízala hacia la izquierda hasta que aparezca la campana.", screen: .photo("guia27-09a-barra"),
+        GuideFrame(caption: String(localized: "Arriba del teclado sale una fila que empieza con «Seleccionar variable». No es esa: deslízala hacia la izquierda hasta que aparezca la campana."), screen: .photo("guia27-09a-barra"),
                    focus: CGRect(x: 0.022, y: 0.671, width: 0.844, height: 0.324)),
-        GuideFrame(caption: "Ahí está: toca la campana «Notificación». Después toca ✓ en el teclado para cerrarlo.",
+        GuideFrame(caption: String(localized: "Ahí está: toca la campana «Notificación». Después toca ✓ en el teclado para cerrarlo."),
                    screen: .photo("guia27-09-variable"),
                    focus: CGRect(x: 0, y: 0.79, width: 1, height: 0.206)),
-        GuideFrame(caption: "Así debe verse: junto a «Registrar» dice «Notificación» en azul, con su campana.",
+        GuideFrame(caption: String(localized: "Así debe verse: junto a «Registrar» dice «Notificación» en azul, con su campana."),
                    screen: .photo("guia27-15-accion-lista"), isResult: true,
                    focus: CGRect(x: 0, y: 0, width: 1, height: 0.43)),
     ]
     /// Atajos leaves the notification's subtitle out, and Wallet puts the merchant there
     /// (owner's iPhone, 2026-10-21): «Comercio» takes it apart.
     static let connectSubtitle: [GuideFrame] = [
-        GuideFrame(caption: "Toca la flechita junto a «Notificación». Abajo aparece «Comercio».",
+        GuideFrame(caption: String(localized: "Toca la flechita junto a «Notificación». Abajo aparece «Comercio»."),
                    screen: .photo("guia27-12-flechita"),
                    focus: CGRect(x: 0.344, y: 0, width: 0.656, height: 1)),
-        GuideFrame(caption: "Toca «Comercio». En la fila de arriba del teclado, busca otra vez «Notificación», la "
-                   + "de la campana, y tócala.", screen: .photo("guia27-09a-barra"),
+        GuideFrame(caption: String(localized: "Toca «Comercio». En la fila de arriba del teclado, busca otra vez «Notificación», la de la campana, y tócala."), screen: .photo("guia27-09a-barra"),
                    focus: CGRect(x: 0.022, y: 0.671, width: 0.844, height: 0.324)),
-        GuideFrame(caption: "En «Comercio» quedó «Notificación» en azul. Tócala una vez más y, en la lista, elige "
-                   + "«Subtítulo»: ahí pone Wallet el nombre de la tienda.", screen: .photo("guia27-13-subtitulo"),
+        GuideFrame(caption: String(localized: "En «Comercio» quedó «Notificación» en azul. Tócala una vez más y, en la lista, elige «Subtítulo»: ahí pone Wallet el nombre de la tienda."), screen: .photo("guia27-13-subtitulo"),
                    focus: CGRect(x: 0, y: 0.112, width: 1, height: 0.847)),
-        GuideFrame(caption: "Apaga «Mostrar al ejecutar»: así no te sale un aviso con cada pago. Se anota igual.",
+        GuideFrame(caption: String(localized: "Apaga «Mostrar al ejecutar»: así no te sale un aviso con cada pago. Se anota igual."),
                    screen: .photo("guia27-14-mostrar")),
-        GuideFrame(caption: "Así debe verse: «Registrar» con «Notificación» y «Comercio» con «Subtítulo». Si junto "
-                   + "a «Registrar» dice «Subtítulo», no se anotará nada: tócalo y elige «Notificación».",
+        GuideFrame(caption: String(localized: "Así debe verse: «Registrar» con «Notificación» y «Comercio» con «Subtítulo». Si junto a «Registrar» dice «Subtítulo», no se anotará nada: tócalo y elige «Notificación»."),
                    screen: .photo("guia27-15-accion-lista"), isResult: true),
     ]
     static let saveNotice: [GuideFrame] = [
-        GuideFrame(caption: "No hay botón de guardar: toca la flecha de arriba a la izquierda y ya queda guardado.",
+        GuideFrame(caption: String(localized: "No hay botón de guardar: toca la flecha de arriba a la izquierda y ya queda guardado."),
                    screen: .photo("guia27-10-guardar")),
-        GuideFrame(caption: "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet» (el color "
-                   + "de la tarjeta puede ser otro). No tienes que activar nada más.",
+        GuideFrame(caption: String(localized: "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet» (el color de la tarjeta puede ser otro). No tienes que activar nada más."),
                    screen: .photo("guia27-11-listo"), isResult: true,
                    focus: CGRect(x: 0, y: 0.028, width: 1, height: 0.972)),
     ]

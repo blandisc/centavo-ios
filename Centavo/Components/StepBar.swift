@@ -12,6 +12,19 @@ struct StepBar: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var sheen: CGFloat = -Theme.Size.moneySheenShare
 
+    /// A literal step name: looked up in the catalog.
+    init(step: Int, of: Int, label: LocalizedStringResource) {
+        self.init(step: step, of: of, label: String(localized: label))
+    }
+
+    /// A step name made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(step: Int, of: Int, label: S) {
+        self.step = step
+        self.of = of
+        self.label = String(label)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.xxs) {

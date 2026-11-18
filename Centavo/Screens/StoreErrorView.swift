@@ -72,7 +72,9 @@ struct StoreErrorView: View {
         .background(Theme.background.ignoresSafeArea())
         .fileMover(isPresented: $exporting, file: copy) { result in
             switch result {
-            case .success(let url): copyNote = "Copia guardada en Archivos, en la carpeta «\(url.lastPathComponent)»."
+            case .success(let url):
+                let folder = url.lastPathComponent
+                copyNote = String(localized: "Copia guardada en Archivos, en la carpeta «\(folder)».")
             case .failure: copyNote = Self.copyFailedText
             }
             StoreFiles.discard(copy)
@@ -83,14 +85,24 @@ struct StoreErrorView: View {
         }
     }
 
-    static let stillShutText = "Todavía no abre. Puedes intentarlo otra vez más tarde; mientras, guarda una copia de tus datos."
-    static var copyHint: String {
-        "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña"
-            + (Features.money ? " y trae también «Mi dinero»" : "") + ": guárdala donde solo tú la veas."
+    static var stillShutText: String {
+        String(localized: "Todavía no abre. Puedes intentarlo otra vez más tarde; mientras, guarda una copia de tus datos.")
     }
-    static let copyFailedText = "No se pudo guardar la copia. Tus datos siguen donde estaban. Intenta otra vez."
-    static let nothingToCopyText = "No se encontraron archivos de Al día para copiar."
-    static let copyNotMadeText = "No se pudo preparar la copia. Tus datos siguen donde estaban. Si el iPhone no tiene espacio, libera un poco e intenta otra vez."
+    static var copyHint: String {
+        if Features.money {
+            return String(localized: "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña y trae también «Mi dinero»: guárdala donde solo tú la veas.")
+        }
+        return String(localized: "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña: guárdala donde solo tú la veas.")
+    }
+    static var copyFailedText: String {
+        String(localized: "No se pudo guardar la copia. Tus datos siguen donde estaban. Intenta otra vez.")
+    }
+    static var nothingToCopyText: String {
+        String(localized: "No se encontraron archivos de Al día para copiar.")
+    }
+    static var copyNotMadeText: String {
+        String(localized: "No se pudo preparar la copia. Tus datos siguen donde estaban. Si el iPhone no tiene espacio, libera un poco e intenta otra vez.")
+    }
 
     private func tryAgain() {
         stillShut = !retry()
@@ -99,7 +111,7 @@ struct StoreErrorView: View {
     /// The owner first: the copy isn't locked and brings «Mi dinero», which sits behind Face ID.
     private func saveCopy() async {
         guard !exporting else { return }
-        guard await OwnerCheck.confirm(reason: "Para guardar una copia de tus datos.") else { return }
+        guard await OwnerCheck.confirm(reason: String(localized: "Para guardar una copia de tus datos.")) else { return }
         copyNote = nil
         do {
             guard let folder = try StoreFiles.copyOut() else {

@@ -64,7 +64,9 @@ struct AddExpenseIntent: AppIntent {
             throw $amount.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
         case .maybeRepeated(let name), .saved(let name):
             let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
-            let notice = ["Anotado: \(spoken(amount)) en \(name).", budgetLine].compactMap { $0 }
+            let said = spoken(amount)
+            let added = String(localized: "Anotado: \(said) en \(name).")
+            let notice = [added, budgetLine].compactMap { $0 }
             return .result(dialog: "\(notice.joined(separator: " "))")
         }
     }

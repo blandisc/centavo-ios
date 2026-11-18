@@ -28,7 +28,7 @@ public enum CountedAmount {
 }
 
 /// Why an expense doesn't count. Stored by `rawValue`, which never changes; `title` is what
-/// the screen and the CSV say.
+/// the screen says, in the person's language, and `csvTitle` what the CSV says, always the same.
 public enum UncountedReason: String, CaseIterable, Identifiable, Sendable {
     /// Work expenses and the like: someone else pays it back. The default.
     case reimbursed = "reembolso"
@@ -39,6 +39,19 @@ public enum UncountedReason: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
 
     public var title: String {
+        switch self {
+        case .reimbursed:
+            String(localized: "Me lo reembolsan", bundle: .main, comment: "Motivo de un gasto que no cuenta")
+        case .betweenAccounts:
+            String(localized: "Entre mis cuentas", bundle: .main, comment: "Motivo de un gasto que no cuenta")
+        case .other:
+            String(localized: "Otro", bundle: .main, comment: "Motivo de un gasto que no cuenta")
+        }
+    }
+
+    /// The column «Motivo» of the CSV: Spanish whatever the iPhone's language, so a file
+    /// reads back the same anywhere.
+    public var csvTitle: String {
         switch self {
         case .reimbursed: "Me lo reembolsan"
         case .betweenAccounts: "Entre mis cuentas"
@@ -51,7 +64,7 @@ public enum UncountedReason: String, CaseIterable, Identifiable, Sendable {
     public init?(text: String?) {
         guard let text else { return nil }
         let key = Self.fold(text)
-        guard let match = Self.allCases.first(where: { Self.fold($0.rawValue) == key || Self.fold($0.title) == key })
+        guard let match = Self.allCases.first(where: { Self.fold($0.rawValue) == key || Self.fold($0.csvTitle) == key })
         else { return nil }
         self = match
     }

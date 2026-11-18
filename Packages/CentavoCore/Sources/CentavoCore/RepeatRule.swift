@@ -70,17 +70,39 @@ public enum RepeatRule: Equatable, Hashable, Sendable {
     public func describe(anchor: Date, day: Int? = nil, calendar: Calendar = .current) -> String {
         switch self {
         case .weeks(let n):
-            let weekday = Self.weekdays[(calendar.component(.weekday, from: anchor) - 1) % 7]
-            return n == 1 ? "cada \(weekday)" : "cada \(n) semanas, en \(weekday)"
+            let weekday = Self.weekday((calendar.component(.weekday, from: anchor) - 1) % 7)
+            if n == 1 {
+                return String(localized: "cada \(weekday)", bundle: .main,
+                              comment: "Cómo se repite un gasto fijo; el día de la semana («cada lunes»)")
+            }
+            return String(localized: "cada \(n) semanas, en \(weekday)", bundle: .main,
+                          comment: "Cómo se repite un gasto fijo; cada cuántas semanas y el día («cada 2 semanas, en lunes»)")
         case .semimonthly:
-            return "cada quincena (15 y último)"
+            return String(localized: "cada quincena (15 y último)", bundle: .main,
+                          comment: "Cómo se repite un gasto fijo: los días 15 y último de cada mes")
         case .months(let n):
             let onDay = day ?? calendar.component(.day, from: anchor)
-            return n == 1 ? "cada mes, el día \(onDay)" : "cada \(n) meses, el día \(onDay)"
+            if n == 1 {
+                return String(localized: "cada mes, el día \(onDay)", bundle: .main,
+                              comment: "Cómo se repite un gasto fijo; el día del mes («cada mes, el día 5»)")
+            }
+            return String(localized: "cada \(n) meses, el día \(onDay)", bundle: .main,
+                          comment: "Cómo se repite un gasto fijo; cada cuántos meses y el día del mes")
         }
     }
 
-    static let weekdays = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+    /// The day of the week inside «cada lunes»: 0 is Sunday, as `Calendar` counts from 1.
+    static func weekday(_ index: Int) -> String {
+        switch index {
+        case 0: String(localized: "domingo", bundle: .main, comment: "Día de la semana dentro de «cada domingo»")
+        case 1: String(localized: "lunes", bundle: .main, comment: "Día de la semana dentro de «cada lunes»")
+        case 2: String(localized: "martes", bundle: .main, comment: "Día de la semana dentro de «cada martes»")
+        case 3: String(localized: "miércoles", bundle: .main, comment: "Día de la semana dentro de «cada miércoles»")
+        case 4: String(localized: "jueves", bundle: .main, comment: "Día de la semana dentro de «cada jueves»")
+        case 5: String(localized: "viernes", bundle: .main, comment: "Día de la semana dentro de «cada viernes»")
+        default: String(localized: "sábado", bundle: .main, comment: "Día de la semana dentro de «cada sábado»")
+        }
+    }
 }
 
 extension RecurringSchedule {

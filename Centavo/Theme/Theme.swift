@@ -53,7 +53,11 @@ enum Theme {
                                       Color(hex: 0x9B7FE0), Color(hex: 0x2BB3C0),
                                       Color(hex: 0xE0743F), Color(hex: 0xA6B04A)]
     /// What VoiceOver and the color menu call each of `categories`, in the same order.
-    static let categoryColorNames = ["Ocre", "Verde", "Azul", "Rosa", "Violeta", "Turquesa", "Coral", "Oliva"]
+    static let categoryColorNames: [String] = [
+        String(localized: "Ocre"), String(localized: "Verde"), String(localized: "Azul"),
+        String(localized: "Rosa"), String(localized: "Violeta"), String(localized: "Turquesa"),
+        String(localized: "Coral"), String(localized: "Oliva"),
+    ]
     /// «Otras», everything past the four: grey, so it never reads as a category of its own.
     static var categoryRest: Color { Color(hex: 0x6E6A62) }
 
@@ -116,11 +120,19 @@ extension View {
             .presentationBackground(Theme.background)
     }
 
-    /// The small spaced title in a sheet's navigation bar: "NUEVO GASTO".
-    func ticketBarTitle(_ title: String) -> some View {
-        self.toolbar {
+    /// The small spaced title in a sheet's navigation bar: "NUEVO GASTO". A literal is looked
+    /// up in the catalog.
+    func ticketBarTitle(_ title: LocalizedStringResource) -> some View {
+        ticketBarTitle(String(localized: title))
+    }
+
+    /// The same, with a title made at run time, shown as it is.
+    @_disfavoredOverload
+    func ticketBarTitle<S: StringProtocol>(_ title: S) -> some View {
+        let shown = String(title)
+        return self.toolbar {
             ToolbarItem(placement: .principal) {
-                Text(title)
+                Text(shown)
                     .font(.ticket(.footnoteStrong))
                     .tracking(Theme.Tracking.title)
                     .textCase(.uppercase)

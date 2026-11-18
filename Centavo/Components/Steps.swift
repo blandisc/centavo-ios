@@ -43,6 +43,20 @@ struct StepHeader: View {
     let title: String
     let systemImage: String
 
+    /// A literal title: looked up in the catalog.
+    init(step: Int, of: Int, title: LocalizedStringResource, systemImage: String) {
+        self.init(step: step, of: of, title: String(localized: title), systemImage: systemImage)
+    }
+
+    /// A title made at run time, shown as it is.
+    @_disfavoredOverload
+    init<S: StringProtocol>(step: Int, of: Int, title: S, systemImage: String) {
+        self.step = step
+        self.of = of
+        self.title = String(title)
+        self.systemImage = systemImage
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("Paso \(step) de \(of)")

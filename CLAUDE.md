@@ -33,7 +33,7 @@ La **estructura es nativa de Apple** (Human Interface Guidelines): `NavigationSt
 - **Un pago nunca se pierde.** Lo que la captura recibe y no puede anotar se guarda fuera del almacén (`UnreadNotice`) y solo la persona lo quita; un intent nunca lanza un error sin dejarlo ahí antes.
 - **Minimalismo.** Antes de agregar una pantalla o un ajuste, pregunta si cabe en lo que ya existe.
 - **Componentes nativos** de SwiftUI y estilos del sistema (Dynamic Type, modo oscuro). Nada de tamaños de fuente fijos.
-- **Copy en es-MX**, sin suponer género.
+- **Copy en es-MX** (sin suponer género) y su traducción al inglés en el catálogo; todo texto nuevo, frase completa y traducible (ver DECISIONS 2026-11-18).
 - Commits directos a `main` con un mensaje que diga qué cambia para la persona. Entrada en CHANGELOG para cambios visibles.
 
 ## Tablero

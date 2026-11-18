@@ -332,7 +332,8 @@ extension MerchantBackfill {
 
     /// «Cambiar también el otro gasto», «Cambiar también los otros 6 gastos».
     static func offer(_ count: Int) -> String {
-        count == 1 ? "Cambiar también el otro gasto"
-            : "Cambiar también los otros \(count.formatted(.number.locale(Locale(identifier: "es_MX")))) gastos"
+        if count == 1 { return String(localized: "Cambiar también el otro gasto") }
+        let shown = count.formatted(.number.locale(Locale(identifier: "es_MX")))
+        return String(localized: "Cambiar también los otros \(shown) gastos")
     }
 }

@@ -37,7 +37,8 @@ struct MonthCarousel: View {
     /// which stayed at the landscape width when the phone turned back upright.
     @Environment(\.listWidth) private var listWidth
 
-    private let pageNames = ["Presupuesto", "Calendario"]
+    /// What VoiceOver calls each page dot.
+    private var pageNames: [String] { [String(localized: "Presupuesto"), String(localized: "Calendario")] }
 
     /// A page that changes height in place (the sum opening, «Mínima» in «···») eases with
     /// `Theme.Motion.fold`, in a transaction of its own so the list under the carousel moves with

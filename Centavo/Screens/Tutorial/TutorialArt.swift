@@ -85,7 +85,7 @@ struct TutorialArt: View {
                 c.stroke(cell, with: .color(Theme.outline), style: artStroke(Theme.outline, dash: ArtGeo.dash))
             }
         }
-        label(&c, "Hoy", at: CGPoint(x: left + CGFloat(today) * step + width / 2, y: 104), size: 10,
+        label(&c, String(localized: "Hoy"), at: CGPoint(x: left + CGFloat(today) * step + width / 2, y: 104), size: 10,
               color: Theme.brass, opacity: moneySpan(progress, 0.7, 1))
     }
 
@@ -104,8 +104,8 @@ struct TutorialArt: View {
         chunk.opacity = moneySpan(progress, 0.3, 0.4)
         chunk.stroke(piece, with: .color(Theme.brass), style: artStroke(Theme.brass, ArtGeo.line, dash: ArtGeo.dash))
         chunk.fill(piece, with: .color(Theme.brass.opacity(0.35 * moneySpan(progress, 0.8, 1))))
-        label(&c, "Hoy", at: CGPoint(x: 67, y: 108), size: 10, color: Theme.muted)
-        label(&c, "Mañana", at: CGPoint(x: 133, y: 108), size: 10, color: Theme.muted)
+        label(&c, String(localized: "Hoy"), at: CGPoint(x: 67, y: 108), size: 10, color: Theme.muted)
+        label(&c, String(localized: "Mañana"), at: CGPoint(x: 133, y: 108), size: 10, color: Theme.muted)
         label(&c, "+", at: CGPoint(x: 133, y: 14), size: 14, color: Theme.brass, opacity: moneySpan(progress, 0.8, 1))
     }
 
@@ -159,9 +159,9 @@ struct TutorialArt: View {
         }
         var rule = Path(); rule.move(to: CGPoint(x: 24, y: 88)); rule.addLine(to: CGPoint(x: 176, y: 88))
         c.stroke(rule, with: .color(Theme.outline), style: artStroke(Theme.outline, dash: ArtGeo.dash))
-        label(&c, "Total", at: CGPoint(x: 50, y: 104), size: 12, color: Theme.muted)
+        label(&c, String(localized: "Total"), at: CGPoint(x: 50, y: 104), size: 12, color: Theme.muted)
         label(&c, "$2,140", at: CGPoint(x: 150, y: 104), size: 14, color: Theme.ink)
-        label(&c, "No cuenta", at: CGPoint(x: 155, y: 54), size: 9, color: Theme.brass, opacity: moneySpan(progress, 0.65, 0.9))
+        label(&c, String(localized: "No cuenta"), at: CGPoint(x: 155, y: 54), size: 9, color: Theme.brass, opacity: moneySpan(progress, 0.65, 0.9))
     }
 
     /// Where it goes: three categories, each bar growing to its share.
@@ -201,7 +201,7 @@ struct TutorialArt: View {
         shackle.addArc(center: CGPoint(x: 100, y: 66 - drop), radius: 8, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
         shackle.addLine(to: CGPoint(x: 108, y: 72 - drop))
         padlock.stroke(shackle, with: .color(Theme.brass), style: artStroke(Theme.brass, ArtGeo.bold))
-        label(&c, "Cada día", at: CGPoint(x: 100, y: 110), size: 10, color: Theme.muted, opacity: moneySpan(progress, 0.85, 1))
+        label(&c, String(localized: "Cada día"), at: CGPoint(x: 100, y: 110), size: 10, color: Theme.muted, opacity: moneySpan(progress, 0.85, 1))
     }
 
     /// The end: a dashed ring, the brass one closing over it and a check, as «Mi dinero»'s «Listo».

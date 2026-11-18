@@ -36,32 +36,35 @@ enum MonthStatus {
         // above it, both are said as they are (second audit, 2026-11-02).
         let left: String
         if pace.isShortForFixed {
-            left = "Te quedan \(money(pace.remaining, summary.primary)) y faltan "
-                + "\(money(pace.reserved, summary.primary)) de fijos."
+            let remaining = money(pace.remaining, summary.primary)
+            let reserved = money(pace.reserved, summary.primary)
+            left = String(localized: "Te quedan \(remaining) y faltan \(reserved) de fijos.")
         } else if pace.reserved > 0 {
-            left = "Te quedan \(money(pace.free, summary.primary)) libres "
-                + "(más \(money(pace.setAside, summary.primary)) apartados para fijos)."
+            let free = money(pace.free, summary.primary)
+            let setAside = money(pace.setAside, summary.primary)
+            left = String(localized: "Te quedan \(free) libres (más \(setAside) apartados para fijos).")
         } else {
-            left = "Te quedan \(money(pace.remaining, summary.primary)) del presupuesto."
+            let remaining = money(pace.remaining, summary.primary)
+            left = String(localized: "Te quedan \(remaining) del presupuesto.")
         }
         if let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return left + " " + excess }
-        return left + (pace.isOverToday ? " Hoy ya te pasaste por \(today)." : " Hoy puedes gastar \(today).")
+        return left + " " + todayLine(today, isOver: pace.isOverToday)
     }
 
     /// «Te pasaste del presupuesto por $231.»: whole and rounded up, the same figure as the
     /// screen and the widgets (independent review: Siri said «$0.40» where they said «$1»).
     static func overspentSentence(_ pace: BudgetPace, primary: String, total: MoneyTotal) -> String {
         let figure = pace.overspentShown.formatted(currencyStyle(total.isoCode ?? primary).precision(.fractionLength(0)))
-        return "Te pasaste del presupuesto por \(figure)."
+        return String(localized: "Te pasaste del presupuesto por \(figure).")
     }
 
     /// «Tus fijos pasan el presupuesto por $3,000.»: the fixed expenses take the whole budget,
     /// so there is no figure for today and nothing to say «te pasaste» about (second audit).
     static func fixedSentence(_ pace: BudgetPace, primary: String, total: MoneyTotal) -> String? {
         guard let excess = pace.fixedOverBudgetShown else { return nil }
-        guard excess > 0 else { return "Tus fijos se llevan todo el presupuesto." }
+        guard excess > 0 else { return String(localized: "Tus fijos se llevan todo el presupuesto.") }
         let figure = excess.formatted(currencyStyle(total.isoCode ?? primary).precision(.fractionLength(0)))
-        return "Tus fijos pasan el presupuesto por \(figure)."
+        return String(localized: "Tus fijos pasan el presupuesto por \(figure).")
     }
 
     /// «¿Cuánto puedo gastar hoy?»: "Hoy puedes gastar $290." The screen's big figure, out loud,
@@ -74,27 +77,39 @@ enum MonthStatus {
         let originals = try context.fetch(FetchDescriptor<Expense>(predicate: #Predicate { $0.repeatsMonthly == true }))
         guard let pace = TodayBudget.pace(budget: budget, rows: rows, originals: originals, plans: FixedPlan.saved,
                                           primary: primary, month: now, now: now) else {
-            return "Aún no tienes presupuesto. Fíjalo en Al día para saber cuánto puedes gastar cada día."
+            return String(localized: "Aún no tienes presupuesto. Fíjalo en Al día para saber cuánto puedes gastar cada día.")
         }
         if pace.isOverspent { return overspentSentence(pace, primary: primary, total: summary.primary) }
         if let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return excess }
         let today = pace.dailyAllowance.magnitude.formatted(currencyStyle(summary.primary.isoCode ?? primary)
                                                              .precision(.fractionLength(0)))
-        return pace.isOverToday ? "Hoy ya te pasaste por \(today)." : "Hoy puedes gastar \(today)."
+        return todayLine(today, isOver: pace.isOverToday)
+    }
+
+    /// «Hoy puedes gastar $290.» or «Hoy ya te pasaste por $120.», with `today` already written.
+    private static func todayLine(_ today: String, isOver: Bool) -> String {
+        if isOver { return String(localized: "Hoy ya te pasaste por \(today).") }
+        return String(localized: "Hoy puedes gastar \(today).")
     }
 
     /// "Llevas $2,366.00 este mes, más USD 24.99 en otra moneda. Te quedan $5,634.00 del presupuesto. Hoy…"
     static func totalSentence(in context: ModelContext, budget: Decimal?, now: Date = AppClock.now,
                               primary: String = primaryCurrency) throws -> String {
         let summary = try summarize(in: context, now: now, primary: primary)
-        var sentence = "Llevas \(money(summary.primary.amount, summary.primary)) este mes"
-        if !summary.others.isEmpty {
+        let spent = money(summary.primary.amount, summary.primary)
+        var sentence: String
+        if summary.others.isEmpty {
+            sentence = String(localized: "Llevas \(spent) este mes.")
+        } else {
             let others = summary.others
                 .map { "\($0.label) \(plainAmount($0.amount))" }
                 .formatted(.list(type: .and))
-            sentence += ", más \(others) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")"
+            if summary.others.count > 1 {
+                sentence = String(localized: "Llevas \(spent) este mes, más \(others) en otras monedas.")
+            } else {
+                sentence = String(localized: "Llevas \(spent) este mes, más \(others) en otra moneda.")
+            }
         }
-        sentence += "."
         if let budgetLine = try budgetSentence(in: context, budget: budget, now: now, primary: primary) {
             sentence += " " + budgetLine
         }
@@ -109,9 +124,10 @@ enum MonthStatus {
         let wanted = UserCatalog.fold(category)
         let match = summary.categories.first { $0.category.map(UserCatalog.fold) == wanted }
         guard let match, match.amount != 0, let name = match.category else {
-            return "Este mes no llevas nada en \(category)."
+            return String(localized: "Este mes no llevas nada en \(category).")
         }
-        return "Llevas \(money(match.amount, summary.primary)) en \(name) este mes."
+        let spent = money(match.amount, summary.primary)
+        return String(localized: "Llevas \(spent) en \(name) este mes.")
     }
 
     private static func summarize(in context: ModelContext, now: Date,

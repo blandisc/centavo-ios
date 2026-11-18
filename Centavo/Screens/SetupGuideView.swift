@@ -97,7 +97,10 @@ struct SetupGuideView: View {
             // A swipe or «Paso siguiente» changes the page without a word: say which step it is.
             .onChange(of: step) { _, value in
                 guard voiceOver, steps.indices.contains(value) else { return }
-                AccessibilityNotification.Announcement("Paso \(value + 1) de \(steps.count). \(steps[value].title)").post()
+                let number = value + 1
+                let count = steps.count
+                let title = steps[value].title
+                AccessibilityNotification.Announcement(String(localized: "Paso \(number) de \(count). \(title)")).post()
             }
             .onChange(of: captured.first?.persistentModelID) { _, _ in
                 if companion.isFloating { companion.stop() }
@@ -196,9 +199,7 @@ struct SetupGuideView: View {
     private var launcher: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if floats {
-                Text(companion.isFloating
-                     ? "La guía flota sobre Atajos. Avanza con ⏩."
-                     : "Esta guía te acompaña en una ventanita sobre Atajos.")
+                Text(floatingNote)
                     .font(.ticket(.detail))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -233,6 +234,14 @@ struct SetupGuideView: View {
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
         // With «Reducir movimiento» it only fades.
         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+    }
+
+    /// The line over «Abrir Atajos» while Picture in Picture is on hand.
+    private var floatingNote: String {
+        if companion.isFloating {
+            return String(localized: "La guía flota sobre Atajos. Avanza con ⏩.")
+        }
+        return String(localized: "Esta guía te acompaña en una ventanita sobre Atajos.")
     }
 
     /// Every picture of the guide, in order, for the floating window.
@@ -379,86 +388,81 @@ private struct GuideStep {
     // «Wallet», «Ejecutar de inmediato», «Notificar al ejecutar», «Crear nuevo atajo».
     static let all: [GuideStep] = [
         GuideStep(
-            title: "Abre Atajos",
+            title: String(localized: "Abre Atajos"),
             symbol: "square.2.layers.3d",
-            lead: "Apple no deja que Al día cree esta automatización por ti. Son unos 5 minutos, una sola vez.",
-            taps: ["Abre la app Atajos (viene con el iPhone).",
-                   "Abajo, al centro, toca «Automatización»."],
+            lead: String(localized: "Apple no deja que Al día cree esta automatización por ti. Son unos 5 minutos, una sola vez."),
+            taps: [String(localized: "Abre la app Atajos (viene con el iPhone)."),
+                   String(localized: "Abajo, al centro, toca «Automatización».")],
             opensShortcuts: true,
             scene: .tabs
         ),
         GuideStep(
-            title: "Elige «Wallet»",
+            title: String(localized: "Elige «Wallet»"),
             symbol: "wallet.pass",
-            lead: "Atajos se dispara con el pago sin contacto de Wallet.",
-            taps: ["Toca «Nueva automatización» (o «+» arriba, si ya tienes otras).",
-                   "En el buscador de abajo escribe «Wallet».",
-                   "Toca «Wallet»: «Al realizar un pago sin contacto…»."],
-            note: "En versiones anteriores de iOS se llamaba «Transacción».",
+            lead: String(localized: "Atajos se dispara con el pago sin contacto de Wallet."),
+            taps: [String(localized: "Toca «Nueva automatización» (o «+» arriba, si ya tienes otras)."),
+                   String(localized: "En el buscador de abajo escribe «Wallet»."),
+                   String(localized: "Toca «Wallet»: «Al realizar un pago sin contacto…».")],
+            note: String(localized: "En versiones anteriores de iOS se llamaba «Transacción»."),
             opensShortcuts: true,
             scene: .wallet
         ),
         GuideStep(
-            title: "Que corra sola",
+            title: String(localized: "Que corra sola"),
             symbol: "play.fill",
-            taps: ["Elige las tarjetas con las que pagas.",
-                   "Marca «Ejecutar de inmediato».",
-                   "Si quieres un aviso cada vez que se anota un pago, activa «Notificar al ejecutar».",
-                   "Toca «Siguiente»."],
+            taps: [String(localized: "Elige las tarjetas con las que pagas."),
+                   String(localized: "Marca «Ejecutar de inmediato»."),
+                   String(localized: "Si quieres un aviso cada vez que se anota un pago, activa «Notificar al ejecutar»."),
+                   String(localized: "Toca «Siguiente».")],
             opensShortcuts: true,
             scene: .runOptions
         ),
         GuideStep(
-            title: "Toca «Crear nuevo atajo»",
+            title: String(localized: "Toca «Crear nuevo atajo»"),
             symbol: "plus.square",
-            taps: ["Arriba, en «Empezar», toca «Crear nuevo atajo»."],
-            warning: "Ojo: no toques Al día en la lista de apps. Así la automatización se crea "
-                + "sin el importe del pago y no anota nada. Si ya lo hiciste, ve a "
-                + "«Automatización», desliza esa automatización a la izquierda, bórrala y "
-                + "empieza de nuevo.",
+            taps: [String(localized: "Arriba, en «Empezar», toca «Crear nuevo atajo».")],
+            warning: String(localized: "Ojo: no toques Al día en la lista de apps. Así la automatización se crea sin el importe del pago y no anota nada. Si ya lo hiciste, ve a «Automatización», desliza esa automatización a la izquierda, bórrala y empieza de nuevo."),
             opensShortcuts: true,
             scene: .newShortcut
         ),
         GuideStep(
-            title: "Agrega «Registrar gasto»",
+            title: String(localized: "Agrega «Registrar gasto»"),
             symbol: "magnifyingglass",
-            lead: "La acción de Al día que guarda cada pago.",
-            taps: ["Toca «Buscar acciones» y escribe «Registrar gasto».",
-                   "Toca «Registrar gasto», la de Al día."],
+            lead: String(localized: "La acción de Al día que guarda cada pago."),
+            taps: [String(localized: "Toca «Buscar acciones» y escribe «Registrar gasto»."),
+                   String(localized: "Toca «Registrar gasto», la de Al día.")],
             opensShortcuts: true,
             scene: .addAction
         ),
         GuideStep(
-            title: "Conecta el importe",
+            title: String(localized: "Conecta el importe"),
             symbol: "dollarsign.circle",
-            lead: "Dos datos del pago se conectan en la acción: el importe y el comercio.",
-            taps: ["En la acción, toca la palabra azul «Importe».",
-                   "Arriba del teclado aparece «Entrada del atajo». Tócala.",
-                   "En la acción quedó una burbuja azul. Tócala otra vez.",
-                   "Se abre una lista: elige «Importe»."],
-            note: "Este es el paso que nadie adivina: hay que tocar la burbuja una segunda vez "
-                + "para elegir qué dato del pago va en cada lugar.",
+            lead: String(localized: "Dos datos del pago se conectan en la acción: el importe y el comercio."),
+            taps: [String(localized: "En la acción, toca la palabra azul «Importe»."),
+                   String(localized: "Arriba del teclado aparece «Entrada del atajo». Tócala."),
+                   String(localized: "En la acción quedó una burbuja azul. Tócala otra vez."),
+                   String(localized: "Se abre una lista: elige «Importe».")],
+            note: String(localized: "Este es el paso que nadie adivina: hay que tocar la burbuja una segunda vez para elegir qué dato del pago va en cada lugar."),
             opensShortcuts: true,
             scene: .connect(field: "Importe", done: [])
         ),
         GuideStep(
-            title: "Conecta el comercio",
+            title: String(localized: "Conecta el comercio"),
             symbol: "bag",
-            lead: "Así cada pago llega con el lugar donde lo hiciste.",
-            taps: ["Toca la palabra azul «Comercio».",
-                   "Toca «Entrada del atajo» arriba del teclado.",
-                   "Toca la burbuja y elige «Comercio».",
-                   "Arriba a la derecha, toca la palomita azul para guardar."],
-            note: "La tarjeta es opcional. Si la quieres, toca la flechita de la acción para "
-                + "ver «Tarjeta» y conéctala igual, eligiendo la tarjeta en la lista.",
+            lead: String(localized: "Así cada pago llega con el lugar donde lo hiciste."),
+            taps: [String(localized: "Toca la palabra azul «Comercio»."),
+                   String(localized: "Toca «Entrada del atajo» arriba del teclado."),
+                   String(localized: "Toca la burbuja y elige «Comercio»."),
+                   String(localized: "Arriba a la derecha, toca la palomita azul para guardar.")],
+            note: String(localized: "La tarjeta es opcional. Si la quieres, toca la flechita de la acción para ver «Tarjeta» y conéctala igual, eligiendo la tarjeta en la lista."),
             opensShortcuts: true,
             scene: .connect(field: "Comercio", done: ["Importe"])
         ),
         GuideStep(
-            title: "Pruébalo",
+            title: String(localized: "Pruébalo"),
             symbol: "creditcard",
-            taps: ["Paga algo acercando el iPhone o el reloj a la terminal.",
-                   "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
+            taps: [String(localized: "Paga algo acercando el iPhone o el reloj a la terminal."),
+                   String(localized: "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice.")],
             scene: .finished
         ),
     ]
@@ -474,43 +478,42 @@ private struct GuideStep {
     // «Notificación» field does not connect by itself.
     static let ios27: [GuideStep] = [
         GuideStep(
-            title: "Crea un atajo nuevo",
+            title: String(localized: "Crea un atajo nuevo"),
             symbol: "plus.square",
-            lead: "Apple no deja que Al día lo cree por ti. Son unos 5 minutos, una sola vez.",
+            lead: String(localized: "Apple no deja que Al día lo cree por ti. Son unos 5 minutos, una sola vez."),
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.newShortcut)
         ),
         GuideStep(
-            title: "Que se active con una notificación",
+            title: String(localized: "Que se active con una notificación"),
             symbol: "bell.badge.fill",
-            lead: "Cubre tus compras en línea y acercando el teléfono.",
+            lead: String(localized: "Cubre tus compras en línea y acercando el teléfono."),
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.pickNotification)
         ),
         GuideStep(
-            title: "Que sea la de Wallet",
+            title: String(localized: "Que sea la de Wallet"),
             symbol: "wallet.pass",
-            lead: "Solo las notificaciones de Wallet abren este atajo.",
+            lead: String(localized: "Solo las notificaciones de Wallet abren este atajo."),
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.pickWalletApp)
         ),
         GuideStep(
-            title: "Agrega a Al día",
+            title: String(localized: "Agrega a Al día"),
             symbol: "magnifyingglass",
-            lead: "La acción de Al día que guarda cada aviso de Wallet.",
+            lead: String(localized: "La acción de Al día que guarda cada aviso de Wallet."),
             taps: [],
-            note: "Si no aparece, abre Al día una vez y vuelve a buscar: Atajos solo conoce "
-                + "las apps que ya abriste.",
+            note: String(localized: "Si no aparece, abre Al día una vez y vuelve a buscar: Atajos solo conoce las apps que ya abriste."),
             opensShortcuts: true,
             scene: .frames(GuideFrame.addNoticeAction)
         ),
         GuideStep(
-            title: "Conecta el aviso",
+            title: String(localized: "Conecta el aviso"),
             symbol: "link",
-            lead: "Así Al día recibe cada aviso de Wallet con el monto y la tarjeta. Son tres toques.",
+            lead: String(localized: "Así Al día recibe cada aviso de Wallet con el monto y la tarjeta. Son tres toques."),
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectNotice)
@@ -518,9 +521,9 @@ private struct GuideStep {
         // Atajos hands the notification over without its subtitle, which is where Wallet puts
         // the merchant (seen on the owner's iPhone, 2026-10-21): it has to be connected apart.
         GuideStep(
-            title: "Conecta el comercio",
+            title: String(localized: "Conecta el comercio"),
             symbol: "bag",
-            lead: "Wallet manda el nombre de la tienda aparte. Se conecta casi igual que el paso anterior.",
+            lead: String(localized: "Wallet manda el nombre de la tienda aparte. Se conecta casi igual que el paso anterior."),
             taps: [],
             opensShortcuts: true,
             scene: .frames(GuideFrame.connectSubtitle)
@@ -528,7 +531,7 @@ private struct GuideStep {
         // The same purchase through both automations arrives twice, each with its own text
         // (2026-11-02, second audit): the old one goes.
         GuideStep(
-            title: "Guárdalo",
+            title: String(localized: "Guárdalo"),
             symbol: "checkmark.circle",
             taps: [],
             note: ShortcutInstallView.removeOldAutomation,
@@ -536,25 +539,27 @@ private struct GuideStep {
             scene: .frames(GuideFrame.saveNotice)
         ),
         GuideStep(
-            title: "Pruébalo",
+            title: String(localized: "Pruébalo"),
             symbol: "creditcard",
-            taps: ["Compra algo, en línea o acercando el teléfono.",
-                   "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice."],
+            taps: [String(localized: "Compra algo, en línea o acercando el teléfono."),
+                   String(localized: "Vuelve aquí: en cuanto llegue el pago, esta pantalla te lo dice.")],
             scene: .frames([])
         ),
     ]
 
-    static let notes = [
-        ShortcutsVersion.isIOS27
-            ? "Se anota todo lo que Wallet te avisa: compras en línea y acercando el teléfono. "
-                + "El efectivo y las tarjetas que no están en Wallet anótalos tú con «+»."
-            : "Solo se anotan los pagos en los que acercas el iPhone o el reloj a la terminal. "
-                + "Las compras en línea y dentro de apps anótalas tú con «+».",
-        "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. "
-            + "Si un pago no aparece, anótalo tú.",
-        "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo.",
-        "Para el efectivo, di «Oye Siri, anotar gasto en Al día». También puedes ponerlo en el "
-            + "botón de Acción (Ajustes › Botón de Acción › Atajo) o en el Centro de control.",
+    /// What the automation catches, as the phone's Atajos builds it.
+    private static var catches: String {
+        if ShortcutsVersion.isIOS27 {
+            return String(localized: "Se anota todo lo que Wallet te avisa: compras en línea y acercando el teléfono. El efectivo y las tarjetas que no están en Wallet anótalos tú con «+».")
+        }
+        return String(localized: "Solo se anotan los pagos en los que acercas el iPhone o el reloj a la terminal. Las compras en línea y dentro de apps anótalas tú con «+».")
+    }
+
+    static let notes: [String] = [
+        catches,
+        String(localized: "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. Si un pago no aparece, anótalo tú."),
+        String(localized: "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo."),
+        String(localized: "Para el efectivo, di «Oye Siri, anotar gasto en Al día». También puedes ponerlo en el botón de Acción (Ajustes › Botón de Acción › Atajo) o en el Centro de control."),
     ]
 }
 
@@ -584,16 +589,35 @@ struct CaptureCheck: View {
 
     /// «Último pago: hace 2 días. Paga algo acercando el iPhone para comprobar.»
     private static func earlier(_ last: Date) -> String {
-        "Último pago: " + AppClock.relative(last) + ". " + CaptureCopy.proveIt
+        let when = AppClock.relative(last)
+        let proveIt = CaptureCopy.proveIt
+        return String(localized: "Último pago: \(when). \(proveIt)")
     }
 
     private static var hint: String {
-        ShortcutsVersion.isIOS27
-            // The ready-made shortcut fails by being off, or by Wallet not notifying (Fable review,
-            // 2026-11-18); step 5 belongs to the step-by-step guide only.
-            ? "¿Pagaste y no llega en un par de minutos? Revisa en Atajos que la automatización esté "
-              + "encendida y, en Ajustes › Notificaciones › Wallet, que las notificaciones estén permitidas."
-            : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7."
+        // The ready-made shortcut fails by being off, or by Wallet not notifying (Fable review,
+        // 2026-11-18); step 5 belongs to the step-by-step guide only.
+        if ShortcutsVersion.isIOS27 {
+            return String(localized: "¿Pagaste y no llega en un par de minutos? Revisa en Atajos que la automatización esté encendida y, en Ajustes › Notificaciones › Wallet, que las notificaciones estén permitidas.")
+        }
+        return String(localized: "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
+    }
+
+    /// «Llegó $47.50 en Oxxo, hace 2 minutos.»
+    private func arrival(_ date: Date) -> String {
+        let when = AppClock.relative(date)
+        if arrivedText.isEmpty {
+            return String(localized: "Llegó un pago, \(when).")
+        }
+        let payment = arrivedText
+        return String(localized: "Llegó \(payment), \(when).")
+    }
+
+    private static func waitingTitle(_ last: Date?) -> String {
+        if last == nil {
+            return String(localized: "Esperando tu primer pago")
+        }
+        return String(localized: "Esperando un pago nuevo")
     }
 
     var body: some View {
@@ -610,8 +634,7 @@ struct CaptureCheck: View {
                     Text("Ya funciona")
                         .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
-                    Text("Llegó \(arrivedText.isEmpty ? "un pago" : arrivedText), "
-                         + AppClock.relative(date) + ".")
+                    Text(arrival(date))
                         .font(.ticket(.detail))
                         .foregroundStyle(Theme.muted)
                 }
@@ -619,7 +642,7 @@ struct CaptureCheck: View {
                 ProgressView()
                     .tint(Theme.brass)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text(last == nil ? "Esperando tu primer pago" : "Esperando un pago nuevo")
+                    Text(Self.waitingTitle(last))
                         .font(.ticket(.button))
                         .foregroundStyle(Theme.ink)
                     if let last {

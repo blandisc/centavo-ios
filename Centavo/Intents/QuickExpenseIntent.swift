@@ -63,12 +63,28 @@ struct QuickExpenseIntent: AppIntent {
             throw $sentence.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
         case .maybeRepeated(let name), .saved(let name):
             let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
-            let day = QuickExpense.spokenDay(entry.date).map { ", \($0)" } ?? ""
-            let paid = entry.source.map { ", con \($0.lowercased() == "efectivo" ? "efectivo" : $0)" } ?? ""
-            let notice = ["Anotado: \(spoken(entry.amountText)) en \(name)\(day)\(paid).", budgetLine]
-                .compactMap { $0 }
+            let said = spoken(entry.amountText)
+            let day = QuickExpense.spokenDay(entry.date)
+            let added = Self.addedSentence(amount: said, name: name, day: day, source: entry.source)
+            let notice = [added, budgetLine].compactMap { $0 }
             return .result(dialog: "\(notice.joined(separator: " "))")
         }
+    }
+
+    /// «Anotado: $230.00 en tacos, ayer, con efectivo.»: one whole sentence for each case, so
+    /// each language puts the day and the card where it goes.
+    private static func addedSentence(amount: String, name: String, day: String?, source: String?) -> String {
+        guard let source else {
+            if let day { return String(localized: "Anotado: \(amount) en \(name), \(day).") }
+            return String(localized: "Anotado: \(amount) en \(name).")
+        }
+        // Cash is said in lowercase, whatever its name in the list («Efectivo»).
+        if source.lowercased() == "efectivo" {
+            if let day { return String(localized: "Anotado: \(amount) en \(name), \(day), con efectivo.") }
+            return String(localized: "Anotado: \(amount) en \(name), con efectivo.")
+        }
+        if let day { return String(localized: "Anotado: \(amount) en \(name), \(day), con \(source).") }
+        return String(localized: "Anotado: \(amount) en \(name), con \(source).")
     }
 
     private func spoken(_ text: String) -> String {

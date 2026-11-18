@@ -102,8 +102,14 @@ struct MonthBar: View {
         .padding(.top, -Theme.Space.s)
         .padding(.bottom, -Theme.Space.m)
         .sensoryFeedback(.selection, trigger: showsSum)
-        .accessibilityLabel(showsSum ? "Ocultar cuenta" : "Ver cuenta")
+        .accessibilityLabel(tearLineName)
         .accessibilityIdentifier("ver-cuenta")
+    }
+
+    /// What VoiceOver calls the tear line: what a tap on it does.
+    private var tearLineName: String {
+        if showsSum { return String(localized: "Ocultar cuenta") }
+        return String(localized: "Ver cuenta")
     }
 
     // MARK: Words
@@ -139,32 +145,56 @@ struct MonthBar: View {
             .contentTransition(.numericText())
     }
 
-    /// The sentence under the figure, in three pieces (only the judgement in color), or `nil`
+    /// The sentence under the figure, whole for the catalog, with the judgement between «**»
+    /// (Markdown, read by `AttributedString(localized:)`): only that part goes in color. `nil`
     /// when there is nothing the figure does not already say.
-    private typealias Line = (before: String, colored: String, after: String, good: Bool)
+    private typealias Line = (text: AttributedString, good: Bool)
 
     /// «Te pasaste $X del presupuesto», «Cerraste con $X de sobra» and, with «Repartir», «Vas
     /// $400 abajo del ritmo»: how far from where an even month would be by today. With
     /// «Acumular», «Hoy puedes gastar» already is that gap, so no sentence (alternative C).
     private var verdictLine: Line? {
         // This month the hero already says it in big red figures.
-        if isOver { return isCurrentMonth ? nil : ("Te pasaste ", wholeMoney(pace.overspentShown), " del presupuesto", false) }
-        if !isCurrentMonth { return ("Cerraste con ", wholeMoney(pace.sum.remaining), " de sobra", true) }
+        if isOver {
+            if isCurrentMonth { return nil }
+            let over = wholeMoney(pace.overspentShown)
+            return (AttributedString(localized: "Te pasaste **\(over)** del presupuesto"), false)
+        }
+        if !isCurrentMonth {
+            let left = wholeMoney(pace.sum.remaining)
+            return (AttributedString(localized: "Cerraste con **\(left)** de sobra"), true)
+        }
         guard pace.rhythm != nil else { return nil }
         let rhythm = pace.gapShown
-        if rhythm == 0 { return ("Vas ", "justo", " al ritmo", true) }
-        return rhythm > 0 ? ("Vas ", "\(wholeMoney(rhythm)) abajo", " del ritmo", true)
-            : ("Vas ", "\(wholeMoney(-rhythm)) arriba", " del ritmo", false)
+        if rhythm == 0 { return (AttributedString(localized: "Vas **justo** al ritmo"), true) }
+        if rhythm > 0 {
+            let under = wholeMoney(rhythm)
+            return (AttributedString(localized: "Vas **\(under) abajo** del ritmo"), true)
+        }
+        let over = wholeMoney(-rhythm)
+        return (AttributedString(localized: "Vas **\(over) arriba** del ritmo"), false)
     }
 
     private func verdict(_ line: Line) -> some View {
-        let before = Text(line.before).foregroundStyle(Theme.muted)
-        let colored = Text(line.colored).foregroundStyle(line.good ? Theme.good : Theme.danger)
-        let after = Text(line.after).foregroundStyle(Theme.muted)
-        return Text("\(before)\(colored)\(after)")
+        Text(Self.colored(line))
             .font(.ticket(.detail))
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("veredicto")
+    }
+
+    /// The sentence in grey and its «**» part in green or red, not bold: as it was drawn when
+    /// it came in three pieces.
+    private static func colored(_ line: Line) -> AttributedString {
+        let tint: Color = line.good ? Theme.good : Theme.danger
+        var result = AttributedString()
+        for run in line.text.runs {
+            let judged = run.inlinePresentationIntent?.contains(.stronglyEmphasized) ?? false
+            var piece = AttributedString(line.text[run.range])
+            piece.inlinePresentationIntent = nil
+            piece.foregroundColor = judged ? tint : Theme.muted
+            result.append(piece)
+        }
+        return result
     }
 
     /// The sum behind «Hoy puedes gastar», like a ticket's lines: what is left of the month,
@@ -178,17 +208,16 @@ struct MonthBar: View {
             if showsExpected {
                 // Where «Vas $665 abajo del ritmo» comes from, then where today's figure does (L3).
                 sumHeading("El ritmo")
-                sumLine(pace.isAheadOfPace ? "A hoy deberías llevar" : "A hoy podrías llevar", wholeMoney(pace.expectedShown))
+                sumLine(expectedLabel, wholeMoney(pace.expectedShown))
                 sumLine("− Llevas", wholeMoney(pace.spentShown))
-                sumLine(pace.gapShown > 0 ? "= Vas abajo del ritmo" : pace.gapShown < 0 ? "= Vas arriba del ritmo" : "= Vas justo al ritmo",
-                        wholeMoney(pace.gapShown.magnitude), tint: pace.gapShown < 0 ? Theme.danger : Theme.good)
+                sumLine(gapLabel, wholeMoney(pace.gapShown.magnitude), tint: pace.gapShown < 0 ? Theme.danger : Theme.good)
                 Perforation(tear: true)
                 sumHeading("Hoy")
             }
             if opensWithBudget {
                 sumLine("Presupuesto", wholeMoney(sum.budget))
                 sumLine("− Llevas", wholeMoney(sum.spent))
-                sumLine(sum.remaining < 0 ? "= Te pasaste" : "= Te quedan", wholeMoney(sum.remaining.magnitude))
+                sumLine(remainingLabel, wholeMoney(sum.remaining.magnitude))
             }
             if days > 0, let excess = pace.fixedOverBudgetShown {
                 // Fixed expenses past the budget: nothing to cut into days (second audit).
@@ -197,7 +226,7 @@ struct MonthBar: View {
                 // Whole, so the lines subtract to the peso: the fixed ones are the budget plus
                 // the excess, rounded up like it (independent review).
                 sumLine("− Fijos del mes", wholeMoney(sum.budget + excess))
-                sumLine(excess > 0 ? "= Tus fijos pasan por" : "= Para los días", wholeMoney(excess), strong: true)
+                sumLine(fixedExcessLabel(excess), wholeMoney(excess), strong: true)
             } else if days > 0, pace.mode == .spread {
                 // «Repartir»: what was left when the day began, shared over the days left.
                 if opensWithBudget { Perforation(tear: true) }
@@ -209,8 +238,7 @@ struct MonthBar: View {
                 sumLine("÷ Días que faltan", "\(pace.daysLeft)")
                 sumLine("= Para hoy", wholeMoney(sum.forToday))
                 if sum.variableToday != 0 {
-                    sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
-                            wholeMoney(sum.variableToday.magnitude))
+                    sumLine(todayLabel, wholeMoney(sum.variableToday.magnitude))
                 }
                 Perforation(tear: true)
                 sumLine("= Hoy puedes gastar", wholeMoney(pace.dailyAllowance), strong: true)
@@ -224,22 +252,17 @@ struct MonthBar: View {
                 sumLine("= Por día", wholeMoney(sum.perDay))
                 if pace.countedDays > 1 {
                     // A budget begun after the 1st only has its own days to carry: said with the day.
-                    let since = startText.map { "desde el \($0)" }
-                    sumLine(sum.carriedOver >= 0 ? "+ Sobró \(since ?? "de otros días")"
-                                                 : "− Te pasaste \(since ?? "otros días")",
-                            wholeMoney(sum.carriedOver.magnitude))
+                    sumLine(carriedLabel, wholeMoney(sum.carriedOver.magnitude))
                 }
                 if sum.heldBack > 0 {
                     // Its days add up to more than what is left of the month: today gets what is left.
                     sumLine("− Ya no queda en el mes", wholeMoney(sum.heldBack))
                 }
                 if sum.variableToday != 0 {
-                    sumLine(sum.variableToday > 0 ? "− Gastado hoy" : "+ Devuelto hoy",
-                            wholeMoney(sum.variableToday.magnitude))
+                    sumLine(todayLabel, wholeMoney(sum.variableToday.magnitude))
                 }
                 Perforation(tear: true)
-                sumLine(pace.isOverToday ? "= Hoy te pasaste" : "= Hoy puedes gastar",
-                        wholeMoney(pace.dailyAllowance.magnitude), strong: true)
+                sumLine(allowanceLabel, wholeMoney(pace.dailyAllowance.magnitude), strong: true)
             }
             if showsExpected, let startText {
                 // A budget first set halfway through the month (owner, 2026-11-11): the days
@@ -266,10 +289,56 @@ struct MonthBar: View {
 
     /// «14 nov»: the day this month's budget counts from, when it began after the 1st.
     private var startText: String? {
-        pace.countsFrom?.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))
+        pace.countsFrom?.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
     }
 
-    private func sumLine(_ label: String, _ value: String, strong: Bool = false, tint: Color? = nil) -> some View {
+    // The sum's labels that depend on the month, each a whole line for the catalog.
+
+    private var expectedLabel: LocalizedStringResource {
+        if pace.isAheadOfPace { return "A hoy deberías llevar" }
+        return "A hoy podrías llevar"
+    }
+
+    private var gapLabel: LocalizedStringResource {
+        if pace.gapShown > 0 { return "= Vas abajo del ritmo" }
+        if pace.gapShown < 0 { return "= Vas arriba del ritmo" }
+        return "= Vas justo al ritmo"
+    }
+
+    private var remainingLabel: LocalizedStringResource {
+        if pace.sum.remaining < 0 { return "= Te pasaste" }
+        return "= Te quedan"
+    }
+
+    private func fixedExcessLabel(_ excess: Decimal) -> LocalizedStringResource {
+        if excess > 0 { return "= Tus fijos pasan por" }
+        return "= Para los días"
+    }
+
+    private var todayLabel: LocalizedStringResource {
+        if pace.sum.variableToday > 0 { return "− Gastado hoy" }
+        return "+ Devuelto hoy"
+    }
+
+    /// What the days before left over or overspent, from the day the budget counts when it
+    /// began after the 1st.
+    private var carriedLabel: LocalizedStringResource {
+        let leftOver = pace.sum.carriedOver >= 0
+        if let start = startText {
+            if leftOver { return "+ Sobró desde el \(start)" }
+            return "− Te pasaste desde el \(start)"
+        }
+        if leftOver { return "+ Sobró de otros días" }
+        return "− Te pasaste otros días"
+    }
+
+    private var allowanceLabel: LocalizedStringResource {
+        if pace.isOverToday { return "= Hoy te pasaste" }
+        return "= Hoy puedes gastar"
+    }
+
+    private func sumLine(_ label: LocalizedStringResource, _ value: String, strong: Bool = false,
+                         tint: Color? = nil) -> some View {
         HStack {
             Text(label).foregroundStyle(strong ? Theme.brass : Theme.muted)
             Spacer()
@@ -279,7 +348,7 @@ struct MonthBar: View {
     }
 
     /// «EL RITMO», «HOY»: the two accounts in the sum, named like the page's block captions.
-    private func sumHeading(_ title: String) -> some View {
+    private func sumHeading(_ title: LocalizedStringResource) -> some View {
         Text(title)
             .ticketKey(Theme.faint)
             .frame(maxWidth: .infinity, alignment: .leading)

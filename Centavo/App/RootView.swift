@@ -26,14 +26,9 @@ struct RootView: View {
                 }
             }
         } else {
-            // «Mi dinero» off (owner, 2026-11-18): no tab bar for one tab. The «+» stays at the
-            // bottom right, and the list leaves room under its last row for it. A bar of the
-            // system's, not an inset: the list blurs under the «+» as it did under the tabs
-            // (2026-11-14); under a plain inset it was cut off sharp behind the glass.
+            // «Mi dinero» off (owner, 2026-11-18): no tab bar for one tab. The «+» goes in the
+            // system's bottom bar beside the search, inside «Hoy» (`ExpenseListView`'s toolbar).
             ExpenseListView(addRequests: addRequests)
-                .safeAreaBar(edge: .bottom, alignment: .trailing, spacing: Theme.Space.none) {
-                    AddCircle(besideTabs: false) { addRequests += 1 }
-                }
         }
     }
 }

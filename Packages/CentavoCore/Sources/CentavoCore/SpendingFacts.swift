@@ -98,10 +98,12 @@ public enum SpendingFacts {
             let figure = money(record.amount)
             let id = "doble|\(key(record.merchant))|\(record.amount)"
             guard !facts.contains(where: { $0.key == id }) else { continue }
+            let name = record.name
+            let line = String(localized: "Hay dos cargos de \(figure) en \(name) con poco tiempo de diferencia. Revisa que no sea un cobro doble.",
+                              bundle: .main, comment: "Nota del mes: el monto y el comercio de un posible cobro doble")
             facts.append(SpendingFact(
                 kind: .doubleCharge, key: id,
-                line: "Hay dos cargos de \(figure) en \(record.name) con poco tiempo de diferencia. "
-                    + "Revisa que no sea un cobro doble.",
+                line: line,
                 figures: [figure]
             ))
         }
@@ -130,9 +132,12 @@ public enum SpendingFacts {
             let steady = sorted.allSatisfy { ($0.amount - latest.amount).magnitude <= latest.amount * Decimal(0.05) }
             guard monthly, steady else { continue }
             let figure = money(latest.amount)
+            let name = latest.name
+            let line = String(localized: "\(name) se cobra cada mes (\(figure)). Márcalo como fijo y se anotará solo.",
+                              bundle: .main, comment: "Nota del mes: el comercio y el monto de un cargo que llega cada mes")
             facts.append(SpendingFact(
                 kind: .subscription, key: "fijo|\(merchantKey)",
-                line: "\(latest.name) se cobra cada mes (\(figure)). Márcalo como fijo y se anotará solo.",
+                line: line,
                 figures: [figure]
             ))
         }
@@ -155,9 +160,11 @@ public enum SpendingFacts {
         let over = projected - budget
         guard over > budget * Decimal(0.05) else { return [] }
         let total = money(projected), extra = money(whole(over))
+        let line = String(localized: "A este ritmo cierras el mes en \(total), \(extra) arriba del presupuesto.",
+                          bundle: .main, comment: "Nota del mes: el total al que llegaría el mes y cuánto pasa del presupuesto")
         return [SpendingFact(
             kind: .projection, key: "ritmo|\(calendar.component(.month, from: now))",
-            line: "A este ritmo cierras el mes en \(total), \(extra) arriba del presupuesto.",
+            line: line,
             figures: [total, extra]
         )]
     }
@@ -193,9 +200,12 @@ public enum SpendingFacts {
                   sofar.amount - usual >= monthTotal * Decimal(0.05) else { continue }
             let percent = Int(NSDecimalNumber(decimal: (sofar.amount / usual - 1) * 100).doubleValue.rounded())
             let figure = "\(percent) %"
+            let name = sofar.name
+            let line = String(localized: "\(name) va \(figure) arriba de lo normal a estas alturas del mes.",
+                              bundle: .main, comment: "Nota del mes: la categoría y cuánto va arriba de lo normal («35 %»)")
             found.append((SpendingFact(
                 kind: .categoryUp, key: "sube|\(categoryKey)",
-                line: "\(sofar.name) va \(figure) arriba de lo normal a estas alturas del mes.",
+                line: line,
                 figures: [figure]
             ), sofar.amount - usual))
         }

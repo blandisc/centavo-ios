@@ -72,31 +72,31 @@ extension AllowanceMode {
 
     var title: String {
         switch self {
-        case .carry: "Acumular día a día"
-        case .spread: "Repartir entre los días que quedan"
+        case .carry: String(localized: "Acumular día a día")
+        case .spread: String(localized: "Repartir entre los días que quedan")
         }
     }
 
     /// The choice on the budget sheet, under «Lo que no gastas un día».
     var shortTitle: String {
         switch self {
-        case .carry: "Se acumula"
-        case .spread: "Se reparte"
+        case .carry: String(localized: "Se acumula")
+        case .spread: String(localized: "Se reparte")
         }
     }
 
     /// Which one suits whom, under the drawing.
     var suits: String {
         switch self {
-        case .carry: "Te conviene si un día gastas fuerte y otro poco: lo que no gastas hoy lo tienes mañana."
-        case .spread: "Te conviene si quieres un monto parejo cada día: lo que sobra o falta se reparte entre los que quedan."
+        case .carry: String(localized: "Te conviene si un día gastas fuerte y otro poco: lo que no gastas hoy lo tienes mañana.")
+        case .spread: String(localized: "Te conviene si quieres un monto parejo cada día: lo que sobra o falta se reparte entre los que quedan.")
         }
     }
 
     var explanation: String {
         switch self {
-        case .carry: "Lo que te sobra o te pasas hoy se suma o se resta completo mañana."
-        case .spread: "Lo que queda del mes se divide parejo entre los días que faltan."
+        case .carry: String(localized: "Lo que te sobra o te pasas hoy se suma o se resta completo mañana.")
+        case .spread: String(localized: "Lo que queda del mes se divide parejo entre los días que faltan.")
         }
     }
 }

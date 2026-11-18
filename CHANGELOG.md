@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Changed
+- **Al día también en inglés:** un iPhone en inglés ve la app, Siri, los widgets y la guía en inglés; en español todo sigue igual.
+- **La búsqueda y el «+» van juntos abajo,** en la barra del sistema; el «+» ya no tapa el campo de búsqueda en iPhones chicos.
 - **Siri con día:** si «Anotar en una frase» no puede guardar «230 de tacos el 30», el pendiente en «Hoy» se anota en el día que dijiste.
 - **CSV con tabuladores:** los montos con coma decimal («89,50») se leen bien, y un «1.234» dudoso ya no se adivina.
 - **Bienvenida:** si la app se cierra en «Listo», tu otro iPhone ya no la vuelve a mostrar y la renta no se agrega dos veces. Si la cierras antes de elegir moneda, vuelve a aparecer en lugar de dejarte en pesos.

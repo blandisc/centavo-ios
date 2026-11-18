@@ -84,7 +84,7 @@ struct HoyView: View {
                         MonthStrip(pace: pace, ink: ink)
                     }
                     // Only «Llevas $X» under the bar, in full (the budget is in the medium one).
-                    keyText("Llevas", money.whole(pace.spent), ink: ink)
+                    keyText(.spent, money.whole(pace.spent), ink: ink)
                         .font(.widget(.spent))
                         .textCase(.uppercase)
                         .lineLimit(1)
@@ -178,7 +178,8 @@ struct HoyView: View {
     private func annotation(_ pace: BudgetPace) -> some View {
         GeometryReader { proxy in
             let share = min(max(NSDecimalNumber(decimal: pace.expectedToDate / pace.budget).doubleValue, 0), 1)
-            let text = keyText(pace.isAheadOfPace ? "Deberías llevar" : "Podrías llevar", money.whole(pace.expectedToDate), ink: ink)
+            let line: KeyLine = pace.isAheadOfPace ? .shouldBe : .couldBe
+            let text = keyText(line, money.whole(pace.expectedToDate), ink: ink)
                 .font(.widget(.key))
                 .textCase(.uppercase)
                 .lineLimit(1)
@@ -199,9 +200,12 @@ struct HoyView: View {
     /// «Llevas $24,518 de $24,180» under the boleto where there is no rhythm to say (past the
     /// budget, or a stale snapshot); what went in red past the budget.
     private func dataLine(_ pace: BudgetPace) -> some View {
-        let spent = Text(money.whole(pace.spentShown)).foregroundStyle(pace.isOverspent ? ink.danger : ink.primary)
-        let budget = Text(money.whole(pace.budget)).foregroundStyle(ink.primary)
-        return Text("\(Text("Llevas ").foregroundStyle(ink.muted))\(spent)\(Text(" de ").foregroundStyle(ink.muted))\(budget)")
+        let spent = money.whole(pace.spentShown)
+        let budget = money.whole(pace.budget)
+        let spentColor = pace.isOverspent ? ink.danger : ink.primary
+        let sentence = String(localized: "Llevas \(spent) de \(budget)")
+        let tints = [Tint(text: spent, color: spentColor), Tint(text: budget, color: ink.primary, fromEnd: true)]
+        return tinted(sentence, ink.muted, tints)
             .font(.widget(.verdict))
             .lineLimit(1)
             .minimumScaleFactor(Theme.MinimumScale.figure)
@@ -213,13 +217,13 @@ struct HoyView: View {
                 .fill(pace.isOverspent ? ink.danger : ink.brass)
                 .frame(width: Theme.Size.widgetKeySquare, height: Theme.Size.widgetKeySquare)
                 .widgetAccentable()
-            keyText("Llevas", money.whole(pace.spent), ink: ink)
+            keyText(.spent, money.whole(pace.spent), ink: ink)
             Spacer(minLength: Theme.Space.xxs)
             if pace.fixedMonth > 0, !pace.isOverspent {
-                keyText("Fijos", money.whole(pace.fixedMonth), ink: ink)
+                keyText(.fixed, money.whole(pace.fixedMonth), ink: ink)
                 Spacer(minLength: Theme.Space.xxs)
             }
-            keyText("Presupuesto", money.whole(pace.budget), ink: ink)
+            keyText(.budget, money.whole(pace.budget), ink: ink)
         }
         .font(.widget(.key))
         .textCase(.uppercase)
@@ -265,9 +269,16 @@ struct WhereItGoesView: View {
     private var spoken: String {
         let total = slices.reduce(Decimal(0)) { $0 + $1.amount }
         guard !slices.isEmpty, total > 0 else { return entry.spoken(state, money) }
-        let parts = slices.map { "\($0.isRest ? "Otras" : $0.name ?? "Sin categoría") \(money.whole($0.amount))" }
-        return entry.spoken(state, money) + ". En qué se va: " + parts.formatted(.list(type: .and)
-            .locale(Locale(identifier: "es_MX")))
+        let parts = slices.map { "\(Self.name(of: $0)) \(money.whole($0.amount))" }
+        let said = entry.spoken(state, money)
+        let list = parts.formatted(.list(type: .and).locale(Locale.current))
+        return String(localized: "\(said). En qué se va: \(list)")
+    }
+
+    /// The name a slice prints: «Otras» for the rest, «Sin categoría» for one without.
+    private static func name(of slice: WidgetSnapshot.Slice) -> String {
+        if slice.isRest { return String(localized: "Otras") }
+        return slice.name ?? String(localized: "Sin categoría")
     }
 
     private var today: some View {
@@ -287,7 +298,7 @@ struct WhereItGoesView: View {
                 } else {
                     MonthStrip(pace: pace, ink: ink)
                 }
-                keyText("Llevas", money.whole(pace.spent), ink: ink)
+                keyText(.spent, money.whole(pace.spent), ink: ink)
                     .font(.widget(.key))
                     .textCase(.uppercase)
                     .lineLimit(1)
@@ -306,7 +317,7 @@ struct WhereItGoesView: View {
     private var whereItGoes: some View {
         let total = slices.reduce(Decimal(0)) { $0 + $1.amount }
         return VStack(alignment: .leading, spacing: Theme.Space.widgetRowGap) {
-            Caption(text: "En qué se va", color: ink.muted)
+            Caption(text: String(localized: "En qué se va"), color: ink.muted)
             if slices.isEmpty || total <= 0 {
                 Spacer()
                 Text("Sin categorías este mes")
@@ -342,7 +353,7 @@ struct WhereItGoesView: View {
         HStack(spacing: Theme.Space.widgetRowGap) {
             RoundedRectangle(cornerRadius: Theme.Radius.widgetTile).fill(color)
                 .frame(width: Theme.Size.widgetKeySquare, height: Theme.Size.widgetKeySquare)
-            Text(slice.isRest ? "Otras" : slice.name ?? "Sin categoría")
+            Text(Self.name(of: slice))
                 .foregroundStyle(ink.primary)
                 .textCase(.uppercase)
                 .lineLimit(1)

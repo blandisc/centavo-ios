@@ -74,9 +74,7 @@ struct AllowanceExplainer: View {
             if finished { replays += 1 } else { paused.toggle() }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(mode == .carry
-            ? "Ejemplo: lo que sobra un día pasa completo al día siguiente; lo que te pasas se le quita."
-            : "Ejemplo: lo que sobra o falta un día se reparte parejo entre todos los días que quedan.")
+        .accessibilityLabel(spokenExample)
         // Still (reduced motion, low power), the week is drawn at once: nothing to pause, the
         // same as the tap (2026-11-18: it offered «Pausar» and left a false ⏸).
         .accessibilityActions {
@@ -94,7 +92,19 @@ struct AllowanceExplainer: View {
     private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
 
     /// What VoiceOver offers on the drawing while it plays.
-    private var actionName: String { finished ? "Ver otra vez" : paused ? "Seguir" : "Pausar" }
+    private var actionName: String {
+        if finished { return String(localized: "Ver otra vez") }
+        if paused { return String(localized: "Seguir") }
+        return String(localized: "Pausar")
+    }
+
+    /// What VoiceOver reads for the drawing: the rule it shows, in one sentence.
+    private var spokenExample: String {
+        if mode == .carry {
+            return String(localized: "Ejemplo: lo que sobra un día pasa completo al día siguiente; lo que te pasas se le quita.")
+        }
+        return String(localized: "Ejemplo: lo que sobra o falta un día se reparte parejo entre todos los días que quedan.")
+    }
 
     // MARK: Pieces
 
@@ -160,7 +170,8 @@ struct AllowanceExplainer: View {
         spent = Array(repeating: false, count: Self.count)
         today = nil
         coins = []
-        caption = "Una semana de ejemplo con \(whole(AllowanceDemo.perDay)) por día."
+        let perDay = whole(AllowanceDemo.perDay)
+        caption = String(localized: "Una semana de ejemplo con \(perDay) por día.")
     }
 
     private struct Run: Hashable {
@@ -184,9 +195,11 @@ struct AllowanceExplainer: View {
             // Still and finished: every day spent and every move already made.
             for move in demo.moves { for target in move.to { shown[target] += move.each } }
             spent = Array(repeating: true, count: Self.count)
-            caption = mode == .carry
-                ? "Cada día recibe completo lo que sobró o faltó el anterior."
-                : "Lo que sobra o falta se reparte entre los días que quedan."
+            if mode == .carry {
+                caption = String(localized: "Cada día recibe completo lo que sobró o faltó el anterior.")
+            } else {
+                caption = String(localized: "Lo que sobra o falta se reparte entre los días que quedan.")
+            }
             return
         }
         do {
@@ -197,8 +210,7 @@ struct AllowanceExplainer: View {
                     today = index
                     spent[index] = true
                 }
-                let result = day.left >= 0 ? "sobraron \(whole(day.left))" : "te pasaste \(whole(-day.left))"
-                caption = "Día \(index + 1): podías \(whole(day.allowance)), gastaste \(whole(day.spent)); \(result)."
+                caption = dayCaption(day, number: index + 1)
                 guard await pause(Theme.Motion.Explainer.dayBeat) else { return }
                 guard let move = demo.moves.first(where: { $0.from == index }) else { continue }
                 coins = move.to.map { Coin(amount: move.each, from: index, to: $0) }
@@ -211,15 +223,48 @@ struct AllowanceExplainer: View {
                     for target in move.to { shown[target] += move.each }
                     coins = []
                 }
-                caption = mode == .carry
-                    ? "Día \(index + 1): \(result) → mañana tienes \(whole(shown[index + 1]))."
-                    : "Día \(index + 1): \(result) → \(move.each >= 0 ? "+" : "−")\(whole(move.each.magnitude)) a cada uno de los \(move.to.count) días que quedan."
+                caption = moveCaption(day, number: index + 1, move: move)
                 guard await pause(Theme.Motion.Explainer.dayBeat) else { return }
             }
-            caption = "Fin: gastaste \(whole(demo.spent)) de \(whole(demo.budget)); sobraron \(whole(demo.budget - demo.spent)), igual con las dos reglas. Toca para verlo otra vez."
+            let spentText = whole(demo.spent)
+            let budgetText = whole(demo.budget)
+            let leftText = whole(demo.budget - demo.spent)
+            caption = String(localized: "Fin: gastaste \(spentText) de \(budgetText); sobraron \(leftText), igual con las dos reglas. Toca para verlo otra vez.")
             finished = true
             played = run
         }
+    }
+
+    /// «Día 2: podías $100, gastaste $60; sobraron $40.»: each a whole sentence for the catalog.
+    private func dayCaption(_ day: AllowanceDemo.Day, number: Int) -> String {
+        let allowance = whole(day.allowance)
+        let spentText = whole(day.spent)
+        if day.left >= 0 {
+            let left = whole(day.left)
+            return String(localized: "Día \(number): podías \(allowance), gastaste \(spentText); sobraron \(left).")
+        }
+        let over = whole(-day.left)
+        return String(localized: "Día \(number): podías \(allowance), gastaste \(spentText); te pasaste \(over).")
+    }
+
+    /// Where the day's coin went: to tomorrow («Se acumula») or to each day left («Se reparte»).
+    private func moveCaption(_ day: AllowanceDemo.Day, number: Int, move: AllowanceDemo.Move) -> String {
+        let leftOver = day.left >= 0
+        let amount = leftOver ? whole(day.left) : whole(-day.left)
+        if mode == .carry {
+            let tomorrow = whole(shown[number])
+            if leftOver {
+                return String(localized: "Día \(number): sobraron \(amount) → mañana tienes \(tomorrow).")
+            }
+            return String(localized: "Día \(number): te pasaste \(amount) → mañana tienes \(tomorrow).")
+        }
+        let sign = move.each >= 0 ? "+" : "−"
+        let each = sign + whole(move.each.magnitude)
+        let days = move.to.count
+        if leftOver {
+            return String(localized: "Día \(number): sobraron \(amount) → \(each) a cada uno de los \(days) días que quedan.")
+        }
+        return String(localized: "Día \(number): te pasaste \(amount) → \(each) a cada uno de los \(days) días que quedan.")
     }
 
     /// Waits, and says whether to go on: a switch of rule cancels this run, and a sleep that

@@ -131,7 +131,8 @@ struct ExpenseListView: View {
     @State private var listWidth: CGFloat?
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
-    /// Months are written the way the days of the list are, whatever the phone's language.
+    /// Counts are written the Mexican way, like every figure of the app («5,000»). Months and
+    /// days are written in the person's language (`Locale.current`).
     static let mexico = Locale(identifier: "es_MX")
 
     /// Changes the currency the month adds up in. The budget is a bare number, and 8,000
@@ -174,8 +175,9 @@ struct ExpenseListView: View {
     private func goToMonth(_ offset: Int) {
         keptMonth = nil
         monthOffset = offset
-        let name = viewedMonth(offset).formatted(.dateTime.month(.wide).year().locale(Self.mexico))
-        let said: String = offset == 0 ? "Este mes, \(name)" : name
+        let name = viewedMonth(offset).formatted(.dateTime.month(.wide).year().locale(Locale.current))
+        let said: String
+        if offset == 0 { said = String(localized: "Este mes, \(name)") } else { said = name }
         AccessibilityNotification.Announcement(said).post()
     }
 
@@ -270,7 +272,22 @@ struct ExpenseListView: View {
                 }
                 // Search up here and «+» down beside the tabs (owner, 2026-11-14): a button that
                 // opens into a field, not a bar across the top of the ticket.
-                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
+                if Features.money {
+                    DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
+                } else {
+                    // Without tabs iOS takes the search down to the bottom whatever is asked, and
+                    // the «+» laid over it covered the field (iPhone SE, 2026-11-18). Both in the
+                    // system's bottom bar instead, as Notes does: search, then the brass «+».
+                    DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
+                    ToolbarItem(placement: .bottomBar) {
+                        Button { adding = true } label: {
+                            Image(systemName: "plus")
+                                .foregroundStyle(Theme.brass)
+                        }
+                        .accessibilityLabel("Anotar gasto")
+                    }
+                }
                 // ‹ › up top since «Mi dinero» put tabs at the bottom (2026-10-31). Only the
                 // arrows: the ticket's head already names the month, and the signature must
                 // keep its place in the middle.
@@ -786,15 +803,21 @@ private struct HomeHeader: View {
     /// The day or the category picked, over the list.
     @ViewBuilder private var filters: some View {
         if let day = selectedDay {
-            FilterRow(title: "Día \(day)", count: month.shownCount, total: month.shownTotal,
+            FilterRow(title: String(localized: "Día \(day)"), count: month.shownCount, total: month.shownTotal,
                       clear: actions.clearDay)
                 .ticketRow()
         }
         if let line = selectedCategory {
-            FilterRow(title: line.isRest ? "Otras" : line.category ?? "Sin categoría",
+            FilterRow(title: Self.filterName(line),
                       count: month.shownCount, total: month.shownTotal, clear: actions.clearCategory)
                 .ticketRow()
         }
+    }
+
+    /// The picked category's name: its own, or «Otras», «Sin categoría».
+    private static func filterName(_ line: CategoryShare) -> String {
+        if line.isRest { return String(localized: "Otras") }
+        return line.category ?? String(localized: "Sin categoría")
     }
 
     private func emptyLine(_ text: LocalizedStringKey) -> some View {
@@ -946,7 +969,7 @@ private struct CatalogsSheet: ViewModifier {
 private struct TopSearch: ViewModifier {
     @Binding var text: String
     let settle: (String) -> Void
-    private let prompt = "Comercio, mes o monto…"
+    private let prompt = String(localized: "Comercio, mes o monto…")
 
     func body(content: Content) -> some View {
         content
@@ -974,14 +997,18 @@ private struct BudgetCurrencyCheck: ViewModifier {
     let onReview: () -> Void
     let onFixed: () -> Void
 
+    /// Whole sentences for the catalog: the budget alone, or with the fixed expenses left behind.
     private var message: String {
-        let budget = "Sigue siendo el mismo número, ahora en \(CurrencyPreference.spoken(currency))."
-        guard fixedLeft > 0 else { return budget }
+        let now = CurrencyPreference.spoken(currency)
         let old = CurrencyPreference.spoken(previous)
-        let fixed = fixedLeft == 1
-            ? "Tu gasto fijo sigue en \(old) y ya no se aparta de lo que puedes gastar."
-            : "Tus \(fixedLeft) gastos fijos siguen en \(old) y ya no se apartan de lo que puedes gastar."
-        return budget + " " + fixed
+        let count = fixedLeft
+        if count == 1 {
+            return String(localized: "Sigue siendo el mismo número, ahora en \(now). Tu gasto fijo sigue en \(old) y ya no se aparta de lo que puedes gastar.")
+        }
+        if count > 1 {
+            return String(localized: "Sigue siendo el mismo número, ahora en \(now). Tus \(count) gastos fijos siguen en \(old) y ya no se apartan de lo que puedes gastar.")
+        }
+        return String(localized: "Sigue siendo el mismo número, ahora en \(now).")
     }
 
     func body(content: Content) -> some View {
@@ -1261,15 +1288,18 @@ private extension ExpenseListView {
 
     @ViewBuilder var undoOverlay: some View {
         if let copied = lastCopy {
-            UndoBar(text: "Anotaste otra vez \(copied.name)", identifier: "deshacer-copia") { undoCopy(copied) }
-                .modifier(UndoBarPlacement(id: copied.id, spoken: "Anotaste otra vez \(copied.name). Puedes deshacerlo.",
+            let name = copied.name
+            UndoBar(text: String(localized: "Anotaste otra vez \(name)"), identifier: "deshacer-copia") { undoCopy(copied) }
+                .modifier(UndoBarPlacement(id: copied.id,
+                                           spoken: String(localized: "Anotaste otra vez \(name). Puedes deshacerlo."),
                                            reduceMotion: reduceMotion) {
                     if lastCopy?.id == copied.id { lastCopy = nil }
                 })
         } else if let deleted = lastDeleted {
-            UndoBar(text: "Borraste \(deleted.displayName ?? deleted.merchant)") { restore(deleted) }
+            let name = deleted.displayName ?? deleted.merchant
+            UndoBar(text: String(localized: "Borraste \(name)")) { restore(deleted) }
                 .modifier(UndoBarPlacement(id: deleted.id,
-                                           spoken: "Borraste \(deleted.displayName ?? deleted.merchant). Puedes deshacerlo.",
+                                           spoken: String(localized: "Borraste \(name). Puedes deshacerlo."),
                                            reduceMotion: reduceMotion) {
                     if lastDeleted?.id == deleted.id { lastDeleted = nil }
                 })
@@ -1306,13 +1336,13 @@ private extension ExpenseListView {
     /// answer first (`pendingImport`): rows that look like expenses already here, with another
     /// name or card. Nothing is saved until it is answered.
     func importFile(_ result: Result<URL, Error>) -> String? {
-        guard case .success(let url) = result else { return "No se pudo abrir el archivo." }
+        guard case .success(let url) = result else { return String(localized: "No se pudo abrir el archivo.") }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         // In whatever encoding the spreadsheet saved it: Excel's «CSV» is Windows-1252 and its
         // «Unicode» UTF-16 (2026-11-18).
         guard let data = try? Data(contentsOf: url), let text = CSVImporter.text(from: data) else {
-            return "No se pudo leer el archivo. Guárdalo como CSV UTF-8 desde Excel y vuelve a intentar."
+            return String(localized: "No se pudo leer el archivo. Guárdalo como CSV UTF-8 desde Excel y vuelve a intentar.")
         }
         if let doubtful = try? ExpenseImporter.preview(text, in: context).leftOut, doubtful > 0 {
             pendingImport = PendingImport(text: text, question: .init(looksRepeated: doubtful))
@@ -1328,11 +1358,12 @@ private extension ExpenseListView {
         } catch CSVImporter.Failure.notOurFile {
             // «Mi dinero»'s file has its own place (2026-11-01).
             if Features.money, MoneyImport.parse(text, main: primaryCurrency).refusal == nil {
-                return "Este archivo es de «Mi dinero», no de tus gastos: cárgalo en esa pestaña."
+                return String(localized: "Este archivo es de «Mi dinero», no de tus gastos: cárgalo en esa pestaña.")
             }
-            return "Ese archivo no es un CSV exportado de Al día (le falta el encabezado Fecha, Comercio, Monto, Moneda)."
+            return String(localized: "Ese archivo no es un CSV exportado de Al día (le falta el encabezado Fecha, Comercio, Monto, Moneda).",
+                          comment: "Fecha, Comercio, Monto, Moneda are the CSV's column names: keep them in Spanish")
         } catch {
-            return "No se pudo guardar lo importado. Intenta de nuevo."
+            return String(localized: "No se pudo guardar lo importado. Intenta de nuevo.")
         }
     }
 }
@@ -1403,13 +1434,19 @@ private struct ReceiptHead: View {
 
     private var title: String {
         if isCurrent { return TicketHead.day(date) }
-        return date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "es_MX")))
+        return date.formatted(.dateTime.month(.abbreviated).year().locale(Locale.current))
             .replacingOccurrences(of: ".", with: "")
     }
 
+    /// What VoiceOver says for the folio.
+    private var spoken: String {
+        let count = payments
+        if count == 1 { return String(localized: "1 pago este mes") }
+        return String(localized: "\(count) pagos este mes")
+    }
+
     var body: some View {
-        TicketHead(title: title, number: payments,
-                   spoken: payments == 1 ? "1 pago este mes" : "\(payments) pagos este mes",
+        TicketHead(title: title, number: payments, spoken: spoken,
                    titleIdentifier: "fecha-ticket", folioIdentifier: "folio")
     }
 }
@@ -1490,10 +1527,33 @@ private struct HeroTotal: View {
 
     /// "TOTAL MXN AL 13/10" this month; "TOTAL MXN · SEP 2026" for one that is over.
     private var caption: String {
-        isCurrentMonth
-            ? "Total \(summary.primary.label) al \(shortDate(now))"
-            : "Total \(summary.primary.label) · "
-                + viewed.formatted(.dateTime.month(.abbreviated).year().locale(ExpenseListView.mexico))
+        let label = summary.primary.label
+        if isCurrentMonth {
+            let day = shortDate(now)
+            return String(localized: "Total \(label) al \(day)")
+        }
+        let month = viewed.formatted(.dateTime.month(.abbreviated).year().locale(Locale.current))
+        return String(localized: "Total \(label) · \(month)")
+    }
+
+    /// Over the figure: today still has room, or went past it.
+    private var allowanceTitle: String {
+        if isOverToday { return String(localized: "Hoy te pasaste") }
+        return String(localized: "Hoy puedes gastar")
+    }
+
+    /// The caption and the figure, said as one sentence.
+    private var spokenAllowance: String {
+        let amount = allowanceText
+        if isOverToday { return String(localized: "Hoy te pasaste \(amount)") }
+        return String(localized: "Hoy puedes gastar \(amount)")
+    }
+
+    /// «+ USD 24.99 en otra moneda», under the month's total.
+    private var othersLine: String {
+        let others = othersText
+        if summary.others.count > 1 { return String(localized: "+ \(others) en otras monedas") }
+        return String(localized: "+ \(others) en otra moneda")
     }
 
     private var totalText: AttributedString {
@@ -1521,7 +1581,7 @@ private struct HeroTotal: View {
         // with a breath between them (owner, 2026-10-30).
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if allowance != nil {
-                Text(isOverToday ? "Hoy te pasaste" : "Hoy puedes gastar")
+                Text(allowanceTitle)
                     // Read with the figure, as one sentence.
                     .accessibilityHidden(true)
                     // Grey like every other caption, so the brass figure under it leads.
@@ -1530,7 +1590,7 @@ private struct HeroTotal: View {
                 // every payment.
                 Text(countedText)
                     .accessibilityIdentifier("hoy-puedes-gastar")
-                    .accessibilityLabel((isOverToday ? "Hoy te pasaste " : "Hoy puedes gastar ") + allowanceText)
+                    .accessibilityLabel(spokenAllowance)
                     .heroFigure()
                     .foregroundStyle(isOverToday ? Theme.danger : Theme.brass)
                     .contentTransition(.numericText(value: counted))
@@ -1571,7 +1631,7 @@ private struct HeroTotal: View {
             // still shows in its own row of the list).
             if allowance == nil, fixedExcess == nil, !summary.others.isEmpty {
                 // «aparte» said nothing on a first look (user research, 2026-10-29).
-                Text(verbatim: "+ \(othersText) en \(summary.others.count > 1 ? "otras monedas" : "otra moneda")")
+                Text(othersLine)
                     .accessibilityIdentifier("otras-monedas")
                     .font(.ticket(.footnote))
                     .foregroundStyle(Theme.muted)
@@ -1594,7 +1654,7 @@ private struct FixedOverBudgetHero: View {
                 .ticketCaption(strong: true)
             Text(text)
                 .accessibilityIdentifier("fijos-pasan")
-                .accessibilityLabel("Tus fijos pasan el presupuesto por " + text)
+                .accessibilityLabel(String(localized: "Tus fijos pasan el presupuesto por \(text)"))
                 .heroFigure()
                 .foregroundStyle(Theme.brass)
         } else {
@@ -1629,13 +1689,13 @@ private struct WalletCard {
         // What iOS 26's automation can catch, said the same way as the welcome (`CaptureCopy`).
         switch health {
         case .waiting:
-            title = "Esperando tu primer pago"
+            title = String(localized: "Esperando tu primer pago")
             detail = CaptureCopy.waiting
         case .silent:
-            title = "El atajo no ha anotado nada"
+            title = String(localized: "El atajo no ha anotado nada")
             detail = CaptureCopy.silent
         default:
-            title = "Conectar Wallet"
+            title = String(localized: "Conectar Wallet")
             detail = CaptureCopy.connect
         }
     }
@@ -1653,7 +1713,8 @@ private struct EmptyTicket: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var lead: String {
-        wallet == nil ? "Anota tu primer gasto y aparecerá aquí." : CaptureCopy.emptyLead
+        if wallet == nil { return String(localized: "Anota tu primer gasto y aparecerá aquí.") }
+        return CaptureCopy.emptyLead
     }
 
     var body: some View {
@@ -1752,7 +1813,8 @@ private struct EmptyTicket: View {
     }
 
     private func budgetCard(_ progress: ClosedRange<Double>, wide: Bool) -> some View {
-        EmptyStepCard(kind: .budget, title: "Fijar presupuesto", detail: "Para saber cuánto puedes gastar al día.",
+        EmptyStepCard(kind: .budget, title: String(localized: "Fijar presupuesto"),
+                      detail: String(localized: "Para saber cuánto puedes gastar al día."),
                       progress: progress, wide: wide, identifier: "vacio-presupuesto", action: onBudget)
     }
 
@@ -1834,16 +1896,29 @@ private struct LedgerRow: View {
     /// count is in the expense sheet (the list keeps one short line, owner 2026-10-29).
     /// VoiceOver hears the reason too, and «no cuenta para el presupuesto» with the amount.
     private func meta(spoken: Bool = false, withCard: Bool = true) -> String? {
+        var parts: [String?] = []
         // A Wallet payment identical to one minutes before says so first (2026-11-02).
-        let parts = [expense.maybeRepeated == true ? (spoken ? "¿repetida? Igual a otro pago de hace unos minutos" : "¿Repetida?") : nil,
-                     isUncounted && !spoken ? "No cuenta" : nil, isUncounted && spoken ? expense.reason?.title : nil,
-                     isRefund ? "Devolución" : nil, expense.isFixed ? "Fijo" : nil,
-                     expense.category, withCard ? expense.card : nil]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
+        if expense.maybeRepeated == true {
+            if spoken {
+                parts.append(String(localized: "¿repetida? Igual a otro pago de hace unos minutos"))
+            } else {
+                parts.append(Self.repeatedTag)
+            }
+        }
+        if isUncounted {
+            parts.append(spoken ? expense.reason?.title : String(localized: "No cuenta"))
+        }
+        if isRefund { parts.append(String(localized: "Devolución")) }
+        if expense.isFixed { parts.append(String(localized: "Fijo")) }
+        parts.append(expense.category)
+        if withCard { parts.append(expense.card) }
+        let shown = parts.compactMap { $0 }.filter { !$0.isEmpty }
         // A no-break space before the dot: a wrapped line never starts with «·».
-        return parts.isEmpty ? nil : parts.joined(separator: "\u{00A0}· ")
+        return shown.isEmpty ? nil : shown.joined(separator: "\u{00A0}· ")
     }
+
+    /// «¿Repetida?», which the line draws as a warning.
+    private static var repeatedTag: String { String(localized: "¿Repetida?") }
 
     private var card: String? { expense.card.flatMap { $0.isEmpty ? nil : $0 } }
 
@@ -1854,7 +1929,7 @@ private struct LedgerRow: View {
     private var metaLine: Text? {
         var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { part in
             // «¿Repetida?» asks for a look: the warning mark in front, its words in ink.
-            part == "¿Repetida?" ? WarningText.inline(part) : Text(part)
+            part == Self.repeatedTag ? WarningText.inline(part) : Text(part)
         }
         if let card {
             let icon = catalog.sourceIcon(for: card)
@@ -1883,7 +1958,7 @@ private struct LedgerRow: View {
             .foregroundStyle(isUncounted ? Theme.muted : isRefund ? Theme.brass : Theme.ink)
             .lineLimit(1)
             .fixedSize()
-            .accessibilityLabel(isUncounted ? "\(amount), no cuenta para el presupuesto" : amount)
+            .accessibilityLabel(isUncounted ? String(localized: "\(amount), no cuenta para el presupuesto") : amount)
     }
 
     var body: some View {
@@ -2009,9 +2084,16 @@ private struct SearchHeaderRow: View {
     /// «5,000», like every other figure of the app (2026-11-18: it said «5000»).
     private var countText: String { count.formatted(.number.locale(ExpenseListView.mexico)) }
 
+    /// «Sin resultados», «1 gasto», «12 gastos»: each a whole sentence for the catalog.
+    private var title: String {
+        if count == 0 { return String(localized: "Sin resultados") }
+        if count == 1 { return String(localized: "1 gasto") }
+        return String(localized: "\(countText) gastos")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionLabel(count == 0 ? "Sin resultados" : "\(countText) \(count == 1 ? "gasto" : "gastos")")
+            SectionLabel(title)
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
                 .accessibilityIdentifier("resultados-busqueda")
             if count == 0 {
@@ -2037,8 +2119,16 @@ private struct FilterRow: View {
     var total: String?
     let clear: () -> Void
 
+    /// «Día 12 · 2 gastos · $310»: whole lines for the catalog.
     private var summary: String {
-        "\(title) · \(count) \(count == 1 ? "gasto" : "gastos")" + (total.map { " · \($0)" } ?? "")
+        let name = title
+        let number = count
+        if let total {
+            if number == 1 { return String(localized: "\(name) · 1 gasto · \(total)") }
+            return String(localized: "\(name) · \(number) gastos · \(total)")
+        }
+        if number == 1 { return String(localized: "\(name) · 1 gasto") }
+        return String(localized: "\(name) · \(number) gastos")
     }
 
     var body: some View {
@@ -2122,12 +2212,12 @@ private struct DayDivider: View {
 
     private var label: String {
         let calendar = Calendar.current
-        let date = day.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_MX")))
-        if calendar.isDate(day, inSameDayAs: now) { return "Hoy · " + date }
+        let date = day.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
+        if calendar.isDate(day, inSameDayAs: now) { return String(localized: "Hoy · \(date)") }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
-           calendar.isDate(day, inSameDayAs: yesterday) { return "Ayer · " + date }
+           calendar.isDate(day, inSameDayAs: yesterday) { return String(localized: "Ayer · \(date)") }
         let style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
-            .locale(Locale(identifier: "es_MX"))
+            .locale(Locale.current)
         // Another year says which (a search over every month, 2026-11-18): two «vie 17 oct»
         // could be years apart.
         guard calendar.isDate(day, equalTo: now, toGranularity: .year) else { return day.formatted(style.year()) }

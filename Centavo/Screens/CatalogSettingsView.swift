@@ -97,11 +97,16 @@ struct CatalogSettingsView: View {
         let sections = MerchantRules.sections(MerchantRules.list(renames: MerchantRenames(stored: storedRenames),
                                                                  categories: CategoryRules(stored: storedRules)))
         let mexico = Locale(identifier: "es_MX")
-        if !sections.named.isEmpty { return "\(sections.named.count.formatted(.number.locale(mexico))) con nombre" }
+        if !sections.named.isEmpty {
+            let named = sections.named.count.formatted(.number.locale(mexico))
+            return String(localized: "\(named) con nombre")
+        }
         switch sections.categoryOnly.count {
-        case 0: return "Nada aún"
-        case 1: return "1 comercio"
-        default: return "\(sections.categoryOnly.count.formatted(.number.locale(mexico))) comercios"
+        case 0: return String(localized: "Nada aún")
+        case 1: return String(localized: "1 comercio")
+        default:
+            let merchants = sections.categoryOnly.count.formatted(.number.locale(mexico))
+            return String(localized: "\(merchants) comercios")
         }
     }
 
@@ -149,7 +154,7 @@ struct CatalogSettingsView: View {
                                 CategoryTile(name: source.name, icon: source.icon, color: colors.source(source.name),
                                             badge: isDefault ? "star.fill" : nil, twoLines: true)
                             }
-                            .accessibilityLabel(isDefault ? "\(source.name), por defecto" : source.name)
+                            .accessibilityLabel(Self.sourceLabel(source.name, isDefault: isDefault))
                             .accessibilityIdentifier("fuente-\(source.name)")
                         }
                         ForEach(detectedCards, id: \.self) { card in
@@ -189,7 +194,7 @@ struct CatalogSettingsView: View {
                         ForEach(allCategories, id: \.name) { item in
                             let shown = shows(item.name)
                             Menu {
-                                Button(shown.wrappedValue ? "Ocultar al anotar" : "Mostrar al anotar",
+                                Button(Self.visibilityTitle(shown: shown.wrappedValue),
                                        systemImage: shown.wrappedValue ? "eye.slash" : "eye") {
                                     withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
                                         shown.wrappedValue.toggle()
@@ -207,7 +212,7 @@ struct CatalogSettingsView: View {
                                             badge: shown.wrappedValue ? nil : "eye.slash",
                                             dimmed: !shown.wrappedValue, twoLines: true)
                             }
-                            .accessibilityLabel(shown.wrappedValue ? item.name : "\(item.name), oculta")
+                            .accessibilityLabel(Self.categoryLabel(item.name, shown: shown.wrappedValue))
                             .accessibilityIdentifier("mostrar-\(item.name)")
                         }
                         Button { editing = .category(nil) } label: {
@@ -275,7 +280,7 @@ struct CatalogSettingsView: View {
                         return true
                     }, onSave: { _ in })
                 case .category(let category):
-                    LabeledIconSheet(title: category == nil ? "Nueva categoría" : "Editar categoría",
+                    LabeledIconSheet(title: Self.categorySheetTitle(isNew: category == nil),
                                      prompt: "Mascotas, Gimnasio…", icons: UserCatalog.categoryIcons,
                                      taken: categories.map(\.name) + CategoryStyle.common.map(\.name),
                                      initial: category,
@@ -355,24 +360,58 @@ struct CatalogSettingsView: View {
         switch item {
         case .source(let source):
             let count = used.count(card: source?.name ?? "")
+            let note: String
+            if count > 0 {
+                note = String(localized: "Seguirá en la lista porque llegó en tus pagos. Tus gastos no cambian.")
+            } else {
+                note = String(localized: "Los gastos que ya la tienen no cambian.")
+            }
             return TicketQuestion(
-                title: "¿Borrar esta forma de pago?", name: source?.name,
-                detail: count > 0 ? Self.haveIt(count) : nil,
-                note: count > 0 ? "Seguirá en la lista porque llegó en tus pagos. Tus gastos no cambian."
-                    : "Los gastos que ya la tienen no cambian.")
+                title: String(localized: "¿Borrar esta forma de pago?"), name: source?.name,
+                detail: count > 0 ? Self.haveIt(count) : nil, note: note)
         case .category(let category):
             let count = used.count(category: category?.name ?? "")
+            let note: String
+            if count > 0 {
+                note = String(localized: "Seguirá en la lista porque tus gastos la usan. Tus gastos no cambian.")
+            } else {
+                note = String(localized: "Los gastos que ya la tienen no cambian.")
+            }
             return TicketQuestion(
-                title: "¿Borrar esta categoría?", name: category?.name,
-                detail: count > 0 ? Self.haveIt(count) : nil,
-                note: count > 0 ? "Seguirá en la lista porque tus gastos la usan. Tus gastos no cambian."
-                    : "Los gastos que ya la tienen no cambian.")
+                title: String(localized: "¿Borrar esta categoría?"), name: category?.name,
+                detail: count > 0 ? Self.haveIt(count) : nil, note: note)
         }
     }
 
     /// «1 gasto la tiene», «12 gastos la tienen».
     static func haveIt(_ count: Int) -> String {
-        count == 1 ? "1 gasto la tiene" : "\(count.formatted(.number.locale(Locale(identifier: "es_MX")))) gastos la tienen"
+        if count == 1 { return String(localized: "1 gasto la tiene") }
+        let shown = count.formatted(.number.locale(Locale(identifier: "es_MX")))
+        return String(localized: "\(shown) gastos la tienen")
+    }
+
+    /// What VoiceOver says of a card: its name, and whether it is the default one.
+    static func sourceLabel(_ name: String, isDefault: Bool) -> String {
+        if isDefault { return String(localized: "\(name), por defecto") }
+        return name
+    }
+
+    /// What VoiceOver says of a category: its name, and whether it is hidden when writing one down.
+    static func categoryLabel(_ name: String, shown: Bool) -> String {
+        if shown { return name }
+        return String(localized: "\(name), oculta")
+    }
+
+    /// The menu's first button: hide it when writing one down, or show it again.
+    static func visibilityTitle(shown: Bool) -> String {
+        if shown { return String(localized: "Ocultar al anotar") }
+        return String(localized: "Mostrar al anotar")
+    }
+
+    /// The category sheet's title: a new one, or one of yours being changed.
+    static func categorySheetTitle(isNew: Bool) -> LocalizedStringResource {
+        if isNew { return "Nueva categoría" }
+        return "Editar categoría"
     }
 
     /// «Usar por defecto» in the card's sheet: on makes it the one already chosen; off on the

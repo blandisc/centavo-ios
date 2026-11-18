@@ -62,17 +62,18 @@ extension BudgetStore {
     /// main screen will show with it (`pace` is `TodayBudget`'s, for this budget).
     static func dailyPreview(_ pace: BudgetPace?, currency: String) -> String {
         guard let pace, !pace.isOverspent else {
-            return "Este mes ya gastaste más que eso."
+            return String(localized: "Este mes ya gastaste más que eso.")
         }
         if let excess = pace.fixedOverBudgetShown {
+            guard excess > 0 else { return String(localized: "Con eso, tus fijos se llevan todo el presupuesto.") }
             let text = excess.formatted(currencyStyle(currency).precision(.fractionLength(0)))
-            return excess > 0 ? "Con eso, tus fijos pasan el presupuesto por \(text)."
-                : "Con eso, tus fijos se llevan todo el presupuesto."
+            return String(localized: "Con eso, tus fijos pasan el presupuesto por \(text).")
         }
         // Spent exactly that: not «más que eso» (second audit, 2026-11-02).
-        if pace.remaining == 0 { return "Este mes ya gastaste justo eso." }
+        if pace.remaining == 0 { return String(localized: "Este mes ya gastaste justo eso.") }
         let figure = pace.dailyAllowance.magnitude.formatted(currencyStyle(currency).precision(.fractionLength(0)))
-        return pace.isOverToday ? "Con eso, hoy ya te pasaste por \(figure)." : "Con eso, hoy puedes gastar \(figure)."
+        if pace.isOverToday { return String(localized: "Con eso, hoy ya te pasaste por \(figure).") }
+        return String(localized: "Con eso, hoy puedes gastar \(figure).")
     }
 }
 

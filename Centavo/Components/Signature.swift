@@ -9,9 +9,17 @@ struct Signature: View {
     let words: String
     let spoken: String
 
-    init(_ words: String, spoken: String) {
+    /// `words` is the brand as drawn («al día»), the same in every language; what VoiceOver
+    /// says, a literal, is looked up in the catalog.
+    init(_ words: String, spoken: LocalizedStringResource) {
+        self.init(words, spoken: String(localized: spoken))
+    }
+
+    /// What VoiceOver says, made at run time.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ words: String, spoken: S) {
         self.words = words
-        self.spoken = spoken
+        self.spoken = String(spoken)
     }
 
     var body: some View {

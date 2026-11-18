@@ -7,7 +7,7 @@ import SwiftUI
 struct TicketHead: View {
     let title: String
     /// What goes before the digits: «N.º», «Corte N.º».
-    var folio = "N.º"
+    var folio: String
     /// Zero prints no folio.
     let number: Int
     /// What VoiceOver says for the folio: «12 pagos este mes».
@@ -17,9 +17,30 @@ struct TicketHead: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// «jue 29 de oct», as every ticket head writes a day (uppercased by the head itself).
+    /// `title` is a day or a month made at run time (`day(_:)`); `spoken`, a literal, is looked up
+    /// in the catalog. With no `folio`, «N.º» in the person's language.
+    init(title: String, folio: String? = nil, number: Int, spoken: LocalizedStringResource,
+         titleIdentifier: String? = nil, folioIdentifier: String? = nil) {
+        self.init(title: title, folio: folio, number: number, spoken: String(localized: spoken),
+                  titleIdentifier: titleIdentifier, folioIdentifier: folioIdentifier)
+    }
+
+    /// What VoiceOver says for the folio, made at run time.
+    @_disfavoredOverload
+    init<S: StringProtocol>(title: String, folio: String? = nil, number: Int, spoken: S,
+                            titleIdentifier: String? = nil, folioIdentifier: String? = nil) {
+        self.title = title
+        self.folio = folio ?? String(localized: "N.º", comment: "Before a ticket's number, like «N.º 042»")
+        self.number = number
+        self.spoken = String(spoken)
+        self.titleIdentifier = titleIdentifier
+        self.folioIdentifier = folioIdentifier
+    }
+
+    /// «jue 29 de oct», as every ticket head writes a day (uppercased by the head itself), in
+    /// the person's language («thu, oct 29» in English).
     static func day(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(Locale(identifier: "es_MX")))
+        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(Locale.current))
             .replacingOccurrences(of: ".", with: "")
     }
 

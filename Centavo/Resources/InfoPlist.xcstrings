@@ -1,0 +1,42 @@
+{
+  "sourceLanguage" : "es",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "The app's name under its icon: the brand, the same in every language.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día"
+          }
+        }
+      }
+    },
+    "NSFaceIDUsageDescription" : {
+      "comment" : "Why the app asks for Face ID. Spanish in project.yml (INFOPLIST_KEY_NSFaceIDUsageDescription).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To show you your backup password and confirm it’s you before restoring it."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Why the app asks for the location. “Save where you pay” is the Settings row «Guardar dónde pagas». Spanish in project.yml.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To save where you paid for each expense, the way Wallet shows it. Only if you turn on “Save where you pay”."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

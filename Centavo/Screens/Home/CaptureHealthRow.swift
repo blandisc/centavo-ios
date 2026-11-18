@@ -12,45 +12,50 @@ enum CaptureCopy {
     /// knows (iOS doesn't say whether the automation was made), so it offers a way back to it
     /// for whoever stopped halfway (QA, 2026-11-18).
     static var waiting: String {
-        let pay = catchesAll ? "Paga algo con Apple Pay y aparecerá aquí solo."
-                             : "Paga acercando el iPhone y aparecerá aquí solo."
-        return pay + " ¿Te quedaste a medias? Toca para seguir."
+        if catchesAll {
+            return String(localized: "Paga algo con Apple Pay y aparecerá aquí solo. ¿Te quedaste a medias? Toca para seguir.")
+        }
+        return String(localized: "Paga acercando el iPhone y aparecerá aquí solo. ¿Te quedaste a medias? Toca para seguir.")
     }
 
     /// The guide's check, when a payment from before the guide was opened is all there is.
     static var proveIt: String {
-        catchesAll ? "Paga algo con Apple Pay para comprobar."
-                   : "Paga algo acercando el iPhone para comprobar."
+        if catchesAll { return String(localized: "Paga algo con Apple Pay para comprobar.") }
+        return String(localized: "Paga algo acercando el iPhone para comprobar.")
     }
 
     /// «Se anota solo», in «Cómo funciona».
     static var tutorial: String {
-        catchesAll ? "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+»."
-                   : "Cada pago que haces acercando el iPhone llega por Atajos y se anota. Lo demás, con «+»."
+        if catchesAll {
+            return String(localized: "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+».")
+        }
+        return String(localized: "Cada pago que haces acercando el iPhone llega por Atajos y se anota. Lo demás, con «+».")
     }
 
     /// `.silent`: days after the guide, still nothing.
     static var silent: String {
-        catchesAll ? "Si ya pagaste con Apple Pay, toca para revisarlo."
-                   : "Si ya pagaste acercando el iPhone, toca para revisarlo."
+        if catchesAll { return String(localized: "Si ya pagaste con Apple Pay, toca para revisarlo.") }
+        return String(localized: "Si ya pagaste acercando el iPhone, toca para revisarlo.")
     }
 
     /// The empty screen's card, before connecting.
     static var connect: String {
-        catchesAll ? "Cada pago con Apple Pay se anota solo."
-                   : "Cada pago que haces acercando el iPhone se anota solo."
+        if catchesAll { return String(localized: "Cada pago con Apple Pay se anota solo.") }
+        return String(localized: "Cada pago que haces acercando el iPhone se anota solo.")
     }
 
     /// «Wallet sin conectar», on «Hoy».
     static var connectOnce: String {
-        catchesAll ? "Conéctalo una vez y cada pago con Apple Pay se anota solo."
-                   : "Conéctalo una vez y cada pago que hagas acercando el iPhone se anota solo."
+        if catchesAll { return String(localized: "Conéctalo una vez y cada pago con Apple Pay se anota solo.") }
+        return String(localized: "Conéctalo una vez y cada pago que hagas acercando el iPhone se anota solo.")
     }
 
     /// The empty screen's first line.
     static var emptyLead: String {
-        catchesAll ? "Anota un gasto, o conecta Wallet y cada pago con Apple Pay se anotará solo."
-                   : "Anota un gasto, o conecta Wallet y cada pago que hagas acercando el iPhone se anotará solo."
+        if catchesAll {
+            return String(localized: "Anota un gasto, o conecta Wallet y cada pago con Apple Pay se anotará solo.")
+        }
+        return String(localized: "Anota un gasto, o conecta Wallet y cada pago que hagas acercando el iPhone se anotará solo.")
     }
 }
 
@@ -66,17 +71,21 @@ struct CaptureHealthRow: View {
     private var text: String {
         switch health {
         case .never, .waiting, .silent:
-            return "Wallet sin conectar · Configurar"
+            return String(localized: "Wallet sin conectar · Configurar")
         case .recent(let date), .first(let date):
-            return "Wallet · último pago " + AppClock.relative(date, abbreviated: true)
+            let when = AppClock.relative(date, abbreviated: true)
+            return String(localized: "Wallet · último pago \(when)")
         case .quiet(let days):
-            return "Wallet · sin pagos desde hace \(days) días · Revisar"
+            return String(localized: "Wallet · sin pagos desde hace \(days) días · Revisar")
         }
     }
 
     /// What VoiceOver reads for the quiet line: «hace 3 horas», not «hace 3 h» (2026-11-18).
     private var spokenText: String {
-        if case .recent(let date) = health { return "Wallet, último pago " + AppClock.relative(date) }
+        if case .recent(let date) = health {
+            let when = AppClock.relative(date)
+            return String(localized: "Wallet, último pago \(when)")
+        }
         return text
     }
 
@@ -86,16 +95,16 @@ struct CaptureHealthRow: View {
     private var warning: (title: String, detail: String, icon: String) {
         switch health {
         case .quiet(let days):
-            return ("Sin pagos de Wallet desde hace \(days) días", "Si sí pagaste, toca para revisar el atajo.",
-                    "exclamationmark.circle")
+            let title = String(localized: "Sin pagos de Wallet desde hace \(days) días")
+            return (title, String(localized: "Si sí pagaste, toca para revisar el atajo."), "exclamationmark.circle")
         case .waiting:
-            return ("Esperando tu primer pago", CaptureCopy.waiting, "hourglass")
+            return (String(localized: "Esperando tu primer pago"), CaptureCopy.waiting, "hourglass")
         case .silent:
-            return ("El atajo no ha anotado nada", CaptureCopy.silent, "exclamationmark.circle")
+            return (String(localized: "El atajo no ha anotado nada"), CaptureCopy.silent, "exclamationmark.circle")
         case .first:
-            return (firstTitle, "Así se anotará cada uno.", "checkmark.circle")
+            return (firstTitle, String(localized: "Así se anotará cada uno."), "checkmark.circle")
         default:
-            return ("Wallet sin conectar", CaptureCopy.connectOnce, "exclamationmark.circle")
+            return (String(localized: "Wallet sin conectar"), CaptureCopy.connectOnce, "exclamationmark.circle")
         }
     }
 
@@ -104,7 +113,8 @@ struct CaptureHealthRow: View {
     /// payment from before that was kept apart has no text: the title goes alone.
     private var firstTitle: String {
         let text = UserDefaults.standard.string(forKey: CaptureArrival.firstTextKey) ?? ""
-        return text.isEmpty ? "Llegó tu primer pago solo" : "Llegó tu primer pago solo: \(text)"
+        if text.isEmpty { return String(localized: "Llegó tu primer pago solo") }
+        return String(localized: "Llegó tu primer pago solo: \(text)")
     }
 
     /// The first payment is said in the panel too, once: so the person sees that it worked.
@@ -225,8 +235,8 @@ struct PendingPaymentsPanel: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("pagos-pendientes")
-                .accessibilityValue(expanded ? "Lista abierta" : "Lista cerrada")
-                .accessibilityHint(expanded ? "Oculta los pagos" : "Muestra los pagos para anotarlos o descartarlos")
+                .accessibilityValue(listState)
+                .accessibilityHint(listHint)
             } else {
                 header
                     .accessibilityElement(children: .combine)
@@ -277,8 +287,21 @@ struct PendingPaymentsPanel: View {
 
     /// Under the count: what to do about them.
     private var lead: String {
-        if !folds { return "No está en tus gastos. Anótalo o descártalo." }
-        return expanded ? "No están en tus gastos. Anótalos o descártalos." : "No están en tus gastos. Toca para verlos."
+        if !folds { return String(localized: "No está en tus gastos. Anótalo o descártalo.") }
+        if expanded { return String(localized: "No están en tus gastos. Anótalos o descártalos.") }
+        return String(localized: "No están en tus gastos. Toca para verlos.")
+    }
+
+    /// Whether the folded list is open, for VoiceOver.
+    private var listState: String {
+        if expanded { return String(localized: "Lista abierta") }
+        return String(localized: "Lista cerrada")
+    }
+
+    /// What a tap on the folded header does, for VoiceOver.
+    private var listHint: String {
+        if expanded { return String(localized: "Oculta los pagos") }
+        return String(localized: "Muestra los pagos para anotarlos o descartarlos")
     }
 
     private func row(_ payment: PendingPayment) -> some View {
@@ -337,31 +360,37 @@ struct PendingPaymentsPanel: View {
     private func question(_ asked: Discard) -> TicketQuestion {
         switch asked {
         case .one(let payment):
-            TicketQuestion(title: "¿Descartar este pago?", name: payment.text, detail: Self.detail(payment),
-                           note: "No se anotará en tus gastos. No se puede deshacer.", verb: "Descartar")
+            TicketQuestion(title: String(localized: "¿Descartar este pago?"), name: payment.text,
+                           detail: Self.detail(payment),
+                           note: String(localized: "No se anotará en tus gastos. No se puede deshacer."),
+                           verb: String(localized: "Descartar"))
         case .all(let count):
-            TicketQuestion(title: "¿Descartar los \(count) pagos?",
-                           note: "Ninguno se anotará en tus gastos. No se puede deshacer.", verb: "Descartar todos")
+            TicketQuestion(title: String(localized: "¿Descartar los \(count) pagos?"),
+                           note: String(localized: "Ninguno se anotará en tus gastos. No se puede deshacer."),
+                           verb: String(localized: "Descartar todos"))
         }
     }
 
     /// A notice that didn't read is quoted, as it arrived; a payment that did is said plainly.
     static func name(_ payment: PendingPayment) -> String {
-        payment.kind == .unread ? "«\(payment.text)»" : payment.text
+        let text = payment.text
+        if payment.kind == .unread { return String(localized: "«\(text)»", comment: "A Wallet notice quoted as it arrived") }
+        return text
     }
 
     /// «Llegó sin monto · hace 2 h», «No se pudo guardar · hace 10 min».
     static func detail(_ payment: PendingPayment) -> String {
-        (payment.kind == .unread ? "Llegó sin monto" : "No se pudo guardar")
-            + " · " + AppClock.relative(payment.date, abbreviated: true)
+        let when = AppClock.relative(payment.date, abbreviated: true)
+        if payment.kind == .unread { return String(localized: "Llegó sin monto · \(when)") }
+        return String(localized: "No se pudo guardar · \(when)")
     }
 
     /// The whole row in one sentence, for VoiceOver.
     static func spoken(_ payment: PendingPayment) -> String {
         let when = AppClock.relative(payment.date)
-        return payment.kind == .unread
-            ? "Aviso de Wallet sin monto: \(payment.text), \(when)."
-            : "Pago que no se pudo guardar: \(payment.text), \(when)."
+        let text = payment.text
+        if payment.kind == .unread { return String(localized: "Aviso de Wallet sin monto: \(text), \(when).") }
+        return String(localized: "Pago que no se pudo guardar: \(text), \(when).")
     }
 }
 

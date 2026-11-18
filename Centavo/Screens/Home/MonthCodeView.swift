@@ -235,18 +235,21 @@ struct MonthCodeView: View {
         parts.day = number
         let date = Calendar.current.date(from: parts) ?? month
         let text = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)
-            .locale(Locale(identifier: "es_MX")))
-        let isToday = code.days[number - 1].kind == .today
-        return (isToday ? "Hoy · " : "") + text.replacingOccurrences(of: ".", with: "")
+            .locale(Locale.current))
+            .replacingOccurrences(of: ".", with: "")
+        guard code.days[number - 1].kind == .today else { return text }
+        return String(localized: "Hoy · \(text)")
     }
 
     private func spoken(_ number: Int) -> String {
         guard number >= 1, number <= code.days.count else { return "" }
         let day = code.days[number - 1]
-        if day.kind == .future { return "Día \(number): todavía no llega" }
+        if day.kind == .future { return String(localized: "Día \(number): todavía no llega") }
         let amount = wholeMoney(day.input.total)
-        let payments = day.input.payments == 1 ? "1 pago" : "\(day.input.payments) pagos"
-        return "\(title(number)): \(amount), \(payments)"
+        let name = title(number)
+        let payments = day.input.payments
+        if payments == 1 { return String(localized: "\(name): \(amount), 1 pago") }
+        return String(localized: "\(name): \(amount), \(payments) pagos")
     }
 }
 
@@ -299,17 +302,41 @@ private struct DayCard: View {
         let said = Text(details).foregroundStyle(Theme.muted)
         guard let limit else { return said }
         let over = day.input.variable - limit
-        let judged = Text(over > 0 ? "\(wholeMoney(over)) arriba del tope del día"
-                                   : "\(wholeMoney(-over)) abajo del tope del día")
+        let judged = Text(judgement(over))
             .foregroundStyle(over > 0 ? Theme.danger : Theme.good)
         // A no-break space before the dot: a wrapped line never starts with «·».
-        return Text("\(said)\(Text("\u{00A0}· ").foregroundStyle(Theme.muted))\(judged)")
+        let dot = Text(verbatim: "\u{00A0}· ").foregroundStyle(Theme.muted)
+        return Text("\(said)\(dot)\(judged)")
+    }
+
+    /// «$43 arriba del tope del día», or «abajo».
+    private func judgement(_ over: Decimal) -> String {
+        if over > 0 {
+            let amount = wholeMoney(over)
+            return String(localized: "\(amount) arriba del tope del día")
+        }
+        let amount = wholeMoney(-over)
+        return String(localized: "\(amount) abajo del tope del día")
     }
 
     private var details: String {
-        var parts = [day.input.payments == 1 ? "1 pago" : "\(day.input.payments) pagos"]
-        if day.input.fixedPayments > 0 { parts.append(day.input.fixedPayments == 1 ? "1 fijo" : "\(day.input.fixedPayments) fijos") }
-        if let biggest = day.input.biggest, day.input.payments > 1 { parts.append("el más grande: \(biggest.name)") }
+        let payments = day.input.payments
+        let fixed = day.input.fixedPayments
+        var parts: [String] = []
+        if payments == 1 {
+            parts.append(String(localized: "1 pago"))
+        } else {
+            parts.append(String(localized: "\(payments) pagos"))
+        }
+        if fixed == 1 {
+            parts.append(String(localized: "1 fijo"))
+        } else if fixed > 1 {
+            parts.append(String(localized: "\(fixed) fijos"))
+        }
+        if let biggest = day.input.biggest, payments > 1 {
+            let name = biggest.name
+            parts.append(String(localized: "el más grande: \(name)"))
+        }
         return parts.joined(separator: " · ")
     }
 }

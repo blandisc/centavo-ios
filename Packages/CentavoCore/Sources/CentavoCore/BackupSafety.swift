@@ -56,15 +56,20 @@ public struct BackupSafetyCopy: Equatable, Sendable, Identifiable {
         self.date = date
     }
 
-    /// «12 nov, 9:40 p.m.»; with the year when it isn't this one.
+    /// «12 nov, 9:40 p.m.»; with the year when it isn't this one. In English, «Nov 12, 9:40 PM».
     public func title(now: Date, timeZone: TimeZone = .current) -> String {
         let calendar = BackupRetention.calendar(in: timeZone)
         let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
+        let locale = DisplayLocale.current
         let formatter = DateFormatter()
         formatter.calendar = calendar
         formatter.timeZone = timeZone
-        formatter.locale = Locale(identifier: "es_MX")
-        formatter.dateFormat = sameYear ? "d MMM, h:mm a" : "d MMM y, h:mm a"
+        formatter.locale = locale
+        if DisplayLocale.isSpanish(locale) {
+            formatter.dateFormat = sameYear ? "d MMM, h:mm a" : "d MMM y, h:mm a"
+        } else {
+            formatter.setLocalizedDateFormatFromTemplate(sameYear ? "dMMMjmm" : "dMMMyjmm")
+        }
         return formatter.string(from: date)
     }
 
@@ -105,9 +110,16 @@ extension BackupRetention {
 /// A phone that was just restored and has no daily backup set up (2026-11-11, map of states):
 /// the backup's own settings don't travel, so a new phone stayed without one and nobody said so.
 public enum BackupSetupReminder {
-    public static let text = "El respaldo diario no está configurado en este iPhone."
-    /// What «Hoy» says, with where to fix it, like its other backup lines.
-    public static let warning = text + " Configúralo en ··· › Ajustes › Respaldo diario."
+    public static var text: String {
+        String(localized: "El respaldo diario no está configurado en este iPhone.", bundle: .main,
+               comment: "Aviso tras restaurar en un iPhone nuevo, en Respaldo diario")
+    }
+    /// What «Hoy» says, with where to fix it, like its other backup lines. One sentence for
+    /// translation: the same as `text`, then where to set it up.
+    public static var warning: String {
+        String(localized: "El respaldo diario no está configurado en este iPhone. Configúralo en ··· › Ajustes › Respaldo diario.",
+               bundle: .main, comment: "Aviso en Hoy tras restaurar en un iPhone nuevo, con dónde configurarlo")
+    }
 
     /// After «Ahora no», or after the person saw it on the backup's screen, «Hoy» stays quiet
     /// this long.

@@ -496,7 +496,8 @@ struct CompanionCard: View {
 
     /// The instruction without «Así debe verse:», which the tag above it already says.
     private var instruction: String {
-        let prefix = "Así debe verse:"
+        // The same words the result captions start with (`GuideFrame`), in the phone's language.
+        let prefix = String(localized: "Así debe verse:")
         guard page.isResult, page.caption.hasPrefix(prefix) else { return page.caption }
         let rest = page.caption.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
         return rest.prefix(1).uppercased() + rest.dropFirst()

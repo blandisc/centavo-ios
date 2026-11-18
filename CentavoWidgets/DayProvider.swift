@@ -17,9 +17,15 @@ struct DayEntry: TimelineEntry {
     /// The sample in the widget gallery: the numbers of the design proposals.
     static let sample = DayEntry(date: .now, snapshot: WidgetSnapshot(
         budget: 12_000, isoCode: "MXN", label: "$", takenAt: .now, spent: 8_140, spentToday: 84,
-        reserved: 1_200, slices: [.init(name: "Comida", amount: 2_450), .init(name: "Despensa", amount: 1_980),
-                                  .init(name: "Transporte", amount: 1_320),
-                                  .init(name: nil, amount: 2_390, isRest: true)]))
+        reserved: 1_200, slices: sampleSlices))
+
+    /// The gallery's categories, in the phone's language (they are only a sample).
+    private static let sampleSlices: [WidgetSnapshot.Slice] = [
+        WidgetSnapshot.Slice(name: String(localized: "Comida"), amount: 2_450),
+        WidgetSnapshot.Slice(name: String(localized: "Despensa"), amount: 1_980),
+        WidgetSnapshot.Slice(name: String(localized: "Transporte"), amount: 1_320),
+        WidgetSnapshot.Slice(name: nil, amount: 2_390, isRest: true),
+    ]
 }
 
 /// Reads what the app left (`WidgetSnapshotStore`: App Group or shared Keychain). The app reloads the timelines after every

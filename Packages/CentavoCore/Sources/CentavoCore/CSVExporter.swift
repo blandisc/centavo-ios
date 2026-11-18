@@ -61,7 +61,7 @@ public enum CSVExporter {
                 defused(record.card ?? ""),
                 defused(record.category ?? ""),
                 countText(record),
-                record.counts && part(of: record) == nil ? "" : record.uncountedReason?.title ?? "",
+                record.counts && part(of: record) == nil ? "" : record.uncountedReason?.csvTitle ?? "",
             ]
         }
         return ([header] + rows)

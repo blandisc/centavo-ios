@@ -87,13 +87,13 @@ enum MoneyCurrency {
 
     static func name(_ code: String) -> String {
         switch code {
-        case "MXN": "pesos"
-        case "USD": "dólares"
-        case "EUR": "euros"
-        case "GBP": "libras"
-        case "CAD": "dól. can."
-        case "JPY": "yenes"
-        case "CHF": "francos"
+        case "MXN": String(localized: "pesos")
+        case "USD": String(localized: "dólares")
+        case "EUR": String(localized: "euros")
+        case "GBP": String(localized: "libras")
+        case "CAD": String(localized: "dól. can.")
+        case "JPY": String(localized: "yenes")
+        case "CHF": String(localized: "francos")
         default: code
         }
     }
