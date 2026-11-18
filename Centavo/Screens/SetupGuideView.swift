@@ -38,6 +38,9 @@ struct SetupGuideView: View {
     @ScaledMetric(relativeTo: .body) private var stepNumberWidth = Theme.Size.stepNumber
     @ScaledMetric(relativeTo: .body) private var thumbWidth = Theme.Size.companionThumbWidth
     @ScaledMetric(relativeTo: .body) private var thumbHeight = Theme.Size.companionThumbHeight
+    /// How tall the visible part of each step is, between the bars (the dock comes and goes
+    /// from step to step), by step number; missing until measured.
+    @State private var visibleHeights: [Int: CGFloat] = [:]
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
@@ -152,27 +155,15 @@ struct SetupGuideView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                if case .frames(let frames) = guide.scene {
-                    // One real screenshot per action, its instruction right above it.
-                    GuideFrameSequence(frames: frames)
-                        .id(number)
+                // On a short screen the written taps go before the picture: under it, with the
+                // dock and the bar below, they started past the bottom edge with nothing saying
+                // so (iPhone SE and 13 mini, 2026-11-18). The picture peeks in under them.
+                if tapsFirst(number) {
+                    taps(guide)
+                    picture(guide, number: number)
                 } else {
-                    // A picture of another app: it grows a little with the text, then stops. The
-                    // numbered steps under it carry the words and scale all the way.
-                    ShortcutsDrawing(scene: guide.scene, isActive: number - 1 == step)
-                        .dynamicTypeSize(...DynamicTypeSize.xLarge)
-                        .accessibilityHidden(true)
-                }
-
-                if !guide.taps.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                        ForEach(Array(guide.taps.enumerated()), id: \.offset) { index, tap in
-                            instruction("\(index + 1)", text: tap)
-                        }
-                    }
-                    .padding(Theme.Space.l)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .ticketPanel()
+                    picture(guide, number: number)
+                    taps(guide)
                 }
 
                 if let warning = guide.warning {
@@ -190,6 +181,50 @@ struct SetupGuideView: View {
             }
             .padding(.horizontal, Theme.Space.screen)
             .padding(.vertical, Theme.Space.xxl)
+        }
+        .onScrollGeometryChange(for: CGFloat.self, of: Self.heightBetweenBars) { _, height in
+            if visibleHeights[number] != height { visibleHeights[number] = height }
+        }
+    }
+
+    /// The height between the bars: the scroll view's, less what slides under them.
+    nonisolated private static func heightBetweenBars(_ geometry: ScrollGeometry) -> CGFloat {
+        let insets = geometry.contentInsets.top + geometry.contentInsets.bottom
+        return geometry.containerSize.height - insets
+    }
+
+    /// Whether the written taps go before the picture: on a screen too short for both.
+    private func tapsFirst(_ number: Int) -> Bool {
+        guard let height = visibleHeights[number], height > 0 else { return false }
+        return height < Theme.Size.guideRoomyHeight
+    }
+
+    /// A picture of the step in Atajos.
+    @ViewBuilder private func picture(_ guide: GuideStep, number: Int) -> some View {
+        if case .frames(let frames) = guide.scene {
+            // One real screenshot per action, its instruction right above it.
+            GuideFrameSequence(frames: frames)
+                .id(number)
+        } else {
+            // A picture of another app: it grows a little with the text, then stops. The
+            // numbered steps carry the words and scale all the way.
+            ShortcutsDrawing(scene: guide.scene, isActive: number - 1 == step)
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// The step's numbered taps, in words.
+    @ViewBuilder private func taps(_ guide: GuideStep) -> some View {
+        if !guide.taps.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                ForEach(Array(guide.taps.enumerated()), id: \.offset) { index, tap in
+                    instruction("\(index + 1)", text: tap)
+                }
+            }
+            .padding(Theme.Space.l)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ticketPanel()
         }
     }
 

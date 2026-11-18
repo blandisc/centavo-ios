@@ -30,6 +30,10 @@ extension Theme.Size {
     /// Pixels per point of the floating guide's card.
     static let companionScale: CGFloat = 2
     /// Scaled. Width and height of the floating guide's thumbnail on a guide step (3:4).
+    /// The least height between the bars of the Wallet guide (dock included) for a step's
+    /// picture to go before its written taps. Below it (iPhone SE about 380 pt, 13 mini about
+    /// 500) the taps go first, or they started past the bottom edge; a Pro Max has some 620.
+    static let guideRoomyHeight: CGFloat = 600
     static let companionThumbWidth: CGFloat = 66
     static let companionThumbHeight: CGFloat = 88
     /// The most height the floating guide's instruction may take; past it the instruction

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Changed
+- **Letra de accesibilidad en «Hoy»:** la cabecera pone la fecha y el folio en dos líneas ordenadas; el encabezado de cada día ya no deja el «·» colgando; cada gasto muestra su monto junto al nombre o justo debajo, y el ícono de la tarjeta ya no queda solo.
+- **iPhone chicos (SE, mini):** la guía de Wallet muestra los pasos escritos antes del dibujo de Atajos, sin desplazar.
+- **Guía:** «Conecta el importe» y «Conecta el comercio» ya no dejan un hueco vacío, y el emblema se alinea con el título.
+- **Bienvenida:** si una página sigue debajo de «Continuar», la barra de desplazamiento y una línea fina lo indican.
 - **Al día también en inglés:** un iPhone en inglés ve la app, Siri, los widgets y la guía en inglés; en español todo sigue igual.
 - **La búsqueda y el «+» van juntos abajo,** en la barra del sistema; el «+» ya no tapa el campo de búsqueda en iPhones chicos.
 - **Siri con día:** si «Anotar en una frase» no puede guardar «230 de tacos el 30», el pendiente en «Hoy» se anota en el día que dijiste.

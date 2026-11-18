@@ -49,6 +49,8 @@ struct OnboardingView: View {
     /// A page is sliding in: a second tap on the same button waits for it (2026-11-18: a quick
     /// double tap on «Empezar» skipped «Tu mes», because the button stays put between pages).
     @State private var moving = false
+    /// Whether a page goes on under the bottom bar, by page: the bar then shows its top edge.
+    @State private var moreBelow: [Int: Bool] = [:]
     @FocusState private var focused: Field?
     /// VoiceOver lands on the new page's title (2026-11-18): the bottom button kept the focus
     /// and only changed its name, so nobody heard what the new page asked.
@@ -156,6 +158,11 @@ struct OnboardingView: View {
         .padding(.horizontal, Theme.Space.screen)
         .padding(.vertical, Theme.Space.s)
         .background(Theme.background)
+        // While the page goes on under the bar, its edge shows: on an iPhone SE the fixed
+        // expenses' calendar was cut by the bar with nothing saying there was more (2026-11-18).
+        .overlay(alignment: .top) {
+            if moreBelow[page] == true { Divider().overlay(Theme.hairline) }
+        }
     }
 
     private var setUpTitle: String {
@@ -606,7 +613,8 @@ struct OnboardingView: View {
     /// Every step's shell under the step bar: the question as the title, then the content, each
     /// block rising in after the one above it.
     private func page<Content: View>(title: LocalizedStringResource, @ViewBuilder content: () -> Content) -> some View {
-        ScrollView {
+        let shown = page
+        return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 Text(title)
                     .font(.ticket(.pageTitle))
@@ -621,6 +629,17 @@ struct OnboardingView: View {
             .padding(.vertical, Theme.Space.xl)
         }
         .scrollDismissesKeyboard(.interactively)
+        // A page longer than the screen says so as it opens, with the scroll bar.
+        .scrollIndicatorsFlash(onAppear: true)
+        .onScrollGeometryChange(for: Bool.self, of: Self.goesOnBelow) { _, more in
+            if moreBelow[shown] != more { moreBelow[shown] = more }
+        }
+    }
+
+    /// Whether some of the page is still under the bottom bar.
+    nonisolated private static func goesOnBelow(_ geometry: ScrollGeometry) -> Bool {
+        let seen = geometry.contentOffset.y + geometry.containerSize.height - geometry.contentInsets.bottom
+        return seen.rounded() < geometry.contentSize.height.rounded()
     }
 
     private var pointDivider: some View {

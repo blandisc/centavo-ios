@@ -2329,6 +2329,18 @@
         }
       }
     },
+    "Ayer" : {
+      "comment" : "Hoy (main screen): day header in the list with the largest text, on its own line over the date: the day before today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday"
+          }
+        }
+      }
+    },
     "Ayer · %@" : {
       "comment" : "Hoy (main screen): day divider, in capitals; %@ is a date like «Oct 23»",
       "extractionState" : "manual",

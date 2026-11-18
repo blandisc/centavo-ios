@@ -969,3 +969,12 @@ Pedido del dueño: que la app salga también en inglés. Un iPhone en inglés la
 - **La CI revisa que no falte el inglés:** el paso «Textos en inglés» (`Tools/check-l10n.py`) falla con cualquier frase extraída que no tenga su inglés en el catálogo que le toca (los archivos de `Centavo/Theme` van en los dos: la app y los widgets los compilan). Un texto nuevo entra con su traducción en el mismo commit.
 - **Capturas en inglés:** a mano, con «ingles» al correr la CI (`EnglishScreenshotTests`, artefacto `capturas-ingles`): bienvenida, «Hoy», sus hojas y la guía, solo con argumentos e identificadores.
 - **Pendiente:** las capturas de Atajos en inglés para la guía de iOS 27 (las imágenes `guia27-*` son del Atajos en español).
+
+## 2026-11-18 · iPhone chico y letra de accesibilidad
+Capturas reales de un iPhone SE (3.ª gen.) y un 13 mini.
+- **La cabecera del ticket deja de crecer en `accessibility2`** (`TicketHead.largestType`), como `Signature` y los días del boleto: más grande, «VIE 20 DE NOV» se partía en dos y el folio quedaba en una tercera línea. Con letra de accesibilidad va en una línea si cabe y, si no, en dos: el día arriba y el folio abajo. En los tamaños normales no cambia.
+- **El encabezado de un día con letra de accesibilidad:** en una línea si cabe; si no, «Hoy» (o «Ayer») arriba y la fecha abajo, sin el «·», que quedaba colgado al final de la primera línea. Los demás días se envuelven entre palabras.
+- **La fila de un gasto con letra de accesibilidad:** nombre y monto en la misma línea si caben (el monto a la derecha); si no, el monto en su propia línea justo bajo el nombre, y la línea callada al final. Esa línea deja de crecer en `accessibility2` y el ícono de la tarjeta va pegado a la palabra anterior: solo en un renglón se veía como algo suelto.
+- **Guía de Wallet en pantallas cortas** (menos de `Theme.Size.guideRoomyHeight` entre las barras: SE y mini): los toques escritos van antes del dibujo, que asoma debajo; antes empezaban fuera de la pantalla sin señal de que había más. En una pantalla alta, igual que antes.
+- **El dibujo de «Conecta el importe/comercio»:** la lista de datos de la burbuja se abre sobre la acción, como el menú de Atajos, en vez de dejar todo el ciclo un hueco vacío debajo. El emblema del encabezado de cada paso se alinea con la primera línea del título cuando este se parte.
+- **Bienvenida:** una página más larga que la pantalla enseña la barra de desplazamiento al abrir, y la barra de abajo muestra su borde mientras queda contenido debajo (el calendario de fijos se cortaba sin señal en el SE).

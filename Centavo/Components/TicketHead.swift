@@ -3,7 +3,8 @@ import SwiftUI
 /// The ticket's head over a perforation, the same on «Hoy» and on «Mi dinero»: at one end the
 /// day («JUE 29 DE OCT») and at the other the folio, like the number printed on a ticket
 /// («N.º 042», «CORTE N.º 003»), its digits in brass. With an accessibility text size the two
-/// stack and wrap instead of being cut («VIE 2… N.º 0…» said nothing).
+/// stay on one line while they fit and otherwise go on two tidy lines, day over folio, instead
+/// of being cut («VIE 2… N.º 0…» said nothing) or broken into three.
 struct TicketHead: View {
     let title: String
     /// What goes before the digits: «N.º», «Corte N.º».
@@ -44,26 +45,65 @@ struct TicketHead: View {
             .replacingOccurrences(of: ".", with: "")
     }
 
-    var body: some View {
-        AdaptiveStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier(titleIdentifier ?? "")
-            if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Space.s) }
-            if number > 0 {
-                Text("\(folio) \(Text(String(format: "%03d", number)).foregroundStyle(Theme.brass))")
-                    .monospacedDigit()
-                    .accessibilityLabel(spoken)
-                    .accessibilityIdentifier(folioIdentifier ?? "")
-            }
+    /// The most the head grows (2026-11-18): past it, on an iPhone SE, «VIE 20 DE NOV» broke
+    /// into two lines with the folio on a third. At this size the day always fits on one line,
+    /// and the folio goes on its own line under it when both don't fit side by side.
+    static let largestType = DynamicTypeSize.accessibility2
+
+    private var titleText: some View {
+        Text(title)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier(titleIdentifier ?? "")
+    }
+
+    @ViewBuilder private var folioText: some View {
+        if number > 0 {
+            Text("\(folio) \(Text(String(format: "%03d", number)).foregroundStyle(Theme.brass))")
+                .monospacedDigit()
+                .accessibilityLabel(spoken)
+                .accessibilityIdentifier(folioIdentifier ?? "")
         }
-        .font(.ticket(.microStrong))
-        .tracking(Theme.Tracking.label)
-        .textCase(.uppercase)
-        .foregroundStyle(Theme.ink)
-        .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
-        .padding(.bottom, Theme.Space.s)
-        .overlay(alignment: .bottom) { Perforation() }
+    }
+
+    /// Day at one end, folio at the other, on one line.
+    private var row: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            titleText
+            Spacer(minLength: Theme.Space.s)
+            folioText
+        }
+        .lineLimit(1)
+    }
+
+    /// The day over the folio, each on its own line; they wrap only if even that can't fit.
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            titleText
+            folioText
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var layout: some View {
+        if typeSize.isAccessibilitySize {
+            ViewThatFits(in: .horizontal) {
+                row
+                stacked
+            }
+            .dynamicTypeSize(...Self.largestType)
+        } else {
+            row
+        }
+    }
+
+    var body: some View {
+        layout
+            .font(.ticket(.microStrong))
+            .tracking(Theme.Tracking.label)
+            .textCase(.uppercase)
+            .foregroundStyle(Theme.ink)
+            .padding(.bottom, Theme.Space.s)
+            .overlay(alignment: .bottom) { Perforation() }
     }
 }
 

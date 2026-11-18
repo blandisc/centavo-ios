@@ -1879,6 +1879,7 @@ private struct LedgerRow: View {
     let catalog: CategoryCatalog
     /// The dashed line on top; a day's first row has the divider there instead.
     var perforated = true
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var isRefund: Bool { expense.amount < 0 }
     /// Grey and struck through, never brass: brass already means money that came back.
@@ -1927,20 +1928,31 @@ private struct LedgerRow: View {
     /// icon replaced the short name («Amex») at the owner's request (2026-10-31); VoiceOver
     /// still reads the name.
     private var metaLine: Text? {
-        var parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { part in
+        let parts = (meta(withCard: false)?.components(separatedBy: "\u{00A0}· ") ?? []).map { part in
             // «¿Repetida?» asks for a look: the warning mark in front, its words in ink.
             part == Self.repeatedTag ? WarningText.inline(part) : Text(part)
         }
-        if let card {
-            let icon = catalog.sourceIcon(for: card)
-            let filled = UIImage(systemName: icon + ".fill") == nil ? icon : icon + ".fill"
-            parts.append(Text(Image(systemName: filled))
-                .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card)))
-        }
-        guard let first = parts.first else { return nil }
-        // A no-break space before the dot: a wrapped line never starts with «·».
         let dot = Text("\u{00A0}·").foregroundStyle(Theme.brass)
-        return parts.dropFirst().reduce(first) { line, part in Text("\(line)\(dot) \(part)") }
+        guard let card else {
+            guard let first = parts.first else { return nil }
+            return joined(parts.dropFirst(), after: first, dot: dot)
+        }
+        let icon = catalog.sourceIcon(for: card)
+        let filled = UIImage(systemName: icon + ".fill") == nil ? icon : icon + ".fill"
+        let mark = Text(Image(systemName: filled))
+            .foregroundStyle(isUncounted ? Theme.muted : catalog.colors.source(card))
+        guard let first = parts.first else { return mark }
+        let line = joined(parts.dropFirst(), after: first, dot: dot)
+        // With the largest text the card's icon stays on the line of the word before it: alone
+        // on a line of its own it read as a stray (iPhone SE, 2026-11-18).
+        let gap = typeSize.isAccessibilitySize ? "\u{00A0}" : " "
+        return Text("\(line)\(dot)\(gap)\(mark)")
+    }
+
+    /// The parts after `first`, each after a brass dot. A no-break space before the dot: a
+    /// wrapped line never starts with «·».
+    private func joined(_ rest: ArraySlice<Text>, after first: Text, dot: Text) -> Text {
+        rest.reduce(first) { line, part in Text("\(line)\(dot) \(part)") }
     }
 
     @ViewBuilder private var metaText: some View {
@@ -2210,9 +2222,25 @@ private struct DayDivider: View {
     private var showsTotal: Bool { group.items.count > 1 }
     private var spoken: String { [label, total].compactMap { $0 }.joined(separator: ", ") }
 
+    /// «Hoy» or «Ayer» when the day is one of them.
+    private var nearName: String? {
+        let calendar = Calendar.current
+        if calendar.isDate(day, inSameDayAs: now) { return String(localized: "Hoy") }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(day, inSameDayAs: yesterday) {
+            return String(localized: "Ayer", comment: "Hoy (main screen): day header in the list with the largest text, on its own line over the date: the day before today")
+        }
+        return nil
+    }
+
+    /// «23 oct», after «Hoy» or «Ayer».
+    private var shortDate: String {
+        day.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
+    }
+
     private var label: String {
         let calendar = Calendar.current
-        let date = day.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
+        let date = shortDate
         if calendar.isDate(day, inSameDayAs: now) { return String(localized: "Hoy · \(date)") }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(day, inSameDayAs: yesterday) { return String(localized: "Ayer · \(date)") }
@@ -2231,8 +2259,10 @@ private struct DayDivider: View {
             .frame(width: Theme.Size.dayTick.width, height: Theme.Size.dayTick.height)
     }
 
-    private var dayText: some View {
-        Text(label)
+    private var dayText: some View { dayWords(label) }
+
+    private func dayWords(_ words: String) -> some View {
+        Text(words)
             .font(.ticket(.microStrong))
             .tracking(Theme.Tracking.action)
             .textCase(.uppercase)
@@ -2248,6 +2278,23 @@ private struct DayDivider: View {
         }
     }
 
+    /// With the largest text: the day on one line while it fits; if not, «Hoy» over «20 nov»
+    /// without the dot, which hung alone at the end of the first line (iPhone SE, 2026-11-18).
+    /// Any other day just wraps between its words.
+    @ViewBuilder private var stackedDay: some View {
+        if let nearName {
+            ViewThatFits(in: .horizontal) {
+                dayText.lineLimit(1)
+                VStack(alignment: .leading, spacing: Theme.Space.none) {
+                    dayWords(nearName)
+                    dayWords(shortDate)
+                }
+            }
+        } else {
+            dayText.fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     var body: some View {
         Group {
             if typeSize.isAccessibilitySize {
@@ -2256,7 +2303,7 @@ private struct DayDivider: View {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                         tick
-                        dayText.fixedSize(horizontal: false, vertical: true)
+                        stackedDay
                     }
                     totalText
                 }

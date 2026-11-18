@@ -4,7 +4,8 @@ import SwiftUI
 /// fijos»): its category's tile, the name as it arrives, in uppercase, on one line, over a
 /// quieter line in lowercase, and the amount on the right. Two levels, so the eye reads the
 /// name first (owner, 2026-10-29: the list read as a wall of capitals). With accessibility
-/// text sizes it stacks and the name wraps, so nothing is cut.
+/// text sizes it stacks: the name with the amount beside it, or right under it when they don't
+/// fit, then the quiet line; the name wraps, so nothing is cut.
 struct ExpenseRowLayout<Meta: View, Amount: View>: View {
     let name: String
     let tile: CategoryIconTile
@@ -29,38 +30,60 @@ struct ExpenseRowLayout<Meta: View, Amount: View>: View {
         self.amount = amount()
     }
 
-    private var nameText: some View {
-        // One line, as the bank sends it; the full name is in the expense sheet.
+    /// One line, as the bank sends it (the full name is in the expense sheet); with an
+    /// accessibility text size, as many as it takes.
+    private func nameText(lines: Int?) -> some View {
         Text(name)
-            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+            .lineLimit(lines)
             .truncationMode(.tail)
             .rowName()
             .foregroundStyle(Theme.ink)
             .multilineTextAlignment(.leading)
     }
 
-    var body: some View {
-        Group {
-            if typeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    nameText
-                    meta
+    /// The most the quiet line grows with an accessibility text size (2026-11-18): bigger, and
+    /// on an iPhone SE the card's icon at its end fell alone onto a line of its own.
+    static var largestMetaType: DynamicTypeSize { .accessibility2 }
+
+    /// With an accessibility text size: the name and the amount on one line while they fit
+    /// (the amount still at the right edge); otherwise the amount on its own line right under
+    /// the name, never under the quiet line. The quiet line goes last.
+    private var stackedRow: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
+                    nameText(lines: 1)
+                    Spacer(minLength: Theme.Space.s)
                     amount
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                HStack(alignment: .center, spacing: Theme.Space.m) {
-                    tile
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
-                        VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
-                            nameText
-                            meta
-                        }
-                        Spacer(minLength: Theme.Space.s)
-                        amount
-                    }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    nameText(lines: nil)
+                    amount
                 }
             }
+            meta
+                .dynamicTypeSize(...Self.largestMetaType)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var row: some View {
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            tile
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.sm) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
+                    nameText(lines: 1)
+                    meta
+                }
+                Spacer(minLength: Theme.Space.s)
+                amount
+            }
+        }
+    }
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize { stackedRow } else { row }
         }
         .padding(.vertical, Theme.Space.s)
         .frame(minHeight: Theme.Size.tallRow)

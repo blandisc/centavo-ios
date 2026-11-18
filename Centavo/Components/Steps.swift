@@ -29,7 +29,7 @@ struct StepEmblem: View {
 }
 
 /// The heading of every step page: a «Paso X de N» caption, then the brass emblem beside the
-/// title on the same row (centred vertically). The emblem is decorative and hidden from
+/// title on the same row (centred on its first line). The emblem is decorative and hidden from
 /// VoiceOver; with an accessibility text size it goes away so the title uses the full width.
 /// The caption carries the step's progress for VoiceOver.
 ///
@@ -42,6 +42,8 @@ struct StepHeader: View {
     let of: Int
     let title: String
     let systemImage: String
+
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// A literal title: looked up in the catalog.
     init(step: Int, of: Int, title: LocalizedStringResource, systemImage: String) {
@@ -62,8 +64,20 @@ struct StepHeader: View {
             Text("Paso \(step) de \(of)")
                 .ticketCaption()
                 .accessibilityLabel("Paso \(step) de \(of)")
-            HStack(spacing: Theme.Space.m) {
-                StepEmblem(systemImage: systemImage)
+            // On the title's first line, not between its lines: a title that wraps («Conecta /
+            // el comercio» on an iPhone SE) left the emblem floating between the two (2026-11-18).
+            // The emblem carries an invisible line of the title's type, centred in it, and sits
+            // on the title's first baseline: on one line it is centred as before.
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                if !typeSize.isAccessibilitySize {
+                    ZStack {
+                        Text(verbatim: " ")
+                            .font(.ticket(.pageTitle))
+                            .hidden()
+                        StepEmblem(systemImage: systemImage)
+                    }
+                    .accessibilityHidden(true)
+                }
                 Text(title)
                     .font(.ticket(.pageTitle))
                     .foregroundStyle(Theme.ink)

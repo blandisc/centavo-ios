@@ -369,21 +369,27 @@ private struct ConnectAnimation: View {
                 .font(.ticket(12, weight: .semibold, relativeTo: .footnote))
                 .foregroundStyle(Theme.brass)
                 .contentTransition(.opacity)
+            // The list of the bubble's data opens over the action, as Atajos' menu does,
+            // instead of in a space kept empty under it the rest of the loop: on an iPhone SE
+            // that empty space left a gap inside the card and pushed the steps out of view
+            // (2026-11-18).
             ActionCard(
                 importe: token("Importe", phase),
                 comercio: token("Comercio", phase),
                 ring: ringOnField(phase) ? field : nil
             )
-            ZStack(alignment: .topLeading) {
-                Color.clear.frame(height: 96)
-                switch phase {
-                case .tapSuggestion:
-                    suggestionBar
-                case .pickProperty:
+            .overlay(alignment: .bottomTrailing) {
+                if phase == .pickProperty {
                     propertyList
-                default:
-                    EmptyView()
+                        .shadow(color: Theme.Shortcuts.screen, radius: 8)
+                        .padding(8)
                 }
+            }
+            // Only the row above the keyboard keeps its room, the same in every frame, so the
+            // drawing doesn't change height as the loop goes.
+            ZStack(alignment: .topLeading) {
+                suggestionBar.hidden()
+                if phase == .tapSuggestion { suggestionBar }
             }
         }
     }
@@ -438,6 +444,8 @@ private struct ConnectAnimation: View {
         }
         .font(.footnote)
         .background(Theme.Shortcuts.card, in: RoundedRectangle(cornerRadius: 10))
+        // Over the action, which has the same grey: an edge tells them apart.
+        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.outline, lineWidth: 1) }
         .frame(maxWidth: 200, alignment: .leading)
     }
 }
