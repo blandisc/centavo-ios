@@ -1200,7 +1200,7 @@ private extension ExpenseListView {
             return try ExpenseImporter.importCSV(text, into: context, repeated: repeated).text
         } catch CSVImporter.Failure.notOurFile {
             // «Mi dinero»'s file has its own place (2026-11-01).
-            if MoneyImport.parse(text, main: primaryCurrency).refusal == nil {
+            if Features.money, MoneyImport.parse(text, main: primaryCurrency).refusal == nil {
                 return "Este archivo es de «Mi dinero», no de tus gastos: cárgalo en esa pestaña."
             }
             return "Ese archivo no es un CSV exportado de Al día (le falta el encabezado Fecha, Comercio, Monto, Moneda)."

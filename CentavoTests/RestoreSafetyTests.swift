@@ -285,7 +285,8 @@ final class RestoreSafetyTests: XCTestCase {
         XCTAssertTrue(asks.contains("Si no eliges ninguna, no se restaura nada."))
         XCTAssertFalse(asks.contains("en tu carpeta"), "Sin carpeta no se promete una")
         XCTAssertTrue(BackupSettingsView.question(what, plan: .nothingToCopy, folder: nil)
-            .hasSuffix("Este iPhone no tiene gastos, ni «Mi dinero», ni presupuesto o listas tuyas, así que no hay nada que guardar antes."))
+            .hasSuffix("Este iPhone no tiene gastos, ni presupuesto o listas tuyas, así que no hay nada que guardar antes."),
+                      "«Mi dinero» está apagado: no se nombra")
     }
 
     func testDoneSaysWhereTheCopyIsAndOffersToKeepBackingUp() {

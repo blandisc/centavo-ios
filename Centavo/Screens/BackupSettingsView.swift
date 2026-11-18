@@ -704,7 +704,8 @@ struct BackupSettingsView: View {
         case .askWhere:
             return replaces + "Antes hay que guardar una copia de lo actual donde puedas verla: al tocar «Restaurar» eliges la carpeta en Archivos. Si no eliges ninguna, no se restaura nada."
         case .nothingToCopy:
-            return replaces + "Este iPhone no tiene gastos, ni «Mi dinero», ni presupuesto o listas tuyas, así que no hay nada que guardar antes."
+            return replaces + "Este iPhone no tiene gastos, ni " + (Features.money ? "«Mi dinero», ni " : "")
+                + "presupuesto o listas tuyas, así que no hay nada que guardar antes."
         }
     }
 
@@ -759,6 +760,8 @@ struct BackupSettingsView: View {
             let style = Date.FormatStyle.dateTime.month(.abbreviated).year().locale(mx)
             text += " (de \(first.formatted(style)) a \(lastOne.formatted(style)))"
         }
+        // «Mi dinero» off (2026-11-18): restoring still brings it back whole, without naming it.
+        guard Features.money else { return text + "." }
         if let accounts = summary.accountCount, let cuts = summary.cutCount {
             text += ", y «Mi dinero» con " + count(accounts, "cuenta", "cuentas") + " y " + count(cuts, "corte", "cortes")
         } else {

@@ -939,3 +939,11 @@ Se le mostraron 8 diferencias lado a lado (captura real contra maqueta). Escogi�
 - **D6-A · Una sola flecha de renglón** (`RowChevron`), chica y gris tenue; «Más detalles» deja de ser dorado. Las flechas que son parte de una frase («Ver 6 más ⌄», «MXN ⌄», «cuenta ⌄») siguen con su frase. Lint `row-chevron`.
 - **D7 · Lo elegido se queda como está:** fondo tenue con borde en tarjetas y monedas, dorado lleno en cuadritos.
 - **D8-A · Todo campo lleva la letra del ticket** (`.ticketField()`), con el mismo espaciado. Lint `ticket-field`.
+
+## 2026-11-18 · «Mi dinero» apagado para el lanzamiento
+Pedido del dueño: «no está suficientemente pulida… no eliminar, simplemente apagar todas las referencias».
+- **Un interruptor** (`Features.money`): apagado en Release. En Debug lo encienden `-centavo-mi-dinero` y las demos de «Mi dinero», así sus pruebas de interfaz siguen corriendo.
+- **Sin pestañas:** con una sola, la barra no lleva a ningún lado. La app abre en «Hoy» y el «+» queda abajo a la derecha con el vidrio del sistema (`safeAreaInset`, así el último renglón no queda debajo). Escogido por el dueño entre esto y dejar una pestaña «Hoy».
+- **No se nombra en pantalla:** Ajustes (CSV), restaurar («Del …: N gastos.» sin la parte de cuentas), la copia de la pantalla de error, importar un archivo de «Mi dinero» como CSV (da el error genérico) y el permiso de Face ID («Para mostrarte la contraseña del respaldo y confirmar que eres tú antes de restaurarlo.»).
+- **No cambia nada de datos:** `dinero.store`, el respaldo formato 2 y restaurar siguen igual; un respaldo con «Mi dinero» lo regresa completo, sin mencionarlo. Los errores del respaldo que nombran «Mi dinero» solo salen si ese almacén existe y no abre; se quedan como estaban para no tocar el respaldo.
+

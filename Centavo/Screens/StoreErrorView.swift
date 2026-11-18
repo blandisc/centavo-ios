@@ -84,7 +84,10 @@ struct StoreErrorView: View {
     }
 
     static let stillShutText = "Todavía no abre. Puedes intentarlo otra vez más tarde; mientras, guarda una copia de tus datos."
-    static let copyHint = "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña y trae también «Mi dinero»: guárdala donde solo tú la veas."
+    static var copyHint: String {
+        "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña"
+            + (Features.money ? " y trae también «Mi dinero»" : "") + ": guárdala donde solo tú la veas."
+    }
     static let copyFailedText = "No se pudo guardar la copia. Tus datos siguen donde estaban. Intenta otra vez."
     static let nothingToCopyText = "No se encontraron archivos de Al día para copiar."
     static let copyNotMadeText = "No se pudo preparar la copia. Tus datos siguen donde estaban. Si el iPhone no tiene espacio, libera un poco e intenta otra vez."

@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The two halves of the app (2026-10-31): «Hoy», the screen it always had, and «Mi dinero».
+/// The two halves of the app (2026-10-31): «Hoy», the screen it always had, and «Mi dinero»
+/// (off for the launch, 2026-11-18: `Features.money`; then only «Hoy», without tabs).
 /// In «Hoy», beside the tabs, the brass «+» of «Anotar gasto» (owner, 2026-11-14), where the
 /// search used to sit. iOS 27 draws no tab apart from the bar (not even the search role's), so
 /// it is the system's glass button, laid over the bar's row.
@@ -10,18 +11,27 @@ struct RootView: View {
     @State private var addRequests = 0
 
     var body: some View {
-        TabView(selection: $place) {
-            Tab("Hoy", systemImage: "calendar", value: Place.today) {
-                ExpenseListView(addRequests: addRequests)
+        if Features.money {
+            TabView(selection: $place) {
+                Tab("Hoy", systemImage: "calendar", value: Place.today) {
+                    ExpenseListView(addRequests: addRequests)
+                }
+                Tab("Mi dinero", systemImage: "wallet.bifold", value: Place.money) {
+                    MoneyRootView()
+                }
             }
-            Tab("Mi dinero", systemImage: "wallet.bifold", value: Place.money) {
-                MoneyRootView()
+            .overlay(alignment: .bottomTrailing) {
+                if place == .today {
+                    AddCircle(besideTabs: true) { addRequests += 1 }
+                }
             }
-        }
-        .overlay(alignment: .bottomTrailing) {
-            if place == .today {
-                AddCircle { addRequests += 1 }
-            }
+        } else {
+            // «Mi dinero» off (owner, 2026-11-18): no tab bar for one tab. The «+» stays at the
+            // bottom right, and the list leaves room under its last row for it.
+            ExpenseListView(addRequests: addRequests)
+                .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: Theme.Space.none) {
+                    AddCircle(besideTabs: false) { addRequests += 1 }
+                }
         }
     }
 }
@@ -29,6 +39,8 @@ struct RootView: View {
 /// The «+»: the system's glass, the same as the tab bar's, with a brass «+» (owner,
 /// 2026-11-14, option A over brass glass), as tall as the bar and with its middle on the bar's.
 private struct AddCircle: View {
+    /// Laid over the tab bar's row (with «Mi dinero»), or on its own at the bottom.
+    let besideTabs: Bool
     let action: () -> Void
 
     var body: some View {
@@ -43,7 +55,7 @@ private struct AddCircle: View {
         .buttonBorderShape(.circle)
         .accessibilityLabel("Anotar gasto")
         .padding(.trailing, Theme.Space.xl)
-        .padding(.bottom, Theme.Space.tabBarDrop)
+        .padding(.bottom, besideTabs ? Theme.Space.tabBarDrop : Theme.Space.xs)
         // Stays down with the keyboard up, behind it, like the tab bar.
         .ignoresSafeArea(.keyboard)
     }

@@ -179,9 +179,22 @@ final class FlowTests: XCTestCase {
         snap("flujo-anotar")
     }
 
+    /// «Mi dinero» off for the launch (owner, 2026-11-18): no tabs, the «+» still at the bottom
+    /// and opening the sheet, and the last row never stuck under it.
+    func testSinMiDineroNoHayPestanas() {
+        let app = launch(demo: true)
+        XCTAssertFalse(app.tabBars.firstMatch.exists, "Hay barra de pestañas con «Mi dinero» apagado")
+        XCTAssertFalse(app.buttons["Mi dinero"].exists, "Se ve «Mi dinero»")
+        let add = require(app.buttons["Anotar gasto"], "No está el «+»")
+        XCTAssertGreaterThan(add.frame.midY, app.windows.firstMatch.frame.midY, "El «+» no está abajo")
+        snap("flujo-sin-mi-dinero")
+        add.tap()
+        require(app.textFields["monto"], "El «+» no abrió la hoja")
+    }
+
     /// The brass «+» beside the tabs and search up top (owner, 2026-11-14).
     func testElMasVaAbajoYLaBusquedaArriba() {
-        let app = launch(demo: true)
+        let app = launch(demo: true, extra: ["-centavo-mi-dinero"])
         let add = require(app.buttons["Anotar gasto"], "No está el «+»")
         XCTAssertFalse(app.navigationBars.buttons["Anotar gasto"].exists, "El «+» sigue arriba")
 

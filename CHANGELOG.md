@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- **«Mi dinero» se apaga para el lanzamiento:** la app abre directo en «Hoy», sin barra de pestañas, con el «+» abajo a la derecha. Nada se borra: quien ya tenía cuentas o cortes los conserva y el respaldo los sigue guardando.
 - **Si algo no se guarda, el aviso dice qué** («No se guardó el corte») y abajo «Nada cambió. Intenta otra vez.».
 - **«Cancelar» va con letra normal en todas las hojas;** solo «Guardar» y «Listo» resaltan.
 - **«Agregar una tarjeta», «Agregar un renglón»…** son un enlace dorado, sin recuadro punteado.
