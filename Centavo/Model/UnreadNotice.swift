@@ -160,6 +160,13 @@ enum CaptureArrival {
     /// That first payment, as «Hoy» says it (2026-11-18): `textKey` is the latest one, and
     /// with a few payments that first day the card named the last, maybe a refund.
     static let firstTextKey = "respaldo.esteIPhone.walletPrimeroTexto"
+    /// The parts of those two payments, put together when read (`latestText`, `firstText`), so
+    /// they follow the iPhone's language (2026-11-18). The `…Texto` keys stay written for what
+    /// reads them still, and as what earlier versions left.
+    static let amountKey = "respaldo.esteIPhone.walletLlegoMonto"
+    static let merchantKey = "respaldo.esteIPhone.walletLlegoComercio"
+    static let firstAmountKey = "respaldo.esteIPhone.walletPrimeroMonto"
+    static let firstMerchantKey = "respaldo.esteIPhone.walletPrimeroComercio"
 
     /// Whether Wallet had ever delivered a payment here (`WalletWatch.lastArrivalKey`), as
     /// `note(arrivedBefore:)` takes it: asked before `ExpenseRecorder.record`, which marks the
@@ -172,14 +179,48 @@ enum CaptureArrival {
     /// was saved; `nil` reads it now (the guide's demo, which saves nothing).
     static func note(amount: String, merchant: String, arrivedBefore: Bool? = nil,
                      now: Date = AppClock.now, defaults: UserDefaults = .standard) {
-        let text = PendingPayment.unsaved(amount: amount, merchant: merchant, card: nil, date: now)?.text ?? ""
+        let payment = PendingPayment.unsaved(amount: amount, merchant: merchant, card: nil, date: now)
+        let text = payment?.text ?? ""
         let known = arrivedBefore ?? walletKnown(defaults: defaults)
         if defaults.double(forKey: dateKey) <= 0, defaults.double(forKey: firstKey) <= 0, !known {
             defaults.set(now.timeIntervalSinceReferenceDate, forKey: firstKey)
             defaults.set(text, forKey: firstTextKey)
+            keep(payment, amountKey: firstAmountKey, merchantKey: firstMerchantKey, defaults: defaults)
         }
         defaults.set(now.timeIntervalSinceReferenceDate, forKey: dateKey)
         defaults.set(text, forKey: textKey)
+        keep(payment, amountKey: amountKey, merchantKey: merchantKey, defaults: defaults)
+    }
+
+    /// The latest payment, as the guide says it now: «$47.50 en Oxxo», «$47.50 at Oxxo».
+    static func latestText(defaults: UserDefaults = .standard) -> String {
+        composed(amountKey: amountKey, merchantKey: merchantKey, fallback: textKey, defaults: defaults)
+    }
+
+    /// The first payment, as «Hoy» says it now. Empty for a first one kept with no text.
+    static func firstText(defaults: UserDefaults = .standard) -> String {
+        composed(amountKey: firstAmountKey, merchantKey: firstMerchantKey, fallback: firstTextKey, defaults: defaults)
+    }
+
+    /// Both parts or none: a payment with only one of them is written as it was kept.
+    private static func keep(_ payment: PendingPayment?, amountKey: String, merchantKey: String,
+                             defaults: UserDefaults) {
+        guard let amount = payment?.amount, let merchant = payment?.merchant else {
+            defaults.removeObject(forKey: amountKey)
+            defaults.removeObject(forKey: merchantKey)
+            return
+        }
+        defaults.set(amount, forKey: amountKey)
+        defaults.set(merchant, forKey: merchantKey)
+    }
+
+    private static func composed(amountKey: String, merchantKey: String, fallback: String,
+                             defaults: UserDefaults) -> String {
+        guard let amount = defaults.string(forKey: amountKey),
+              let merchant = defaults.string(forKey: merchantKey) else {
+            return defaults.string(forKey: fallback) ?? ""
+        }
+        return PendingPayment.line(amount: amount, merchant: Expense.shownMerchant(merchant))
     }
 
     /// The guide was opened («Configurar», «Revisar», the warning on «Hoy»): the setup under
@@ -196,7 +237,9 @@ enum CaptureArrival {
     }
 
     static func forget(defaults: UserDefaults = .standard) {
-        for key in [dateKey, textKey, sessionKey, firstKey, firstTextKey] { defaults.removeObject(forKey: key) }
+        let keys = [dateKey, textKey, sessionKey, firstKey, firstTextKey,
+                    amountKey, merchantKey, firstAmountKey, firstMerchantKey]
+        for key in keys { defaults.removeObject(forKey: key) }
     }
 
     /// What «Hoy» and Ajustes say about the automation, from the stored moments.

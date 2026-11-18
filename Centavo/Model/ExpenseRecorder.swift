@@ -46,7 +46,7 @@ enum ExpenseRecorder {
         WalletWatch.noteArrival(now)
 
         let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let sent = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
+        let sent = name.isEmpty ? Expense.noMerchant : String(name.prefix(maxMerchantLength))
         // A merchant renamed by hand comes back with its new name (`MerchantRules`: the rule
         // is found by the text Wallet sends; its category, below, by the name it ends up with).
         let renamed = MerchantRules.applied(to: sent, renames: renames, categories: rules).name
@@ -190,7 +190,7 @@ enum ExpenseRecorder {
         guard let parsed = AmountParser.parse(amountText) else { return .unreadable }
         guard parsed.value != 0 else { return .empty }
         let name = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
-        let merchantName = name.isEmpty ? "Sin comercio" : String(name.prefix(maxMerchantLength))
+        let merchantName = name.isEmpty ? Expense.noMerchant : String(name.prefix(maxMerchantLength))
         // A category said out loud is a choice: it beats the memory, and no history is read.
         let said = category?.trimmingCharacters(in: .whitespacesAndNewlines)
         let before = (said?.isEmpty ?? true)
@@ -226,10 +226,14 @@ enum ExpenseRecorder {
 
     /// What Siri heard as a currency, as an ISO code: "20 dólares" is USD, "89 pesos" or no
     /// word at all is the month's currency. A code or symbol it recognizes is kept.
+    ///
+    /// The English words too (2026-11-18, the app in English): Siri asks for «dollars» there,
+    /// and «20 dollars» was saved as 20 pesos. The spaces of «US dollars» are already gone in
+    /// the marker (`AmountParser`), so it arrives as «usdollars».
     static func spokenCurrency(_ marker: String?, primary: String) -> String {
         let word = (marker ?? "").lowercased().folding(options: .diacriticInsensitive, locale: nil)
             .trimmingCharacters(in: .whitespaces)
-        if word.hasPrefix("dolar") { return "USD" }
+        if dollarWords.contains(where: { word.hasPrefix($0) }) { return "USD" }
         if word.hasPrefix("euro") { return "EUR" }
         if word.hasPrefix("peso") { return "MXN" }
         if let marker, CurrencyResolver.recognizes(marker),
@@ -238,6 +242,9 @@ enum ExpenseRecorder {
         }
         return primary
     }
+
+    /// How «dollars» starts when said: in Spanish, in English, and the slang Siri writes down.
+    private static let dollarWords = ["dolar", "dollar", "usdollar", "buck"]
 
     /// Wallet payments saved in the last few minutes, the only ones a repeat could match. One
     /// written by hand never makes a capture look repeated.

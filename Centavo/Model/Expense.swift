@@ -73,7 +73,18 @@ final class Expense {
     var rule: RepeatRule { RepeatRule(stored: repeatRule) }
 
     /// The name the screen shows.
-    var shownName: String { displayName ?? merchant }
+    var shownName: String { displayName ?? Self.shownMerchant(merchant) }
+
+    /// What a payment with no shop is saved as. Stored data, always in Spanish (2026-11-18, the
+    /// app in English): deduplication, the merchant memory and the CSV match on it.
+    static let noMerchant = "Sin comercio"
+
+    /// A stored merchant as the person reads it: `noMerchant` in the iPhone's language, any
+    /// other as it came (2026-11-18: an iPhone in English read «Sin comercio»).
+    static func shownMerchant(_ stored: String) -> String {
+        guard stored == noMerchant else { return stored }
+        return String(localized: "Sin comercio", comment: "An expense saved without a merchant name (stored in Spanish, shown translated)")
+    }
 
     /// A category the model suggested and nobody confirmed yet.
     var hasSuggestedCategory: Bool { category != nil && categorySource == Self.suggestedCategory }
@@ -107,8 +118,11 @@ final class Expense {
 
     /// As a search sees it.
     var searchable: SearchableExpense {
-        SearchableExpense(merchant: merchant, readableName: displayName, category: category,
-                          card: card, amount: amount, date: date)
+        // A search for «No merchant» finds the ones saved as «Sin comercio» (2026-11-18).
+        let placeholder: String? = merchant == Self.noMerchant ? Self.shownMerchant(merchant) : nil
+        let readable = displayName ?? placeholder
+        return SearchableExpense(merchant: merchant, readableName: readable, category: category,
+                                 card: card, amount: amount, date: date)
     }
 
     /// As the category rule sees it: a suggestion is shown but never remembered as a choice.
@@ -210,8 +224,31 @@ enum Store {
     /// de nuevo»: without this, every intent but the Wallet ones stayed failing until the app
     /// was closed. `retry()` never opens it twice.
     static var forIntent: ModelContainer? {
-        (try? opened.get()) ?? (try? retry().get())
+        if let container = try? opened.get() { return container }
+        noteFailedOutOfSight()
+        return try? retry().get()
     }
+
+    /// Whether an App Intent found the store failing since the app last looked (2026-11-18). It
+    /// is how a failure before the first unlock looks: Wallet ran the automation with the phone
+    /// still locked, and the error screen stayed up after unlocking until «Intentar de nuevo».
+    /// The app tries again by itself when it comes to the front (`CentavoApp`); a failure the
+    /// app met on its own, in sight, still waits for the button.
+    static func takeFailedOutOfSight() -> Bool {
+        openLock.lock()
+        defer { openLock.unlock() }
+        let failed = failedOutOfSight
+        failedOutOfSight = false
+        return failed
+    }
+
+    private static func noteFailedOutOfSight() {
+        openLock.lock()
+        defer { openLock.unlock() }
+        failedOutOfSight = true
+    }
+
+    nonisolated(unsafe) private static var failedOutOfSight = false
 
     /// For code with no screen to show an error on (the App Intent).
     static var container: ModelContainer {

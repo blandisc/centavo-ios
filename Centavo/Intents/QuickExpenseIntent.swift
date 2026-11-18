@@ -63,9 +63,10 @@ struct QuickExpenseIntent: AppIntent {
             throw $sentence.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
         case .maybeRepeated(let name), .saved(let name):
             let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
-            let said = spoken(entry.amountText)
+            let said = spoken(entry.amountText, aloud: true)
             let day = QuickExpense.spokenDay(entry.date)
-            let added = Self.addedSentence(amount: said, name: name, day: day, source: entry.source)
+            let shop = Expense.shownMerchant(name)
+            let added = Self.addedSentence(amount: said, name: shop, day: day, source: entry.source)
             let notice = [added, budgetLine].compactMap { $0 }
             return .result(dialog: "\(notice.joined(separator: " "))")
         }
@@ -87,9 +88,12 @@ struct QuickExpenseIntent: AppIntent {
         return String(localized: "Anotado: \(amount) en \(name), con \(source).")
     }
 
-    private func spoken(_ text: String) -> String {
+    /// `aloud`: for what Siri says (`spokenMoney`, 2026-11-18); what is kept pending stays as
+    /// the screen writes it, which «Anotar» reads again.
+    private func spoken(_ text: String, aloud: Bool = false) -> String {
         guard let parsed = AmountParser.parse(text) else { return text }
         let code = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: MonthStatus.primaryCurrency)
+        if aloud { return spokenMoney(parsed.value, isoCode: code, label: code, main: CurrencyPreference.current) }
         return formatMoney(parsed.value, isoCode: code, label: code, main: CurrencyPreference.current)
     }
 }

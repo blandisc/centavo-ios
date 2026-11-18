@@ -53,8 +53,8 @@ public struct SearchableExpense: Equatable, Sendable {
     }
 }
 
-/// Search the way people say it, with plain rules: month names, «arriba de», «menos de»,
-/// and the rest as words to find. Works on every iPhone.
+/// Search the way people say it, with plain rules: month names, «arriba de», «menos de» (and
+/// their English, «october», «over»), and the rest as words to find. Works on every iPhone.
 public enum ExpenseSearch {
     public static func query(from text: String, now: Date, calendar: Calendar = .current) -> SearchQuery {
         let words = text.split(whereSeparator: \.isWhitespace)
@@ -65,16 +65,17 @@ public enum ExpenseSearch {
         var index = 0
         while index < words.count {
             let word = words[index]
-            if let named = months.firstIndex(of: word) {
-                month = named + 1
+            if let named = Self.month(named: word) {
+                month = named
                 query.monthWord = word
                 index += 1
                 continue
             }
-            if let (bound, length) = bound(at: index, in: words) {
+            if let phrase = bound(at: index, in: words) {
+                let length = phrase.words.count
                 let amount = AmountParser.parse(words[index + length])?.value
-                if bound == .min { query.minAmount = amount } else { query.maxAmount = amount }
-                if ["desde", "hasta"].contains(word) { query.inclusive = true }
+                if phrase.bound == .min { query.minAmount = amount } else { query.maxAmount = amount }
+                if phrase.inclusive { query.inclusive = true }
                 index += length + 1
                 continue
             }
@@ -125,28 +126,64 @@ public enum ExpenseSearch {
 
     private enum Bound { case min, max }
 
-    /// «arriba de 200», «más de 200», «menos de 100»: which bound, and how many words
-    /// it took before the number.
-    private static func bound(at index: Int, in words: [String]) -> (Bound, Int)? {
-        let phrases: [([String], Bound)] = [
-            (["arriba", "de"], .min), (["mas", "de"], .min), (["mayor", "a"], .min),
-            (["mayores", "a"], .min), (["sobre"], .min), (["desde"], .min),
-            (["menos", "de"], .max), (["abajo", "de"], .max), (["menor", "a"], .max),
-            (["menores", "a"], .max), (["debajo", "de"], .max), (["hasta"], .max),
-        ]
-        for (phrase, bound) in phrases where index + phrase.count < words.count {
-            guard Array(words[index..<(index + phrase.count)]) == phrase,
-                  words[index + phrase.count].contains(where: \.isNumber) else { continue }
-            return (bound, phrase.count)
+    /// Words that put a bound on the amount, and whether the bound counts itself: «desde 200»
+    /// and «hasta 100» do, «más de 200» doesn't.
+    private struct BoundPhrase {
+        var words: [String]
+        var bound: Bound
+        var inclusive = false
+    }
+
+    /// In both languages at once, whatever the iPhone's: an iPhone in English searches «over
+    /// 500» and «uber october» (2026-11-18); before, those were words to find and found nothing.
+    private static let phrases: [BoundPhrase] = [
+        BoundPhrase(words: ["arriba", "de"], bound: .min), BoundPhrase(words: ["mas", "de"], bound: .min),
+        BoundPhrase(words: ["mayor", "a"], bound: .min), BoundPhrase(words: ["mayores", "a"], bound: .min),
+        BoundPhrase(words: ["sobre"], bound: .min), BoundPhrase(words: ["desde"], bound: .min, inclusive: true),
+        BoundPhrase(words: ["menos", "de"], bound: .max), BoundPhrase(words: ["abajo", "de"], bound: .max),
+        BoundPhrase(words: ["menor", "a"], bound: .max), BoundPhrase(words: ["menores", "a"], bound: .max),
+        BoundPhrase(words: ["debajo", "de"], bound: .max), BoundPhrase(words: ["hasta"], bound: .max, inclusive: true),
+        BoundPhrase(words: ["over"], bound: .min), BoundPhrase(words: ["above"], bound: .min),
+        BoundPhrase(words: ["more", "than"], bound: .min), BoundPhrase(words: ["greater", "than"], bound: .min),
+        BoundPhrase(words: ["at", "least"], bound: .min, inclusive: true),
+        BoundPhrase(words: ["from"], bound: .min, inclusive: true),
+        BoundPhrase(words: ["under"], bound: .max), BoundPhrase(words: ["below"], bound: .max),
+        BoundPhrase(words: ["less", "than"], bound: .max),
+        BoundPhrase(words: ["up", "to"], bound: .max, inclusive: true),
+        BoundPhrase(words: ["at", "most"], bound: .max, inclusive: true),
+    ]
+
+    /// «arriba de 200», «más de 200», «over 200»: the bound and the words it took before the
+    /// number. Only before a number: «Under Armour» is a shop.
+    private static func bound(at index: Int, in words: [String]) -> BoundPhrase? {
+        for phrase in phrases where index + phrase.words.count < words.count {
+            let end = index + phrase.words.count
+            guard Array(words[index..<end]) == phrase.words, words[end].contains(where: \.isNumber) else { continue }
+            return phrase
         }
         return nil
     }
 
-    private static let months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
-                                 "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+    /// Each month's names, Spanish and English (2026-11-18), with the short forms that are not
+    /// words of their own: «mar» is the sea, so March is «march» only.
+    private static let monthNames: [[String]] = [
+        ["enero", "january", "jan"], ["febrero", "february", "feb"], ["marzo", "march"],
+        ["abril", "april", "apr"], ["mayo", "may"], ["junio", "june", "jun"], ["julio", "july", "jul"],
+        ["agosto", "august", "aug"], ["septiembre", "september", "sep", "sept"],
+        ["octubre", "october", "oct"], ["noviembre", "november", "nov"], ["diciembre", "december", "dec"],
+    ]
+
+    /// The month a word names, 1 to 12.
+    private static func month(named word: String) -> Int? {
+        monthNames.firstIndex { $0.contains(word) }.map { $0 + 1 }
+    }
+
+    /// Words that ask for nothing, in Spanish and in English («uber in october», 2026-11-18).
     private static let stopWords: Set<String> = [
         "de", "del", "en", "el", "la", "los", "las", "mis", "mi", "que", "con", "y", "a", "al",
         "gastos", "gasto", "pagos", "pago", "compras", "lo", "por", "este", "mes", "pesos",
+        "in", "of", "the", "this", "month", "my", "for", "at", "on", "and", "expenses", "expense",
+        "payments", "payment", "purchases", "dollars", "from",
     ]
 
     /// The years a search reads as a year, not as an amount.

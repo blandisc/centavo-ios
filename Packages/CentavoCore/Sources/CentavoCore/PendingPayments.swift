@@ -59,20 +59,37 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     /// `spentOn`: the day that was said, when one was (see `spentOn`).
     public static func unsaved(amount: String, merchant: String?, card: String?, date: Date,
                                spentOn: Date? = nil, id: UUID = UUID()) -> PendingPayment? {
-        let amountLine = clean(amount).first.map { String($0.prefix(maxText)) }
+        // The piece the amount was read from, when the whole payment was connected to «Importe»
+        // («American Express México⏎Google⏎MXN 319.00»): its first line, or the first 80 of a long
+        // one, lost the figure and «Anotar» opened with no amount (2026-11-18). As it came when
+        // nothing reads (a currency with figures that don't, kept all the same).
+        let source = CaptureText.figure(in: amount)?.text ?? amount
+        let amountLine = clean(source).first.map { String($0.prefix(maxText)) }
         let shop = clean(merchant ?? "").first.map { String($0.prefix(maxText)) }
         let cardName = clean(card ?? "").first.map { String($0.prefix(maxText)) }
         let text: String
         switch (amountLine, shop) {
-        case (let amount?, let shop?):
-            text = String(localized: "\(amount) en \(shop)", bundle: .main,
-                          comment: "Pago pendiente de anotar: el monto y el comercio («$319 en Google»)")
+        case (let amount?, let shop?): text = line(amount: amount, merchant: shop)
         case (let amount?, nil): text = amount
         case (nil, let shop?): text = shop
         case (nil, nil): return nil
         }
         return PendingPayment(id: id, kind: .unsaved, text: text, date: date,
                               amount: amountLine, merchant: shop, card: cardName, spentOn: spentOn)
+    }
+
+    /// «$319 en Google», in the language of the screen that shows it.
+    public static func line(amount: String, merchant: String) -> String {
+        String(localized: "\(amount) en \(merchant)", bundle: .main,
+               comment: "Pago pendiente de anotar: el monto y el comercio («$319 en Google»)")
+    }
+
+    /// What the person sees, put together when shown (2026-11-18): `text` was written in the
+    /// language of the moment it was kept, and after a change of the iPhone's language it read
+    /// «$319 en Google» in English. One kept before has its parts, so it is put together too.
+    public var display: String {
+        guard kind == .unsaved, let amount, let merchant else { return text }
+        return Self.line(amount: amount, merchant: merchant)
     }
 
     /// Only a name arrived, with no figure and no currency («Oxxo»): the one kind of notice a

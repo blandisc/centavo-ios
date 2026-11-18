@@ -24,3 +24,23 @@ func formatMoney(_ amount: Decimal, isoCode: String?, label: String, main: Strin
     let digits = amount.magnitude.formatted(.number.precision(.fractionLength(2)).locale(Locale(identifier: "es_MX")))
     return (amount < 0 ? "-" : "") + label + digits
 }
+
+/// Whether money said out loud (Siri, VoiceOver) is said as the screen writes it: in Spanish
+/// «$» is read «pesos». In English it is read «dollars», so 45 pesos sounded like 45 dollars
+/// (2026-11-18, the app in English). Follows the language the app is shown in.
+var saysMoneyAsWritten: Bool {
+    !(Bundle.main.preferredLocalizations.first?.hasPrefix("en") ?? false)
+}
+
+/// Money for a sentence Siri or VoiceOver says: in Spanish exactly `formatMoney`; in English
+/// with the currency's name, «89.00 Mexican pesos», «20.00 US dollars» (2026-11-18). A marker
+/// with no ISO code stays as written.
+func spokenMoney(_ amount: Decimal, isoCode: String?, label: String, main: String? = nil) -> String {
+    guard let isoCode, !saysMoneyAsWritten else {
+        return formatMoney(amount, isoCode: isoCode, label: label, main: main)
+    }
+    let english = Locale.current.language.languageCode?.identifier == "en"
+    let locale = english ? Locale.current : Locale(identifier: "en_US")
+    let style = Decimal.FormatStyle.Currency(code: isoCode, locale: locale).presentation(.fullName)
+    return amount.formatted(style)
+}

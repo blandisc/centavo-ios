@@ -64,17 +64,21 @@ struct AddExpenseIntent: AppIntent {
             throw $amount.needsValueError("Un gasto de cero no se anota. ¿Cuánto fue?")
         case .maybeRepeated(let name), .saved(let name):
             let budgetLine = (try? MonthStatus.budgetSentence(in: context, budget: MonthStatus.savedBudget)) ?? nil
-            let said = spoken(amount)
-            let added = String(localized: "Anotado: \(said) en \(name).")
+            let said = spoken(amount, aloud: true)
+            let shop = Expense.shownMerchant(name)
+            let added = String(localized: "Anotado: \(said) en \(shop).")
             let notice = [added, budgetLine].compactMap { $0 }
             return .result(dialog: "\(notice.joined(separator: " "))")
         }
     }
 
-    /// "89" said to Siri reads back as money: "$89.00".
-    private func spoken(_ text: String) -> String {
+    /// "89" said to Siri reads back as money: "$89.00". `aloud`: for what Siri says, where in
+    /// English the currency goes by its name (`spokenMoney`, 2026-11-18); what is kept pending
+    /// stays as the screen writes it, which «Anotar» reads again.
+    private func spoken(_ text: String, aloud: Bool = false) -> String {
         guard let parsed = AmountParser.parse(text) else { return text }
         let code = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: MonthStatus.primaryCurrency)
+        if aloud { return spokenMoney(parsed.value, isoCode: code, label: code, main: CurrencyPreference.current) }
         return formatMoney(parsed.value, isoCode: code, label: code, main: CurrencyPreference.current)
     }
 }

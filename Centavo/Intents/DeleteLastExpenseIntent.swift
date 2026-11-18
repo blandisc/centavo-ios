@@ -37,7 +37,8 @@ struct DeleteLastExpenseIntent: AppIntent {
     @MainActor
     private func describe(_ expense: Expense) -> String {
         let code = ExpenseRecorder.spokenCurrency(expense.currencyMarker, primary: MonthStatus.primaryCurrency)
-        let money = formatMoney(expense.amount, isoCode: code, label: code, main: CurrencyPreference.current)
+        // Said by Siri: in English the currency goes by its name, never a bare «$» (2026-11-18).
+        let money = spokenMoney(expense.amount, isoCode: code, label: code, main: CurrencyPreference.current)
         let name = expense.shownName
         if let day = QuickExpense.spokenDay(expense.date) {
             return String(localized: "\(money) en \(name), de \(day)",

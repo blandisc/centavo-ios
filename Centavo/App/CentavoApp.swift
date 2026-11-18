@@ -22,6 +22,7 @@ struct CentavoApp: App {
     /// A widget's «+» or the control's «Anotar gasto» that came while the store was down: kept,
     /// and opened again once «Intentar de nuevo» brings the app back (2026-11-18).
     @State private var pendingLink: URL?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -38,7 +39,17 @@ struct CentavoApp: App {
             }
             .preferredColorScheme(.dark)
             .tint(Theme.brass)
+            .onChange(of: scenePhase, initial: true) { _, phase in retryAfterIntent(phase) }
         }
+    }
+
+    /// A store that failed for an intent with the phone locked (`Store.takeFailedOutOfSight`) is
+    /// opened again when the app comes to the front (2026-11-18): the data was fine, and the
+    /// error screen offered to save a copy of it. Only once per such failure; one that fails
+    /// again with the phone unlocked keeps the screen and its «Intentar de nuevo».
+    private func retryAfterIntent(_ phase: ScenePhase) {
+        guard phase == .active, case .failure = store, Store.takeFailedOutOfSight() else { return }
+        _ = retryStore()
     }
 
     /// Opens the store again without closing the app (2026-11-11). `true` when it opened: the

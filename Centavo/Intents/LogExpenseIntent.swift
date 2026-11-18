@@ -71,6 +71,8 @@ struct LogExpenseIntent: AppIntent {
         // What the dialog and the guide say: only the figure that was read («MXN 300.00»), not
         // the whole payment when that is what was connected («ALL 2 GO MXN 300.00», 2026-11-18).
         let shown = CaptureText.shown(amount)
+        // What Siri or Atajos says: in English the currency goes by its name (2026-11-18).
+        let said = Self.aloud(shown)
         switch outcome {
         case .unreadable:
             // Figures with a currency that still didn't read («1.2.3 MXN»): an amount did come,
@@ -95,14 +97,27 @@ struct LogExpenseIntent: AppIntent {
             UnreadNotice.settle(savedIn: [merchant, self.merchant ?? ""])
             // The proof the setup guide waits for: it arrived on this iPhone (`CaptureArrival`).
             CaptureArrival.note(amount: shown, merchant: merchant, arrivedBefore: arrivedBefore)
-            return .result(dialog: "Anotado: \(shown) en \(merchant). Es igual a uno de hace unos minutos: revísalo en Al día.")
+            let shop = Expense.shownMerchant(merchant)
+            return .result(dialog: "Anotado: \(said) en \(shop). Es igual a uno de hace unos minutos: revísalo en Al día.")
         case .saved(let merchant):
             // The notice that brought only this shop's name a moment ago was this payment.
             UnreadNotice.settle(savedIn: [merchant, self.merchant ?? ""])
             CaptureArrival.note(amount: shown, merchant: merchant, arrivedBefore: arrivedBefore)
+            let shop = Expense.shownMerchant(merchant)
             // Only what was saved: the owner doesn't want the budget in the notice (2026-10-21).
-            return .result(dialog: "Anotado: \(shown) en \(merchant).")
+            return .result(dialog: "Anotado: \(said) en \(shop).")
         }
+    }
+
+    /// The figure Wallet sent, as Siri says it: in Spanish as it came («$89.00»); in English
+    /// with the currency's name (`spokenMoney`), a bare «$» being the main currency, as saved.
+    @MainActor
+    private static func aloud(_ shown: String) -> String {
+        guard !saysMoneyAsWritten, let read = CaptureText.amount(in: shown),
+              let code = CurrencyResolver.isoCode(for: read.currencyMarker, primary: MonthStatus.primaryCurrency) else {
+            return shown
+        }
+        return spokenMoney(read.value, isoCode: code, label: code, main: CurrencyPreference.current)
     }
 }
 
