@@ -334,8 +334,13 @@ final class ScreenshotTests: XCTestCase {
 
     func testNoCuentaHoja() {
         let app = launch()
-        uncountedRow(app).tap()
-        XCTAssertTrue(app.textFields["monto"].waitForExistence(timeout: 5), "No abrió el gasto")
+        let row = uncountedRow(app)
+        row.tap()
+        // A tap while «Hoy» is still coming in can be lost: once more, then say what is on screen
+        // in the log, where the CI shows it (2026-11-18).
+        if !app.textFields["monto"].waitForExistence(timeout: 5), row.exists { row.tap() }
+        if !app.textFields["monto"].waitForExistence(timeout: 5) { print(app.debugDescription) }
+        XCTAssertTrue(app.textFields["monto"].exists, "No abrió el gasto")
         // «Tipo: No cuenta» opens «Más detalles» by itself; on CI's smaller iPhone even its row is
         // below the fold, and the form only makes rows once scrolled to.
         for _ in 0..<4 where !app.buttons["mas-detalles"].exists { app.swipeUp() }
