@@ -347,7 +347,7 @@ struct BackupSettingsView: View {
     }
 
     static func asideText(_ aside: BackupAsideNote, now: Date = AppClock.now) -> String {
-        aside.reason(now: now)
+        aside.reason(now: now, namesMoney: Features.money)
     }
 
     static let asideHint = "El respaldo anterior sigue en tu carpeta, sin cambios."

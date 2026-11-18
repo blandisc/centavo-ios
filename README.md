@@ -18,7 +18,7 @@ Lo que no captura Wallet (efectivo, tarjeta física, compras en línea) se anota
 
 ## Las pantallas
 
-Dos pestañas, **«Hoy»** y **«Mi dinero»**, estilo «Noche ticket» (modo oscuro, latón, tipografía de ticket) sobre componentes nativos de iOS (barras con Liquid Glass).
+Una pantalla, **«Hoy»**, estilo «Noche ticket» (modo oscuro, latón, tipografía de ticket) sobre componentes nativos de iOS (barras con Liquid Glass).
 
 «Hoy»:
 
@@ -26,9 +26,9 @@ Dos pestañas, **«Hoy»** y **«Mi dinero»**, estilo «Noche ticket» (modo os
 - **Carrusel que se desliza:** primero el **boleto** (una celda por día del mes: lo gastado la llena, hoy va delineado y los días por venir punteados), con «En qué se va» debajo, y luego el **calendario** (cada día más dorado mientras más gastaste).
 - **Lista de pagos** como ticket del mes. Tocar uno lo edita; deslizarlo lo borra. La categoría se recuerda por comercio.
 - **Meses anteriores** con las flechas de la barra superior, hacia atrás hasta tu primer gasto.
-- **Menú «Más»** y botón «+»: la vista, el presupuesto, los gastos fijos, pagos y categorías, la guía del atajo, Ajustes (ahí se exporta todo a CSV) y anotar un gasto.
+- **Menú «···»** y botón «+»: la vista, el presupuesto, los gastos fijos, pagos y categorías, la guía del atajo, Ajustes (ahí se exporta todo a CSV) y anotar un gasto.
 
-«Mi dinero», protegida con Face ID, lleva tus cuentas.
+«Mi dinero» (cuentas, protegida con Face ID) está apagada para el lanzamiento (`Features.money`): su código y sus datos siguen ahí, sin verse.
 
 Apple no deja que una app cree esa automatización por ti; la app trae una guía paso a paso.
 

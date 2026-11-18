@@ -55,6 +55,10 @@ enum DailyBackup {
             case .noPassword: "Primero crea la contraseña del respaldo en Ajustes de Al día."
             case .passwordUnavailable: "El iPhone no dejó leer la contraseña del respaldo (suele pasar si no se ha desbloqueado desde que se encendió). Desbloquéalo y respalda otra vez."
             case .newPhone: "Parece un iPhone nuevo: restaura tu respaldo antes de respaldar."
+            // «Mi dinero» off (2026-11-18): the same, without its name.
+            case .moneyNotReady where !Features.money: "No se pudo abrir una parte de tus datos para restaurarla. Tus gastos no cambiaron. Lo que no abría quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
+            case .halfRestored where !Features.money: "No se pudieron restaurar tus gastos, pero una parte de tus datos ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
+            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez."
             case .moneyNotReady: "No se pudo abrir «Mi dinero» para restaurarlo. Tus gastos no cambiaron. Si «Mi dinero» no abría, quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
             case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
             case .noPlaceForCopy: "Antes de restaurar hay que guardar una copia de lo que hay en este iPhone, y no hay una carpeta donde ponerla. No se cambió nada."

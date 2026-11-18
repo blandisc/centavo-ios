@@ -153,14 +153,16 @@ public struct BackupAsideNote: Equatable, Sendable, Codable {
     /// Why it went apart, in one short line under «Respaldo guardado aparte» (2026-11-11: the
     /// note was some fifty words in a row): «Este iPhone tiene 118 gastos; el respaldo del 10
     /// nov, 131.» What to do about it are the two buttons under it.
-    public func reason(now: Date, timeZone: TimeZone = .current) -> String {
+    /// - Parameter namesMoney: «Mi dinero» may be named; off while it is switched off (2026-11-18).
+    public func reason(now: Date, timeZone: TimeZone = .current, namesMoney: Bool = true) -> String {
         let other = otherBackup(now: now, timeZone: timeZone)
         switch kind {
         case .fewer:
             guard let here, let there else { return "Este iPhone tiene menos gastos que \(other)." }
             return "Este iPhone tiene \(here) \(here == 1 ? "gasto" : "gastos"); \(other), \(there)."
         case .noMoney:
-            return "Este iPhone no tiene «Mi dinero»; \(other), sí."
+            return namesMoney ? "Este iPhone no tiene «Mi dinero»; \(other), sí."
+                : "Este iPhone tiene menos datos que \(other)."
         case .unreadable:
             return other.prefix(1).uppercased() + other.dropFirst()
                 + " no se pudo abrir para compararlo: tiene otra contraseña o no ha bajado de iCloud."

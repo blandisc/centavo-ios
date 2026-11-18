@@ -114,6 +114,9 @@ struct BackupAsideTests {
         #expect(uncounted.reason(now: now, timeZone: mexico) == "Este iPhone tiene menos gastos que el respaldo del 10 nov.")
         let money = BackupAsideNote(.noMoney(than: .today), comparedWith: "al-dia-2026-11-11.aldia", file: "x")
         #expect(money.reason(now: now, timeZone: mexico) == "Este iPhone no tiene «Mi dinero»; el respaldo del 11 nov, sí.")
+        // «Mi dinero» off: not named.
+        #expect(money.reason(now: now, timeZone: mexico, namesMoney: false)
+                == "Este iPhone tiene menos datos que el respaldo del 11 nov.")
         let locked = BackupAsideNote(.unreadable, comparedWith: "al-dia-2026-11-11.aldia", file: "x")
         #expect(locked.reason(now: now, timeZone: mexico)
                 == "El respaldo del 11 nov no se pudo abrir para compararlo: tiene otra contraseña o no ha bajado de iCloud.")
