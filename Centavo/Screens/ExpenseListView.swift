@@ -33,6 +33,8 @@ struct ExpenseListView: View {
     /// the store, one row, instead of scanning every expense on each redraw.
     @Query(Self.latestCapture) private var latestCaptures: [Expense]
     @AppStorage(WalletWatch.lastArrivalKey) private var walletArrival: Double = 0
+    @AppStorage(CaptureArrival.sessionKey) private var guideOpened: Double = 0
+    @AppStorage(CaptureArrival.firstKey) private var firstArrival: Double = 0
 
     /// Before the remembered arrival existed, only the store knew: carry it over once, so
     /// deleting those payments later can't make Wallet look disconnected.
@@ -142,6 +144,7 @@ struct ExpenseListView: View {
         let isCurrent = offset == 0
         let viewed = MonthNavigator.month(offsetBy: offset, from: now)
         let lastCapture = WalletWatch.lastCapture(stored: walletArrival, newestInStore: latestCaptures.first?.date)
+        let health = CaptureArrival.health(lastCapture: lastCapture, session: guideOpened, first: firstArrival, now: now)
 
         NavigationStack {
             // In stages: as one chain, the CI's compiler gave up type-checking it in reasonable time.
@@ -156,7 +159,7 @@ struct ExpenseListView: View {
                 catalog: model.catalog(categories: storedCategories, hidden: storedHiddenCategories,
                                        sources: storedSources, categoryColors: storedCategoryColors,
                                        sourceColors: storedSourceColors),
-                lastCapture: lastCapture,
+                health: health,
                 pending: isCurrent ? UnreadNotice.pending(stored: pendingStored, now: now) : [],
                 selectedDay: selectedDay, selectedCategory: selectedCategory,
                 entrance: entrance, listWidth: listWidth, actions: actions
@@ -213,7 +216,7 @@ struct ExpenseListView: View {
                             Button("Categorías", systemImage: "creditcard") { showingCatalogs = true }
                         }
                         Section {
-                            Button("Configurar atajo", systemImage: "wallet.pass") { showingSetup = true }
+                            Button("Conectar Wallet", systemImage: "wallet.pass") { showingSetup = true }
                             Button("Cómo funciona", systemImage: "play.rectangle") { showingTutorial = true }
                             Button("Ajustes", systemImage: "gearshape") { showingSettings = true }
                         }
@@ -308,7 +311,7 @@ struct ExpenseListView: View {
             .modifier(BackupWatch(warning: $backupWarning, now: now, settingsShown: showingSettings))
             .sheet(isPresented: $showingSettings) {
                 SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
-                             health: CaptureHealth(lastCapture: lastCapture, now: now),
+                             health: health,
                              openGuide: { afterSettings { showingSetup = true } },
                              importCSV: { afterSettings { importing = true } })
             }
@@ -455,7 +458,7 @@ private struct HomeContent: View, Equatable {
     let stamp: StoreStamp
     let settings: HomeSettings
     let catalog: CategoryCatalog
-    let lastCapture: Date?
+    let health: CaptureHealth
     /// Payments the capture couldn't write down, newest first; empty on a past month.
     let pending: [PendingPayment]
     let selectedDay: Int?
@@ -470,7 +473,7 @@ private struct HomeContent: View, Equatable {
     @Environment(\.modelContext) private var context
 
     init(model: HomeModel, viewed: Date, now: Date, isCurrent: Bool, storeIsEmpty: Bool, stamp: StoreStamp,
-         settings: HomeSettings, catalog: CategoryCatalog, lastCapture: Date?, pending: [PendingPayment],
+         settings: HomeSettings, catalog: CategoryCatalog, health: CaptureHealth, pending: [PendingPayment],
          selectedDay: Int?, selectedCategory: CategoryShare?, entrance: Entrance, listWidth: CGFloat?,
          actions: HomeActions) {
         self.model = model
@@ -481,7 +484,7 @@ private struct HomeContent: View, Equatable {
         self.stamp = stamp
         self.settings = settings
         self.catalog = catalog
-        self.lastCapture = lastCapture
+        self.health = health
         self.pending = pending
         self.selectedDay = selectedDay
         self.selectedCategory = selectedCategory
@@ -497,7 +500,7 @@ private struct HomeContent: View, Equatable {
         lhs.model === rhs.model && lhs.viewed == rhs.viewed && lhs.now == rhs.now
             && lhs.isCurrent == rhs.isCurrent && lhs.storeIsEmpty == rhs.storeIsEmpty
             && lhs.stamp == rhs.stamp && lhs.settings == rhs.settings && lhs.catalog == rhs.catalog
-            && lhs.lastCapture == rhs.lastCapture && lhs.pending == rhs.pending
+            && lhs.health == rhs.health && lhs.pending == rhs.pending
             && lhs.selectedDay == rhs.selectedDay && lhs.selectedCategory == rhs.selectedCategory
             && lhs.entrance === rhs.entrance && lhs.listWidth == rhs.listWidth
     }
@@ -531,7 +534,7 @@ private struct HomeContent: View, Equatable {
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
                     showsCapture: isCurrent && !settings.ignoresWallet,
-                    health: CaptureHealth(lastCapture: lastCapture, now: now), pending: pending,
+                    health: health, pending: pending,
                     backupWarning: isCurrent ? settings.backupWarning : nil,
                     entrance: entrance, model: model, actions: actions
                 )
@@ -682,7 +685,7 @@ private struct HomeHeader: View {
                     .ticketRow()
             }
             if storeIsEmpty {
-                EmptyTicket(hasBudget: pace != nil, onAdd: actions.add,
+                EmptyTicket(hasBudget: pace != nil, wallet: WalletCard(health), onAdd: actions.add,
                             onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
@@ -1490,8 +1493,31 @@ private struct FixedOverBudgetHero: View {
 /// once when it appears — the ghost row prints, then the budget card, then Wallet's — and stays
 /// still, so it never outshines «Anotar un gasto». With a budget set, the boleto is already above
 /// and only Wallet's card stays.
+/// The empty screen's Wallet card: «Conectar Wallet» until the guide was opened, then what is
+/// happening with the first payment (2026-11-18), so it never asks to connect what was just
+/// connected.
+private struct WalletCard {
+    let title: String
+    let detail: String
+
+    init(_ health: CaptureHealth) {
+        switch health {
+        case .waiting:
+            title = "Esperando tu primer pago"
+            detail = "Paga algo con Apple Pay y aparecerá aquí solo."
+        case .silent:
+            title = "El atajo no ha anotado nada"
+            detail = "Si ya pagaste con Apple Pay, toca para revisarlo."
+        default:
+            title = "Conectar Wallet"
+            detail = "Cada pago con Apple Pay se anota solo."
+        }
+    }
+}
+
 private struct EmptyTicket: View {
     let hasBudget: Bool
+    let wallet: WalletCard
     let onAdd: () -> Void
     let onBudget: () -> Void
     let onSetup: () -> Void
@@ -1507,7 +1533,7 @@ private struct EmptyTicket: View {
             PlayOnceClock(until: Empty.end) { t in
                 ghostRow(moneySpan(t, Empty.ghost.lowerBound, Empty.ghost.upperBound))
             }
-            Text("Anota uno, o conecta Wallet y cada pago con Apple Pay se anotará solo.")
+            Text("Anota un gasto, o conecta Wallet y cada pago con Apple Pay se anotará solo.")
                 .font(.ticket(.callout))
                 .lineSpacing(Theme.Space.xxs)
                 .foregroundStyle(Theme.muted)
@@ -1570,8 +1596,7 @@ private struct EmptyTicket: View {
     @ViewBuilder private var steps: some View {
         let wallet = Empty.wallet
         if hasBudget {
-            EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay se anota solo.",
-                          progress: wallet, wide: true, identifier: "vacio-wallet", action: onSetup)
+            walletCard(wallet, wide: true)
         } else {
             let budget = Empty.budget
             // Side by side when they fit; one under the other on a narrow phone or large text.
@@ -1594,7 +1619,7 @@ private struct EmptyTicket: View {
     }
 
     private func walletCard(_ progress: ClosedRange<Double>, wide: Bool) -> some View {
-        EmptyStepCard(kind: .wallet, title: "Conectar Wallet", detail: "Cada pago con Apple Pay se anota solo.",
+        EmptyStepCard(kind: .wallet, title: self.wallet.title, detail: self.wallet.detail,
                       progress: progress, wide: wide, identifier: "vacio-wallet", action: onSetup)
     }
 }

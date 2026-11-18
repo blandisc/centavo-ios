@@ -14,7 +14,8 @@ enum OnboardingExit { case home, guide, tutorial }
 /// 2. Tu mes: currency by its symbol, the budget, and the boleto split into the month's days.
 /// 3. Gastos fijos: a calendar where each one is stamped on its day.
 /// 4. Conecta Wallet: «pagas → Atajos → Al día». Setting it up goes to the guide, as before.
-/// 5. The end: «Listo», and what each day gets.
+/// 5. The end: «Listo», what each day gets and the three things «Hoy» will show. Every way out
+///    passes here, «Omitir» and «Configurar ahora» too (2026-11-18).
 ///
 /// Every step can be skipped and whatever was filled in is kept, saved once.
 struct OnboardingView: View {
@@ -38,6 +39,9 @@ struct OnboardingView: View {
     @State private var saved = false
     /// The save at the end didn't go through: said on the last page.
     @State private var saveFailed = false
+    /// «Configurar ahora» on Wallet's page: «Listo» first, so everyone sees what «Hoy» will say,
+    /// and then the guide (2026-11-18, owner).
+    @State private var thenGuide = false
     @FocusState private var focused: Field?
 
     private enum Field { case budget, name, amount }
@@ -101,7 +105,7 @@ struct OnboardingView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if page < 3 {
-                        Button("Omitir") { save(); finish(.home) }
+                        Button("Omitir") { save(); focused = nil; go(to: pages - 1) }
                             .font(.ticket(.footnote))
                             .accessibilityIdentifier("bienvenida-omitir")
                     }
@@ -113,25 +117,53 @@ struct OnboardingView: View {
         .interactiveDismissDisabled()
     }
 
-    /// The one wide button that moves on. Wallet's page holds its own choice; the end, «Ver mi día».
-    @ViewBuilder private var bottomBar: some View {
-        if page != 3 {
-            VStack(spacing: Theme.Space.m) {
-                Button {
-                    focused = nil
-                    if page == pages - 1 { finish(.home) } else { go(to: page + 1) }
-                } label: {
-                    PrimaryButtonLabel(page == 0 ? "Empezar" : page == pages - 1 ? "Ver mi día" : "Continuar")
-                }
-                .ticketProminent()
-                .accessibilityIdentifier("bienvenida-siguiente")
-                if page == pages - 1 {
+    /// The one wide button that moves on, and under it the other way. Wallet's page: set it up
+    /// or «Después», down here like every page so they never fall under the fold with large
+    /// text. The end: «Ver mi día» (or the guide, when that was chosen) and «Cómo funciona».
+    private var bottomBar: some View {
+        VStack(spacing: Theme.Space.m) {
+            Button {
+                focused = nil
+                primaryAction()
+            } label: {
+                PrimaryButtonLabel(primaryTitle, systemImage: page == 3 || (page == pages - 1 && thenGuide) ? "wallet.pass" : nil)
+            }
+            .ticketProminent()
+            .accessibilityIdentifier(page == 3 ? "bienvenida-configurar" : "bienvenida-siguiente")
+            if page == 3 {
+                SecondaryButton("Después", identifier: "bienvenida-despues") { save(); go(to: pages - 1) }
+            } else if page == pages - 1 {
+                if thenGuide {
+                    SecondaryButton("Después", identifier: "bienvenida-despues") { finish(.home) }
+                } else {
                     SecondaryButton("Cómo funciona · 1 min", identifier: "bienvenida-tutorial") { finish(.tutorial) }
                 }
             }
-            .padding(.horizontal, Theme.Space.screen)
-            .padding(.vertical, Theme.Space.s)
-            .background(Theme.background)
+        }
+        .padding(.horizontal, Theme.Space.screen)
+        .padding(.vertical, Theme.Space.s)
+        .background(Theme.background)
+    }
+
+    private var setUpTitle: String { ShortcutsVersion.isIOS27 ? "Agregar a Atajos" : "Configurar ahora" }
+
+    private var primaryTitle: String {
+        switch page {
+        case 0: "Empezar"
+        case 3: setUpTitle
+        case pages - 1: thenGuide ? setUpTitle : "Ver mi día"
+        default: "Continuar"
+        }
+    }
+
+    private func primaryAction() {
+        switch page {
+        case 3:
+            save(); thenGuide = true; go(to: pages - 1)
+        case pages - 1:
+            finish(thenGuide ? .guide : .home)
+        default:
+            go(to: page + 1)
         }
     }
 
@@ -155,7 +187,10 @@ struct OnboardingView: View {
             WelcomeDemo(currency: currency)
                 .onboardingRise(2)
             // One line that doesn't lose cash (user research, 2026-10-29).
-            Text("Cada compra con Apple Pay se anota sola; lo demás, con «+». Tú solo miras la cifra.")
+            // iOS 26's automation fires only for payments made by holding the iPhone up.
+            Text(ShortcutsVersion.isIOS27
+                 ? "Cada compra con Apple Pay se anota sola; lo demás, con «+». Tú solo miras la cifra."
+                 : "Cada pago que haces acercando el iPhone se anota solo; lo demás, con «+». Tú solo miras la cifra.")
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -180,7 +215,7 @@ struct OnboardingView: View {
                 .selectableCard(selected: focused == .budget)
             }
             .onboardingRise(2)
-            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «Más › Presupuesto».",
+            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «··· › Presupuesto».",
                      color: Theme.faint)
                 .onboardingRise(3)
         }
@@ -278,7 +313,7 @@ struct OnboardingView: View {
     private var fixedPage: some View {
         page(title: "¿Qué pagas cada mes?") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Se anotan solos cada mes y se apartan de lo que puedes gastar. Su día lo eliges en el calendario de abajo.")
+                Text("Se anotan solos cada mes y se apartan de lo que puedes gastar.")
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -320,13 +355,19 @@ struct OnboardingView: View {
                 .font(.ticket(.field))
                 .padding(Theme.Space.ml)
                 .selectableCard(selected: focused == .name || focused == .amount)
+                // The day before «Agregar» (Fable review, 2026-11-18): under it, on a small
+                // phone the calendar fell below the fold and everything was saved on the 1st.
+                Text("¿Qué día te lo cobran? Tócalo en el calendario.")
+                    .font(.ticket(.footnote))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                WelcomeFixedCalendar(stamped: Set(fixed.map(\.day)), chosen: $draftDay)
                 Button(action: addFixed) {
                     LinkActionLabel("Agregar", systemImage: "plus")
                 }
                 .buttonStyle(.plain)
                 .disabled(draftValue == nil || draftName.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("bienvenida-fijo-agregar")
-                WelcomeFixedCalendar(stamped: Set(fixed.map(\.day)), chosen: $draftDay)
             }
             .animation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion), value: focused)
             .onboardingRise(2)
@@ -382,23 +423,10 @@ struct OnboardingView: View {
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .onboardingRise(3)
-            VStack(spacing: Theme.Space.m) {
-                // Setting it up goes straight to the guide, as before (the end is for «Después»).
-                Button {
-                    save(); finish(.guide)
-                } label: {
-                    PrimaryButtonLabel(ShortcutsVersion.isIOS27 ? "Agregar a Atajos" : "Configurar ahora",
-                                       systemImage: "wallet.pass")
-                }
-                .ticketProminent()
-                .accessibilityIdentifier("bienvenida-configurar")
-                SecondaryButton("Después", identifier: "bienvenida-despues") { save(); go(to: pages - 1) }
-                // On the page's margin, as the paragraph and the buttons above: centred, its
-                // wrapped lines began a few points further in (UX review, 2026-11-11).
-                HintText("¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+». El atajo queda en «Más › Configurar atajo».")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .onboardingRise(4)
+            // The two buttons are in the bottom bar, like every page's.
+            HintText("¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+». Puedes conectar Wallet cuando quieras en «··· › Conectar Wallet».")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onboardingRise(4)
         }
     }
 
@@ -408,15 +436,34 @@ struct OnboardingView: View {
     private var donePage: some View {
         ScrollView {
             VStack(spacing: Theme.Space.xl) {
-                MoneySuccessArt()
-                    .padding(.top, Theme.Space.l)
                 Text("Listo")
                     .font(.ticket(.pageTitle))
                     .foregroundStyle(Theme.ink)
                     .accessibilityAddTraits(.isHeader)
+                    .padding(.top, Theme.Space.l)
                 doneFigure
+                // What «Hoy» will show, said once before seeing it (2026-11-18, owner: in place
+                // of the check mark).
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    ForEach(Self.doneLines, id: \.self) { line in
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                            Image(systemName: "circle.fill")
+                                .imageScale(.small)
+                                .font(.ticket(.caption))
+                                .foregroundStyle(Theme.brass)
+                                .accessibilityHidden(true)
+                            Text(line)
+                                .font(.ticket(.callout))
+                                .foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(Theme.Space.m)
+                .ticketPanel()
                 if saveFailed {
-                    HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «Más › Gastos fijos».")
+                    HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «··· › Gastos fijos».")
                 }
             }
             .padding(.horizontal, Theme.Space.screen)
@@ -424,6 +471,12 @@ struct OnboardingView: View {
         }
         .onAppear { save() }
     }
+
+    static let doneLines = [
+        "La cifra en latón es lo que puedes gastar hoy.",
+        "Lo que te sobre pasa a mañana.",
+        "¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta».",
+    ]
 
     @ViewBuilder private var doneFigure: some View {
         if let pace, let budget {
@@ -437,13 +490,13 @@ struct OnboardingView: View {
                         .foregroundStyle(Theme.muted)
                 }
             } else {
-                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «Más › Presupuesto».")
+                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «··· › Presupuesto».")
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
         } else {
-            Text("Fija tu presupuesto cuando quieras en «Más › Presupuesto» y Al día te dirá cuánto puedes gastar cada día.")
+            Text("Fija tu presupuesto cuando quieras en «··· › Presupuesto» y Al día te dirá cuánto puedes gastar cada día.")
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)

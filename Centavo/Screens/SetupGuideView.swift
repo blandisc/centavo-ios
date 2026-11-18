@@ -59,7 +59,7 @@ struct SetupGuideView: View {
                 .background(Theme.background.ignoresSafeArea())
                 .presentationBackground(Theme.background)
                 .navigationBarTitleDisplayMode(.inline)
-                .ticketBarTitle("Configurar atajo")
+                .ticketBarTitle("Conectar Wallet")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Listo") { dismiss() }
@@ -97,7 +97,7 @@ struct SetupGuideView: View {
             .background(Theme.background.ignoresSafeArea())
             .presentationBackground(Theme.background)
             .navigationBarTitleDisplayMode(.inline)
-            .ticketBarTitle("Configurar atajo")
+            .ticketBarTitle("Conectar Wallet")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Listo") { dismiss() }
@@ -371,7 +371,7 @@ private struct GuideStep {
         GuideStep(
             title: "Abre Atajos",
             symbol: "square.2.layers.3d",
-            lead: "Apple no deja que Al día la cree por ti. Son unos 5 minutos, una sola vez.",
+            lead: "Apple no deja que Al día cree esta automatización por ti. Son unos 5 minutos, una sola vez.",
             taps: ["Abre la app Atajos (viene con el iPhone).",
                    "Abajo, al centro, toca «Automatización»."],
             opensShortcuts: true,
@@ -568,8 +568,10 @@ struct CaptureCheck: View {
 
     private static var hint: String {
         ShortcutsVersion.isIOS27
-            ? "Si pagaste y no llega en un par de minutos, revisa el paso 5: la acción debe decir "
-              + "«Registrar» y «Notificación» con campana, en azul."
+            // The ready-made shortcut fails by being off, or by Wallet not notifying (Fable review,
+            // 2026-11-18); step 5 belongs to the step-by-step guide only.
+            ? "¿Pagaste y no llega en un par de minutos? Revisa en Atajos que la automatización esté "
+              + "encendida y, en Ajustes › Notificaciones › Wallet, que las notificaciones estén permitidas."
             : "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7."
     }
 

@@ -272,7 +272,7 @@ final class FlowTests: XCTestCase {
     func testSiLosPagosSonEnPesosOfreceSumarEnPesos() {
         let app = launch(budget: true)
         app.buttons["Más"].tap()
-        require(app.buttons["Ajustes"], "No está «Ajustes» en «Más»").tap()
+        require(app.buttons["Ajustes"], "No está «Ajustes» en «···»").tap()
         let currency = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Moneda principal'")).firstMatch
         require(currency, "No está la moneda en «Ajustes»").tap()
         require(currencyOption(app, "USD"), "No ofrece dólares").tap()
@@ -382,7 +382,7 @@ final class FlowTests: XCTestCase {
     func testTarjetasYCategoriasPropias() {
         let app = launch(demo: true)
         app.buttons["Más"].tap()
-        require(app.buttons["Categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «···»").tap()
         // The cards that came with payments show up without setting them up.
         require(app.buttons["fuente-BBVA"], "No aparecen las tarjetas de los pagos")
 
@@ -555,7 +555,7 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cine del centro"), "El nombre nuevo no aparece en la lista")
 
         app.buttons["Más"].tap()
-        require(app.buttons["Categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «···»").tap()
         // At the bottom of a lazy list: not in the hierarchy until it is scrolled to.
         let link = app.buttons["lo-que-recuerdo"]
         for _ in 0..<6 where !isClear(link, app) { scrollForm(app) }
@@ -613,7 +613,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Más"].tap()
         let catalog = app.buttons["Categorías"]
         for _ in 0..<6 where !catalog.isHittable { scrollForm(app) }
-        require(catalog, "No está en «Más»").tap()
+        require(catalog, "No está en «···»").tap()
         let link = app.buttons["lo-que-recuerdo"]
         for _ in 0..<10 where !isClear(link, app) { scrollForm(app) }
         require(link, "No está «Lo que recuerdo» en «Pagos y categorías»").tap()
@@ -642,7 +642,7 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No volvió a la lista")
 
         app.buttons["Más"].tap()
-        require(app.buttons["Categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «···»").tap()
         let link = app.buttons["lo-que-recuerdo"]
         for _ in 0..<6 where !isClear(link, app) { scrollForm(app) }
         require(link, "No está «Lo que recuerdo» en «Pagos y categorías»")
@@ -809,7 +809,7 @@ final class FlowTests: XCTestCase {
     func testOcultarUnaCategoriaLaQuitaAlAnotar() {
         let app = launch()
         app.buttons["Más"].tap()
-        require(app.buttons["Categorías"], "No está en «Más»").tap()
+        require(app.buttons["Categorías"], "No está en «···»").tap()
         // A tile per category (2026-10-29); its menu hides it.
         let cafe = app.buttons["mostrar-Café"]
         for _ in 0..<4 where !cafe.isHittable { app.swipeUp() }
@@ -988,6 +988,18 @@ final class FlowTests: XCTestCase {
         snap("bienvenida-listo")
     }
 
+    /// «Omitir» also passes by «Listo», so nobody lands on «Hoy» without knowing what it says.
+    func testOmitirPasaPorListo() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
+                               "-centavo-empty", "-centavo-onboarding"]
+        app.launch()
+        require(app.buttons["bienvenida-omitir"], "No está «Omitir»", timeout: 20).tap()
+        require(app.staticTexts["Lo que te sobre pasa a mañana."], "«Omitir» no pasó por «Listo»")
+        require(app.buttons["bienvenida-siguiente"], "No ofrece «Ver mi día»").tap()
+        require(app.buttons["Anotar gasto"], "No quedó «Hoy»")
+    }
+
     func testSinBienvenidaSiYaHayGastos() {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX",
@@ -1044,11 +1056,11 @@ final class FlowTests: XCTestCase {
         snap("flujo-gasto-fijo")
     }
 
-    /// Owner's request: «todos los lunes me cobran 500»: set up once in «Más › Gastos fijos».
+    /// Owner's request: «todos los lunes me cobran 500»: set up once in «··· › Gastos fijos».
     func testUnGastoFijoSemanalDesdeGastosFijos() {
         let app = launch()
         app.buttons["Más"].tap()
-        require(app.buttons["Gastos fijos"], "No está «Gastos fijos» en «Más»").tap()
+        require(app.buttons["Gastos fijos"], "No está «Gastos fijos» en «···»").tap()
         require(app.buttons["agregar-fijo"], "No se puede agregar un gasto fijo").tap()
         let amount = require(app.textFields["fijo-monto"], "No abrió la hoja del gasto fijo")
         amount.tap()
@@ -1295,7 +1307,7 @@ final class FlowTests: XCTestCase {
     func testElAtajoArmadoSeAgregaConUnBoton() throws {
         let app = launch(demo: true)
         app.buttons["Más"].tap()
-        app.buttons["Configurar atajo"].firstMatch.tap()
+        app.buttons["Conectar Wallet"].firstMatch.tap()
         let add = app.buttons["atajo-agregar"]
         try XCTSkipUnless(add.waitForExistence(timeout: 5), "Solo en iOS 27: antes no hay atajo armado")
         require(app.descendants(matching: .any)["guia-comprobacion"], "No dice si ya llegó un pago")
@@ -1313,7 +1325,7 @@ final class FlowTests: XCTestCase {
     private func walkGuideToTheEnd(_ app: XCUIApplication, fromMenu: Bool = true) -> XCUIElement {
         if fromMenu {
             app.buttons["Más"].tap()
-            app.buttons["Configurar atajo"].firstMatch.tap()
+            app.buttons["Conectar Wallet"].firstMatch.tap()
         } else {
             require(app.buttons["vacio-wallet"], "La pantalla vacía no ofrece conectar Wallet").tap()
         }
@@ -1624,13 +1636,17 @@ final class FlowTests: XCTestCase {
         return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
     }
 
-    /// «Configurar ahora» in the welcome opens the Wallet guide once the welcome is gone.
+    /// «Configurar ahora» in the welcome passes by «Listo» (what «Hoy» will show) and then opens
+    /// the Wallet guide once the welcome is gone (2026-11-18).
     func testLaBienvenidaLlevaALaGuia() {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
                                "-centavo-empty", "-centavo-onboarding", "-centavo-bienvenida-pagina", "3"]
         app.launch()
         require(app.buttons["bienvenida-configurar"], "No está «Configurar ahora» en la bienvenida", timeout: 20).tap()
+        require(app.staticTexts["La cifra en latón es lo que puedes gastar hoy."], "«Listo» no explica «Hoy»")
+        snap("flujo-bienvenida-listo-guia")
+        require(app.buttons["bienvenida-siguiente"], "«Listo» no lleva a la guía").tap()
         let guide = app.buttons.matching(NSPredicate(format: "identifier IN %@", ["guia-siguiente", "atajo-agregar"])).firstMatch
         require(guide, "No abrió la guía desde la bienvenida")
     }
@@ -1652,7 +1668,7 @@ final class FlowTests: XCTestCase {
     func testTutorial() {
         let app = launch()
         app.buttons["Más"].tap()
-        require(app.buttons["Cómo funciona"], "No está «Cómo funciona» en «Más»").tap()
+        require(app.buttons["Cómo funciona"], "No está «Cómo funciona» en «···»").tap()
         let title = app.staticTexts["tutorial-titulo"]
         require(title, "No abrió el tutorial")
         XCTAssertEqual(title.label, "Cuánto puedes gastar hoy")
@@ -1790,7 +1806,7 @@ final class AccessibilityAuditTests: XCTestCase {
     func testAuditarGuia() throws {
         let app = launch()
         app.buttons["Más"].tap()
-        app.buttons["Configurar atajo"].tap()
+        app.buttons["Conectar Wallet"].tap()
         XCTAssertTrue(app.buttons["hoja-listo"].waitForExistence(timeout: 10))
         try audit(app, "guia")
     }

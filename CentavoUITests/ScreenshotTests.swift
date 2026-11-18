@@ -265,7 +265,7 @@ final class ScreenshotTests: XCTestCase {
     func testGuia() throws {
         let app = launch()
         app.buttons["Más"].tap()
-        app.buttons["Configurar atajo"].tap()
+        app.buttons["Conectar Wallet"].tap()
         // On iOS 27 «Configurar atajo» adds the ready-made shortcut instead (2026-10-29): the
         // step-by-step guide is the iOS 26 path.
         try XCTSkipUnless(app.buttons["guia-siguiente"].waitForExistence(timeout: 5),

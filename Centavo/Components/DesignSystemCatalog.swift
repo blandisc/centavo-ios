@@ -177,7 +177,7 @@ struct RecipeSheet: View {
                 } header: {
                     Text("Gasto").ticketCaption()
                 } footer: {
-                    HintText("Puedes cambiarlo después en «Más».")
+                    HintText("Puedes cambiarlo después en «···».")
                 }
                 .listRowBackground(Theme.surface)
                 Section {

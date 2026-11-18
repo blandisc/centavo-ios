@@ -12,9 +12,9 @@ struct CaptureHealthRow: View {
 
     private var text: String {
         switch health {
-        case .never:
+        case .never, .waiting, .silent:
             return "Wallet sin conectar · Configurar"
-        case .recent(let date):
+        case .recent(let date), .first(let date):
             return "Wallet · último pago " + AppClock.relative(date, abbreviated: true)
         case .quiet(let days):
             return "Wallet · sin pagos desde hace \(days) días · Revisar"
@@ -24,25 +24,47 @@ struct CaptureHealthRow: View {
     private var needsAttention: Bool { !health.isRecent }
 
     /// When it needs attention it is a short sentence and what to do, not a shouted caption.
-    private var warning: (title: String, detail: String) {
+    private var warning: (title: String, detail: String, icon: String) {
         switch health {
         case .quiet(let days):
-            return ("Sin pagos de Wallet desde hace \(days) días", "Si sí pagaste, toca para revisar el atajo.")
+            return ("Sin pagos de Wallet desde hace \(days) días", "Si sí pagaste, toca para revisar el atajo.",
+                    "exclamationmark.circle")
+        case .waiting:
+            return ("Esperando tu primer pago", "Paga algo con Apple Pay y aparecerá aquí solo.", "hourglass")
+        case .silent:
+            return ("El atajo no ha anotado nada", "Si ya pagaste con Apple Pay, toca para revisarlo.",
+                    "exclamationmark.circle")
+        case .first:
+            return (firstTitle, "Así se anotará cada uno.", "checkmark.circle")
         default:
-            return ("Wallet sin conectar", "Conéctalo una vez y cada pago con Apple Pay se anota solo.")
+            return ("Wallet sin conectar", "Conéctalo una vez y cada pago con Apple Pay se anota solo.",
+                    "exclamationmark.circle")
         }
     }
 
+    /// «Llegó tu primer pago solo: $47.50 en Oxxo», from what the automation saved.
+    private var firstTitle: String {
+        let text = UserDefaults.standard.string(forKey: CaptureArrival.textKey) ?? ""
+        return text.isEmpty ? "Llegó tu primer pago solo" : "Llegó tu primer pago solo: \(text)"
+    }
+
+    /// The first payment is said in the panel too, once: so the person sees that it worked.
+    private var showsPanel: Bool {
+        if case .first = health { return true }
+        return needsAttention
+    }
+
     var body: some View {
-        if needsAttention { attention } else { quiet }
+        if showsPanel { attention } else { quiet }
     }
 
     private var attention: some View {
         Button(action: openGuide) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Image(systemName: "exclamationmark.circle")
+                Image(systemName: warning.icon)
                     .foregroundStyle(Theme.brass)
                     .frame(width: glyphWidth, alignment: .leading)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Theme.Space.xxxs) {
                     Text(warning.title)
                         .font(.ticket(.footnoteStrong))

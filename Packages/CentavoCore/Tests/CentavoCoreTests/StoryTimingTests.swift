@@ -7,7 +7,7 @@ struct StoryTimingTests {
     func duration() {
         #expect(StoryTiming.duration(for: ["Hola"]) == 4.25)
         #expect(StoryTiming.duration(for: ["uno dos", "tres cuatro"]) == 5)
-        #expect(StoryTiming.duration(for: [String(repeating: "palabra ", count: 40)]) == 10)
+        #expect(StoryTiming.duration(for: [String(repeating: "palabra ", count: 60)]) == 14)
     }
 
     @Test("El avance va de 0 a 1 y no se pasa")

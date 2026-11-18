@@ -28,10 +28,10 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         case .bar: "Cada celda es un día. Se llena con lo que gastas; si un día te pasas, se pinta de rojo. Los días por venir van punteados."
         case .leftover: "Lo que no gastas hoy pasa a mañana. Si prefieres, se reparte entre los días que quedan."
         case .wallet: "Cada pago con Apple Pay llega por Atajos y se anota. El efectivo, con «+»."
-        case .uncounted: "Un pago a tu tarjeta o un traspaso: ábrelo, toca «Más detalles» y en «Tipo» elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
+        case .uncounted: "Un pago a tu tarjeta o un traspaso: mantenlo presionado y elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto."
         case .categories: "Abajo ves tus categorías. Toca una para ver solo esos gastos."
-        case .backup: "Elige una contraseña y una carpeta en Más › Ajustes › Respaldo diario, y agrega en Atajos la automatización «Respaldar Al día». Así cada noche se guarda una copia cerrada con tu contraseña."
-        case .done: "Mira tu cifra cada mañana y deja que los pagos se anoten solos. Estas historias siguen en «Más › Cómo funciona»."
+        case .backup: "Guarda una copia cada noche, cerrada con tu contraseña. Se activa en «··· › Ajustes › Respaldo diario»."
+        case .done: "Mira tu cifra cada mañana y deja que los pagos se anoten solos. Estas historias siguen en «··· › Cómo funciona»."
         }
     }
 

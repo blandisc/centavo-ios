@@ -534,7 +534,7 @@ struct ExpenseEditorView: View {
         } footer: {
             if paymentSources.isEmpty {
                 HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto "
-                     + "en «Más › Categorías» ya vendrá elegida.")
+                     + "en «··· › Categorías» ya vendrá elegida.")
             }
         }
         .listRowBackground(Theme.surface)

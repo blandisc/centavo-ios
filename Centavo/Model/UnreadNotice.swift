@@ -152,9 +152,17 @@ enum CaptureArrival {
     static let textKey = "respaldo.esteIPhone.walletLlegoTexto"
     /// When the guide was opened for the setup under way (seconds since 2001).
     static let sessionKey = "respaldo.esteIPhone.guiaAbierta"
+    /// When the automation delivered its very first payment here (seconds since 2001): «Hoy»
+    /// says «Llegó tu primer pago solo» for a day (2026-11-18). Never set for whoever already
+    /// had payments arriving before it existed.
+    static let firstKey = "respaldo.esteIPhone.walletPrimero"
 
     /// A payment the automation just saved here.
     static func note(amount: String, merchant: String, now: Date = AppClock.now, defaults: UserDefaults = .standard) {
+        if defaults.double(forKey: dateKey) <= 0, defaults.double(forKey: firstKey) <= 0,
+           defaults.double(forKey: WalletWatch.lastArrivalKey) <= 0 {
+            defaults.set(now.timeIntervalSinceReferenceDate, forKey: firstKey)
+        }
         defaults.set(now.timeIntervalSinceReferenceDate, forKey: dateKey)
         defaults.set(PendingPayment.unsaved(amount: amount, merchant: merchant, card: nil, date: now)?.text ?? "",
                      forKey: textKey)
@@ -174,11 +182,16 @@ enum CaptureArrival {
     }
 
     static func forget(defaults: UserDefaults = .standard) {
-        for key in [dateKey, textKey, sessionKey] { defaults.removeObject(forKey: key) }
+        for key in [dateKey, textKey, sessionKey, firstKey] { defaults.removeObject(forKey: key) }
+    }
+
+    /// What «Hoy» and Ajustes say about the automation, from the stored moments.
+    static func health(lastCapture: Date?, session: Double, first: Double, now: Date) -> CaptureHealth {
+        CaptureHealth(lastCapture: lastCapture, now: now, guideOpened: date(session), firstArrival: date(first))
     }
 
     /// A stored moment; 0 is «never».
-    private static func date(_ stored: Double) -> Date? {
+    static func date(_ stored: Double) -> Date? {
         stored > 0 ? Date(timeIntervalSinceReferenceDate: stored) : nil
     }
 }

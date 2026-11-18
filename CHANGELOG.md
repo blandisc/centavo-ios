@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Changed
+- **Después de conectar Wallet, «Hoy» ya no dice «Wallet sin conectar»:** dice «Esperando tu primer pago»; si a los 3 días no llega nada, «El atajo no ha anotado nada»; y cuando llega el primero, por un día: «Llegó tu primer pago solo: $47.50 en Oxxo».
+- **La bienvenida siempre termina en «Listo»**, también con «Omitir» o «Configurar ahora», y ahí explica lo que verás en «Hoy»: la cifra en latón, lo que sobra pasa a mañana y «No cuenta» manteniendo presionado un pago.
+- **«Configurar atajo» se llama «Conectar Wallet»** en el menú, Ajustes y la guía; los textos dicen «···» en vez de «Más», que no se ve en pantalla.
+- **En «Gastos fijos» de la bienvenida el día se elige antes de «Agregar»;** en Wallet los botones van abajo como en los demás pasos; en iOS 26 la bienvenida promete solo los pagos acercando el iPhone.
+- **«Cómo funciona» deja más tiempo para leer** (hasta 14 s), «No cuenta» enseña el gesto corto y el respaldo se explica en una frase. La guía de iOS 27 dice qué revisar si el pago no llega.
 - **«Mi dinero» se apaga para el lanzamiento:** la app abre directo en «Hoy», sin barra de pestañas, con el «+» abajo a la derecha. Nada se borra: quien ya tenía cuentas o cortes los conserva y el respaldo los sigue guardando.
 - **Si algo no se guarda, el aviso dice qué** («No se guardó el corte») y abajo «Nada cambió. Intenta otra vez.».
 - **«Cancelar» va con letra normal en todas las hojas;** solo «Guardar» y «Listo» resaltan.

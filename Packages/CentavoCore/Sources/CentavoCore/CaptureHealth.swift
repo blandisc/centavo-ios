@@ -5,8 +5,15 @@ import Foundation
 /// An automation that broke (iOS updated, the app's signature expired, the bank stopped
 /// firing it) fails in silence. Saying when the last payment arrived makes that visible.
 public enum CaptureHealth: Equatable, Sendable {
-    /// No payment has ever come from Wallet: the automation was never set up.
+    /// No payment has ever come from Wallet and the guide was never opened: never set up.
     case never
+    /// No payment yet, the guide opened less than `quietAfterDays` ago: the first one is on its
+    /// way (2026-11-18: «Wallet sin conectar» contradicted whoever had just connected it).
+    case waiting
+    /// No payment yet, `days` days after the guide was opened: the automation may be off.
+    case silent(days: Int)
+    /// The very first payment on this iPhone, for a day: said once, so the person sees it worked.
+    case first(Date)
     /// The last one came recently.
     case recent(Date)
     /// Nothing for `days` days, long enough to be worth a look.
@@ -14,18 +21,38 @@ public enum CaptureHealth: Equatable, Sendable {
 
     /// The last payment came recently: nothing to look at.
     public var isRecent: Bool {
-        if case .recent = self { return true }
-        return false
+        switch self {
+        case .recent, .first: true
+        default: false
+        }
     }
 
     /// Days without a payment before it is worth a look. Two quiet days are normal.
     public static let quietAfterDays = 3
+    /// How long the first payment is celebrated.
+    public static let firstShownFor: TimeInterval = 24 * 3600
 
-    public init(lastCapture: Date?, now: Date, calendar: Calendar = .current) {
-        guard let lastCapture else { self = .never; return }
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: lastCapture),
-                                           to: calendar.startOfDay(for: now)).day ?? 0
+    /// - Parameters:
+    ///   - guideOpened: when the setup guide was last opened on this iPhone, if ever.
+    ///   - firstArrival: when the automation delivered its first payment on this iPhone.
+    public init(lastCapture: Date?, now: Date, guideOpened: Date? = nil, firstArrival: Date? = nil,
+                calendar: Calendar = .current) {
+        guard let lastCapture else {
+            guard let guideOpened, guideOpened <= now else { self = .never; return }
+            let days = Self.days(from: guideOpened, to: now, calendar: calendar)
+            self = days >= Self.quietAfterDays ? .silent(days: days) : .waiting
+            return
+        }
+        if let firstArrival, firstArrival <= now, now.timeIntervalSince(firstArrival) < Self.firstShownFor {
+            self = .first(firstArrival)
+            return
+        }
+        let days = Self.days(from: lastCapture, to: now, calendar: calendar)
         self = days >= Self.quietAfterDays ? .quiet(days: days) : .recent(lastCapture)
+    }
+
+    private static func days(from: Date, to: Date, calendar: Calendar) -> Int {
+        calendar.dateComponents([.day], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).day ?? 0
     }
 }
 

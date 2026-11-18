@@ -38,13 +38,13 @@ struct SettingsView: View {
                     Text("Moneda").ticketCaption()
                 } footer: {
                     HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. "
-                             + "La vista (Lista, Mosaico o Mínima) se elige en «Más».")
+                             + "La vista (Lista, Mosaico o Mínima) se elige en «···».")
                 }
                 .listRowBackground(Theme.surface)
 
                 Section {
                     Button(action: openGuide) {
-                        IconRow("Configurar atajo", systemImage: "wallet.pass") {
+                        IconRow("Conectar Wallet", systemImage: "wallet.pass") {
                             if health.isRecent || ignoresWallet {
                                 Text(healthText)
                                     .font(.ticket(.detail))
@@ -154,7 +154,9 @@ struct SettingsView: View {
         if ignoresWallet { return "Aviso apagado" }
         switch health {
         case .never: return "Sin conectar"
-        case .recent: return "Funciona"
+        case .waiting: return "Esperando el primer pago"
+        case .silent(let days): return "\(days) días sin el primer pago"
+        case .recent, .first: return "Funciona"
         case .quiet(let days): return "\(days) días sin pagos"
         }
     }

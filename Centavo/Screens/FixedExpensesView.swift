@@ -2,7 +2,7 @@ import CentavoCore
 import SwiftData
 import SwiftUI
 
-/// «Más › Gastos fijos»: what comes back on its own (rent on the 1st, the cleaning every
+/// «··· › Gastos fijos»: what comes back on its own (rent on the 1st, the cleaning every
 /// Monday, Netflix on the 15th), when it comes next, and what this month still has coming,
 /// which «Hoy puedes gastar» already sets apart.
 struct FixedExpensesView: View {

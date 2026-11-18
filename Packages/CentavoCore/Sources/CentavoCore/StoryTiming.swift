@@ -1,11 +1,12 @@
 import Foundation
 
 /// How long a story of «Cómo funciona» stays before moving on (2026-11-01): long enough to read
-/// it — four seconds plus a quarter second per word, at most ten.
+/// it — four seconds plus a quarter second per word, at most fourteen (2026-11-18: ten was
+/// shorter than the densest stories take to read).
 public enum StoryTiming {
     public static let base: Double = 4
     public static let perWord: Double = 0.25
-    public static let longest: Double = 10
+    public static let longest: Double = 14
 
     public static func words(in text: String) -> Int {
         text.split(whereSeparator: { $0.isWhitespace }).count
