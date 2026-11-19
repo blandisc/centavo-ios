@@ -344,6 +344,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.guia != 'none' && inputs.guia != ''
     runs-on: macos-latest
     timeout-minutes: 60
+    # A tool to retake pictures, not a check of the app: a step Apple renamed in Atajos must not
+    # fail the run and send the owner an email (2026-11-19). Its result is read in the artifact.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
 
