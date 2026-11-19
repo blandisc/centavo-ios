@@ -4,7 +4,7 @@
 ### Changed
 - La búsqueda dice cuánto suman los gastos que encontró: «3 gastos · $234.50».
 - La última página de la bienvenida dice solo «Listo», sin repetir «Paso 4 de 4».
-- Respaldo: si sales de Respaldo antes de que empiece a restaurar, ya no aparece Face ID después; y mientras configuras «Seguir respaldando aquí», «‹» se esconde para que no se pierda.
+- Respaldo: si sales de Respaldo antes de que empiece a restaurar, ya no aparece Face ID después; y mientras configuras «Seguir respaldando aquí», «‹» se esconde y la hoja no se puede bajar, para que no se pierda; en un iPhone sin código, «Seguir respaldando aquí» desde «Restaurado» ya abre siempre el selector de carpeta.
 - «Después», «Cómo funciona · 1 min», «No uso Wallet» y «Descartar» responden en todo su renglón, no solo sobre las letras.
 - En inglés, una categoría de dos palabras («Going out») ya no se queda solo con su ícono en el mosaico: su nombre va en dos líneas y se ve su monto.
 - Con letra grande, «Tu presupuesto» dice «Por día: $267» y debajo «Llevas $2,366 este mes», en vez de partir la frase en columnas.

@@ -127,7 +127,7 @@ struct BackupSettingsView: View {
         .ticketBarTitle("Respaldo")
         // Not swiped away halfway through a restore: closing it then left the welcome unmarked
         // (independent review, 2026-11-19).
-        .interactiveDismissDisabled(working)
+        .interactiveDismissDisabled(working || settingUp)
         // Nor left by «‹» to Ajustes and its «Listo» while the data is replaced: its outcome
         // (where the copy went, «Seguir respaldando aquí») was lost (independent review,
         // 2026-11-19; fourth QA round).
@@ -752,6 +752,11 @@ struct BackupSettingsView: View {
             finishSetUp(localOnly: !DailyBackup.isInCloud(fileToOpen.deletingLastPathComponent()))
         } else {
             folderPurpose = .keepBackingUp
+            // Without a passcode the check returns at once, while the «Restaurado» alert is still
+            // closing: the picker would be dropped and the flag stay on. A moment first, as the
+            // file picker in `startRestoring`.
+            choosingFolder = false
+            try? await Task.sleep(for: .seconds(Theme.Motion.Restore.pickerReset))
             choosingFolder = true
         }
     }
