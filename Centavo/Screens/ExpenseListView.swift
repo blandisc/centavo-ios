@@ -61,6 +61,10 @@ struct ExpenseListView: View {
     /// is not new).
     @AppStorage("onboarded") private var onboarded = false
     @State private var showingOnboarding = false
+    /// iCloud brought this person's setup while the welcome was open: it closed without saving,
+    /// and says why once it has gone (`welcomeFoundSetup`).
+    @State private var welcomeFoundICloud = false
+    @State private var showingICloudNotice = false
     /// "Now" for the whole screen. Refreshed when the app comes back and when the clock
     /// jumps (midnight, a time-zone change), so the month and "today" never go stale.
     @State private var now = AppClock.now
@@ -301,14 +305,7 @@ struct ExpenseListView: View {
             .onChange(of: addRequests) { adding = true }
             .sheet(isPresented: $showingSetup) { SetupGuideView() }
             // The widgets' «+» and «Fijar presupuesto» (`centavo://anotar`, `centavo://presupuesto`).
-            .onOpenURL { url in
-                guard url.scheme == "centavo" else { return }
-                switch url.host() {
-                case "anotar": adding = true
-                case "presupuesto": showingBudget = true
-                default: break
-                }
-            }
+            .onOpenURL { openLink($0) }
             .onChange(of: storedBudget) { WidgetBridge.refresh() }
             .onChange(of: storedHistory) { WidgetBridge.refresh() }
             .onChange(of: storedPlans) { WidgetBridge.refresh() }
@@ -423,6 +420,7 @@ struct ExpenseListView: View {
                     onboarded = true
                 }
             }
+            .modifier(SetupArrival(noticeShown: $showingICloudNotice, arrived: welcomeFoundSetup))
             .fullScreenCover(isPresented: $showingOnboarding, onDismiss: openAfterOnboarding) {
                 OnboardingView { exit in
                     onboarded = true
@@ -475,7 +473,7 @@ struct ExpenseListView: View {
                 edit(expense)
                 persist()
             },
-            logAgain: { logAgain($0) }
+            logAgain: { logAgain($0, elsewhere: shownOffset != 0 || model.isSearching) }
         )
     }
 }
@@ -515,6 +513,7 @@ private struct HomeActions {
     /// A change from the row's menu («No es repetida», «Sí cuenta», «No cuenta»), saved right
     /// then; if it fails, it's said (2026-11-02, second audit: it was saved with `try?`).
     let change: (Expense, (Expense) -> Void) -> Void
+    /// «Anotar otra vez»: the copy is dated today, and says so when today is not on screen.
     let logAgain: (Expense) -> Void
 }
 
@@ -622,6 +621,9 @@ private struct HomeContent: View, Equatable {
             // 2026-10-30). Rows, bars and buttons take their own taps first.
             .contentShape(Rectangle())
             .onTapGesture {
+                // Not while searching (2026-11-18): the filter is hidden then, and a tap to put
+                // the keyboard away let it go unseen; it comes back when the search closes.
+                guard !searching else { return }
                 if selectedDay != nil { actions.clearDay() }
                 if selectedCategory != nil { actions.clearCategory() }
             }
@@ -769,7 +771,8 @@ private struct HomeHeader: View {
                 filters
                 // «Avisar si no llegan pagos» off: the empty screen stops asking to connect Wallet
                 // too, as Ajustes says (2026-10-29).
-                EmptyTicket(hasBudget: pace != nil, wallet: showsCapture ? WalletCard(health) : nil,
+                let wallet: WalletCard? = showsCapture ? WalletCard(health, pending: !pending.isEmpty) : nil
+                EmptyTicket(hasBudget: pace != nil, wallet: wallet,
                             onAdd: actions.add, onBudget: actions.setBudget, onSetup: actions.setup)
                     .ticketRow()
             } else if searchCount == nil {
@@ -987,6 +990,25 @@ private struct TopSearch: ViewModifier {
     }
 }
 
+/// iCloud's settings arriving (`NSUbiquitousKeyValueStore`), and the notice that the welcome
+/// closed because of them (2026-11-18). Apart from `body`: the CI's compiler is slow with it.
+private struct SetupArrival: ViewModifier {
+    @Binding var noticeShown: Bool
+    let arrived: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(
+                for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)
+                .receive(on: DispatchQueue.main)) { _ in arrived() }
+            .alert("Tu configuración llegó de iCloud", isPresented: $noticeShown) {
+                Button("Listo", role: .cancel) {}
+            } message: {
+                Text("Tus gastos pueden tardar unos minutos en llegar.")
+            }
+    }
+}
+
 /// After the main currency changes: the budget stays the same number, so offer to fix it; and
 /// the fixed expenses left in the old currency are no longer set apart from it (2026-11-18).
 private struct BudgetCurrencyCheck: ViewModifier {
@@ -1127,6 +1149,13 @@ private struct KeepsTime: ViewModifier {
     let context: ModelContext
     @Environment(\.scenePhase) private var scenePhase
 
+    /// The next fixed expense still to come (a running one's next charge, or a plan's first).
+    private func nextCharge() -> Date? {
+        let originals = (try? context.fetch(HomeModel.originals)) ?? []
+        let items = FixedOutlook.items(originals: originals, plans: FixedPlan.saved, now: now)
+        return FixedWake.next(items.map(\.next), after: now)
+    }
+
     /// The new «now», and the offset moved in the same update, so the month never flickers.
     private func advance() {
         let new = AppClock.now
@@ -1147,11 +1176,30 @@ private struct KeepsTime: ViewModifier {
                 _ = try? RecurringExpenses.logDue(in: context, now: now)
                 _ = try? ExpenseRecorder.repairBankMerchants(in: context)
                 WidgetBridge.refresh()
+                // With the app left open, nothing moved «now» when a fixed expense came due (rent
+                // at 9:00): it wasn't logged and «Hoy puedes gastar» still set it apart until the
+                // app was closed and opened (2026-11-18). Wakes right after the next one; a new
+                // «now» before then (coming back, midnight) cancels this and works it out again.
+                guard let wake = nextCharge() else { return }
+                try? await Task.sleep(for: .seconds(wake.timeIntervalSince(now) + FixedWake.margin))
+                guard !Task.isCancelled else { return }
+                advance()
             }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIApplication.significantTimeChangeNotification)) { _ in
                 advance()
             }
+    }
+}
+
+/// When «Hoy» wakes by itself to log a fixed expense whose moment came with the app open.
+enum FixedWake {
+    /// After the charge's own moment, so `logDue` (which logs what is due by «now») takes it.
+    static let margin: TimeInterval = 1
+
+    /// The soonest of `dates` still to come after `now`; `nil` with none.
+    static func next(_ dates: [Date?], after now: Date) -> Date? {
+        dates.compactMap { $0 }.filter { $0 > now }.min()
     }
 }
 
@@ -1205,6 +1253,28 @@ private extension ExpenseListView {
         if stored != pendingStored { pendingStored = stored }
     }
 
+    /// Something is already up over «Hoy»: a cover, a sheet, an alert or the file picker.
+    private var presentsSomething: Bool {
+        let covers = showingOnboarding || showingTutorial
+        let sheets = adding || editing != nil || showingSettings || showingSetup || showingBudget
+            || showingFixed || showingCatalogs || importing || pendingDelete != nil
+        let alerts = importMessage != nil || pendingImport != nil || saveProblem != nil || currencyChanged
+            || showingICloudNotice
+        return covers || sheets || alerts
+    }
+
+    /// The widgets' «+» and «Fijar presupuesto». Only over a bare «Hoy» (2026-11-18): over
+    /// another sheet SwiftUI can't show a second one, the flag stayed on and the sheet came up by
+    /// itself later, once the person had closed theirs. What they had open stays as it was.
+    private func openLink(_ url: URL) {
+        guard url.scheme == "centavo", !presentsSomething else { return }
+        switch url.host() {
+        case "anotar": adding = true
+        case "presupuesto": showingBudget = true
+        default: break
+        }
+    }
+
     /// Debug only: screenshots of a sheet, `-centavo-abrir catalogos|fijos|ajustes|anotar|tutorial`.
     private func openRequestedSheet() {
         #if DEBUG
@@ -1223,6 +1293,10 @@ private extension ExpenseListView {
     }
 
     private func openAfterOnboarding() {
+        if welcomeFoundICloud {
+            welcomeFoundICloud = false
+            showingICloudNotice = true
+        }
         let exit = afterOnboarding
         afterOnboarding = nil
         switch exit {
@@ -1230,6 +1304,20 @@ private extension ExpenseListView {
         case .tutorial: showingTutorial = true
         case .home, nil: break
         }
+    }
+
+    /// A second iPhone whose iCloud came late (2026-11-18): the welcome opened because iCloud had
+    /// nothing yet, and the setup arrived while it was up. It goes without saving, as if iCloud
+    /// had come first: filled in, it typed the rent in a second time and wrote its budget and
+    /// currency over the other iPhone's. Not once the welcome saved (`onboarded`): that is this
+    /// phone's own setup. The expenses may still be on their way, so only iCloud's settings count.
+    private func welcomeFoundSetup() {
+        guard showingOnboarding, !onboarded, Store.syncsBudget, BudgetSync.hasSetupElsewhere else { return }
+        onboarded = true
+        BudgetSync.markOnboarded()
+        afterOnboarding = nil
+        welcomeFoundICloud = true
+        showingOnboarding = false
     }
 
     /// «Pruébalo» in «Cómo funciona»: what it asked for, once the stories are gone.
@@ -1259,7 +1347,9 @@ private extension ExpenseListView {
     }
 
     /// The same expense again, now: the coffee of every morning without opening the sheet.
-    private func logAgain(_ expense: Expense) {
+    /// `elsewhere`: a past month or a search is on screen, so the copy (dated today) doesn't show
+    /// up where the person is looking.
+    private func logAgain(_ expense: Expense, elsewhere: Bool) {
         let copy = Expense(amount: expense.amount, currencyMarker: expense.currencyMarker,
                            merchant: expense.merchant, card: expense.card, date: AppClock.now,
                            category: expense.category)
@@ -1269,7 +1359,7 @@ private extension ExpenseListView {
         // A tap in a menu is easy to make by mistake: it can be taken back (audit 2026-11-02).
         withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
             lastDeleted = nil
-            lastCopy = CopiedExpense(expense: copy, name: copy.displayName ?? copy.merchant)
+            lastCopy = CopiedExpense(expense: copy, name: copy.displayName ?? copy.merchant, dated: elsewhere)
         }
     }
 
@@ -1289,10 +1379,8 @@ private extension ExpenseListView {
 
     @ViewBuilder var undoOverlay: some View {
         if let copied = lastCopy {
-            let name = copied.name
-            UndoBar(text: String(localized: "Anotaste otra vez \(name)"), identifier: "deshacer-copia") { undoCopy(copied) }
-                .modifier(UndoBarPlacement(id: copied.id,
-                                           spoken: String(localized: "Anotaste otra vez \(name). Puedes deshacerlo."),
+            UndoBar(text: copied.text, identifier: "deshacer-copia") { undoCopy(copied) }
+                .modifier(UndoBarPlacement(id: copied.id, spoken: copied.spoken,
                                            reduceMotion: reduceMotion) {
                     if lastCopy?.id == copied.id { lastCopy = nil }
                 })
@@ -1537,6 +1625,14 @@ private struct HeroTotal: View {
         return String(localized: "Total \(label) · \(month)")
     }
 
+    /// `caption` as VoiceOver says it: a comma, not the drawn «·» (2026-11-18).
+    private var spokenCaption: String {
+        guard !isCurrentMonth else { return caption }
+        let label = summary.primary.label
+        let month = viewed.formatted(.dateTime.month(.abbreviated).year().locale(Locale.current))
+        return String(localized: "Total \(label), \(month)")
+    }
+
     /// Over the figure: today still has room, or went past it.
     private var allowanceTitle: String {
         if isOverToday { return String(localized: "Hoy te pasaste") }
@@ -1620,6 +1716,7 @@ private struct HeroTotal: View {
                     .animation(reduceMotion ? nil : Theme.Motion.quick, value: overage)
             } else {
                 Text(verbatim: caption).ticketCaption(strong: true)
+                    .accessibilityLabel(spokenCaption)
                 Text(totalText)
                     .accessibilityIdentifier("total-mes")
                     .heroFigure()
@@ -1682,22 +1779,36 @@ private struct FixedOverBudgetHero: View {
 /// The empty screen's Wallet card: «Conectar Wallet» until the guide was opened, then what is
 /// happening with the first payment (2026-11-18), so it never asks to connect what was just
 /// connected.
-private struct WalletCard {
+struct WalletCard: Equatable {
     let title: String
     let detail: String
 
-    init(_ health: CaptureHealth) {
+    /// `nil`: no card. With payments the capture couldn't read (`pending`), Wallet is plainly
+    /// connected and the notice above already leads to the guide: «Conectar Wallet» or «Esperando
+    /// tu primer pago» under it said the opposite (2026-11-18).
+    init?(_ health: CaptureHealth, pending: Bool = false) {
         // What iOS 26's automation can catch, said the same way as the welcome (`CaptureCopy`).
         switch health {
+        case .never:
+            guard !pending else { return nil }
+            title = String(localized: "Conectar Wallet")
+            detail = CaptureCopy.connect
         case .waiting:
+            guard !pending else { return nil }
             title = String(localized: "Esperando tu primer pago")
             detail = CaptureCopy.waiting
         case .silent:
             title = String(localized: "El atajo no ha anotado nada")
             detail = CaptureCopy.silent
-        default:
-            title = String(localized: "Conectar Wallet")
-            detail = CaptureCopy.connect
+        // Payments came and were all deleted: the arrival is remembered (`WalletWatch`), and the
+        // card said «Conectar Wallet» as if it never had been (2026-11-18).
+        case .first(let date), .recent(let date):
+            let when = AppClock.relative(date)
+            title = String(localized: "Wallet conectado")
+            detail = String(localized: "Último pago \(when).")
+        case .quiet(let days):
+            title = String(localized: "Sin pagos de Wallet desde hace \(days) días")
+            detail = CaptureCopy.quiet
         }
     }
 }
@@ -1705,6 +1816,7 @@ private struct WalletCard {
 private struct EmptyTicket: View {
     let hasBudget: Bool
     /// `nil` with «Avisar si no llegan pagos» off: no card asks to connect Wallet (2026-11-18).
+    /// Also `nil` when it would contradict the payments pending above (`WalletCard.init`).
     let wallet: WalletCard?
     let onAdd: () -> Void
     let onBudget: () -> Void
@@ -1916,8 +2028,11 @@ private struct LedgerRow: View {
         parts.append(expense.category.map { CategoryStyle.shown($0) })
         if withCard { parts.append(expense.card.map { CategoryStyle.shown($0) }) }
         let shown = parts.compactMap { $0 }.filter { !$0.isEmpty }
-        // A no-break space before the dot: a wrapped line never starts with «·».
-        return shown.isEmpty ? nil : shown.joined(separator: "\u{00A0}· ")
+        // A no-break space before the dot: a wrapped line never starts with «·». VoiceOver hears
+        // commas instead, as in every other sentence it reads (2026-11-18): the dot came out as
+        // «punto medio» or an odd pause.
+        let separator = spoken ? ", " : "\u{00A0}· "
+        return shown.isEmpty ? nil : shown.joined(separator: separator)
     }
 
     /// «¿Repetida?», which the line draws as a warning.
@@ -1971,7 +2086,10 @@ private struct LedgerRow: View {
             .strikethrough(isUncounted, color: Theme.muted)
             .foregroundStyle(isUncounted ? Theme.muted : isRefund ? Theme.brass : Theme.ink)
             .lineLimit(1)
-            .fixedSize()
+            // Whole beside the name. Under it, with the largest text, it may shrink instead
+            // (2026-11-18): «USD 1,234.50» at AX5 ran off an iPhone SE's right edge, uncut.
+            .minimumScaleFactor(Theme.MinimumScale.figure)
+            .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: true)
             .accessibilityLabel(isUncounted ? String(localized: "\(amount), no cuenta para el presupuesto") : amount)
     }
 
@@ -2000,10 +2118,25 @@ private struct LedgerRow: View {
 }
 
 /// What «Anotar otra vez» wrote down, while its «Deshacer» is on screen.
-private struct CopiedExpense: Identifiable {
+struct CopiedExpense: Identifiable {
     let id = UUID()
     let expense: Expense
     let name: String
+    /// Said with its date: from a past month or a search the copy, dated today, lands out of
+    /// sight, and the list looked the same as before (2026-11-18). The person tapped again.
+    var dated = false
+
+    var text: String {
+        let name = name
+        if dated { return String(localized: "Anotaste otra vez \(name) con fecha de hoy") }
+        return String(localized: "Anotaste otra vez \(name)")
+    }
+
+    var spoken: String {
+        let name = name
+        if dated { return String(localized: "Anotaste otra vez \(name) con fecha de hoy. Puedes deshacerlo.") }
+        return String(localized: "Anotaste otra vez \(name). Puedes deshacerlo.")
+    }
 }
 
 /// Where the undo bar sits and how it comes and goes: right above the bottom bar, said out loud,
@@ -2015,6 +2148,18 @@ private struct UndoBarPlacement: ViewModifier {
     let reduceMotion: Bool
     let expire: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.scenePhase) private var scenePhase
+    /// The app is in front. The countdown runs only then (2026-11-18): the clock kept going in
+    /// the background, and coming back after a few seconds the bar was already gone, unseen,
+    /// with a delete that could no longer be undone.
+    @State private var inFront = true
+    /// Each return to the app starts the countdown over, said again.
+    @State private var round = 0
+
+    private struct Countdown: Hashable {
+        let id: UUID
+        let round: Int
+    }
 
     /// Longer with VoiceOver, and with the largest text, which is slower to read (2026-11-18).
     private var seconds: Double {
@@ -2030,7 +2175,15 @@ private struct UndoBarPlacement: ViewModifier {
             // Read before the list under it, not after its last row (2026-11-18).
             .accessibilitySortPriority(1)
             .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-            .task(id: id) {
+            .onChange(of: scenePhase) { _, phase in
+                let front = phase == .active
+                guard front != inFront else { return }
+                inFront = front
+                round += 1
+            }
+            .task(id: Countdown(id: id, round: round)) {
+                // Away: waits, with the bar still there, until the app is in front again.
+                guard inFront else { return }
                 let total = seconds
                 // A delete from the expense's sheet comes as the sheet closes, and VoiceOver's
                 // own word for the screen changing cut the announcement short: said once the
@@ -2222,7 +2375,18 @@ private struct DayDivider: View {
     /// With one expense the day's total is that expense's amount, right under it: printed once,
     /// in its row (owner, 2026-11-11). VoiceOver still hears it with the day (`spoken`).
     private var showsTotal: Bool { group.items.count > 1 }
-    private var spoken: String { [label, total].compactMap { $0 }.joined(separator: ", ") }
+    private var spoken: String { [spokenLabel, total].compactMap { $0 }.joined(separator: ", ") }
+
+    /// The day as VoiceOver says it: «Hoy, 23 oct», with a comma and not the drawn «·»
+    /// (2026-11-18). Any other day is already words only.
+    private var spokenLabel: String {
+        let calendar = Calendar.current
+        let date = shortDate
+        if calendar.isDate(day, inSameDayAs: now) { return String(localized: "Hoy, \(date)") }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(day, inSameDayAs: yesterday) { return String(localized: "Ayer, \(date)") }
+        return label
+    }
 
     /// «Hoy» or «Ayer» when the day is one of them.
     private var nearName: String? {

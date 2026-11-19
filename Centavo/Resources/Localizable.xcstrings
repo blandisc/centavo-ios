@@ -1118,13 +1118,13 @@
       }
     },
     "Abajo, toca «Buscar», escribe «Registrar aviso» y toca «Registrar aviso de Wallet». (Si sale un aviso del teclado, toca «Continuar».)" : {
-      "comment" : "Setup guide, iOS 27 caption above a real Shortcuts screenshot: step 4; “Log Wallet Notice” must match the English title of LogWalletNoticeIntent.",
+      "comment" : "Setup guide, iOS 27 caption above a real Shortcuts screenshot: step 4; “Log Wallet notification” must match the English title of LogWalletNoticeIntent (key «Registrar aviso de Wallet»).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "At the bottom, tap “Search”, type “Log Wallet” and tap “Log Wallet Notice”. (If a keyboard message shows up, tap “Continue”.)"
+            "value" : "At the bottom, tap “Search”, type “Log Wallet” and tap “Log Wallet notification”. (If a keyboard message shows up, tap “Continue”.)"
           }
         }
       }
@@ -1316,7 +1316,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add Al día"
+            "value" : "Add the Al día action"
           }
         }
       }
@@ -1873,6 +1873,30 @@
         }
       }
     },
+    "Anotaste otra vez %@ con fecha de hoy" : {
+      "comment" : "Hoy (main screen): undo bar after «Anotar otra vez» from a past month or a search; the copy is dated today, out of sight. %@ is the expense's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You added %@ again, dated today"
+          }
+        }
+      }
+    },
+    "Anotaste otra vez %@ con fecha de hoy. Puedes deshacerlo." : {
+      "comment" : "Hoy (main screen): VoiceOver announcement of the same undo bar. %@ is the expense's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You added %@ again, dated today. You can undo it."
+          }
+        }
+      }
+    },
     "Anotaste otra vez %@. Puedes deshacerlo." : {
       "comment" : "Hoy (main screen): VoiceOver announcement",
       "extractionState" : "manual",
@@ -2066,13 +2090,13 @@
       }
     },
     "Arriba, en «Empezar», toca «Crear nuevo atajo»." : {
-      "comment" : "Setup guide (Connect Wallet), iOS 26 step-by-step: instruction; “Get Started” is the Shortcuts section header (verify).",
+      "comment" : "Setup guide (Connect Wallet), iOS 26 step-by-step: instruction. The English labels of that screen aren’t verified, so they aren’t quoted.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "At the top, under “Get Started”, tap “Create New Shortcut”."
+            "value" : "At the top, tap the option to create a new, blank shortcut."
           }
         }
       }
@@ -2126,13 +2150,13 @@
       }
     },
     "Así debe verse: en «Todos los atajos» queda «Registrar aviso de Wallet» (el color de la tarjeta puede ser otro). No tienes que activar nada más." : {
-      "comment" : "Setup guide, iOS 27 caption above a real Shortcuts screenshot: step 7 result. MUST start with the exact English of the key “Así debe verse:”. «Registrar aviso de Wallet» is the shortcut file’s own name and stays in Spanish.",
+      "comment" : "Setup guide, iOS 27 caption above a real Shortcuts screenshot: step 7 result. MUST start with the exact English of the key “Así debe verse:”. The shortcut takes its name from the action, so it isn’t quoted.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "It should look like this: “Registrar aviso de Wallet” is in “All Shortcuts” (the tile’s color may be different). You don’t need to turn on anything else."
+            "value" : "It should look like this: “All Shortcuts” has a new shortcut named after the Al día action (the tile’s color may be different). You don’t need to turn on anything else."
           }
         }
       }
@@ -2361,6 +2385,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yesterday · %@"
+          }
+        }
+      }
+    },
+    "Ayer, %@" : {
+      "comment" : "Hoy (main screen): day divider as VoiceOver says it; %@ is a date like «Oct 23»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday, %@"
           }
         }
       }
@@ -2725,6 +2761,18 @@
         }
       }
     },
+    "Cada gasto que anotes aparece en tu lista, con el total del mes." : {
+      "comment" : "Bienvenida (OnboardingView): renglón de la página final sin cifra. «tu lista» es la pantalla principal.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every expense you add shows up in your list, with the month’s total."
+          }
+        }
+      }
+    },
     "Cada gasto que anotes aparece en «Hoy», con el total del mes." : {
       "comment" : "Bienvenida (OnboardingView): renglón de la página final sin cifra. «Hoy» es la pantalla principal (verify: same English name as the main screen).",
       "extractionState" : "manual",
@@ -3009,6 +3057,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Category"
+          }
+        }
+      }
+    },
+    "Categoría sugerida: %@." : {
+      "comment" : "Expense sheet: VoiceOver announcement when typing the merchant fills in its category; %@ is the category",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggested category: %@."
           }
         }
       }
@@ -3590,13 +3650,13 @@
       }
     },
     "Cuando use sin contacto" : {
-      "comment" : "Drawing of the iOS Shortcuts app in the setup guide; must match the English Shortcuts UI: header of the run options screen (verify).",
+      "comment" : "Drawing of the iOS Shortcuts app in the setup guide: header of the run options screen; same wording as the Wallet trigger’s description in the drawing before it.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When I tap to pay"
+            "value" : "When I make a contactless payment"
           }
         }
       }
@@ -4417,6 +4477,42 @@
         }
       }
     },
+    "El archivo no trae la columna Categoría: los gastos entraron con la categoría que ya usas para cada comercio, si hay una." : {
+      "comment" : "Categoría is a CSV column name: keep it in Spanish",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file has no Categoría column: the expenses came in with the category you already use for each merchant, if there is one."
+          }
+        }
+      }
+    },
+    "El archivo no trae la columna Tarjeta: los gastos entraron sin tarjeta." : {
+      "comment" : "Tarjeta is a CSV column name: keep it in Spanish",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file has no Tarjeta column: the expenses came in without a card."
+          }
+        }
+      }
+    },
+    "El archivo no trae las columnas Categoría ni Tarjeta: los gastos entraron sin tarjeta y con la categoría que ya usas para cada comercio, si hay una." : {
+      "comment" : "Categoría and Tarjeta are the CSV's column names: keep them in Spanish",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file has no Categoría or Tarjeta column: the expenses came in without a card and with the category you already use for each merchant, if there is one."
+          }
+        }
+      }
+    },
     "El archivo no trae renglones con gastos." : {
       "comment" : "CSV import result (ExpenseImporter): empty file.",
       "extractionState" : "manual",
@@ -4561,6 +4657,18 @@
         }
       }
     },
+    "El respaldo anterior trae una parte de tus datos que este iPhone no tiene, aunque no se vea en la app." : {
+      "comment" : "Respaldo guardado aparte, sin saber el día del otro respaldo. The missing part is hidden data: don't name it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The previous backup has part of your data that this iPhone doesn’t, even though it doesn’t show in the app."
+          }
+        }
+      }
+    },
     "El respaldo de hoy se guardará con lo que hay en este iPhone, aunque tenga menos. El respaldo que tenía más no se borra: queda guardado con «reemplazado» en el nombre." : {
       "comment" : "Backup screen (BackupSettingsView): dialog message. «reemplazado» is part of the file name: keep it in Spanish.",
       "extractionState" : "manual",
@@ -4581,6 +4689,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The %@ backup couldn’t be opened to compare it: it has a different password or hasn’t downloaded from iCloud yet."
+          }
+        }
+      }
+    },
+    "El respaldo del %@ trae una parte de tus datos que este iPhone no tiene, aunque no se vea en la app." : {
+      "comment" : "Respaldo guardado aparte; el día del otro respaldo («10 nov»). The missing part is hidden data: don't name it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The %@ backup has part of your data that this iPhone doesn’t, even though it doesn’t show in the app."
           }
         }
       }
@@ -5120,7 +5240,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This file is from “Mi dinero,” not your expenses: load it in that tab."
+            "value" : "This file is from “My Money,” not your expenses: load it in that tab."
           }
         }
       }
@@ -5180,7 +5300,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This iPhone has no expenses, no “Mi dinero”, and no budget or lists of your own, so there’s nothing to save first."
+            "value" : "This iPhone has no expenses, no “My Money”, and no budget or lists of your own, so there’s nothing to save first."
           }
         }
       }
@@ -5893,6 +6013,18 @@
         }
       }
     },
+    "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña y trae también otros datos tuyos que la app no muestra: guárdala donde solo tú la veas." : {
+      "comment" : "",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves Al día’s files to Files exactly as they are, so they don’t depend on the app. With that copy you can get help recovering your expenses. It has no password and also includes other data of yours that the app doesn’t show: keep it where only you can see it."
+          }
+        }
+      }
+    },
     "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña y trae también «Mi dinero»: guárdala donde solo tú la veas." : {
       "comment" : "Store error screen (StoreErrorView): hint under the copy button, «Mi dinero» on (hidden for launch).",
       "extractionState" : "manual",
@@ -5900,7 +6032,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saves Al día’s files to Files exactly as they are, so they don’t depend on the app. With that copy you can get help recovering your expenses. It has no password and also includes “Mi dinero”: keep it where only you can see it."
+            "value" : "Saves Al día’s files to Files exactly as they are, so they don’t depend on the app. With that copy you can get help recovering your expenses. It has no password and also includes “My Money”: keep it where only you can see it."
           }
         }
       }
@@ -6229,6 +6361,18 @@
         }
       }
     },
+    "Hoy, %@" : {
+      "comment" : "Hoy (main screen): day divider as VoiceOver says it; %@ is a date like «Oct 23»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today, %@"
+          }
+        }
+      }
+    },
     "Huella" : {
       "comment" : "VoiceOver name of an icon to pick: pawprint",
       "extractionState" : "manual",
@@ -6373,6 +6517,18 @@
         }
       }
     },
+    "La cifra grande es lo que puedes gastar hoy." : {
+      "comment" : "Bienvenida (OnboardingView): renglón de la página final, con cifra.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The big number is what you can spend today."
+          }
+        }
+      }
+    },
     "La contraseña no abre este respaldo." : {
       "comment" : "Backup error (DailyBackup.Failure), shown in alerts and said by Siri: ",
       "extractionState" : "manual",
@@ -6501,6 +6657,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Last time at %1$@ it was %2$@."
+          }
+        }
+      }
+    },
+    "Las capturas son de un iPhone en español. Busca el mismo lugar en tu pantalla: el aro latón lo marca." : {
+      "comment" : "Setup guide, iOS 27 step-by-step: note above the real Shortcuts screenshots, shown only when the app isn’t in Spanish (the screenshots are of Shortcuts in Spanish).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These screenshots come from an iPhone set to Spanish. Look for the same spot on your screen: the brass ring marks it."
           }
         }
       }
@@ -6825,6 +6993,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What was on this iPhone right before earlier restores. They were saved inside Al día, where Files doesn’t show them. Tap one to restore it or save it to Files (once saved, it leaves this list). They open with the backup password you had that day."
+          }
+        }
+      }
+    },
+    "Lo que le falta a este iPhone es una parte de tus datos que la app no muestra; el respaldo de hoy se guardaría sin ella." : {
+      "comment" : "Before «Este iPhone es el bueno»: the missing part is hidden data, don't name it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What this iPhone is missing is part of your data that the app doesn’t show; today’s backup would be saved without it."
           }
         }
       }
@@ -7633,6 +7813,18 @@
         }
       }
     },
+    "No encontré un monto en lo que pegaste. Escríbelo con el teclado." : {
+      "comment" : "Expense sheet: note under the amount after a paste with no amount in it; the field kept what it had",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I couldn’t find an amount in what you pasted. Type it with the keypad."
+          }
+        }
+      }
+    },
     "No entendí «%@». Dime solo la cantidad, por ejemplo 89." : {
       "comment" : "Siri: the amount said couldn’t be read",
       "extractionState" : "manual",
@@ -7940,7 +8132,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your expenses couldn’t be restored, but “Mi dinero” is already as it was in the backup. To put everything back as it was, restore the “antes de restaurar” copy that was saved before starting."
+            "value" : "Your expenses couldn’t be restored, but “My Money” is already as it was in the backup. To put everything back as it was, restore the “antes de restaurar” copy that was saved before starting."
           }
         }
       }
@@ -7988,7 +8180,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Mi dinero” couldn’t be opened to restore it. Your expenses didn’t change. If “Mi dinero” wouldn’t open, it was set aside on this iPhone, not deleted. Close Al día completely, open it again, and try again."
+            "value" : "“My Money” couldn’t be opened to restore it. Your expenses didn’t change. If “My Money” wouldn’t open, it was set aside on this iPhone, not deleted. Close Al día completely, open it again, and try again."
           }
         }
       }
@@ -8473,6 +8665,18 @@
         }
       }
     },
+    "Paga acercando el iPhone y aparecerá aquí solo. ¿Te quedaste a medias? Toca para abrir la guía." : {
+      "comment" : "Capture copy (CaptureCopy): waiting for the first payment, iOS 26 (only tap-to-pay payments). The guide opens on its first step.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pay by holding your iPhone near the reader and it’ll show up here on its own. Stopped halfway? Tap to open the guide."
+          }
+        }
+      }
+    },
     "Paga acercando el iPhone y aparecerá aquí solo. ¿Te quedaste a medias? Toca para seguir." : {
       "comment" : "Capture copy (CaptureCopy): waiting for the first payment, iOS 26 (only tap-to-pay payments)",
       "extractionState" : "manual",
@@ -8517,6 +8721,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pay for something with Apple Pay to check."
+          }
+        }
+      }
+    },
+    "Paga algo con Apple Pay y aparecerá aquí solo. ¿Te quedaste a medias? Toca para abrir la guía." : {
+      "comment" : "Capture copy (CaptureCopy): waiting for the first payment, iOS 27. The guide opens on its first step.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pay for something with Apple Pay and it’ll show up here on its own. Stopped halfway? Tap to open the guide."
           }
         }
       }
@@ -8589,6 +8805,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "To change the backup password."
+          }
+        }
+      }
+    },
+    "Para el efectivo, di «Oye Siri, anotar gasto en Al día». Si tu iPhone tiene botón de Acción, también puedes ponerlo ahí (Ajustes › Botón de Acción › Atajo). O agrégalo al Centro de control." : {
+      "comment" : "Setup guide, “Good to know” note. Only some iPhones have an Action button. The Siri phrase must match the English AppShortcuts phrase for adding an expense.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For cash, say “Hey Siri, add expense in Al día”. If your iPhone has an Action button, you can also put it there (Settings › Action Button › Shortcut). Or add it to Control Center."
           }
         }
       }
@@ -9056,7 +9284,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Make a notification start it"
+            "value" : "Start it with a notification"
           }
         }
       }
@@ -9068,7 +9296,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Make it Wallet’s"
+            "value" : "Pick Wallet"
           }
         }
       }
@@ -9740,7 +9968,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Every month is exported. Import accepts the same file and doesn’t duplicate expenses: if one looks repeated (same day and amount, with a different name or card), it asks before adding it. The CSV is for your spreadsheet: it doesn’t keep everything (not “Mi dinero”, your settings, or your fixed expenses), so it doesn’t replace the daily backup."
+            "value" : "Every month is exported. Import accepts the same file and doesn’t duplicate expenses: if one looks repeated (same day and amount, with a different name or card), it asks before adding it. The CSV is for your spreadsheet: it doesn’t keep everything (not “My Money”, your settings, or your fixed expenses), so it doesn’t replace the daily backup."
           }
         }
       }
@@ -9764,7 +9992,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your expenses were saved, but not “Mi dinero”: it couldn’t be opened. Close Al día completely, open it again, and back up again."
+            "value" : "Your expenses were saved, but not “My Money”: it couldn’t be opened. Close Al día completely, open it again, and back up again."
           }
         }
       }
@@ -9997,6 +10225,30 @@
         }
       }
     },
+    "Si pagaste acercando el iPhone, toca para revisar el atajo. Las compras en línea no se anotan solas." : {
+      "comment" : "Hoy · Wallet line under the carousel: panel detail after days without Wallet payments, iOS 26 (only tap-to-pay payments come in).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you paid by holding your iPhone near the reader, tap to check the shortcut. Online purchases aren’t added on their own."
+          }
+        }
+      }
+    },
+    "Si pagaste y no llega en un par de minutos, revisa los pasos 3, 5, 6 y 7: que esté marcado «Ejecutar de inmediato», que estén elegidas tus tarjetas y que la acción tenga el importe y el comercio conectados." : {
+      "comment" : "Setup guide, last step: the check that says whether payments arrive. hint while waiting (iOS 26). Step numbers of the iOS 26 guide; “Run Immediately” is the Shortcuts option.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you paid and nothing showed up after a couple of minutes, check steps 3, 5, 6 and 7: that “Run Immediately” is selected, that your cards are chosen, and that the action has the amount and the merchant connected."
+          }
+        }
+      }
+    },
     "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7." : {
       "comment" : "Setup guide, last step: the check that says whether payments arrive. hint while waiting (iOS 26).",
       "extractionState" : "manual",
@@ -10173,6 +10425,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No category"
+          }
+        }
+      }
+    },
+    "Sin comercio" : {
+      "comment" : "An expense saved without a merchant name (stored in Spanish, shown translated)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No merchant"
           }
         }
       }
@@ -10454,13 +10718,13 @@
       }
     },
     "Sí cuenta" : {
-      "comment" : "Hoy (main screen): expense row menu",
+      "comment" : "Hoy (main screen): expense row menu, an action on an expense that doesn't count: make it count again",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Counts"
+            "value" : "Count it"
           }
         }
       }
@@ -10814,13 +11078,13 @@
       }
     },
     "Toca «Crear nuevo atajo»" : {
-      "comment" : "Setup guide (Connect Wallet), iOS 26 step-by-step: step title.",
+      "comment" : "Setup guide (Connect Wallet), iOS 26 step-by-step: step title. Not quoted: the English label isn’t verified.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap “Create New Shortcut”"
+            "value" : "Create a new shortcut"
           }
         }
       }
@@ -10874,13 +11138,13 @@
       }
     },
     "Toca «Wallet»: «Al realizar un pago sin contacto…»." : {
-      "comment" : "Setup guide (Connect Wallet), iOS 26 step-by-step: instruction; quotes the Wallet trigger’s description in Shortcuts (verify).",
+      "comment" : "Setup guide (Connect Wallet), iOS 26 step-by-step: instruction. The English description of the Wallet trigger isn’t verified, so it isn’t quoted.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap “Wallet”: “When I make a contactless payment…”."
+            "value" : "Tap “Wallet”, the one for contactless payments."
           }
         }
       }
@@ -11005,6 +11269,18 @@
         }
       }
     },
+    "Total %@, %@" : {
+      "comment" : "Hoy (main screen): VoiceOver label of the caption over a past month's total; currency, month like «Sep 2026»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total %1$@, %2$@"
+          }
+        }
+      }
+    },
     "Transporte" : {
       "comment" : "Built-in category, stored in Spanish and shown translated (BuiltInName): «Hoy», «En qué se va», the expense sheet, Pagos y categorías, Siri, widgets",
       "extractionState" : "manual",
@@ -11013,6 +11289,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transportation"
+          }
+        }
+      }
+    },
+    "Tu configuración llegó de iCloud" : {
+      "comment" : "Hoy: alert title after the welcome closed by itself because this iCloud already had the person's setup (a second iPhone)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your setup came from iCloud"
           }
         }
       }
@@ -11257,6 +11545,18 @@
         }
       }
     },
+    "Tus gastos pueden tardar unos minutos en llegar." : {
+      "comment" : "Hoy: message of the alert «Tu configuración llegó de iCloud»; the expenses come through iCloud after the settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your expenses may take a few minutes to arrive."
+          }
+        }
+      }
+    },
     "Un gasto de cero no se anota. ¿Cuánto fue?" : {
       "comment" : "Siri: the amount said was zero",
       "extractionState" : "manual",
@@ -11277,6 +11577,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A card payment or a transfer: touch and hold it and choose “Doesn’t count”. It stays in the list, but it doesn’t count toward your budget."
+          }
+        }
+      }
+    },
+    "Un pago a tu tarjeta o un traspaso: ábrelo, toca «Más detalles» y, en «Tipo», elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto." : {
+      "comment" : "Cómo funciona (TutorialView): text of story 5 with VoiceOver on (no touch and hold). “More details”, “Type” and “Doesn’t count” must match the expense sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A card payment or a transfer: open it, tap “More details” and, under “Type”, choose “Doesn’t count”. It stays in the list, but it doesn’t count toward your budget."
           }
         }
       }
@@ -11629,6 +11941,18 @@
         }
       }
     },
+    "Wallet conectado" : {
+      "comment" : "Hoy: empty screen's Wallet card title, when payments already came from Wallet and were all deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet connected"
+          }
+        }
+      }
+    },
     "Wallet manda el nombre de la tienda aparte. Se conecta casi igual que el paso anterior." : {
       "comment" : "Setup guide, iOS 27 step-by-step: lead.",
       "extractionState" : "manual",
@@ -11769,6 +12093,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "It’s working"
+          }
+        }
+      }
+    },
+    "Ya no se repite. Tus cambios a este gasto siguen sin guardar: toca «Guardar» para guardarlos." : {
+      "comment" : "Expense sheet: shown (and said by VoiceOver) where «Dejar de repetir» was, after stopping a fixed expense from one of its copies with unsaved changes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It no longer repeats. Your changes to this expense aren’t saved yet: tap “Save” to keep them."
           }
         }
       }
@@ -12218,7 +12554,7 @@
       }
     },
     "«%@»" : {
-      "comment" : "Hoy · pending payments panel: a Wallet notice quoted as it arrived",
+      "comment" : "A name or text quoted: Hoy · pending payments panel (a Wallet notice as it arrived), the expense sheet (the notice as Wallet sent it) and the delete confirmation ticket (a fixed expense, card or category)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12693,6 +13029,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Icon"
+          }
+        }
+      }
+    },
+    "Último pago %@." : {
+      "comment" : "Hoy: empty screen's Wallet card detail. %@ is a relative time like «hace 3 horas» / «3 hours ago»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last payment %@."
           }
         }
       }

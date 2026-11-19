@@ -216,13 +216,15 @@ public struct BackupAsideNote: Equatable, Sendable, Codable {
                       comment: "Respaldo guardado aparte, sin saber el día del otro respaldo")
     }
 
+    /// «Menos datos» gave nothing to check: the expenses may be the same and what's missing
+    /// isn't on screen (2026-11-18). Said as «una parte de tus datos», like the backup's errors.
     private static func lessDataReason(day: String?) -> String {
         if let day {
-            return String(localized: "Este iPhone tiene menos datos que el respaldo del \(day).", bundle: .main,
-                          comment: "Respaldo guardado aparte; el día del otro respaldo («10 nov»)")
+            return String(localized: "El respaldo del \(day) trae una parte de tus datos que este iPhone no tiene, aunque no se vea en la app.",
+                          bundle: .main, comment: "Respaldo guardado aparte; el día del otro respaldo («10 nov»). The missing part is hidden data: don't name it")
         }
-        return String(localized: "Este iPhone tiene menos datos que el respaldo anterior.", bundle: .main,
-                      comment: "Respaldo guardado aparte, sin saber el día del otro respaldo")
+        return String(localized: "El respaldo anterior trae una parte de tus datos que este iPhone no tiene, aunque no se vea en la app.",
+                      bundle: .main, comment: "Respaldo guardado aparte, sin saber el día del otro respaldo. The missing part is hidden data: don't name it")
     }
 
     private static func unreadableReason(day: String?) -> String {

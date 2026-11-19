@@ -13,6 +13,13 @@ struct ExpensesCSVFile: Transferable {
 
     var text: String { CSVExporter.csv(from: records) }
 
+    /// With the UTF-8 mark first (2026-11-18): without it Excel opens the file as Windows-1252
+    /// («CategorÃ­a», «CafÃ©»), and saved back that way the categories got lost on import.
+    /// Numbers ignores the mark, and the importer drops it.
+    var data: Data { Data(Self.utf8Mark + Array(text.utf8)) }
+
+    static let utf8Mark: [UInt8] = [0xEF, 0xBB, 0xBF]
+
     init(expenses: [Expense], primaryCurrency: String, now: Date = AppClock.now) {
         records = expenses.map { expense in
             ExpenseRecord(
@@ -38,7 +45,7 @@ struct ExpensesCSVFile: Transferable {
 
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .commaSeparatedText) { file in
-            Data(file.text.utf8)
+            file.data
         }
         .suggestedFileName { $0.suggestedName }
     }

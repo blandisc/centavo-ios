@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 struct BackupSettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
 
     @State private var hasPassword = BackupPassword.lookup() != .missing
     @State private var newPassword = ""
@@ -228,6 +229,12 @@ struct BackupSettingsView: View {
                     LinkActionLabel("Guardar contraseña", alignment: .leading)
                 }
                 .disabled(!passwordIsValid)
+                // With VoiceOver the red line under the fields was silent and the button only said
+                // «atenuado» (2026-11-18): the button says why, and a new reason is spoken once.
+                .accessibilityHint(passwordProblem ?? "")
+                .onChange(of: passwordProblem) { _, problem in
+                    if voiceOver, let problem { AccessibilityNotification.Announcement(problem).post() }
+                }
                 .accessibilityIdentifier("respaldo-guardar-contrasena")
                 if hasPassword {
                     Button(action: cancelChanging) {
@@ -343,7 +350,7 @@ struct BackupSettingsView: View {
             Button("Este iPhone es el bueno") { Task { await trustThisPhone() } }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text(Self.trustQuestion(expenses: countNow))
+            Text(Self.trustQuestion(expenses: countNow, missingIsHidden: missingIsHidden))
         }
     }
 
@@ -353,9 +360,19 @@ struct BackupSettingsView: View {
 
     static var asideHint: String { String(localized: "El respaldo anterior sigue en tu carpeta, sin cambios.") }
 
+    /// What went apart for is data this version doesn't show («Mi dinero» off, 2026-11-18).
+    private var missingIsHidden: Bool { aside?.kind == .noMoney && !Features.money }
+
     /// `expenses`: what this phone has right now, which may no longer be what the note said.
-    static func trustQuestion(expenses: Int?) -> String {
-        let rest = String(localized: "El respaldo de hoy se guardará con lo que hay en este iPhone, aunque tenga menos. El respaldo que tenía más no se borra: queda guardado con «reemplazado» en el nombre.")
+    /// `missingIsHidden`: the expenses may be the same, so the count alone gave nothing to decide
+    /// by (2026-11-18): it says that what's missing isn't on screen.
+    static func trustQuestion(expenses: Int?, missingIsHidden: Bool = false) -> String {
+        var rest = String(localized: "El respaldo de hoy se guardará con lo que hay en este iPhone, aunque tenga menos. El respaldo que tenía más no se borra: queda guardado con «reemplazado» en el nombre.")
+        if missingIsHidden {
+            let hidden = String(localized: "Lo que le falta a este iPhone es una parte de tus datos que la app no muestra; el respaldo de hoy se guardaría sin ella.",
+                                comment: "Before «Este iPhone es el bueno»: the missing part is hidden data, don't name it")
+            rest = hidden + " " + rest
+        }
         guard let expenses else { return rest }
         let has: String
         if expenses == 1 {

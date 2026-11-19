@@ -191,6 +191,13 @@ private struct ShareBarChart: View {
         selected.map { line.share.isSameLine(as: $0) } ?? false
     }
 
+    /// What a tap on the line does, for VoiceOver, as the mosaic says it (2026-11-18): picked,
+    /// a tap shows the whole month again; it said «Muestra solo sus gastos» all the same.
+    private func hint(_ line: CategoryLine) -> String {
+        if isSelected(line) { return String(localized: "Muestra todo el mes") }
+        return String(localized: "Muestra solo sus gastos")
+    }
+
     @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = Theme.Size.shareBar
     @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.shareChartHeight
 
@@ -221,7 +228,7 @@ private struct ShareBarChart: View {
                         }
                         .accessibilityLabel(line.spoken(money))
                         .accessibilityAddTraits(isSelected(line) ? [.isButton, .isSelected] : .isButton)
-                        .accessibilityHint("Muestra solo sus gastos")
+                        .accessibilityHint(hint(line))
                 }
             }
         }

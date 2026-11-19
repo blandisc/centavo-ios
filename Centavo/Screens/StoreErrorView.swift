@@ -92,6 +92,11 @@ struct StoreErrorView: View {
         if Features.money {
             return String(localized: "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña y trae también «Mi dinero»: guárdala donde solo tú la veas.")
         }
+        // «Mi dinero» hidden (2026-11-18), but whoever had it still has its file, and the copy
+        // takes it: said without its name.
+        if MoneyStore.hasFile {
+            return String(localized: "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña y trae también otros datos tuyos que la app no muestra: guárdala donde solo tú la veas.")
+        }
         return String(localized: "Guarda en Archivos los archivos de Al día tal como están, para que no dependan de la app. Con esa copia puedes pedir ayuda para recuperar tus gastos. No lleva contraseña: guárdala donde solo tú la veas.")
     }
     static var copyFailedText: String {

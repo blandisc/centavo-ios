@@ -568,7 +568,7 @@ enum DailyBackup {
     /// files aside, never deleted. `settings`: what would travel in a backup right now.
     @MainActor
     static func safetyPlan(in context: ModelContext,
-                           money: @autoclosure () -> ModelContainer? = try? MoneyStore.opened.get(),
+                           money: @autoclosure () -> ModelContainer? = try? DailyBackup.moneyContainer(),
                            settings: [String: BackupSetting] = Settings.current()) -> BackupSafetyPlan {
         // If the expenses can't be counted, there may be some: never «nothing to copy».
         let expenses = (try? context.fetchCount(FetchDescriptor<Expense>())) ?? 1
@@ -588,7 +588,7 @@ enum DailyBackup {
     @MainActor @discardableResult
     static func restoreKeepingCopy(_ payload: BackupPayload, in context: ModelContext, password: String,
                                    copyInto chosen: URL? = nil, now: Date = AppClock.now,
-                                   money: @autoclosure () -> ModelContainer? = try? MoneyStore.opened.get(),
+                                   money: @autoclosure () -> ModelContainer? = try? DailyBackup.moneyContainer(),
                                    settings: [String: BackupSetting] = Settings.current()) async throws -> SafetyCopy? {
         var copy: SafetyCopy?
         if chosen != nil || safetyPlan(in: context, money: money(), settings: settings) != .nothingToCopy {
@@ -716,7 +716,14 @@ enum DailyBackup {
     /// is locked with the password anyway. `nil` only when it was never written on this phone; a
     /// store that's there and doesn't open stops the backup, so a file without it never
     /// counts as done (and never makes the cleanup drop the good ones).
-    static func moneyContainer() throws -> ModelContainer? {
+    ///
+    /// With «Mi dinero» off (2026-11-18), a phone that never had it isn't given an empty
+    /// `dinero.store` by a backup or a safety plan: opening it creates the file, and a file
+    /// that later didn't open would stop every backup for something the person never saw. One
+    /// that's already there is read as before. `evenIfNew`: a restore that brings «Mi dinero»
+    /// needs a store to put it in, and still makes one.
+    static func moneyContainer(evenIfNew: Bool = false) throws -> ModelContainer? {
+        if !evenIfNew, !Features.money, !MoneyStore.hasFile { return nil }
         switch MoneyStore.opened {
         case .success(let container): return container
         case .failure: if MoneyStore.hasFile { throw Failure.moneyUnreadable } else { return nil }
@@ -894,15 +901,20 @@ enum DailyBackup {
     /// before covers both anyway.
     @MainActor
     static func restore(_ payload: BackupPayload, into container: ModelContainer, now: Date = AppClock.now) throws {
-        // A file without «Mi dinero» never needs it open.
-        guard payload.money != nil else { return try restore(payload, into: container, money: nil) }
+        // A file without «Mi dinero» never needs it open, except for the one case below.
+        guard payload.money != nil else {
+            guard !Features.money, MoneyStore.hasFile, case .failure = MoneyStore.opened else {
+                return try restore(payload, into: container, money: nil)
+            }
+            return try restoreSettingAsideHiddenMoney(payload, into: container, now: now)
+        }
         // Before anything changes: a backup that can't be turned into expenses, or whose «Mi
         // dinero» wouldn't restore whole, stops here, and a damaged «Mi dinero» is never set
         // aside for nothing (independent review).
         _ = try payload.expenses.map { try Expense(backup: $0) }
         guard payload.money?.isWhole ?? true else { throw Failure.unreadable(.damaged) }
         do {
-            try restore(payload, into: container, money: moneyContainer())
+            try restore(payload, into: container, money: moneyContainer(evenIfNew: true))
         } catch Failure.moneyUnreadable {
             // Once more first: a store busy a moment ago may open now.
             MoneyStore.forget()
@@ -928,6 +940,26 @@ enum DailyBackup {
                 undoSetAside(moved, at: MoneyStore.url)
                 throw error
             }
+        }
+    }
+
+    /// «Mi dinero» off, its store there and not opening, and a backup without it (2026-11-18):
+    /// `moneyUnreadable` says restoring a backup sets what doesn't open aside, and with a backup
+    /// without «Mi dinero» it used to leave it where it was, so every night failed the same. Its
+    /// files go aside, never deleted, and no new store is made: with none there, the backups go
+    /// on without it (`moneyContainer`). If the expenses don't go in, the files come back as
+    /// they were. Checked before anything moves, like the other restore.
+    @MainActor
+    private static func restoreSettingAsideHiddenMoney(_ payload: BackupPayload, into container: ModelContainer,
+                                                       now: Date) throws {
+        _ = try payload.expenses.map { try Expense(backup: $0) }
+        let moved = try setAsideMoneyFiles(at: MoneyStore.url, now: now)
+        MoneyStore.forget()
+        do {
+            try restore(payload, into: container, money: nil)
+        } catch {
+            undoSetAside(moved, at: MoneyStore.url)
+            throw error
         }
     }
 

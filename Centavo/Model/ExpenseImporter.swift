@@ -11,6 +11,10 @@ enum ExpenseImporter {
         /// Rows left out because they look like an expense already here (same moment and
         /// amount, another name or card) and the person didn't ask for them.
         var leftOut = 0
+        /// The file has no «Categoría» or «Tarjeta» column (`CSVImporter.Result`): said, so a
+        /// header a spreadsheet mangled doesn't drop them without a word (2026-11-18).
+        var lacksCategory = false
+        var lacksCard = false
 
         /// What happened, said plainly: how many came in, how many were already here, how many
         /// were left out for looking repeated, and how many rows couldn't be read.
@@ -34,6 +38,7 @@ enum ExpenseImporter {
             } else if unreadable > 1 {
                 parts.append(String(localized: "\(unreadable) renglones no se pudieron leer."))
             }
+            if let missing = missingColumnsText { parts.append(missing) }
             if added == 0 && alreadyThere == 0 && leftOut == 0 {
                 if unreadable > 0 {
                     parts.append(String(localized: "Revisa que las fechas y los montos estén como en la exportación de Al día."))
@@ -42,6 +47,24 @@ enum ExpenseImporter {
                 }
             }
             return parts.joined(separator: " ")
+        }
+
+        /// Only when something came in: that's what went in without them.
+        private var missingColumnsText: String? {
+            guard added > 0 else { return nil }
+            switch (lacksCategory, lacksCard) {
+            case (true, true):
+                return String(localized: "El archivo no trae las columnas Categoría ni Tarjeta: los gastos entraron sin tarjeta y con la categoría que ya usas para cada comercio, si hay una.",
+                              comment: "Categoría and Tarjeta are the CSV's column names: keep them in Spanish")
+            case (true, false):
+                return String(localized: "El archivo no trae la columna Categoría: los gastos entraron con la categoría que ya usas para cada comercio, si hay una.",
+                              comment: "Categoría is a CSV column name: keep it in Spanish")
+            case (false, true):
+                return String(localized: "El archivo no trae la columna Tarjeta: los gastos entraron sin tarjeta.",
+                              comment: "Tarjeta is a CSV column name: keep it in Spanish")
+            case (false, false):
+                return nil
+            }
         }
 
         /// The first sentence: how many came in.
@@ -113,7 +136,7 @@ enum ExpenseImporter {
         // two «Uber $100» logged the same moment are two expenses, and a file with both brings
         // both, minus the ones already here (`CSVImportPlan`).
         let verdicts = classify(parsed.records, against: existing, merchantRenames: merchantRenames, cardRenames: cardRenames)
-        var summary = Summary(unreadable: parsed.skipped)
+        var summary = Summary(unreadable: parsed.skipped, lacksCategory: parsed.lacksCategory, lacksCard: parsed.lacksCard)
         for (record, verdict) in zip(parsed.records, verdicts) {
             switch verdict {
             case .alreadyThere:

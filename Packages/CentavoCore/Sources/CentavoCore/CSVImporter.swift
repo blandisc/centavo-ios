@@ -7,6 +7,10 @@ public enum CSVImporter {
         public var records: [ExpenseRecord]
         /// Rows that could not be read (bad date or amount). Never guessed.
         public var skipped: Int
+        /// The header has no «Categoría» or no «Tarjeta» (2026-11-18): both are optional, so
+        /// they used to vanish without a word when a spreadsheet mangled their names.
+        public var lacksCategory = false
+        public var lacksCard = false
     }
 
     public enum Failure: Error, Equatable {
@@ -22,7 +26,8 @@ public enum CSVImporter {
     /// With «;» the amounts are read with a decimal comma (`commaDecimal`).
     public static func records(from text: String) throws -> Result {
         // A UTF-8 mark at the start would stick to «Fecha» and the header wouldn't be found.
-        let text = text.unicodeScalars.first == "\u{FEFF}" ? String(text.unicodeScalars.dropFirst()) : text
+        // Again after the repair: a mark read as Windows-1252 («ï»¿») comes back as one.
+        let text = withoutMark(repairingDoubleEncoding(withoutMark(text)))
         let delimiter = separator(of: text)
         let rows = parse(text, delimiter: delimiter).filter { !$0.allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty } }
         guard let header = rows.first else { throw Failure.notOurFile }
@@ -48,7 +53,7 @@ public enum CSVImporter {
             number = { Self.number($0) }
         }
 
-        var result = Result(records: [], skipped: 0)
+        var result = Result(records: [], skipped: 0, lacksCategory: category == nil, lacksCard: card == nil)
         for row in rows.dropFirst() {
             func field(_ index: Int?) -> String? {
                 guard let index, index < row.count else { return nil }
@@ -62,11 +67,9 @@ public enum CSVImporter {
                 result.skipped += 1
                 continue
             }
-            // «Cuenta» may hold the part that counts (`600.00`) instead of «Sí» or «No». Only as
-            // the exporter writes it, with its decimal point: a bare «1» or an account number
-            // from another spreadsheet is not a part.
+            // «Cuenta» may hold the part that counts (`600.00`) instead of «Sí» or «No» (`countedPart`).
             let countsText = field(counts)
-            let part = countsText.flatMap { $0.contains(".") || (commaDecimals && $0.contains(",")) ? number($0) : nil }
+            let part = countsText.flatMap { countedPart($0, of: value, commaDecimals: commaDecimals, number: number) }
             let counted = !isNo(countsText)
             result.records.append(ExpenseRecord(
                 date: parsedDate, merchant: field(merchant) ?? "Sin comercio", amount: value,
@@ -76,6 +79,21 @@ public enum CSVImporter {
             ))
         }
         return result
+    }
+
+    /// The part under «Cuenta», as the exporter writes it, with its decimal point: a bare «1»
+    /// or an account number from another spreadsheet is not a part. A whole number is one too
+    /// (2026-11-18): Excel saves `600.00` back as `600`, and that expense counted whole without a
+    /// word. Only between 1 and the amount, both left out: a «1» may be a «Sí», and anything as
+    /// big as the amount isn't part of it.
+    static func countedPart(_ text: String, of amount: Decimal, commaDecimals: Bool,
+                            number: (String) -> Decimal?) -> Decimal? {
+        if text.contains(".") || (commaDecimals && text.contains(",")) { return number(text) }
+        guard text.range(of: #"^-?\d+$"#, options: .regularExpression) != nil,
+              let whole = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else { return nil }
+        let size = whole.magnitude
+        guard size > 1, size < amount.magnitude else { return nil }
+        return whole
     }
 
     /// «No» under «Cuenta». Anything else (blank, «Sí», a typo) counts, as it did before the
@@ -102,6 +120,51 @@ public enum CSVImporter {
               CSVExporter.defusedStarts.unicodeScalars.contains(next) else { return text }
         return String(text.dropFirst())
     }
+
+    private static func withoutMark(_ text: String) -> String {
+        text.unicodeScalars.first == "\u{FEFF}" ? String(text.unicodeScalars.dropFirst()) : text
+    }
+
+    /// A file Excel opened as Windows-1252 and saved back as «CSV UTF-8» (2026-11-18): every
+    /// accent comes doubled («CategorÃ­a», «CafÃ©») and «Categoría» wasn't found. Undone only
+    /// when it plainly is that, a «Ã» or «Â» before one of the bytes that follow it in UTF-8,
+    /// and only when every character turns back into a byte and the bytes are whole UTF-8:
+    /// anything else is left as it came.
+    static func repairingDoubleEncoding(_ text: String) -> String {
+        var previous: Unicode.Scalar?
+        var doubled = false
+        for scalar in text.unicodeScalars {
+            if let previous, previous == "\u{C3}" || previous == "\u{C2}",
+               let byte = windows1252Byte(scalar), byte >= 0x80, byte <= 0xBF {
+                doubled = true
+                break
+            }
+            previous = scalar
+        }
+        guard doubled else { return text }
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(text.utf8.count)
+        for scalar in text.unicodeScalars {
+            guard let byte = windows1252Byte(scalar) else { return text }
+            bytes.append(byte)
+        }
+        return String(data: Data(bytes), encoding: .utf8) ?? text
+    }
+
+    /// The byte Windows-1252 shows as this character. Its five unused bytes come through as
+    /// themselves, like the rest below 256.
+    private static func windows1252Byte(_ scalar: Unicode.Scalar) -> UInt8? {
+        if scalar.value <= 0xFF { return UInt8(scalar.value) }
+        return windows1252High[scalar.value]
+    }
+
+    private static let windows1252High: [UInt32: UInt8] = [
+        0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86,
+        0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C,
+        0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95,
+        0x2013: 0x96, 0x2014: 0x97, 0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B,
+        0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F,
+    ]
 
     /// The text of a chosen file, in whatever encoding the spreadsheet saved it (2026-11-18):
     /// Excel's «CSV» is Windows-1252 and its «Unicode» is UTF-16, and both were «No se pudo leer
@@ -165,9 +228,10 @@ public enum CSVImporter {
     }
 
     /// An amount from a file separated by «;», where the comma is the decimal: `89,50`,
-    /// `1.234,56`, `1.234.567`. Also `89.50`, which can only be a decimal point. A lone group
-    /// of three after a point (`1.234`) could be either, so it is not guessed: the row is
-    /// counted as unreadable.
+    /// `1.234,56`, `1.234.567`. Also `89.50`, which can only be a decimal point, and (2026-11-18)
+    /// `0.125` or `1234.567`, which the exporter writes and no grouping can be: a leading zero,
+    /// or four digits before the point. A lone group of three after a point (`1.234`) could be
+    /// either, so it is not guessed: the row is counted as unreadable.
     static func commaDecimal(_ text: String) -> Decimal? {
         var digits = Substring(text)
         let negative = digits.first == "-" || digits.first == "−"
@@ -177,6 +241,7 @@ public enum CSVImporter {
             #"^[1-9]\d{0,2}(\.\d{3})+,\d+$"#,           // 1.234,56
             #"^[1-9]\d{0,2}(\.\d{3}){2,}$"#,             // 1.234.567
             #"^\d+\.\d{1,2}$"#,                         // 89.50
+            #"^(0|[1-9]\d{3,})\.\d+$"#,                  // 0.125 · 1234.567
         ]
         let plain = String(digits)
         guard patterns.contains(where: { plain.range(of: $0, options: .regularExpression) != nil }) else { return nil }
