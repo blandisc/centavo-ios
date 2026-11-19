@@ -1485,7 +1485,7 @@ private extension ExpenseListView {
         context.insert(copy)
         guard persist() else { return }
         // A tap in a menu is easy to make by mistake: it can be taken back (audit 2026-11-02).
-        withAnimation(Self.undoMotion) {
+        withAnimation(Theme.Motion.undo) {
             lastDeleted = nil
             lastCopy = CopiedExpense(expense: copy, name: copy.displayName ?? copy.merchant, dated: elsewhere)
         }
@@ -1495,14 +1495,14 @@ private extension ExpenseListView {
     private func undoCopy(_ copied: CopiedExpense) {
         // Already deleted another way (its row, a sync): only the bar goes.
         guard copied.expense.modelContext != nil, !copied.expense.isDeleted else {
-            withAnimation(Self.undoMotion) { lastCopy = nil }
+            withAnimation(Theme.Motion.undo) { lastCopy = nil }
             return
         }
         context.delete(copied.expense)
         guard persist() else { return }
         countStore()
         model.storeSaved()
-        withAnimation(Self.undoMotion) { lastCopy = nil }
+        withAnimation(Theme.Motion.undo) { lastCopy = nil }
     }
 
     @ViewBuilder var undoOverlay: some View {
@@ -1534,7 +1534,7 @@ private extension ExpenseListView {
         countStore()
         // A search on screen is asked again, without the deleted expense.
         model.storeSaved()
-        withAnimation(Self.undoMotion) {
+        withAnimation(Theme.Motion.undo) {
             lastCopy = nil
             lastDeleted = snapshot
         }
@@ -1546,7 +1546,7 @@ private extension ExpenseListView {
         guard persist() else { return }
         model.storeSaved()
         countStore()
-        withAnimation(Self.undoMotion) { lastDeleted = nil }
+        withAnimation(Theme.Motion.undo) { lastDeleted = nil }
     }
 
     /// Reads the chosen file and says plainly what happened. `nil` when there's a question to
@@ -2284,6 +2284,13 @@ struct CopiedExpense: Identifiable {
     }
 }
 
+private extension Theme.Motion {
+    /// How the undo bar comes and goes, also with «Reducir movimiento» (2026-11-19): there its
+    /// transition is only a fade, and with no animation at all (`animation(_:reduceMotion:)`
+    /// gave `nil`) the fade never ran and the bar popped in and out.
+    static var undo: Animation { quick }
+}
+
 /// Where the undo bar sits and how it comes and goes: right above the bottom bar, said out loud,
 /// gone after a few seconds (longer with VoiceOver). Slides up, or only fades with «Reducir
 /// movimiento».
@@ -2339,7 +2346,7 @@ private struct UndoBarPlacement: ViewModifier {
                 AccessibilityNotification.Announcement(spoken).post()
                 try? await Task.sleep(for: .seconds(total - wait))
                 guard !Task.isCancelled else { return }
-                withAnimation(Self.undoMotion) { expire() }
+                withAnimation(Theme.Motion.undo) { expire() }
             }
     }
 }
