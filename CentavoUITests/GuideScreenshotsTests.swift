@@ -179,8 +179,12 @@ final class GuideScreenshotsTests: XCTestCase {
         let alDia = XCUIApplication()
         alDia.launchArguments = ["-AppleLanguages", words.languages[0], "-AppleLocale", words.locale, "-centavo-empty"]
         alDia.launch()
-        sleep(3)
+        // Long enough for iOS to hand Atajos the app's actions: with 3 s on a busy Mac the
+        // search for «Registrar aviso» came back empty (local run, 2026-11-18).
+        _ = alDia.wait(for: .runningForeground, timeout: 20)
+        sleep(8)
         alDia.terminate()
+        sleep(5)
 
         shortcuts.launch()
         let continueButton = find(shortcuts.buttons, words.continueButton)
@@ -247,36 +251,59 @@ final class GuideScreenshotsTests: XCTestCase {
         tap(wallet, "Wallet")
         sleep(1)
         // What the trigger says now («… de Wallet»): a result, no ring.
-        snap("07-con-wallet", mark: find(shortcuts.staticTexts, words.wallet), ring: false)
+        // In English «Wallet» is the value of the trigger's «App» field, not a text of its own.
+        let chosen = find(shortcuts.staticTexts, words.wallet)
+        snap("07-con-wallet", mark: chosen.exists ? chosen : shortcuts.buttons.matching(identifier: "enum").firstMatch, ring: false)
 
         let search = shortcuts.searchFields.firstMatch
         tap(search, "Buscar")
+        focus(search)
         search.typeText(words.searchText)
         sleep(2)
         // The keyboard's one-time tip covers the results.
         let tip = find(shortcuts.buttons, words.continueButton)
         if tip.exists { tip.tap() }
         let action = find(shortcuts.cells, words.action)
-        require(action, "Registrar aviso de Wallet")
+        // On a freshly erased iPhone Atajos may not know Al día's actions yet (local runs on
+        // a busy Mac, 2026-11-18): the library has no «Apps» and the search comes back empty.
+        // Pull the drawer down, give it time and search again, up to three times.
+        for _ in 0..<3 where !action.waitForExistence(timeout: 15) {
+            let from = search.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            from.press(forDuration: 0.1, thenDragTo: shortcuts.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+            sleep(30)
+            let again = shortcuts.searchFields.firstMatch
+            guard again.waitForExistence(timeout: 5) else { break }
+            again.tap()
+            focus(again)
+            if let typed = again.value as? String, !typed.isEmpty, typed != again.placeholderValue {
+                again.buttons.firstMatch.tap()
+                sleep(1)
+            }
+            again.typeText(words.searchText)
+            sleep(2)
+        }
+        require(action, "Registrar aviso de Wallet", timeout: 15)
         snap("08-buscar-accion", mark: action)
         tap(action, "Registrar aviso de Wallet")
         sleep(1)
 
         // The action's «Notificación» field, then the variable above the keyboard.
-        let field = find(shortcuts.buttons, words.noticeField).firstMatch
-        require(field, "campo Notificación")
-        snap("09-accion-agregada", mark: field)
-        tap(field, "campo Notificación")
+        let notice = field()
+        require(notice, "campo Notificación")
+        snap("09-accion-agregada", mark: notice)
+        tap(notice, "campo Notificación")
         sleep(1)
         // The row above the keyboard starts on «Seleccionar variable»: the ring takes the row.
         let selectVariable = find(shortcuts.buttons, words.selectVariable)
         snap("10-elegir-variable", mark: selectVariable, row: true)
-        let variable = shortcuts.buttons.matching(NSPredicate(format: "label CONTAINS %@", words.noticeVariable)).element(boundBy: 0)
+        let variable = barVariable()
         require(variable, "variable Notificación")
         // Slide the row until the bell shows, as the guide says to.
-        if selectVariable.exists && !variable.isHittable {
+        // «isHittable» is true off screen too (XCUITest scrolls on tap): go by the frame.
+        let onScreen = { self.shortcuts.frame.contains(variable.frame) }
+        if selectVariable.exists && !onScreen() {
             let rowY = selectVariable.frame.midY
-            for _ in 0..<4 where !variable.isHittable {
+            for _ in 0..<4 where !onScreen() {
                 let from = shortcuts.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: shortcuts.frame.width * 0.85, dy: rowY))
                 let to = shortcuts.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: shortcuts.frame.width * 0.15, dy: rowY))
                 from.press(forDuration: 0.05, thenDragTo: to)
@@ -286,9 +313,11 @@ final class GuideScreenshotsTests: XCTestCase {
         snap("10b-variable-a-la-vista", mark: variable)
         tap(variable, "variable Notificación")
         sleep(1)
-        snap("11-conectada", mark: find(shortcuts.buttons, words.noticeField).firstMatch, ring: false)
+        snap("11-conectada", mark: field(), ring: false)
         tap(find(shortcuts.buttons, words.closeKeyboard).firstMatch, "cerrar el teclado")
         sleep(1)
+        // «Así debe verse» for the notice, without the keyboard.
+        snap("11c-conectada", mark: field(), ring: false)
 
         connectSubtitle()
 
@@ -300,35 +329,44 @@ final class GuideScreenshotsTests: XCTestCase {
         snap("11b-opciones-del-disparador", mark: back)
 
         tap(back, "regresar")
+        // On a busy Mac the editor took a while to leave (2026-11-18): wait for the list.
+        let saved = find(shortcuts.staticTexts, words.action).firstMatch
+        _ = shortcuts.searchFields.firstMatch.waitForNonExistence(timeout: 10)
+        _ = saved.waitForExistence(timeout: 10)
         sleep(2)
-        snap("12-guardada", mark: find(shortcuts.staticTexts, words.action).firstMatch, ring: false)
+        snap("12-guardada", mark: saved, ring: false)
     }
 
-    /// «Comercio» from the notification's subtitle, and «Mostrar al ejecutar» off. In Spanish
-    /// these pictures came from the owner's iPhone, so a step not found here leaves its
-    /// «falta-…» and the walk goes on to save (the guide keeps the Spanish picture).
+    /// «Comercio» from the notification's subtitle. Since 2026-10-22 the action's summary puts
+    /// «Comercio» on its line («Registrar Notificación con comercio Comercio»), so there is no
+    /// chevron to open first; an Atajos that still hides it behind one gets the chevron step.
+    /// A step not found leaves its «falta-…» and the walk goes on to save.
     private func connectSubtitle() {
-        // The action's chevron: the last «Expandir» on screen (the trigger's is above it).
-        let expanders = shortcuts.buttons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", words.expand, words.expand))
-        // Only one means it is the trigger's: tapping it would hide the «Expandir» saved for later.
-        guard expanders.firstMatch.waitForExistence(timeout: 4), expanders.count > 1 else { snap("falta-flechita"); return }
-        let chevron = expanders.element(boundBy: expanders.count - 1)
-        snap("13-flechita", mark: chevron)
-        guard tapIfThere(chevron, "flechita") else { return }
-        sleep(1)
-
         let merchant = find(shortcuts.buttons, words.merchantField).firstMatch
+        if merchant.waitForExistence(timeout: 4) {
+            snap("13-comercio", mark: merchant)
+        } else {
+            // The action's chevron: the last «Expandir» on screen (the trigger's is above it).
+            let expanders = shortcuts.buttons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", words.expand, words.expand))
+            // Only one means it is the trigger's: tapping it would hide the «Expandir» saved for later.
+            guard expanders.count > 1 else { snap("falta-flechita"); return }
+            let chevron = expanders.element(boundBy: expanders.count - 1)
+            snap("13-flechita", mark: chevron)
+            guard tapIfThere(chevron, "flechita") else { return }
+            sleep(1)
+        }
+
         guard tapIfThere(merchant, "campo Comercio") else { return }
         sleep(1)
-        let variable = shortcuts.buttons.matching(NSPredicate(format: "label CONTAINS %@", words.noticeVariable)).element(boundBy: 0)
+        let variable = barVariable()
         guard tapIfThere(variable, "variable Notificación en Comercio") else { closeKeyboard(); return }
         sleep(1)
         closeKeyboard()
 
-        // «Comercio» now holds a «Notificación» too: the lower one is it.
-        let tokens = shortcuts.buttons.matching(NSPredicate(format: "label CONTAINS %@", words.noticeVariable))
-        let token = tokens.element(boundBy: max(tokens.count - 1, 0))
-        guard tapIfThere(token, "Notificación en Comercio") else { return }
+        // «Comercio» now holds a «Notificación»: the field keeps its label («Comercio») and the
+        // variable is its value, so the field itself is the token. Never the first
+        // «Notificación»: that one is the notice's, and «Subtítulo» there logs nothing.
+        guard tapIfThere(merchant, "Notificación en Comercio") else { return }
         sleep(1)
         let subtitle = find(shortcuts.buttons, words.subtitle).firstMatch
         let subtitleAny = subtitle.exists ? subtitle : find(shortcuts.staticTexts, words.subtitle).firstMatch
@@ -336,10 +374,20 @@ final class GuideScreenshotsTests: XCTestCase {
         snap("14-subtitulo", mark: subtitleAny)
         subtitleAny.tap()
         sleep(1)
+        // The variable's sheet stays up after choosing: pull it down to see the action.
+        if subtitleAny.exists && subtitleAny.isHittable {
+            let top = shortcuts.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.49))
+            top.press(forDuration: 0.1, thenDragTo: shortcuts.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+            sleep(2)
+        }
 
         let show = find(shortcuts.switches, words.showWhenRun).firstMatch
         for _ in 0..<3 where show.exists && !show.isHittable { shortcuts.swipeUp() }
-        guard show.waitForExistence(timeout: 4) else { snap("falta-Mostrar-al-ejecutar"); return }
+        guard show.waitForExistence(timeout: 4) else {
+            // No «Mostrar al ejecutar» without a chevron: the result is the action's line.
+            snap("16-accion-lista", mark: field(), ring: false)
+            return
+        }
         snap("15-mostrar", mark: show)
         show.tap()
         sleep(1)
@@ -347,7 +395,25 @@ final class GuideScreenshotsTests: XCTestCase {
         snap("16-accion-lista", mark: field(), ring: false)
     }
 
-    private func field() -> XCUIElement { find(shortcuts.buttons, words.noticeField).firstMatch }
+    /// A tap on the drawer's search field may only bring the drawer up (a busy Mac, 2026-11-18):
+    /// taps again until the field has the keyboard.
+    private func focus(_ field: XCUIElement) {
+        for _ in 0..<3 where (field.value(forKey: "hasKeyboardFocus") as? Bool) != true {
+            sleep(2)
+            field.tap()
+        }
+    }
+
+    /// The action's «Notificación» field (`textInput`), never the bell of the same name in the
+    /// row above the keyboard.
+    private func field() -> XCUIElement {
+        shortcuts.buttons.matching(NSPredicate(format: "identifier == 'textInput' AND label IN %@", words.noticeField)).firstMatch
+    }
+
+    /// The «Notificación» variable in the row above the keyboard (the bell), never a field.
+    private func barVariable() -> XCUIElement {
+        shortcuts.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND identifier != 'textInput'", words.noticeVariable)).firstMatch
+    }
 
     private func closeKeyboard() {
         let close = find(shortcuts.buttons, words.closeKeyboard).firstMatch

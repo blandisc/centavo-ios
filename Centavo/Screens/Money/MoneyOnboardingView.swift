@@ -943,9 +943,15 @@ struct MoneyCountUp: View {
             .onAppear(perform: start)
     }
 
+    /// Still (Reduce Motion, Low Power, tests): the final figure from the first frame, never a
+    /// «$0» that jumps to it (third QA round).
+    private var figure: Decimal {
+        MotionPolicy.isStill(reduceMotion: reduceMotion) ? value : shown
+    }
+
     private var counting: some View {
-        Text(money(shown, currency))
-            .contentTransition(.numericText(value: NSDecimalNumber(decimal: shown).doubleValue))
+        Text(money(figure, currency))
+            .contentTransition(.numericText(value: NSDecimalNumber(decimal: figure).doubleValue))
             .accessibilityLabel(money(value, currency))
     }
 

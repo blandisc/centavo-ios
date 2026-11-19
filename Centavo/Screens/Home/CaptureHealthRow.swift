@@ -238,7 +238,8 @@ private struct WalletOptOut: ViewModifier {
             Button("No uso Wallet", action: confirm)
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("«Hoy» dejará de pedirte que lo conectes. Para volver a verlo, enciende «Avisar si no llegan pagos» en «··· › Ajustes».")
+            // «Más › Ajustes» with VoiceOver (`MenuPath`): an alert can't show one and say another.
+            Text(MenuPath.forAlert(String(localized: "«Hoy» dejará de pedirte que lo conectes. Para volver a verlo, enciende «Avisar si no llegan pagos» en «··· › Ajustes».")))
         }
     }
 }

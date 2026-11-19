@@ -34,7 +34,8 @@ extension View {
                                    set: { if !$0 { problem.wrappedValue = nil } })) {
             Button("Aceptar", role: .cancel) {}
         } message: {
-            Text(problem.wrappedValue?.detail ?? "")
+            // «··· › Ajustes» said «Más › Ajustes» with VoiceOver (`MenuPath`): the backup's errors.
+            Text(MenuPath.forAlert(problem.wrappedValue?.detail ?? ""))
         }
     }
 
@@ -52,7 +53,7 @@ extension View {
         alert(String(title), isPresented: isPresented) {
             Button("Aceptar", role: .cancel) {}
         } message: {
-            Text(detail)
+            Text(MenuPath.forAlert(detail))
         }
     }
 }

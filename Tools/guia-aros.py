@@ -55,14 +55,14 @@ TABLA = [
     ("guia27-06-con-wallet",     "07-con-wallet",                490, 0.5),
     ("guia27-07-accion",         "08-buscar-accion",             470, 0.5),
     ("guia27-08-campo",          "09-accion-agregada",           614, 0.58),
+    ("guia27-08b-conectada",     "11c-conectada",                470, 0.5),
     ("guia27-09-variable",       "10b-variable-a-la-vista",      716, 0.893),
     ("guia27-09a-barra",         "10-elegir-variable",           716, 0.833),
     ("guia27-10-guardar",        "11b-opciones-del-disparador",  392, "arriba"),
     ("guia27-11-listo",          "12-guardada",                  532, 0.5),
-    ("guia27-12-flechita",       "13-flechita",                  170, 0.5),
+    ("guia27-12-comercio",       "13-comercio",                  470, 0.6),
     ("guia27-13-subtitulo",      "14-subtitulo",                 626, 0.535),
-    ("guia27-14-mostrar",        "15-mostrar",                   198, 0.5),
-    ("guia27-15-accion-lista",   "16-accion-lista",              368, 0.215),
+    ("guia27-15-accion-lista",   "16-accion-lista",              470, 0.4),
 ]
 
 # A name xcresulttool gives an attachment: «<name>_<index>_<UUID>.<ext>».

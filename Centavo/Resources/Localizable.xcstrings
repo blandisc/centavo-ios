@@ -1261,6 +1261,18 @@
         }
       }
     },
+    "Abre la lista de meses" : {
+      "comment" : "Hoy: pista de VoiceOver de «Mes anterior» en el mes más viejo, donde un toque abre la lista de meses",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the list of months"
+          }
+        }
+      }
+    },
     "Abre para cambiarlo u olvidarlo" : {
       "comment" : "What I remember: VoiceOver hint of a row",
       "extractionState" : "manual",
@@ -1461,6 +1473,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not now"
+          }
+        }
+      }
+    },
+    "Ahora, en la misma acción, toca «Comercio» en azul tenue, junto a «con comercio»." : {
+      "comment" : "Setup guide (iOS 27), connect the merchant: step 1. Must match the English Shortcuts summary “Log Notification with merchant Merchant”.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now, in the same action, tap “Merchant” in light blue, next to “with merchant”."
           }
         }
       }
@@ -2229,6 +2253,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "It should look like this: “When I get a notification from Wallet”."
+          }
+        }
+      }
+    },
+    "Así debe verse: «Registrar Notificación con comercio Subtítulo». Si junto a «Registrar» dice «Subtítulo», no se anotará nada: tócalo y elige «Notificación»." : {
+      "comment" : "Setup guide (iOS 27), connect the merchant: the result",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It should look like this: “Log Notification with merchant Subtitle”. If it says “Subtitle” next to “Log”, nothing will be logged: tap it and choose “Notification”."
           }
         }
       }
@@ -5049,6 +5085,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In the category"
+          }
+        }
+      }
+    },
+    "En la fila de arriba del teclado, busca otra vez «Notificación», la de la campana, y tócala." : {
+      "comment" : "Setup guide (iOS 27), connect the merchant: step 2",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In the row above the keyboard, find “Notification” again, the one with the bell, and tap it."
           }
         }
       }

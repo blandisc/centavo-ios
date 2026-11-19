@@ -14,6 +14,13 @@ enum MenuPath {
         shown.replacingOccurrences(of: dots, with: button)
     }
 
+    /// For an alert's text, which can't be shown one way and said another: with VoiceOver on
+    /// it carries the button's spoken name («Más › Ajustes»), otherwise the dots as shown.
+    @MainActor
+    static func forAlert(_ shown: String) -> String {
+        UIAccessibility.isVoiceOverRunning ? spoken(shown) : shown
+    }
+
     /// The «···» button's label in «Hoy» (`Label("Más", systemImage: "ellipsis")`).
     static var buttonName: String {
         String(localized: "Más", comment: "Hoy (main screen): «···» menu button (VoiceOver)")

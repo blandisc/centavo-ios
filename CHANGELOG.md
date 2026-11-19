@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Changed
+- Guía de Wallet (iOS 27): «Conecta el comercio» enseña lo que Atajos muestra hoy, «Comercio» en la misma línea de la acción, sin flechita ni «Mostrar al ejecutar». Con capturas nuevas, también en inglés.
+- «‹» en el mes más antiguo ya no queda apagado: un toque abre la lista de meses.
+- El permiso de Face ID dice todo para lo que se usa: mostrar o cambiar la contraseña del respaldo, restaurarlo o copiar tus datos.
+- VoiceOver también dice «Más» en las historias de «Cómo funciona», la nota de formas de pago del gasto, «¿No usas Wallet?» y los avisos de error del respaldo.
+- Con «Reducir movimiento», la cifra de «Mi dinero» aparece ya completa en vez de contar desde $0.
 - Bienvenida: «Restaurar un respaldo» ya no da la bienvenida por hecha si cancelas Face ID o el selector; vuelve en el siguiente arranque. Al restaurar, la moneda se toma de tus gastos sin reiniciar la app.
 - Bienvenida: al terminar con «Configurar ahora», «Listo» dice que falta conectar Wallet y su botón dice «Abrir la guía».
 - Bienvenida: si tu configuración llegó de iCloud, «Listo» ya no muestra una cifra que no se guardó.

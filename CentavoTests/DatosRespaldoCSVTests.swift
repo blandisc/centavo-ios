@@ -9,7 +9,8 @@ import XCTest
 final class DatosRespaldoCSVTests: XCTestCase {
     private var container: ModelContainer!
 
-    override func setUpWithError() throws {
+    // Async, so it runs on the main actor like the class (Swift 6: no warning).
+    override func setUp() async throws {
         container = try ModelContainer(for: Expense.self,
                                        configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
     }

@@ -20,7 +20,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To show you your backup password and confirm it’s you before restoring it."
+            "value" : "To confirm it’s you before showing or changing your backup password, restoring it, or copying your data."
           }
         }
       }

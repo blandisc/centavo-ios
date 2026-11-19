@@ -181,7 +181,7 @@ struct TutorialView: View {
             }
         }
         .onChange(of: index) {
-            if voiceOver { AccessibilityNotification.Announcement("\(story.title). \(text)").post() }
+            if voiceOver { AccessibilityNotification.Announcement("\(story.title). \(MenuPath.spoken(text))").post() }
         }
         .sensoryFeedback(.selection, trigger: taps)
     }
@@ -242,6 +242,8 @@ struct TutorialView: View {
                 .font(.ticket(.body))
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
+                // «··· › Ajustes» said «Más › Ajustes» (`MenuPath`).
+                .spokenMenuPath(text)
             if let destination = story.destination {
                 Button {
                     tryIt(destination)
@@ -285,7 +287,7 @@ struct TutorialView: View {
     /// A story's part of the bar when it isn't running: full once gone by, and the current one
     /// full too while it stays still (VoiceOver, still drawings). Empty for one that scrolls:
     /// its first frame had a running bar, and it jumped to full (QA, 2026-11-18).
-    static func barFill(_ item: Int, current: Int, scrolls: Bool) -> Double {
+    nonisolated static func barFill(_ item: Int, current: Int, scrolls: Bool) -> Double {
         if item < current { return 1 }
         if item == current && !scrolls { return 1 }
         return 0

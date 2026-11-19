@@ -1453,8 +1453,16 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Renta"), "El mes anterior no muestra sus pagos")
         XCTAssertFalse(hasRow(app, containing: "Cinépolis"),
                        "Los pagos de este mes aparecen en el mes anterior")
-        XCTAssertFalse(app.buttons["Mes anterior"].isEnabled,
-                       "Dejó ir más atrás del primer gasto")
+        // The earliest month: nothing behind it, so a tap opens the list of months instead.
+        let back = app.buttons["Mes anterior"]
+        XCTAssertTrue(back.isEnabled, "En el mes más viejo «‹» debe abrir la lista de meses")
+        back.tap()
+        let months = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "de 20"))
+        XCTAssertTrue(months.firstMatch.waitForExistence(timeout: 4), "«‹» en el mes más viejo no abrió la lista de meses")
+        XCTAssertEqual(months.count, 2, "La lista debe tener este mes y el anterior")
+        // The oldest is listed last and is the one on screen: choosing it closes the list.
+        months.element(boundBy: months.count - 1).tap()
+        expectTotal(app, "$3,829.00", "Elegir el mes en pantalla no debe cambiar de mes")
         // The budget is what the screen opens on.
         let ticket = require(app.otherElements["presupuesto-ticket"], "No hay ticket del mes anterior")
         XCTAssertTrue(ticket.label.contains("Te quedaron"), "Dice: \(ticket.label)")

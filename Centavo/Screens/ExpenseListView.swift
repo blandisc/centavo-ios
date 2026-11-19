@@ -515,7 +515,8 @@ struct ExpenseListView: View {
 
 /// «Mes anterior»: a tap goes one month back; held, the system menu lists every month from
 /// this one back to the earliest with data, the one on screen checked, to jump straight there
-/// (2026-11-19). Off on the earliest month, as the arrow was.
+/// (2026-11-19). On the earliest month there is nothing behind it: a tap opens the list
+/// instead (third QA round). Off only when there is a single month.
 private struct MonthJumpMenu: View {
     let offset: Int
     let earliest: Int
@@ -527,20 +528,27 @@ private struct MonthJumpMenu: View {
     }
 
     var body: some View {
-        Menu {
-            Picker("Ir al mes", selection: chosen) {
-                ForEach(MonthNavigator.jumpOffsets(earliest: earliest), id: \.self) { month in
-                    Text(name(month)).tag(month)
-                }
-            }
-            .pickerStyle(.inline)
-        } label: {
-            Label("Mes anterior", systemImage: "chevron.left")
-        } primaryAction: {
-            goTo(offset - 1)
+        if offset > earliest {
+            Menu { months } label: { label } primaryAction: { goTo(offset - 1) }
+                .accessibilityHint("Mantén presionado para elegir otro mes")
+        } else {
+            Menu { months } label: { label }
+                .disabled(earliest >= 0)
+                .accessibilityHint("Abre la lista de meses")
         }
-        .disabled(offset <= earliest)
-        .accessibilityHint("Mantén presionado para elegir otro mes")
+    }
+
+    private var label: some View {
+        Label("Mes anterior", systemImage: "chevron.left")
+    }
+
+    private var months: some View {
+        Picker("Ir al mes", selection: chosen) {
+            ForEach(MonthNavigator.jumpOffsets(earliest: earliest), id: \.self) { month in
+                Text(name(month)).tag(month)
+            }
+        }
+        .pickerStyle(.inline)
     }
 
     /// «noviembre de 2026», in the iPhone's language.

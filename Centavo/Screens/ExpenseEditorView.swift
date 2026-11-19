@@ -753,7 +753,8 @@ struct ExpenseEditorView: View {
             Text("Forma de pago · opcional").ticketCaption()
         } footer: {
             if paymentSources.isEmpty {
-                HintText("Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto en «··· › Categorías» ya vendrá elegida.")
+                let hint = String(localized: "Agrega tus formas de pago una vez (BBVA, Nu…). La que dejes por defecto en «··· › Categorías» ya vendrá elegida.")
+                HintText(hint).spokenMenuPath(hint)
             }
         }
         .listRowBackground(Theme.surface)

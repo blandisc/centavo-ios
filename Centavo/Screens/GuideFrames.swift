@@ -157,22 +157,20 @@ extension GuideFrame {
                    screen: .shot("guia27-09-variable"),
                    focus: CGRect(x: 0, y: 0.79, width: 1, height: 0.206)),
         GuideFrame(caption: String(localized: "Así debe verse: junto a «Registrar» dice «Notificación» en azul, con su campana."),
-                   screen: .shot("guia27-15-accion-lista"), isResult: true,
-                   focus: CGRect(x: 0, y: 0, width: 1, height: 0.43)),
+                   screen: .shot("guia27-08b-conectada"), isResult: true),
     ]
     /// Atajos leaves the notification's subtitle out, and Wallet puts the merchant there
-    /// (owner's iPhone, 2026-10-21): «Comercio» takes it apart.
+    /// (owner's iPhone, 2026-10-21): «Comercio» takes it apart. Since 2026-10-22 «Comercio» is
+    /// on the action's own line («Registrar Notificación con comercio Comercio»): no chevron to
+    /// open and no «Mostrar al ejecutar» (the pictures with them were from before, 2026-11-18).
     static let connectSubtitle: [GuideFrame] = [
-        GuideFrame(caption: String(localized: "Toca la flechita junto a «Notificación». Abajo aparece «Comercio»."),
-                   screen: .shot("guia27-12-flechita"),
-                   focus: CGRect(x: 0.344, y: 0, width: 0.656, height: 1)),
-        GuideFrame(caption: String(localized: "Toca «Comercio». En la fila de arriba del teclado, busca otra vez «Notificación», la de la campana, y tócala."), screen: .shot("guia27-09a-barra"),
+        GuideFrame(caption: String(localized: "Ahora, en la misma acción, toca «Comercio» en azul tenue, junto a «con comercio»."),
+                   screen: .shot("guia27-12-comercio")),
+        GuideFrame(caption: String(localized: "En la fila de arriba del teclado, busca otra vez «Notificación», la de la campana, y tócala."), screen: .shot("guia27-09a-barra"),
                    focus: CGRect(x: 0.022, y: 0.671, width: 0.844, height: 0.324)),
         GuideFrame(caption: String(localized: "En «Comercio» quedó «Notificación» en azul. Tócala una vez más y, en la lista, elige «Subtítulo»: ahí pone Wallet el nombre de la tienda."), screen: .shot("guia27-13-subtitulo"),
                    focus: CGRect(x: 0, y: 0.112, width: 1, height: 0.847)),
-        GuideFrame(caption: String(localized: "Apaga «Mostrar al ejecutar»: así no te sale un aviso con cada pago. Se anota igual."),
-                   screen: .shot("guia27-14-mostrar")),
-        GuideFrame(caption: String(localized: "Así debe verse: «Registrar» con «Notificación» y «Comercio» con «Subtítulo». Si junto a «Registrar» dice «Subtítulo», no se anotará nada: tócalo y elige «Notificación»."),
+        GuideFrame(caption: String(localized: "Así debe verse: «Registrar Notificación con comercio Subtítulo». Si junto a «Registrar» dice «Subtítulo», no se anotará nada: tócalo y elige «Notificación»."),
                    screen: .shot("guia27-15-accion-lista"), isResult: true),
     ]
     static let saveNotice: [GuideFrame] = [
