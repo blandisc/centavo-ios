@@ -40,10 +40,20 @@ struct DeleteLastExpenseIntent: AppIntent {
         // Said by Siri: in English the currency goes by its name, never a bare «$» (2026-11-18).
         let money = spokenMoney(expense.amount, isoCode: code, label: code, main: CurrencyPreference.current)
         let name = expense.shownName
-        if let day = QuickExpense.spokenDay(expense.date) {
-            return String(localized: "\(money) en \(name), de \(day)",
-                          comment: "Siri: the expense to delete, e.g. «$89.00 en Oxxo, de ayer»")
+        // A whole sentence for each day (2026-11-18): «de» before «el viernes…» said «de el».
+        let calendar = Calendar.current
+        let now = AppClock.now
+        if calendar.isDate(expense.date, inSameDayAs: now) {
+            return String(localized: "\(money) en \(name)", comment: "Siri: the expense to delete, e.g. «$89.00 en Oxxo»")
         }
-        return String(localized: "\(money) en \(name)", comment: "Siri: the expense to delete, e.g. «$89.00 en Oxxo»")
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(expense.date, inSameDayAs: yesterday) {
+            return String(localized: "\(money) en \(name), de ayer",
+                          comment: "Siri: the expense to delete, from yesterday, e.g. «$89.00 en Oxxo, de ayer»")
+        }
+        // In the iPhone's language, as `QuickExpense.spokenDay` says it: it is only said.
+        let day = expense.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).locale(.current))
+        return String(localized: "\(money) en \(name), del \(day)",
+                      comment: "Siri: the expense to delete, from an earlier day, e.g. «$89.00 en Oxxo, del viernes 16 de oct.»")
     }
 }

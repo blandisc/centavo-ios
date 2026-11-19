@@ -106,28 +106,35 @@ public enum QuickEntryParser {
 
         init(_ text: String) {
             original = Words.symbolAfterFigure(text.split(whereSeparator: \.isWhitespace))
-                .flatMap(Words.spellingEuro)
+                .flatMap(Words.spellingSymbol)
                 .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!¡?¿«»\"()")) }
                 .filter { !$0.isEmpty }
             folded = original.map(QuickEntryParser.fold)
             used = original.map { _ in false }
         }
 
-        /// «12,50€», «€12,50» and a lone «€» as «12,50 euros»: the symbol read as the word, so
-        /// the amount is found and its currency kept (2026-11-18: «12,50€» had no amount, and
-        /// «12,50 €» was saved in the main currency).
-        static func spellingEuro(_ word: Substring) -> [Substring] {
-            guard word.contains("€") else { return [word] }
-            let rest = String(word.filter { $0 != "€" })
-            return rest.isEmpty ? ["euros"] : [Substring(rest), "euros"]
+        /// The currency symbols said as their word: «€» as «euros», «£» as «pounds», «¥» as
+        /// «yen» (2026-11-19: «£12 for lunch» had no amount, and «12 pounds» was saved in pesos).
+        static let symbolWords: [Character: Substring] = ["€": "euros", "£": "pounds", "¥": "yen"]
+
+        /// «12,50€», «€12,50», «£12» and a lone «€» as «12,50 euros»: the symbol read as the
+        /// word, so the amount is found and its currency kept (2026-11-18: «12,50€» had no
+        /// amount, and «12,50 €» was saved in the main currency; 2026-11-19, the pound and yen).
+        static func spellingSymbol(_ word: Substring) -> [Substring] {
+            guard let symbol = word.first(where: { symbolWords[$0] != nil }),
+                  let spelled = symbolWords[symbol] else { return [word] }
+            let rest = String(word.filter { symbolWords[$0] == nil })
+            return rest.isEmpty ? [spelled] : [Substring(rest), spelled]
         }
 
-        /// «€ 12,50» as «12,50 €»: the amount only looks for its currency in the word after it.
+        /// «€ 12,50» and «£ 12» as «12,50 €»: the amount only looks for its currency in the word
+        /// after it.
         static func symbolAfterFigure(_ words: [Substring]) -> [Substring] {
             var words = words
             var index = 0
             while index + 1 < words.count {
-                if words[index].allSatisfy({ $0 == "€" }), words[index + 1].contains(where: \.isNumber) {
+                let lone = !words[index].isEmpty && words[index].allSatisfy { symbolWords[$0] != nil }
+                if lone, words[index + 1].contains(where: \.isNumber) {
                     words.swapAt(index, index + 1)
                     index += 2
                 } else {
@@ -164,6 +171,16 @@ public enum QuickEntryParser {
         ["abril", "abr", "april", "apr"], ["mayo", "may"], ["junio", "jun", "june"], ["julio", "jul", "july"],
         ["agosto", "ago", "august", "aug"], ["septiembre", "setiembre", "sep", "sept", "set", "september"],
         ["octubre", "oct", "october"], ["noviembre", "nov", "november"], ["diciembre", "dic", "december", "dec"],
+    ]
+    /// The month names that may follow a day with nothing between («3rd October», «3 Nov»):
+    /// the whole names and the English short ones (2026-11-19). Not the Spanish short ones that
+    /// are other words too («ago», «set», «mar» go only after «de»).
+    private static let namesWithoutJoiner: Set<String> = [
+        "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "setiembre",
+        "octubre", "noviembre", "diciembre",
+        "january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
+        "november", "december",
+        "jan", "feb", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
     ]
     /// The months that can come before their day («September 15»): the whole name, in English.
     private static let englishMonths = ["january", "february", "march", "april", "may", "june", "july",
@@ -269,6 +286,15 @@ public enum QuickEntryParser {
                 words.use(start...index)
                 return dayOfMonth(day, now: now, calendar: calendar)
             }
+            // «3 Nov», «on 3 October», «4 de mayo» with no «el» (2026-11-19: the day was missed
+            // and «3 Nov» stayed in the name). Only when another number is the amount, as with
+            // «May 3»: «Uber 25 nov» is $25.
+            if let day = plainDay(word), let named = Self.month(after: index, in: words),
+               hasNumber(besides: index, in: words) {
+                let start = words.word(index - 1) == "on" ? index - 1 : index
+                words.use(start...named.end)
+                return Self.day(day, of: named.month, year: named.year, now: now, calendar: calendar)
+            }
             // «September 15», «on May 3rd». A bare number after the month is the day only when
             // another number is the amount: «tacos May 20» is $20.
             if let month = englishMonths.firstIndex(of: word), let text = words.word(index + 1),
@@ -302,16 +328,18 @@ public enum QuickEntryParser {
     }
 
     /// «de septiembre», «de sept. de 2025», «of May» right after the day at `index`: the month,
-    /// the year if said, and the last of their words.
+    /// the year if said, and the last of their words. Also with nothing between, «3rd October»,
+    /// «3 Nov» (2026-11-19), for the names in `namesWithoutJoiner`.
     private static func month(after index: Int, in words: Words) -> (month: Int, year: Int?, end: Int)? {
-        guard let joiner = words.word(index + 1), joiner == "de" || joiner == "of",
-              let name = words.word(index + 2),
+        let joined = words.word(index + 1).map { $0 == "de" || $0 == "of" } ?? false
+        let nameIndex = joined ? index + 2 : index + 1
+        guard let name = words.word(nameIndex), joined || namesWithoutJoiner.contains(name),
               let month = monthNames.firstIndex(where: { $0.contains(name) }) else { return nil }
-        if words.word(index + 3) == "de", let text = words.word(index + 4), text.count == 4,
+        if words.word(nameIndex + 1) == "de", let text = words.word(nameIndex + 2), text.count == 4,
            let year = Int(text), (1990...2100).contains(year) {
-            return (month + 1, year, index + 4)
+            return (month + 1, year, nameIndex + 2)
         }
-        return (month + 1, nil, index + 2)
+        return (month + 1, nil, nameIndex)
     }
 
     /// That day of that month, of the year said or else the last one in which it already came.
@@ -354,10 +382,21 @@ public enum QuickEntryParser {
     ])
 
     /// Currency words in English, kept as the code the rest of the app reads: «20 dollars» is
-    /// USD, as «20 dólares» is (2026-11-18). «dollars» alone was a word of the merchant.
+    /// USD, as «20 dólares» is (2026-11-18). «dollars» alone was a word of the merchant. The
+    /// pound and the yen too (2026-11-19: «12 pounds for lunch» was saved in pesos).
     private static let spelledCurrencies: [String: String] = [
         "dollar": "USD", "dollars": "USD", "buck": "USD", "bucks": "USD",
+        "pound": "GBP", "pounds": "GBP", "quid": "GBP", "sterling": "GBP", "gbp": "GBP",
+        "yen": "JPY",
     ]
+
+    /// The currency word right after the figure that ends at `end`, if there is one. «2 pounds
+    /// of beef» is a weight, not money (2026-11-19).
+    private static func currencyWord(after end: Int, in words: Words) -> String? {
+        guard let next = words.word(end + 1), currencyWords.contains(next) else { return nil }
+        if next == "pound" || next == "pounds", words.word(end + 2) == "of" { return nil }
+        return next
+    }
 
     /// Words that put the amount right after them: «5 tacos de 20» is 20, «gasté 300 en 2 cosas»
     /// is 300.
@@ -428,7 +467,7 @@ public enum QuickEntryParser {
         }
         if let marked = candidates.first(where: { candidate in
             words.original[candidate.index].contains("$")
-                || words.word(candidate.end + 1).map(currencyWords.contains) == true
+                || currencyWord(after: candidate.end, in: words) != nil
         }) { return (marked, true) }
         if let led = candidates.first(where: { candidate in
             words.word(candidate.index - 1).map(amountLeads.contains) == true
@@ -444,7 +483,7 @@ public enum QuickEntryParser {
         guard let figure = amountChoice(in: words)?.figure else { return nil }
         // «2 mil» is kept as 2000: `AmountParser` reads digits, not words.
         let said = figure.scaled ? BackupNumber.text(figure.value) : words.original[figure.index]
-        if let next = words.word(figure.end + 1), currencyWords.contains(next) {
+        if let next = currencyWord(after: figure.end, in: words) {
             words.use(figure.index...(figure.end + 1))
             return said + " " + (spelledCurrencies[next] ?? words.original[figure.end + 1])
         }

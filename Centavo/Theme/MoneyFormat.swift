@@ -52,9 +52,9 @@ func spokenWholeMoney(_ amount: Decimal, isoCode: String) -> String {
     return amount.formatted(spokenStyle(isoCode).precision(.fractionLength(0)))
 }
 
-/// The currency by its name, in English: the iPhone's own English, or the US one.
-private func spokenStyle(_ isoCode: String) -> Decimal.FormatStyle.Currency {
-    let english = Locale.current.language.languageCode?.identifier == "en"
-    let locale = english ? Locale.current : Locale(identifier: "en_US")
-    return Decimal.FormatStyle.Currency(code: isoCode, locale: locale).presentation(.fullName)
+/// The currency by its name, in English, with the figure written as everywhere else in the
+/// app, «1,234.50», whatever the region (2026-11-19: an iPhone in English set to India said
+/// «1,23,456.00 Mexican pesos»). The name is said in English, the language this is for.
+func spokenStyle(_ isoCode: String) -> Decimal.FormatStyle.Currency {
+    Decimal.FormatStyle.Currency(code: isoCode, locale: Locale(identifier: "en_US")).presentation(.fullName)
 }

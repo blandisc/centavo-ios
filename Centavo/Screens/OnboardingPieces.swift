@@ -41,16 +41,16 @@ struct WelcomeDemo: View {
                 // It moves by itself: say it is an example, or it reads as something you did
                 // (user research, 2026-10-29).
                 header
-                Text(left.formatted(currencyStyle(currency).precision(.fractionLength(0))))
+                Text(shownLeft.formatted(currencyStyle(currency).precision(.fractionLength(0))))
                     .font(.ticket(.display))
                     .tracking(Theme.Tracking.figure)
                     .foregroundStyle(Theme.ink)
-                    .contentTransition(.numericText(value: NSDecimalNumber(decimal: left).doubleValue))
+                    .contentTransition(.numericText(value: NSDecimalNumber(decimal: shownLeft).doubleValue))
                     .monospacedDigit()
             }
             Perforation()
             VStack(spacing: Theme.Space.s) {
-                ForEach(rows.prefix(3)) { row($0) }
+                ForEach(shownRows.prefix(3)) { row($0) }
             }
             monthStrip
         }
@@ -92,7 +92,7 @@ struct WelcomeDemo: View {
                     .strokeBorder(day == today ? Theme.ink : Theme.hairline, lineWidth: Theme.Stroke.hairline)
                     .background(alignment: .bottom) {
                         GeometryReader { proxy in
-                            let fill: CGFloat = day < today ? Theme.Size.welcomeDayGone : day == today ? todayFill : 0
+                            let fill: CGFloat = day < today ? Theme.Size.welcomeDayGone : day == today ? shownFill : 0
                             Rectangle().fill(Theme.brass)
                                 .frame(height: proxy.size.height * fill)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -184,6 +184,7 @@ struct WelcomeDemo: View {
     /// (and keep the phone busy). Still from the start with reduced motion or Low Power Mode.
     private func play() async {
         if MotionPolicy.isStill(reduceMotion: reduceMotion) {
+            guard rows.count == 1 else { return }
             rows.insert(Self.coming[0], at: 0)
             left -= Self.coming[0].amount
             todayFill = Theme.Size.welcomeTodayStep
@@ -212,6 +213,13 @@ struct WelcomeDemo: View {
 
     private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
 
+    /// Still and nothing played yet: the first frame already shows where it stays (2026-11-19).
+    /// Set only in `.task`, the payment landed a frame after the page was drawn.
+    private var startsStill: Bool { still && rows.count == 1 && notice == nil }
+    private var shownLeft: Decimal { startsStill ? Self.start - Self.coming[0].amount : left }
+    private var shownRows: [Payment] { startsStill ? [Self.coming[0]] + rows : rows }
+    private var shownFill: CGFloat { startsStill ? Theme.Size.welcomeTodayStep : todayFill }
+
     /// What is left to come, all at once and with no animation: where the demo ends.
     private func land(_ payments: ArraySlice<Payment>) {
         var instantly = Transaction(animation: nil)
@@ -239,6 +247,9 @@ struct WalletChain: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var node = Theme.Size.chainNode
     @State private var lit = 0
+
+    /// Fully lit from the first frame when still (2026-11-19), not a frame later from `.task`.
+    private var shownLit: Int { MotionPolicy.isStill(reduceMotion: reduceMotion) ? nodes.count - 1 : lit }
 
     private let nodes: [(String, String)] = [
         ("wallet.pass", String(localized: "Pagas")),
@@ -308,23 +319,23 @@ struct WalletChain: View {
     }
 
     private func link(_ index: Int) -> some View {
-        Capsule().fill(lit >= index ? Theme.brass : Theme.dimmed)
+        Capsule().fill(shownLit >= index ? Theme.brass : Theme.dimmed)
     }
 
     private func circle(_ index: Int, side: CGFloat) -> some View {
         Image(systemName: nodes[index].0)
             .font(Theme.Symbol.large)
-            .foregroundStyle(lit >= index ? Theme.brass : Theme.faint)
+            .foregroundStyle(shownLit >= index ? Theme.brass : Theme.faint)
             .frame(width: side, height: side)
-            .background(lit >= index ? Theme.brass.opacity(Theme.Opacity.wash) : Theme.raised,
+            .background(shownLit >= index ? Theme.brass.opacity(Theme.Opacity.wash) : Theme.raised,
                         in: Circle())
-            .overlay { Circle().strokeBorder(lit >= index ? Theme.brass : Theme.hairline) }
+            .overlay { Circle().strokeBorder(shownLit >= index ? Theme.brass : Theme.hairline) }
     }
 
     private func name(_ index: Int) -> some View {
         Text(nodes[index].1)
             .font(.ticket(.caption))
-            .foregroundStyle(lit >= index ? Theme.ink : Theme.muted)
+            .foregroundStyle(shownLit >= index ? Theme.ink : Theme.muted)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -346,7 +357,7 @@ struct WelcomeDaysStrip: View {
                     .background(alignment: .bottom) {
                         GeometryReader { proxy in
                             Rectangle().fill(Theme.brass)
-                                .frame(height: filled && shown ? proxy.size.height * Theme.Size.welcomeDayGone : Theme.Space.none)
+                                .frame(height: filled && (shown || still) ? proxy.size.height * Theme.Size.welcomeDayGone : Theme.Space.none)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
                         }
                     }
@@ -358,6 +369,9 @@ struct WelcomeDaysStrip: View {
         .onAppear { fill() }
         .onChange(of: filled) { fill() }
     }
+
+    /// Filled from the first frame when still (2026-11-19), not a frame later from `onAppear`.
+    private var still: Bool { MotionPolicy.isStill(reduceMotion: reduceMotion) }
 
     private func fill() {
         withAnimation(Theme.Motion.animation(Theme.Motion.Money.total, reduceMotion: MotionPolicy.isStill(reduceMotion: reduceMotion))) {

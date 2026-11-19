@@ -44,7 +44,10 @@ struct SettingsView: View {
                 } header: {
                     Text("Moneda").ticketCaption()
                 } footer: {
-                    HintText("La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. La vista (Lista, Mosaico o Mínima) se elige en «···».")
+                    // Said with the button's spoken name, «Más» (`MenuPath`, 2026-11-19).
+                    let footer = String(localized: "La moneda en la que suma tu mes. Lo que llega en otra se muestra aparte. La vista (Lista, Mosaico o Mínima) se elige en «···».")
+                    HintText(footer)
+                        .spokenMenuPath(footer)
                 }
                 .listRowBackground(Theme.surface)
 

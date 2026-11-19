@@ -117,8 +117,10 @@ struct OnboardingView: View {
                 ToolbarItem(placement: .principal) {
                     Signature("al día", spoken: "Al día")
                 }
-                ToolbarItem(placement: .topBarLeading) {
-                    if page > 0 && page < pages - 1 {
+                // The condition outside the item (2026-11-19): an item left empty may keep its
+                // glass capsule in iOS 26.
+                if page > 0 && page < pages - 1 {
+                    ToolbarItem(placement: .topBarLeading) {
                         Button("Anterior", systemImage: "chevron.left") {
                             focused = nil
                             go(to: page - 1)
@@ -126,8 +128,8 @@ struct OnboardingView: View {
                         .accessibilityIdentifier("bienvenida-anterior")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if page < 3 {
+                if page < 3 {
+                    ToolbarItem(placement: .topBarTrailing) {
                         // Not while a page slides in (2026-11-18): «go» would turn it down after
                         // the save had already marked the welcome done, and what was typed
                         // afterwards was never saved.
@@ -204,7 +206,9 @@ struct OnboardingView: View {
         case 0: return String(localized: "Empezar")
         case 3: return setUpTitle
         case pages - 1:
-            if thenGuide { return setUpTitle }
+            // Not «Configurar ahora» again (2026-11-19): the same button two pages in a row read
+            // as if the first tap had done nothing.
+            if thenGuide { return String(localized: "Abrir la guía") }
             return String(localized: "Ver mi día")
         default: return String(localized: "Continuar")
         }
@@ -320,8 +324,8 @@ struct OnboardingView: View {
                 .selectableCard(selected: focused == .budget)
             }
             .onboardingRise(2)
-            NoteText("Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «··· › Presupuesto».",
-                     color: Theme.faint)
+            NoteText(Self.budgetNote, color: Theme.faint)
+                .spokenMenuPath(Self.budgetNote)
                 .onboardingRise(3)
         }
         .sensoryFeedback(.selection, trigger: currency)
@@ -549,7 +553,8 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .onboardingRise(3)
             // The two buttons are in the bottom bar, like every page's.
-            HintText("¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+». Puedes conectar Wallet cuando quieras en «··· › Conectar Wallet».")
+            HintText(Self.walletLater)
+                .spokenMenuPath(Self.walletLater)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onboardingRise(4)
         }
@@ -575,7 +580,16 @@ struct OnboardingView: View {
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($titleFocused)
                     .padding(.top, Theme.Space.l)
-                doneFigure
+                // iCloud's setup stayed and nothing typed here was saved (2026-11-19): said in
+                // place of the figure, which was this page's and not the one «Hoy» will show.
+                if foundInICloud {
+                    Text("Tu configuración llegó de iCloud: se quedan el presupuesto y los gastos fijos de tu otro iPhone.")
+                        .font(.ticket(.callout))
+                        .foregroundStyle(Theme.muted)
+                        .multilineTextAlignment(.center)
+                } else {
+                    doneFigure
+                }
                 // What «Hoy» will show, said once before seeing it (2026-11-18, owner: in place
                 // of the check mark).
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -596,12 +610,9 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Theme.Space.m)
                 .ticketPanel()
-                // What was typed here wasn't saved: «Listo» says why instead of showing it.
-                if foundInICloud {
-                    HintText("Tu configuración llegó de iCloud: se quedan el presupuesto y los gastos fijos de tu otro iPhone.")
-                }
                 if saveFailed {
-                    HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «··· › Gastos fijos».")
+                    HintText(Self.fixedNotSaved)
+                        .spokenMenuPath(Self.fixedNotSaved)
                 }
             }
             .padding(.horizontal, Theme.Space.screen)
@@ -615,10 +626,17 @@ struct OnboardingView: View {
 
     /// The figure and what carries over only when «Hoy» will show a figure (2026-11-18): with no
     /// budget, or fixed expenses past it, «Hoy» has no brass figure and they said otherwise.
+    /// With iCloud's setup, only what holds whatever it is: the figure was this page's
+    /// (2026-11-19). On the way to the guide, first that Wallet is still to connect: «Listo» read
+    /// as if «Configurar ahora» had already done it (2026-11-19).
     private var doneLines: [String] {
         let figure = pace.map { $0.dailyBase > 0 } ?? false
-        return (figure ? Self.figureLines : Self.noFigureLines) + Self.alwaysLines
+        let month: [String] = foundInICloud ? [] : (figure ? Self.figureLines : Self.noFigureLines)
+        let next: [String] = thenGuide ? [Self.guideLine] : []
+        return next + month + Self.alwaysLines
     }
+
+    static let guideLine = String(localized: "Falta conectar Wallet: la guía te lleva toque por toque.")
 
     // Without design names or a «Hoy» nobody sees (2026-11-18): with «Mi dinero» off there is
     // no tab called «Hoy», and «latón» is the name of a color token.
@@ -646,17 +664,39 @@ struct OnboardingView: View {
                         .foregroundStyle(Theme.muted)
                 }
             } else {
-                Text("Tus fijos pasan tu presupuesto por \(whole(fixedTotal - budget)). Ajústalo en «··· › Presupuesto».")
+                let over = overBudgetText(budget: budget)
+                Text(over)
+                    .spokenMenuPath(over)
                     .font(.ticket(.callout))
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
         } else {
-            Text("Fija tu presupuesto cuando quieras en «··· › Presupuesto» y Al día te dirá cuánto puedes gastar cada día.")
+            Text(Self.noBudgetText)
+                .spokenMenuPath(Self.noBudgetText)
                 .font(.ticket(.callout))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
         }
+    }
+
+    // The texts that name a way through «···», kept as strings so VoiceOver can be told the
+    // same one with the button's spoken name (`MenuPath`, 2026-11-19).
+    private static var budgetNote: String {
+        String(localized: "Sin lo que vas a ahorrar. Lo que no gastes un día pasa al siguiente; lo cambias cuando quieras en «··· › Presupuesto».")
+    }
+    private static var walletLater: String {
+        String(localized: "¿No pagas con el iPhone? Toca «Después» y anota cada gasto con «+». Puedes conectar Wallet cuando quieras en «··· › Conectar Wallet».")
+    }
+    private static var fixedNotSaved: String {
+        String(localized: "Al día no pudo guardar tus gastos fijos todavía. Revísalos en «··· › Gastos fijos».")
+    }
+    private static var noBudgetText: String {
+        String(localized: "Fija tu presupuesto cuando quieras en «··· › Presupuesto» y Al día te dirá cuánto puedes gastar cada día.")
+    }
+    private func overBudgetText(budget: Decimal) -> String {
+        let over = whole(fixedTotal - budget)
+        return String(localized: "Tus fijos pasan tu presupuesto por \(over). Ajústalo en «··· › Presupuesto».")
     }
 
     /// «Presupuesto $8,000 · fijos $2,000», or the budget alone.

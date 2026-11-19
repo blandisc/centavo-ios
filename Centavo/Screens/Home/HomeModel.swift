@@ -215,15 +215,20 @@ final class HomeModel {
     /// its days, a name with it or an amount that big; with only «más de» or «menos de», the
     /// amounts inside them, charges and refunds alike. With only figures to find («300»),
     /// everything: «5» is in $1.25.
-    static func searchCandidates(for query: SearchQuery) -> FetchDescriptor<Expense> {
+    ///
+    /// A word of the translation of one of the app's own names («groc» in «Groceries», «merchant»
+    /// in «No merchant») is not in the store, which keeps the Spanish: it narrows to what holds
+    /// it or is stored as one of those names (2026-11-19). Before, it didn't narrow at all, and
+    /// in English most words scanned every expense; and «No merchant» found nothing.
+    /// `display`: how a stored own name reads (the catalog's; tests pass their own).
+    static func searchCandidates(for query: SearchQuery,
+                                 display: (String) -> String = HomeModel.shownOwnName) -> FetchDescriptor<Expense> {
         let newestFirst = [SortDescriptor(\Expense.date, order: .reverse)]
         guard query.category == nil else { return FetchDescriptor(sortBy: newestFirst) }
         let lettered = query.words.filter { $0.contains { !$0.isNumber && $0 != "." } }
-        // A word of the English of one of the app's own names («groceries») is not in the
-        // store, which keeps the Spanish («Despensa»): it never narrows (2026-11-18).
-        let wordy = lettered.filter { word in !BuiltInName.inTranslation(word) }
-        if let word = wordy.max(by: { $0.count < $1.count }) {
-            return FetchDescriptor(predicate: names(containing: word), sortBy: newestFirst)
+        let wordy = lettered.compactMap { word in narrowing(word, display: display) }
+        if let word = wordy.max(by: { $0.word.count < $1.word.count }) {
+            return FetchDescriptor(predicate: word.predicate, sortBy: newestFirst)
         }
         if query.words.isEmpty, let interval = query.interval, let month = query.monthWord {
             let start = interval.start, end = interval.end
@@ -274,6 +279,54 @@ final class HomeModel {
             expense.amount <= negativeFloor && expense.amount >= negativeHigh
         }
         return #Predicate<Expense> { expense in charge.evaluate(expense) || refund.evaluate(expense) }
+    }
+
+    /// How a stored own name reads in the iPhone's language: a category or «Efectivo»
+    /// (`BuiltInName`), or «Sin comercio» (`Expense.shownMerchant`).
+    static func shownOwnName(_ stored: String) -> String {
+        stored == Expense.noMerchant ? Expense.shownMerchant(stored) : BuiltInName.localized(stored)
+    }
+
+    /// A word and what the store can keep for it. `nil` when it can't narrow: it is in the
+    /// translations of too many own names («e»), and the predicate would only grow.
+    private static func narrowing(_ word: String, display: (String) -> String) -> (word: String, predicate: Predicate<Expense>)? {
+        let wanted = fold(word)
+        let own = (BuiltInName.categories + [BuiltInName.cash]).filter { name in
+            let translated = display(name)
+            return translated != name && fold(translated).contains(wanted)
+        }
+        guard own.count <= ownNamesLimit else { return nil }
+        let blank = display(Expense.noMerchant)
+        let noMerchant = blank != Expense.noMerchant && fold(blank).contains(wanted)
+        var found = names(containing: word)
+        for name in own {
+            let before = found
+            let stored = filed(as: name)
+            found = #Predicate<Expense> { expense in before.evaluate(expense) || stored.evaluate(expense) }
+        }
+        if noMerchant {
+            let before = found
+            let none = Expense.noMerchant
+            found = #Predicate<Expense> { expense in before.evaluate(expense) || expense.merchant == none }
+        }
+        return (word, found)
+    }
+
+    /// More own names than this for one word and the store isn't asked to narrow.
+    private static let ownNamesLimit = 6
+
+    /// An expense whose category or card holds one of the app's own names, as it's stored
+    /// (ignoring accents and capitals, as `BuiltInName.shown` does).
+    private static func filed(as name: String) -> Predicate<Expense> {
+        #Predicate<Expense> { expense in
+            (expense.category?.localizedStandardContains(name) ?? false)
+                || (expense.card?.localizedStandardContains(name) ?? false)
+        }
+    }
+
+    private static func fold(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespaces)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
     /// An expense whose merchant, readable name, category or card holds `word`, ignoring

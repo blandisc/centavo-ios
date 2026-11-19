@@ -18,6 +18,10 @@ enum DailyBackup {
     static let folderNameKey = "respaldo.carpetaNombre"
     /// The last time a run failed, cleared by the next one that works: «Hoy» says so.
     static let failedKey = "respaldo.fallo"
+    /// The failure in `failedKey` that kept the expenses alone, in a «solo-gastos» file
+    /// (`BackupRetention.partialName`), because a part of the data didn't open: its date, the
+    /// same as `failedKey`'s. Said apart, because that file is the one to restore (2026-11-19).
+    static let failedPartialKey = "respaldo.fallo.soloGastos"
     /// The newest file's name, to ask iCloud whether it went up.
     static let fileKey = "respaldo.archivo"
     /// The last backup went apart, and why (`BackupAsideNote.stored`), until a daily one is
@@ -60,7 +64,9 @@ enum DailyBackup {
             case .halfRestored where !Features.money: "No se pudieron restaurar tus gastos, pero una parte de tus datos ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
             // With «Mi dinero» hidden its screen, the one that says restoring fixes it, can't be
             // reached: said here (2026-11-18).
-            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, restaura un respaldo en ··· › Ajustes › Respaldo diario: lo que no abría queda guardado aparte en este iPhone, sin borrarse. Restaurar también regresa tus gastos al día de ese respaldo."
+            // Which file to restore (2026-11-19): an older daily one took the expenses back to
+            // its day, losing every one since the backups began to fail.
+            case .moneyUnreadable where !Features.money: "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, en ··· › Ajustes › Respaldo diario restaura el respaldo más reciente que dice «solo-gastos»: regresa tus gastos como estaban al guardarse, y lo que no abría queda guardado aparte en este iPhone, sin borrarse. Un respaldo diario anterior regresaría tus gastos al día en que se hizo."
             case .moneyNotReady: "No se pudo abrir «Mi dinero» para restaurarlo. Tus gastos no cambiaron. Si «Mi dinero» no abría, quedó guardado aparte en este iPhone, sin borrarse. Cierra Al día por completo, vuelve a abrirla e intenta otra vez."
             case .halfRestored: "No se pudieron restaurar tus gastos, pero «Mi dinero» ya quedó como en el respaldo. Para dejar todo como estaba, restaura la copia «antes de restaurar» que se guardó antes de empezar."
             case .noPlaceForCopy: "Antes de restaurar hay que guardar una copia de lo que hay en este iPhone, y no hay una carpeta donde ponerla. No se cambió nada."
@@ -91,6 +97,22 @@ enum DailyBackup {
     }
 
     static var lastFailure: Date? { UserDefaults.standard.object(forKey: failedKey) as? Date }
+
+    /// The last failure kept the expenses alone in a «solo-gastos» file (`failedPartialKey`).
+    /// With «Mi dinero» on, its own screen says what to do.
+    static func lastFailureKeptExpensesOnly(defaults: UserDefaults = .standard) -> Bool {
+        guard !Features.money, let failed = defaults.object(forKey: failedKey) as? Date,
+              let partial = defaults.object(forKey: failedPartialKey) as? Date else { return false }
+        return partial == failed
+    }
+
+    /// What the backup's screen says under «Respaldar ahora» when the last try failed.
+    static func lastFailureText(defaults: UserDefaults = .standard) -> String {
+        guard lastFailureKeptExpensesOnly(defaults: defaults) else {
+            return String(localized: "El último intento no se pudo hacer.")
+        }
+        return String(localized: "El último intento guardó solo tus gastos, en un respaldo que dice «solo-gastos»: una parte de tus datos no se pudo abrir. Si al volver a abrir Al día sigue igual, restaura el «solo-gastos» más reciente.")
+    }
 
     /// The last backup was written apart instead of taking the day's name, and why; `nil` while
     /// the last one is a daily file.
@@ -144,6 +166,9 @@ enum DailyBackup {
     /// can be tried without a password in the Keychain.
     static func notice(now: Date = AppClock.now) -> String? {
         if let failed = lastFailure, failed > (lastBackup ?? .distantPast) {
+            if lastFailureKeptExpensesOnly() {
+                return String(localized: "Tu último respaldo guardó solo tus gastos: una parte de tus datos no se pudo abrir. Revísalo en ··· › Ajustes › Respaldo diario.")
+            }
             return String(localized: "El último respaldo no se pudo hacer. Revísalo en ··· › Ajustes › Respaldo diario.")
         }
         if isOverdue(now: now) {
@@ -306,6 +331,11 @@ enum DailyBackup {
             return now
         } catch {
             UserDefaults.standard.set(now, forKey: failedKey)
+            if case .moneyUnreadable? = error as? Failure {
+                UserDefaults.standard.set(now, forKey: failedPartialKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: failedPartialKey)
+            }
             throw error
         }
     }
@@ -319,6 +349,7 @@ enum DailyBackup {
         defaults.set(now, forKey: lastKey)
         defaults.set(written.name, forKey: fileKey)
         defaults.removeObject(forKey: failedKey)
+        defaults.removeObject(forKey: failedPartialKey)
         if let stored = written.aside?.stored {
             defaults.set(stored, forKey: asideKey)
         } else {

@@ -143,6 +143,19 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+/// A Wallet payment that already took a name-only notice as its own (`PendingPayments`): its
+/// shops and when they were paired. Kept a couple of minutes, so a payment takes one notice
+/// only (2026-11-19).
+public struct NoticePairing: Codable, Equatable, Sendable {
+    public let shops: [String]
+    public let date: Date
+
+    public init(shops: [String], date: Date) {
+        self.shops = shops
+        self.date = date
+    }
+}
+
 /// What a pending payment fills the sheet of a new expense with (`PendingPayment.prefill`).
 /// `nil` is «not known»: the sheet keeps its own start for it.
 public struct ExpensePrefill: Equatable, Sendable {
@@ -199,17 +212,48 @@ public enum PendingPayments {
     /// a notice that brought only a name, from a shop that starts alike and within the two
     /// minutes the two automations take (`CaptureGuard.otherSourceWindow`), was that same
     /// payment and goes by itself. Anything with a figure or a currency stays.
+    ///
+    /// One notice at most, the closest in time: one payment comes with one notice, and a
+    /// second one from the same shop is another purchase whose amount didn't arrive
+    /// (2026-11-19: two purchases at the same Oxxo, and the second was lost with no pending).
     public static func settling(_ list: [PendingPayment], savedIn merchants: [String], at date: Date) -> [PendingPayment] {
-        list.filter { !isSettled($0, by: merchants, at: date) }
+        let matching = list.indices.filter { isSettled(list[$0], by: merchants, at: date) }
+        guard let closest = matching.min(by: { first, second in
+            abs(list[first].date.timeIntervalSince(date)) < abs(list[second].date.timeIntervalSince(date))
+        }) else { return list }
+        var left = list
+        left.remove(at: closest)
+        return left
     }
 
-    /// Whether a notice is the same payment as one already saved (see `settling`).
+    /// Whether a notice could be the same payment as one saved in `merchants` (see `settling`).
     public static func isSettled(_ payment: PendingPayment, by merchants: [String], at date: Date) -> Bool {
         // Charges too (2026-11-19): every capture keeps its notices as charges, so leaving them
         // out would undo this pairing and every Wallet notice would stay beside its payment.
         payment.isNameOnly
             && abs(payment.date.timeIntervalSince(date)) <= CaptureGuard.otherSourceWindow
             && merchants.contains { CaptureGuard.shopsAlike(payment.text, $0) }
+    }
+
+    /// Whether a notice that just arrived is the payment of one of `saved` (the shops of each
+    /// Wallet payment saved in the last two minutes) and is not kept. One to one (2026-11-19):
+    /// a payment that already took a notice (`paired`) takes no other, so the second purchase
+    /// at the same shop whose amount didn't arrive stays pending. With doubt, it is kept.
+    public static func isSettled(_ payment: PendingPayment, among saved: [[String]],
+                                 paired: [NoticePairing], at date: Date) -> Bool {
+        let payments = saved.filter { isSettled(payment, by: $0, at: date) }.count
+        let taken = paired.filter { pairing in
+            abs(pairing.date.timeIntervalSince(date)) <= CaptureGuard.otherSourceWindow
+                && isSettled(payment, by: pairing.shops, at: date)
+        }.count
+        return payments > taken
+    }
+
+    /// The pairings still inside the two minutes at `date`, plus `new` if given: what is kept.
+    public static func pairings(_ list: [NoticePairing], adding new: NoticePairing? = nil,
+                                at date: Date) -> [NoticePairing] {
+        let recent = list.filter { abs($0.date.timeIntervalSince(date)) <= CaptureGuard.otherSourceWindow }
+        return recent + (new.map { [$0] } ?? [])
     }
 
     public static func adding(_ payment: PendingPayment, to list: [PendingPayment], now: Date) -> [PendingPayment] {

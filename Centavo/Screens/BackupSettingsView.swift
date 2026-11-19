@@ -506,7 +506,8 @@ struct BackupSettingsView: View {
         case .uploaded, nil: text = String(localized: "Último respaldo: \(when)")
         }
         if let failed = DailyBackup.lastFailure, failed > last {
-            text += "\n" + String(localized: "El último intento no se pudo hacer.")
+            // Which failure it was when that says what to restore (2026-11-19).
+            text += "\n" + DailyBackup.lastFailureText()
         }
         return text
     }

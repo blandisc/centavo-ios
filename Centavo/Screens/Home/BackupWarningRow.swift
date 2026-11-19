@@ -28,6 +28,8 @@ struct BackupWarningRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("aviso-respaldo")
+        // «··· › Ajustes › …» said with the button's spoken name, «Más» (`MenuPath`, 2026-11-19).
+        .spokenMenuPath(text)
         .accessibilityHint("Abre Ajustes")
     }
 }

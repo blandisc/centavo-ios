@@ -21,36 +21,65 @@ enum UnreadNotice {
     static let textKey = "unreadWalletNotice"
     static let dateKey = "unreadWalletNoticeDate"
 
+    /// The Wallet payments that already took a name-only notice as their own in the last two
+    /// minutes (`NoticePairing`), as JSON text, so each takes one only (2026-11-19). Under
+    /// «respaldo.», like the list: it is about this iPhone's captures, not for a backup.
+    static let pairedKey = "respaldo.avisosEmparejados"
+
     /// A notice that couldn't be read. `always`: it read as a charge whose amount still didn't
     /// make it, so it is kept whatever it looks like; otherwise only what looks like a wrong
     /// wiring is (`PendingPayment.unread`).
     ///
-    /// `justSaved`: the shops of the Wallet payments saved in the last two minutes. A notice
+    /// `justSaved`: the shops of each Wallet payment saved in the last two minutes. A notice
     /// that brought only a name from one of them is that same payment, told by the other
-    /// automation, and is not kept (`PendingPayments.isSettled`).
-    static func note(_ text: String, always: Bool = false, justSaved: [String] = [],
+    /// automation, and is not kept, unless that payment already took one (2026-11-19: the
+    /// second purchase at the same shop was lost; `PendingPayments.isSettled`).
+    static func note(_ text: String, always: Bool = false, justSaved: [[String]] = [],
                      now: Date = AppClock.now, defaults: UserDefaults = .standard) {
-        guard let payment = PendingPayment.unread(text, always: always, date: now),
-              !PendingPayments.isSettled(payment, by: justSaved, at: now) else { return }
-        add(payment, now: now, defaults: defaults)
+        guard let payment = PendingPayment.unread(text, always: always, date: now) else { return }
+        let paired = pairings(defaults: defaults)
+        guard PendingPayments.isSettled(payment, among: justSaved, paired: paired, at: now),
+              let shops = justSaved.first(where: { PendingPayments.isSettled(payment, by: $0, at: now) }) else {
+            add(payment, now: now, defaults: defaults)
+            return
+        }
+        let pairing = NoticePairing(shops: shops, date: now)
+        writePairings(PendingPayments.pairings(paired, adding: pairing, at: now), defaults: defaults)
     }
 
     /// A good payment was just saved in `merchants` (as sent and as named): the notice that
-    /// brought only that shop's name in the last two minutes was the same payment and goes.
-    /// Nothing with a figure or a currency is ever taken away here.
+    /// brought only that shop's name in the last two minutes was the same payment and goes,
+    /// one at most, and the payment counts as paired. Nothing with a figure or a currency is
+    /// ever taken away here.
     static func settle(savedIn merchants: [String], now: Date = AppClock.now, defaults: UserDefaults = .standard) {
         let list = PendingPayments.decode(defaults.string(forKey: listKey) ?? "")
         let left = PendingPayments.settling(list, savedIn: merchants, at: now)
-        if left != list { write(left, defaults: defaults) }
+        guard left != list else { return }
+        write(left, defaults: defaults)
+        let pairing = NoticePairing(shops: merchants.filter { !$0.isEmpty }, date: now)
+        writePairings(PendingPayments.pairings(pairings(defaults: defaults), adding: pairing, at: now),
+                      defaults: defaults)
     }
 
-    /// The shops of the Wallet payments saved in the last two minutes, as sent and as named:
-    /// what `note(justSaved:)` compares a name-only notice with.
-    static func justSavedShops(in context: ModelContext, now: Date = AppClock.now) -> [String] {
+    /// The shops of each Wallet payment saved in the last two minutes, as sent and as named:
+    /// what `note(justSaved:)` compares a name-only notice with, one entry per payment.
+    static func justSavedShops(in context: ModelContext, now: Date = AppClock.now) -> [[String]] {
         let since = now.addingTimeInterval(-CaptureGuard.otherSourceWindow)
         let descriptor = FetchDescriptor<Expense>(predicate: #Predicate { $0.date >= since && $0.rawAmount != nil })
         let rows = (try? context.fetch(descriptor)) ?? []
-        return rows.flatMap { [$0.merchant, $0.displayName ?? ""] }.filter { !$0.isEmpty }
+        return rows.map { row in [row.merchant, row.displayName ?? ""].filter { !$0.isEmpty } }
+    }
+
+    private static func pairings(defaults: UserDefaults) -> [NoticePairing] {
+        LenientList.decode(NoticePairing.self, from: defaults.string(forKey: pairedKey) ?? "").items
+    }
+
+    private static func writePairings(_ list: [NoticePairing], defaults: UserDefaults) {
+        if list.isEmpty {
+            defaults.removeObject(forKey: pairedKey)
+        } else {
+            defaults.set(LenientList.encode(list), forKey: pairedKey)
+        }
     }
 
     /// A payment that read and couldn't be saved: what was read of it stays here.
@@ -129,6 +158,7 @@ enum UnreadNotice {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains(where: { $0.hasPrefix("-centavo-demo") }) || arguments.contains("-centavo-empty") else { return }
         clear(defaults: defaults)
+        defaults.removeObject(forKey: pairedKey)
         defaults.removeObject(forKey: textKey)
         defaults.removeObject(forKey: dateKey)
         CaptureArrival.forget(defaults: defaults)

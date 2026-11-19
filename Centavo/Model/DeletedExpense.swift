@@ -11,7 +11,9 @@ struct DeletedExpense: Identifiable {
     init(_ expense: Expense) { row = expense.backedUp }
 
     var merchant: String { row.merchant }
-    var displayName: String? { row.displayName }
+    /// The name «Deshacer» says: the one shown, never the stored «Sin comercio» (2026-11-18:
+    /// stored in Spanish, shown translated), which read «You deleted Sin comercio» in English.
+    var displayName: String? { row.displayName ?? Expense.shownMerchant(row.merchant) }
 
     func make() -> Expense? { try? Expense(backup: row) }
 }

@@ -269,7 +269,7 @@ struct WhereItGoesView: View {
     private var spoken: String {
         let total = slices.reduce(Decimal(0)) { $0 + $1.amount }
         guard !slices.isEmpty, total > 0 else { return entry.spoken(state, money) }
-        let parts = slices.map { "\(Self.name(of: $0)) \(money.whole($0.amount))" }
+        let parts = slices.map { "\(Self.name(of: $0)) \(money.said($0.amount))" }
         let said = entry.spoken(state, money)
         let list = parts.formatted(.list(type: .and).locale(Locale.current))
         return String(localized: "\(said). En qué se va: \(list)")

@@ -72,9 +72,9 @@ final class PendingPaymentsStoreTests: XCTestCase {
     }
 
     func testUnAvisoConSoloElNombreNoSeGuardaSiEsePagoAcabaDeAnotarse() {
-        UnreadNotice.note("Oxxo", justSaved: ["Oxxo Roble"], now: now, defaults: defaults)
+        UnreadNotice.note("Oxxo", justSaved: [["Oxxo Roble"]], now: now, defaults: defaults)
         XCTAssertTrue(UnreadNotice.pending(now: now, defaults: defaults).isEmpty)
-        UnreadNotice.note("Oxxo", justSaved: ["Google"], now: now, defaults: defaults)
+        UnreadNotice.note("Oxxo", justSaved: [["Google"]], now: now, defaults: defaults)
         XCTAssertEqual(UnreadNotice.pending(now: now, defaults: defaults).count, 1)
     }
 

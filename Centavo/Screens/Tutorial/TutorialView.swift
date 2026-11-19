@@ -170,6 +170,11 @@ struct TutorialView: View {
             if pressed {
                 pressStart = AppClock.now
                 heldSince = AppClock.now
+            } else if scenePhase != .active {
+                // The system cancels a held finger when the app leaves the front (Control
+                // Center, a call): keep the clock stopped until it comes back, or the story
+                // would move on unseen (QA, 2026-11-18). The `.active` branch above releases it.
+                heldByLeaving = true
             } else if let since = heldSince {
                 heldBefore += AppClock.now.timeIntervalSince(since)
                 heldSince = nil

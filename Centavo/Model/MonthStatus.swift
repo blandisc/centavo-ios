@@ -102,7 +102,7 @@ enum MonthStatus {
             sentence = String(localized: "Llevas \(spent) este mes.")
         } else {
             let others = summary.others
-                .map { "\($0.label) \(plainAmount($0.amount))" }
+                .map { otherMoney($0.amount, isoCode: $0.isoCode, label: $0.label) }
                 .formatted(.list(type: .and))
             if summary.others.count > 1 {
                 sentence = String(localized: "Llevas \(spent) este mes, más \(others) en otras monedas.")
@@ -153,6 +153,14 @@ enum MonthStatus {
         return try context.fetch(FetchDescriptor<Expense>(
             predicate: #Predicate { $0.date >= start && $0.date < end }
         ))
+    }
+
+    /// Money in another currency, as Siri says it: in Spanish «USD 24.99», as always; in English
+    /// by its name, «24.99 US dollars» (2026-11-19: Siri read the code letter by letter).
+    static func otherMoney(_ amount: Decimal, isoCode: String?, label: String,
+                           asWritten: Bool = saysMoneyAsWritten) -> String {
+        guard !asWritten, let isoCode else { return "\(label) \(plainAmount(amount))" }
+        return amount.formatted(spokenStyle(isoCode))
     }
 
     /// Every figure here is said (Siri, the notice after a payment, VoiceOver): `spokenMoney`,
