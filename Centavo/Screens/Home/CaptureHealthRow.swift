@@ -73,8 +73,11 @@ enum CaptureCopy {
 struct CaptureHealthRow: View {
     let health: CaptureHealth
     let openGuide: () -> Void
+    /// «No uso Wallet»: turns «Avisar si no llegan pagos» off (`WalletWatch.key`), as Ajustes does.
+    var ignoreWallet: (() -> Void)?
 
     @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = Theme.Size.glyph
+    @State private var askingOptOut = false
 
     private var text: String {
         switch health {
@@ -126,6 +129,17 @@ struct CaptureHealthRow: View {
         return String(localized: "Llegó tu primer pago solo: \(text)")
     }
 
+    /// «No uso Wallet» under the warnings that ask to connect or check it (2026-11-19): whoever
+    /// pays only in cash or by card found the way to quiet them only in Ajustes. Not while
+    /// waiting for the first payment, nor once one came.
+    private var offersOptOut: Bool {
+        guard ignoreWallet != nil else { return false }
+        switch health {
+        case .never, .silent, .quiet: return true
+        case .waiting, .first, .recent: return false
+        }
+    }
+
     /// The first payment is said in the panel too, once: so the person sees that it worked.
     private var showsPanel: Bool {
         if case .first = health { return true }
@@ -137,6 +151,23 @@ struct CaptureHealthRow: View {
     }
 
     private var attention: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            warningButton
+            if offersOptOut {
+                SecondaryButton("No uso Wallet", identifier: "salud-no-uso-wallet") { askingOptOut = true }
+                    .padding(.horizontal, Theme.Space.m)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(alignment: .top) { Perforation().padding(.horizontal, Theme.Space.m) }
+                    .accessibilityHint("Deja de pedirte que conectes Wallet")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ticketPanel()
+        .padding(.vertical, Theme.Space.s)
+        .walletOptOut(isAsking: $askingOptOut) { ignoreWallet?() }
+    }
+
+    private var warningButton: some View {
         Button(action: openGuide) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                 Image(systemName: warning.icon)
@@ -158,11 +189,9 @@ struct CaptureHealthRow: View {
             }
             .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget, alignment: .leading)
-            .ticketPanel()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.vertical, Theme.Space.s)
         .accessibilityIdentifier("salud-captura")
         .accessibilityHint("Abre la guía del atajo")
     }
@@ -194,6 +223,30 @@ struct CaptureHealthRow: View {
         .accessibilityLabel(spokenText)
         .accessibilityIdentifier("salud-captura")
         .accessibilityHint("Abre la guía del atajo")
+    }
+}
+
+/// «No uso Wallet», asked once before it is done, saying where to turn it back on: the same
+/// switch as Ajustes' «Avisar si no llegan pagos» (2026-11-19). On «Hoy»'s warning and on the
+/// empty screen's Wallet card.
+private struct WalletOptOut: ViewModifier {
+    @Binding var isAsking: Bool
+    let confirm: () -> Void
+
+    func body(content: Content) -> some View {
+        content.alert("¿No usas Wallet?", isPresented: $isAsking) {
+            Button("No uso Wallet", action: confirm)
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("«Hoy» dejará de pedirte que lo conectes. Para volver a verlo, enciende «Avisar si no llegan pagos» en «··· › Ajustes».")
+        }
+    }
+}
+
+extension View {
+    /// Asks «¿No usas Wallet?» while `isAsking`, and calls `confirm` on «No uso Wallet».
+    func walletOptOut(isAsking: Binding<Bool>, confirm: @escaping () -> Void) -> some View {
+        modifier(WalletOptOut(isAsking: isAsking, confirm: confirm))
     }
 }
 

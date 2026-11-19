@@ -90,6 +90,17 @@ import Testing
         #expect(RepeatRule.monthly.describe(anchor: monday, calendar: Self.calendar) == "cada mes, el día 5")
         #expect(RepeatRule.months(2).describe(anchor: monday, calendar: Self.calendar) == "cada 2 meses, el día 5")
     }
+
+    /// The 31st falls on the last day of shorter months, so it is named that way (2026-11-19);
+    /// the 30th is still «el día 30»: in a 31-day month it is not the last.
+    @Test func theThirtyFirstIsTheLastDay() {
+        #expect(RepeatRule.monthly.describe(anchor: monday, day: 31, calendar: Self.calendar) == "cada mes, el último día")
+        #expect(RepeatRule.months(3).describe(anchor: monday, day: 31, calendar: Self.calendar) ==
+                "cada 3 meses, el último día del mes")
+        #expect(RepeatRule.monthly.describe(anchor: Self.day(31, month: 10), calendar: Self.calendar) ==
+                "cada mes, el último día")
+        #expect(RepeatRule.monthly.describe(anchor: monday, day: 30, calendar: Self.calendar) == "cada mes, el día 30")
+    }
 }
 
 @Suite struct BudgetPaceReservedTests {

@@ -4,7 +4,9 @@ import SwiftUI
 
 /// How the welcome ends: on the main screen, straight into the Wallet guide, or into «Cómo
 /// funciona» (2026-11-01).
-enum OnboardingExit { case home, guide, tutorial }
+/// Where the welcome goes when it closes. `restore`: «¿Ya usabas Al día? Restaurar un
+/// respaldo» on its first page, to Ajustes › Respaldo with nothing saved (2026-11-19).
+enum OnboardingExit { case home, guide, tutorial, restore }
 
 /// The first time Al día opens empty (redone 2026-11-01 in «Mi dinero»'s language): a step bar
 /// with its name, a question for a title, a drawing that shows instead of telling, and the least
@@ -267,7 +269,30 @@ struct OnboardingView: View {
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .onboardingRise(3)
+            restoreLink
+                .onboardingRise(4)
         }
+    }
+
+    /// Whoever already used Al día (a new iPhone without iCloud, a reinstall) goes straight to
+    /// restoring their backup (2026-11-19). Nothing is saved: there is nothing typed on this
+    /// page, and a budget, a currency or a fixed expense written now is what a restore would
+    /// then have to weigh against the backup's. The welcome is done, as with «Omitir».
+    private var restoreLink: some View {
+        Button {
+            guard !moving else { return }
+            focused = nil
+            finish(.restore)
+        } label: {
+            Text("¿Ya usabas Al día? Restaurar un respaldo")
+                .font(.ticket(.footnote))
+                .foregroundStyle(Theme.brass)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(.tapTarget)
+        .accessibilityIdentifier("bienvenida-restaurar")
+        .accessibilityHint("Cierra la bienvenida y abre Respaldo en Ajustes")
     }
 
     /// iOS 26's automation fires only for payments made by holding the iPhone up.
@@ -446,7 +471,7 @@ struct OnboardingView: View {
                             .focused($focused, equals: .amount)
                             .groupsThousands($draftAmount)
                             .accessibilityIdentifier("bienvenida-fijo-monto")
-                        Text("el día \(draftDay)").foregroundStyle(Theme.muted)
+                        Text(onDayText(draftDay)).foregroundStyle(Theme.muted)
                     }
                 }
                 .font(.ticket(.field))
@@ -715,8 +740,19 @@ struct OnboardingView: View {
 
     /// «día 15», after the amount with «·», or on its own line with accessibility text.
     private func dayText(_ day: Int) -> String {
-        if typeSize.isAccessibilitySize { return String(localized: "día \(day)") }
+        let last = day >= RepeatRule.lastDayOfMonth
+        if typeSize.isAccessibilitySize {
+            if last { return String(localized: "el último día del mes") }
+            return String(localized: "día \(day)")
+        }
+        if last { return String(localized: "· el último día del mes") }
         return String(localized: "· día \(day)")
+    }
+
+    /// «el día 15» beside the amount; the 31st is «el último día», as it repeats (2026-11-19).
+    private func onDayText(_ day: Int) -> String {
+        if day >= RepeatRule.lastDayOfMonth { return String(localized: "el último día") }
+        return String(localized: "el día \(day)")
     }
 
     // MARK: Saving
@@ -749,7 +785,11 @@ struct OnboardingView: View {
         let amount = item.amount.formatted(currencyStyle(currency).precision(.fractionLength(2)))
         let name = item.name
         let day = item.day
-        say(String(localized: "Gasto fijo agregado: \(name), \(amount), el día \(day)."))
+        if day >= RepeatRule.lastDayOfMonth {
+            say(String(localized: "Gasto fijo agregado: \(name), \(amount), el último día del mes."))
+        } else {
+            say(String(localized: "Gasto fijo agregado: \(name), \(amount), el día \(day)."))
+        }
     }
 
     /// Spoken with VoiceOver on only.

@@ -13,6 +13,9 @@ struct SettingsView: View {
     /// Closes this sheet and opens the guide, or the file picker for a CSV.
     let openGuide: () -> Void
     let importCSV: () -> Void
+    /// Opens on «Respaldo diario», already asking to restore: the welcome's «¿Ya usabas Al día?
+    /// Restaurar un respaldo» (2026-11-19).
+    var opensRestore = false
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -23,6 +26,9 @@ struct SettingsView: View {
     @State private var locationDenied = PaymentPlace.isDenied
     /// The whole history as a CSV, read when the sheet opens and after each save (not on every redraw).
     @State private var csv: ExpensesCSVFile?
+    /// «Respaldo diario» pushed by itself (`opensRestore`), once per sheet.
+    @State private var showingRestore = false
+    @State private var openedRestore = false
 
     var body: some View {
         NavigationStack {
@@ -125,7 +131,16 @@ struct SettingsView: View {
                         .accessibilityIdentifier("ajustes-listo")
                 }
             }
-            .task { readCSV() }
+            .navigationDestination(isPresented: $showingRestore) {
+                Deferred { BackupSettingsView(startsRestoring: true) }
+            }
+            .task {
+                readCSV()
+                if opensRestore, !openedRestore {
+                    openedRestore = true
+                    showingRestore = true
+                }
+            }
             // A payment that lands, or a backup restored, while the sheet is open: the file
             // shared is what there is now, not what there was when it opened (2026-11-18).
             .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in

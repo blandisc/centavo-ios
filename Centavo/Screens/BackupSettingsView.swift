@@ -6,6 +6,10 @@ import UniformTypeIdentifiers
 /// «Respaldo diario» in Ajustes: the password, the folder, a backup now, and restoring one.
 /// The nightly run itself is an automation in Atajos with «Respaldar Al día».
 struct BackupSettingsView: View {
+    /// Asks for the backup to restore as soon as it opens: the welcome's «¿Ya usabas Al día?
+    /// Restaurar un respaldo» (2026-11-19). The same steps as tapping «Restaurar respaldo».
+    var startsRestoring = false
+
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
@@ -62,6 +66,8 @@ struct BackupSettingsView: View {
     @State private var moving = false
 
     private static let minimumLength = 8
+    /// `startsRestoring` already asked, once: coming back from a picker doesn't ask again.
+    @State private var askedToRestore = false
 
     var body: some View {
         withPickers
@@ -127,6 +133,10 @@ struct BackupSettingsView: View {
         }
         // The copies that are also in the folder, byte for byte, don't need to stay in the app.
         .task {
+            if startsRestoring, !askedToRestore {
+                askedToRestore = true
+                await startRestoring()
+            }
             await Task.detached { _ = DailyBackup.tidyStrandedCopies() }.value
             copies = DailyBackup.strandedCopies()
         }

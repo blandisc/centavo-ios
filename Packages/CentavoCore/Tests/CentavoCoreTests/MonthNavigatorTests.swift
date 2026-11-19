@@ -27,6 +27,12 @@ import Testing
         #expect(offset(oldest: Self.date(2026, 10, 13)) == 0)
     }
 
+    @Test func theMonthMenuGoesFromThisMonthBackToTheEarliest() {
+        #expect(MonthNavigator.jumpOffsets(earliest: 0) == [0])
+        #expect(MonthNavigator.jumpOffsets(earliest: -3) == [0, -1, -2, -3])
+        #expect(MonthNavigator.jumpOffsets(earliest: 2) == [0])
+    }
+
     @Test func youCanGoBackAsFarAsTheOldestExpense() {
         #expect(offset(oldest: Self.date(2026, 9, 30, 23, 59)) == -1)
         #expect(offset(oldest: Self.date(2026, 7, 4)) == -3)

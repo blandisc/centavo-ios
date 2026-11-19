@@ -789,7 +789,7 @@ struct ExpenseEditorView: View {
                         EmptyView()
                     }
                     if repeatsMonthly {
-                        HintText(FixedWording.howItRepeats(rule, from: date))
+                        HintText(FixedWording.howItRepeats(rule, from: date, day: askedDay))
                         if let started = expense, started.repeatsMonthly == true {
                             // The original is the first charge too: its amount is that charge's.
                             let firstCharge = started.date.formatted(.dateTime.day().month(.wide).locale(Locale.current))
@@ -1382,6 +1382,14 @@ struct ExpenseEditorView: View {
     /// - Turned off on an original still repeating, it stops as «Dejar de repetir» does
     ///   (`RecurringExpenses.stopRepeating`): with its fields only emptied, the rent became
     ///   everyday spending and «Hoy puedes gastar» dropped at once (2026-11-18).
+    /// The day of the month a fixed expense already repeating was asked for («31» charged on
+    /// the 30th), while its date and rule stay: what `setRepeats` keeps, and what is said.
+    private var askedDay: Int? {
+        guard let expense, expense.repeatsMonthly == true, expense.date == date, expense.rule == rule
+        else { return nil }
+        return expense.repeatDay
+    }
+
     static func setRepeats(_ expense: Expense, repeats: Bool, rule: RepeatRule, date: Date,
                            dateUnchanged: Bool = false) {
         guard repeats else {

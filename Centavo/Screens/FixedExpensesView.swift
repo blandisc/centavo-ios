@@ -425,8 +425,15 @@ struct FixedPlanSheet: View {
     private var saveSummary: String {
         if amount == nil { return String(localized: "Falta el monto") }
         if name.isEmpty { return String(localized: "Falta qué es") }
-        let repeats = FixedWording.howItRepeats(rule, from: firstDate).components(separatedBy: ":").first ?? ""
+        let repeats = FixedWording.howItRepeats(rule, from: firstDate, day: askedDay)
+            .components(separatedBy: ":").first ?? ""
         return "\(name) · \(repeats)"
+    }
+
+    /// The day asked for («31») while the date is the same: what `save` keeps, and what is said.
+    private var askedDay: Int? {
+        guard let editing, firstDay == editing.firstDate else { return nil }
+        return editing.day
     }
 
     /// The first charge's moment: 9:00 of the day picked, like the welcome's fixed expenses.
@@ -533,7 +540,7 @@ struct FixedPlanSheet: View {
                 } header: {
                     Text("Cada cuándo").ticketCaption()
                 } footer: {
-                    HintText("\(FixedWording.howItRepeats(rule, from: firstDate)) \(firstChargeNote)")
+                    HintText("\(FixedWording.howItRepeats(rule, from: firstDate, day: askedDay)) \(firstChargeNote)")
                 }
                 .listRowBackground(Theme.surface)
             }

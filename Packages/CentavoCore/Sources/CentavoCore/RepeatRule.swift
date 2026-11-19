@@ -66,7 +66,7 @@ public enum RepeatRule: Equatable, Hashable, Sendable {
     }
 
     /// «cada lunes», «cada 2 semanas, en lunes», «cada quincena (15 y último)», «cada mes, el
-    /// día 5», «cada 2 meses, el día 5».
+    /// día 5», «cada 2 meses, el día 5», «cada mes, el último día» (the 31st).
     public func describe(anchor: Date, day: Int? = nil, calendar: Calendar = .current) -> String {
         switch self {
         case .weeks(let n):
@@ -82,6 +82,9 @@ public enum RepeatRule: Equatable, Hashable, Sendable {
                           comment: "Cómo se repite un gasto fijo: los días 15 y último de cada mes")
         case .months(let n):
             let onDay = day ?? calendar.component(.day, from: anchor)
+            // The 31st is the last day of every month: a shorter one charges on its own last
+            // day (`dueDates`), so it is named that way, not «el día 31» (2026-11-19).
+            if onDay >= Self.lastDayOfMonth { return Self.describeLastDay(every: n) }
             if n == 1 {
                 return String(localized: "cada mes, el día \(onDay)", bundle: .main,
                               comment: "Cómo se repite un gasto fijo; el día del mes («cada mes, el día 5»)")
@@ -89,6 +92,19 @@ public enum RepeatRule: Equatable, Hashable, Sendable {
             return String(localized: "cada \(n) meses, el día \(onDay)", bundle: .main,
                           comment: "Cómo se repite un gasto fijo; cada cuántos meses y el día del mes")
         }
+    }
+
+    /// The day of the month that is always the last one, because shorter months clamp to theirs.
+    public static let lastDayOfMonth = 31
+
+    /// «cada mes, el último día», «cada 2 meses, el último día del mes».
+    static func describeLastDay(every n: Int) -> String {
+        if n == 1 {
+            return String(localized: "cada mes, el último día", bundle: .main,
+                          comment: "Cómo se repite un gasto fijo el día 31, que en los meses más cortos es su último día")
+        }
+        return String(localized: "cada \(n) meses, el último día del mes", bundle: .main,
+                      comment: "Cómo se repite un gasto fijo cada cuántos meses el día 31, que en los meses más cortos es su último día")
     }
 
     /// The day of the week inside «cada lunes»: 0 is Sunday, as `Calendar` counts from 1.

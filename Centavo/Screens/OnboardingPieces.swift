@@ -1,3 +1,4 @@
+import CentavoCore
 import SwiftUI
 
 /// The welcome's first promise, shown instead of told: a small ticket with «Hoy puedes gastar»,
@@ -418,6 +419,10 @@ struct WelcomeFixedCalendar: View {
     private var spokenDay: String {
         let taken = stamped.contains { min($0, days) == chosen }
         let day = chosen
+        if day >= RepeatRule.lastDayOfMonth {
+            if taken { return String(localized: "el último día del mes, con un fijo") }
+            return String(localized: "el último día del mes")
+        }
         if taken { return String(localized: "el día \(day), con un fijo") }
         return String(localized: "el día \(day)")
     }

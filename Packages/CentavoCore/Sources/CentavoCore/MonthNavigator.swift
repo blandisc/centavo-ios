@@ -21,6 +21,12 @@ public enum MonthNavigator {
         return -max(months, 0)
     }
 
+    /// The months the long press on «Mes anterior» offers (2026-11-19): this one first, back to
+    /// the earliest with data (`earliestOffset`), as offsets from this month.
+    public static func jumpOffsets(earliest: Int) -> [Int] {
+        Array(stride(from: 0, through: min(earliest, 0), by: -1))
+    }
+
     /// The last second of the month `date` falls in. A budget measured at that moment has
     /// the whole month behind it: the full budget "should" have been spent by then.
     public static func closingMoment(of date: Date, calendar: Calendar = .current) -> Date {

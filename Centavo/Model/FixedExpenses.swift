@@ -95,7 +95,7 @@ enum FixedOutlook {
                 amount: plan.value,
                 counted: plan.value,
                 currency: plan.currency,
-                ruleText: rule.describe(anchor: plan.firstDate, calendar: calendar),
+                ruleText: rule.describe(anchor: plan.firstDate, day: plan.day, calendar: calendar),
                 next: plan.firstDate > now ? plan.firstDate
                     : RecurringSchedule.next(rule: rule, anchor: plan.firstDate, after: plan.firstDate,
                                              now: now, calendar: calendar),

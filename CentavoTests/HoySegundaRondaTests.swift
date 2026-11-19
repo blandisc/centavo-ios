@@ -37,6 +37,16 @@ final class HoySegundaRondaTests: XCTestCase {
         XCTAssertEqual(WalletCard(.recent(now), pending: true)?.title, "Wallet conectado")
     }
 
+    /// «No uso Wallet» (2026-11-19) only under a card that asks to connect or check Wallet.
+    func testNoUsoWalletOnlyWhereItAsksToConnect() {
+        XCTAssertEqual(WalletCard(.never)?.offersOptOut, true)
+        XCTAssertEqual(WalletCard(.silent(days: 4))?.offersOptOut, true)
+        XCTAssertEqual(WalletCard(.quiet(days: 5))?.offersOptOut, true)
+        XCTAssertEqual(WalletCard(.waiting)?.offersOptOut, false)
+        XCTAssertEqual(WalletCard(.first(now))?.offersOptOut, false)
+        XCTAssertEqual(WalletCard(.recent(now))?.offersOptOut, false)
+    }
+
     // MARK: «Anotar otra vez»
 
     func testACopyOutOfSightSaysItIsDatedToday() {

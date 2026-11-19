@@ -44,8 +44,10 @@ struct RepeatRulePicker: View {
 /// The sentences that say how a fixed expense works, the same in every sheet.
 enum FixedWording {
     /// «Cada lunes: se anota solo ese día, y lo que falta del mes se aparta de «Hoy puedes gastar».»
-    static func howItRepeats(_ rule: RepeatRule, from date: Date) -> String {
-        let when = rule.describe(anchor: date)
+    /// `day`: the day of the month asked for, when the date had to fall earlier («31» in a
+    /// 30-day month): said as «el último día», as it repeats.
+    static func howItRepeats(_ rule: RepeatRule, from date: Date, day: Int? = nil) -> String {
+        let when = rule.describe(anchor: date, day: day)
         let shown: String = when.prefix(1).uppercased() + when.dropFirst()
         return String(localized: "\(shown): se anota solo ese día, y lo que falta del mes se aparta de «Hoy puedes gastar».")
     }

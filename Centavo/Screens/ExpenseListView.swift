@@ -115,6 +115,8 @@ struct ExpenseListView: View {
     @AppStorage(AllowanceMode.key) private var storedMode = ""
     @State private var showingFixed = false
     @State private var showingSettings = false
+    /// Ajustes opens on «Respaldo», straight into restoring: the welcome's «Restaurar un respaldo».
+    @State private var settingsOpensRestore = false
     @State private var backupWarning: String?
     /// «Cómo funciona», and where its «Pruébalo» goes once it has closed.
     @State private var showingTutorial = false
@@ -296,8 +298,8 @@ struct ExpenseListView: View {
                 // arrows: the ticket's head already names the month, and the signature must
                 // keep its place in the middle.
                 ToolbarItemGroup(placement: .topBarLeading) {
-                    Button("Mes anterior", systemImage: "chevron.left") { goToMonth(offset - 1) }
-                        .disabled(offset <= earliest)
+                    // A tap goes back one month; a long press lists them all to jump (2026-11-19).
+                    MonthJumpMenu(offset: offset, earliest: earliest, now: now, goTo: goToMonth)
                     Button("Mes siguiente", systemImage: "chevron.right") { goToMonth(offset + 1) }
                         .disabled(offset >= 0)
                 }
@@ -367,11 +369,12 @@ struct ExpenseListView: View {
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
             .modifier(BackupWatch(warning: $backupWarning, now: now, settingsShown: showingSettings))
-            .sheet(isPresented: $showingSettings) {
+            .sheet(isPresented: $showingSettings, onDismiss: { settingsOpensRestore = false }) {
                 SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
                              health: health,
                              openGuide: { afterSettings { showingSetup = true } },
-                             importCSV: { afterSettings { importing = true } })
+                             importCSV: { afterSettings { importing = true } },
+                             opensRestore: settingsOpensRestore)
             }
             .onChange(of: storedPlans) { _, value in
                 if Store.syncsBudget { BudgetSync.push(value, for: FixedPlan.key) }
@@ -459,6 +462,7 @@ struct ExpenseListView: View {
             openSettings: { showingSettings = true },
             // Opening the guide no longer clears what is pending: only the person does.
             openGuideFromWarning: { showingSetup = true },
+            ignoreWallet: { ignoresWallet = true },
             logPending: { logPending($0) },
             discardPending: { removePending($0.id) },
             discardAllPending: {
@@ -475,6 +479,43 @@ struct ExpenseListView: View {
             },
             logAgain: { logAgain($0, elsewhere: shownOffset != 0 || model.isSearching) }
         )
+    }
+}
+
+/// «Mes anterior»: a tap goes one month back; held, the system menu lists every month from
+/// this one back to the earliest with data, the one on screen checked, to jump straight there
+/// (2026-11-19). Off on the earliest month, as the arrow was.
+private struct MonthJumpMenu: View {
+    let offset: Int
+    let earliest: Int
+    let now: Date
+    let goTo: (Int) -> Void
+
+    private var chosen: Binding<Int> {
+        Binding(get: { offset }, set: { goTo($0) })
+    }
+
+    var body: some View {
+        Menu {
+            Picker("Ir al mes", selection: chosen) {
+                ForEach(MonthNavigator.jumpOffsets(earliest: earliest), id: \.self) { month in
+                    Text(name(month)).tag(month)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Label("Mes anterior", systemImage: "chevron.left")
+        } primaryAction: {
+            goTo(offset - 1)
+        }
+        .disabled(offset <= earliest)
+        .accessibilityHint("Mantén presionado para elegir otro mes")
+    }
+
+    /// «noviembre de 2026», in the iPhone's language.
+    private func name(_ month: Int) -> String {
+        let date = MonthNavigator.month(offsetBy: month, from: now)
+        return date.formatted(.dateTime.month(.wide).year().locale(Locale.current))
     }
 }
 
@@ -502,6 +543,8 @@ private struct HomeActions {
     let setup: () -> Void
     let openSettings: () -> Void
     let openGuideFromWarning: () -> Void
+    /// «No uso Wallet» on the warning or the empty screen's card: «Avisar si no llegan pagos» off.
+    let ignoreWallet: () -> Void
     /// The payments the capture couldn't write down (`PendingPaymentsPanel`).
     let logPending: (PendingPayment) -> Void
     let discardPending: (PendingPayment) -> Void
@@ -773,7 +816,8 @@ private struct HomeHeader: View {
                 // too, as Ajustes says (2026-10-29).
                 let wallet: WalletCard? = showsCapture ? WalletCard(health, pending: !pending.isEmpty) : nil
                 EmptyTicket(hasBudget: pace != nil, wallet: wallet,
-                            onAdd: actions.add, onBudget: actions.setBudget, onSetup: actions.setup)
+                            onAdd: actions.add, onBudget: actions.setBudget, onSetup: actions.setup,
+                            onIgnoreWallet: actions.ignoreWallet)
                     .ticketRow()
             } else if searchCount == nil {
                 // The Wallet line stays between the carousel and the list, not under «Hoy»:
@@ -781,7 +825,8 @@ private struct HomeHeader: View {
                 // With payments pending, «Wallet sin conectar» or «sin pagos» would contradict the
                 // notice above, which already leads to the guide: only the quiet line stays.
                 if showsCapture, pending.isEmpty || health.isRecent {
-                    CaptureHealthRow(health: health, openGuide: actions.openGuideFromWarning)
+                    CaptureHealthRow(health: health, openGuide: actions.openGuideFromWarning,
+                                     ignoreWallet: actions.ignoreWallet)
                         .ticketRow()
                 }
                 if let backupWarning {
@@ -1319,6 +1364,10 @@ private extension ExpenseListView {
         switch exit {
         case .guide: showingSetup = true
         case .tutorial: showingTutorial = true
+        // Ajustes › Respaldo, already asking to restore (2026-11-19).
+        case .restore:
+            settingsOpensRestore = true
+            showingSettings = true
         case .home, nil: break
         }
     }
@@ -1799,6 +1848,8 @@ private struct FixedOverBudgetHero: View {
 struct WalletCard: Equatable {
     let title: String
     let detail: String
+    /// «No uso Wallet» goes under it: it asks to connect or check Wallet (2026-11-19).
+    let offersOptOut: Bool
 
     /// `nil`: no card. With payments the capture couldn't read (`pending`), Wallet is plainly
     /// connected and the notice above already leads to the guide: «Conectar Wallet» or «Esperando
@@ -1810,22 +1861,27 @@ struct WalletCard: Equatable {
             guard !pending else { return nil }
             title = String(localized: "Conectar Wallet")
             detail = CaptureCopy.connect
+            offersOptOut = true
         case .waiting:
             guard !pending else { return nil }
             title = String(localized: "Esperando tu primer pago")
             detail = CaptureCopy.waiting
+            offersOptOut = false
         case .silent:
             title = String(localized: "El atajo no ha anotado nada")
             detail = CaptureCopy.silent
+            offersOptOut = true
         // Payments came and were all deleted: the arrival is remembered (`WalletWatch`), and the
         // card said «Conectar Wallet» as if it never had been (2026-11-18).
         case .first(let date), .recent(let date):
             let when = AppClock.relative(date)
             title = String(localized: "Wallet conectado")
             detail = String(localized: "Último pago \(when).")
+            offersOptOut = false
         case .quiet(let days):
             title = String(localized: "Sin pagos de Wallet desde hace \(days) días")
             detail = CaptureCopy.quiet
+            offersOptOut = true
         }
     }
 }
@@ -1838,9 +1894,12 @@ private struct EmptyTicket: View {
     let onAdd: () -> Void
     let onBudget: () -> Void
     let onSetup: () -> Void
+    /// «No uso Wallet» (`WalletCard.offersOptOut`), asked first (`walletOptOut`).
+    let onIgnoreWallet: () -> Void
 
     private typealias Empty = Theme.Motion.Money.Empty
     @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var askingOptOut = false
 
     private var lead: String {
         if wallet == nil { return String(localized: "Anota tu primer gasto y aparecerá aquí.") }
@@ -1872,10 +1931,15 @@ private struct EmptyTicket: View {
             .accessibilityIdentifier("vacio-anotar")
             .padding(.top, Theme.Space.xs)
             steps
+            if wallet?.offersOptOut == true {
+                SecondaryButton("No uso Wallet", identifier: "vacio-no-uso-wallet") { askingOptOut = true }
+                    .accessibilityHint("Deja de pedirte que conectes Wallet")
+            }
         }
         .padding(Theme.Space.xlx)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ticketOutline(.emphasis)
+        .walletOptOut(isAsking: $askingOptOut, confirm: onIgnoreWallet)
     }
 
     /// The month's days, empty and dashed; today outlined, breathing a few times, then at rest.
