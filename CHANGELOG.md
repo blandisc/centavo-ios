@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 ### Changed
+- **Gasto a medias:** si iOS cierra la app con «Nuevo gasto» a medio llenar, al volver se abre con lo que habías escrito; «Guardar» o «Descartar» lo borran.
+- **«No uso Wallet»:** desde el aviso de Wallet en «Hoy» y en la pantalla vacía puedes dejar de ver que te pidan conectarlo; se vuelve a encender en «··· › Ajustes».
+- **Saltar de mes:** mantén presionado «‹» para elegir cualquier mes desde el primero con gastos.
+- **Fijos del día 31:** se describen como «el último día del mes», que es cuando se cobran en los meses más cortos.
+- **Bienvenida:** «¿Ya usabas Al día? Restaurar un respaldo» lleva directo a restaurar sin crear presupuesto ni fijos.
+- **La guía de Atajos en inglés:** con el iPhone en inglés, la guía usa capturas de Atajos en inglés cuando están; si falta alguna, la de español.
 - **Siri en inglés:** decir «dollars» guarda el gasto en dólares; Siri y VoiceOver dicen los montos con su moneda («89.00 Mexican pesos»); en español todo sigue igual.
 - **Pagos pendientes:** un cobro de Wallet cuya cifra no se leyó, o uno que no se pudo guardar, ya no desaparece a los 30 días ni al juntarse más de 20; solo lo quitas tú.
 - **Gastos sin comercio en inglés** se ven «No merchant»; la búsqueda entiende inglés y sus ejemplos salen en inglés.

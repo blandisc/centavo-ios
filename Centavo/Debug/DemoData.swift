@@ -43,6 +43,8 @@ enum DemoData {
         UserDefaults.standard.removeObject(forKey: CurrencyPreference.key)
         UserDefaults.standard.removeObject(forKey: "onboarded")
         UserDefaults.standard.removeObject(forKey: WalletWatch.lastArrivalKey)
+        // A new expense left half typed by an earlier run would open its sheet at launch.
+        ExpenseDraftStore.clear()
         for key in [UserCatalog.categoriesKey, UserCatalog.sourcesKey, UserCatalog.defaultSourceKey,
                     UserCatalog.hiddenCategoriesKey, UserCatalog.categoryRulesKey,
                     UserCatalog.deletedCategoriesKey, UserCatalog.merchantRenamesKey,

@@ -3109,6 +3109,18 @@
         }
       }
     },
+    "Cierra la bienvenida y abre Respaldo en Ajustes" : {
+      "comment" : "Bienvenida: pista de VoiceOver de «¿Ya usabas Al día? Restaurar un respaldo»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes the welcome and opens Backup in Settings"
+          }
+        }
+      }
+    },
     "Coche" : {
       "comment" : "VoiceOver name of an icon to pick: car",
       "extractionState" : "manual",
@@ -3825,6 +3837,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "How it works · 1 min"
+          }
+        }
+      }
+    },
+    "Deja de pedirte que conectes Wallet" : {
+      "comment" : "Hoy: pista de VoiceOver de «No uso Wallet»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops asking you to connect Wallet"
           }
         }
       }
@@ -5953,6 +5977,18 @@
         }
       }
     },
+    "Gasto fijo agregado: %@, %@, el último día del mes." : {
+      "comment" : "Bienvenida (OnboardingView): anuncio de VoiceOver de un fijo el día 31 (el último de cada mes); %1$@ nombre, %2$@ monto.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed expense added: %1$@, %2$@, last day of the month."
+          }
+        }
+      }
+    },
     "Gasto fijo quitado: %@." : {
       "comment" : "Bienvenida (OnboardingView): anuncio de VoiceOver; %@ es el nombre.",
       "extractionState" : "manual",
@@ -6441,6 +6477,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Internet"
+          }
+        }
+      }
+    },
+    "Ir al mes" : {
+      "comment" : "Hoy: nombre de la lista de meses al mantener presionado «Mes anterior»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to month"
           }
         }
       }
@@ -7269,6 +7317,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suitcase"
+          }
+        }
+      }
+    },
+    "Mantén presionado para elegir otro mes" : {
+      "comment" : "Hoy: pista de VoiceOver de «Mes anterior», que al mantenerlo presionado lista los meses",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touch and hold to choose another month"
           }
         }
       }
@@ -8337,6 +8397,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nothing was restored"
+          }
+        }
+      }
+    },
+    "No uso Wallet" : {
+      "comment" : "Hoy: acción callada bajo el aviso de Wallet y en la tarjeta del estado vacío, y botón de su pregunta; apaga «Avisar si no llegan pagos»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I don’t use Wallet"
           }
         }
       }
@@ -12265,6 +12337,18 @@
         }
       }
     },
+    "cada %lld meses, el último día del mes" : {
+      "comment" : "Cómo se repite un gasto fijo cada cuántos meses el día 31, que en los meses más cortos es su último día",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "every %lld months, on the last day of the month"
+          }
+        }
+      }
+    },
     "cada %lld semanas, en %@" : {
       "comment" : "Cómo se repite un gasto fijo; cada cuántas semanas y el día («cada 2 semanas, en lunes»)",
       "extractionState" : "manual",
@@ -12285,6 +12369,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "every month, on day %lld"
+          }
+        }
+      }
+    },
+    "cada mes, el último día" : {
+      "comment" : "Cómo se repite un gasto fijo el día 31, que en los meses más cortos es su último día",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "every month, on the last day"
           }
         }
       }
@@ -12429,6 +12525,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "biggest: %@"
+          }
+        }
+      }
+    },
+    "el último día" : {
+      "comment" : "Bienvenida (OnboardingView): día del cobro junto al monto cuando es el 31, el último de cada mes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "last day"
+          }
+        }
+      }
+    },
+    "el último día del mes" : {
+      "comment" : "Bienvenida: día del cobro de un gasto fijo el día 31 (el último de cada mes), en su propio renglón con texto grande y valor que lee VoiceOver en el calendario",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "last day of the month"
+          }
+        }
+      }
+    },
+    "el último día del mes, con un fijo" : {
+      "comment" : "Bienvenida (OnboardingPieces): VoiceOver, valor del calendario cuando el día elegido es el 31 (el último de cada mes) y ya tiene un fijo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "last day of the month, has a fixed expense"
           }
         }
       }
@@ -12685,6 +12817,18 @@
         }
       }
     },
+    "«Hoy» dejará de pedirte que lo conectes. Para volver a verlo, enciende «Avisar si no llegan pagos» en «··· › Ajustes»." : {
+      "comment" : "Hoy: mensaje de la pregunta de «No uso Wallet»; «Hoy», «Avisar si no llegan pagos» y «··· › Ajustes» son nombres de la app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“Today” will stop asking you to connect it. To see it again, turn on “Warn me if payments stop arriving” in “··· › Settings”."
+          }
+        }
+      }
+    },
     "«Seguir respaldando aquí» guarda en este iPhone la contraseña con la que abriste este respaldo y usa su misma carpeta, o te pide elegirla." : {
       "comment" : "Backup screen (BackupSettingsView): «Listo» alert on a phone without daily backup.",
       "extractionState" : "manual",
@@ -12717,6 +12861,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "· day %lld"
+          }
+        }
+      }
+    },
+    "· el último día del mes" : {
+      "comment" : "Bienvenida (OnboardingView): día del cobro de un gasto fijo el día 31 (el último de cada mes) junto al monto",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· last day of the month"
           }
         }
       }
@@ -12925,6 +13081,18 @@
         }
       }
     },
+    "¿No usas Wallet?" : {
+      "comment" : "Hoy: título de la pregunta antes de apagar «Avisar si no llegan pagos» desde «No uso Wallet»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don’t use Wallet?"
+          }
+        }
+      }
+    },
     "¿Olvidar este comercio?" : {
       "comment" : "What I remember: question title",
       "extractionState" : "manual",
@@ -13065,6 +13233,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What about your budget?"
+          }
+        }
+      }
+    },
+    "¿Ya usabas Al día? Restaurar un respaldo" : {
+      "comment" : "Bienvenida, primera página: enlace callado que cierra la bienvenida y abre Ajustes › Respaldo para restaurar; «Al día» es el nombre de la app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used Al día before? Restore a backup"
           }
         }
       }

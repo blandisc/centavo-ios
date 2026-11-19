@@ -299,7 +299,7 @@ struct ExpenseListView: View {
                 // keep its place in the middle.
                 ToolbarItemGroup(placement: .topBarLeading) {
                     // A tap goes back one month; a long press lists them all to jump (2026-11-19).
-                    MonthJumpMenu(offset: offset, earliest: earliest, now: now, goTo: goToMonth)
+                    MonthJumpMenu(offset: offset, earliest: earliest, now: now) { goToMonth($0) }
                     Button("Mes siguiente", systemImage: "chevron.right") { goToMonth(offset + 1) }
                         .disabled(offset >= 0)
                 }
@@ -407,6 +407,12 @@ struct ExpenseListView: View {
                 }
                 if GuideDebug.opensAtLaunch { showingSetup = true }
                 openRequestedSheet()
+                // A new expense half typed when iOS closed the app: its sheet again, once per
+                // launch (2026-11-19). Not under the welcome.
+                if !ExpenseDraftStore.checkedThisLaunch {
+                    ExpenseDraftStore.checkedThisLaunch = true
+                    if !welcomes, ExpenseDraftStore.saved != nil { adding = true }
+                }
                 // Done here before iCloud had the mark (2026-11-02): say so now, or a second phone
                 // with only the currency in iCloud would start the welcome over (independent
                 // review, 2026-11-18).
@@ -1159,7 +1165,8 @@ private struct NewExpenseSheet: View {
         let payment = pending
         ExpenseEditorView(expense: nil, initialDate: initialDate,
                           prefill: payment?.prefill(primary: primaryCurrency),
-                          onSave: payment.map { payment in { saved(payment.id) } })
+                          onSave: payment.map { payment in { saved(payment.id) } },
+                          keepsDraft: payment == nil)
     }
 }
 

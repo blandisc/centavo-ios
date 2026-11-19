@@ -19,12 +19,20 @@ struct ExpenseEditorView: View {
     var onDelete: ((Expense) -> Void)?
     /// Called once a new expense is saved, and only then (never on «Cancelar» or a failed save).
     var onSave: (() -> Void)?
+    /// «Hoy»'s new expense: what is typed is kept while the app is away, in case iOS closes it,
+    /// and the sheet opens with it next time (`ExpenseDraft`, 2026-11-19). Not for a pending
+    /// payment being written down: that payment is still kept, and saved from a draft it would
+    /// stay pending and be logged twice.
+    var keepsDraft = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.scenePhase) private var scenePhase
+    /// Saved, or «Cancelar» / «Descartar» said: the draft is gone and nothing is kept again.
+    @State private var draftDone = false
     @State private var amountText = ""
     /// The amount as the sheet showed it on opening: left as it was, the amount isn't rewritten
     /// (0.125 shown as «0.13» became 0.13 when only the category changed).
@@ -411,7 +419,7 @@ struct ExpenseEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
-                        if hasChanges { askingDiscard = true } else { dismiss() }
+                        if hasChanges { askingDiscard = true } else { finishDraft(); dismiss() }
                     }
                     .font(.ticket(.footnote))
                     .accessibilityIdentifier("hoja-cancelar")
@@ -468,7 +476,11 @@ struct ExpenseEditorView: View {
             }
         }
         // Swiping the sheet away, or «Cancelar», must not throw away what was typed: they ask.
-        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { dismiss() }
+        .confirmsDiscard(hasChanges: hasChanges, isAsking: $askingDiscard) { finishDraft(); dismiss() }
+        // iOS may close the app while it is away: what is typed waits for the next time.
+        .onChange(of: scenePhase) { _, phase in if phase == .background { keepDraft() } }
+        // Closed without «Guardar» nor «Descartar» (by the app, not the person): kept too.
+        .onDisappear(perform: keepDraft)
         .onChange(of: merchant) { _, new in
             refreshMerchant(new)
             // Change the merchant and the category you last used for it fills in, while the
@@ -1168,6 +1180,14 @@ struct ExpenseEditorView: View {
             }
             card = defaultSource
             dateChosen = initialDate != nil
+            if prefill == nil, keepsDraft, let draft = ExpenseDraftStore.saved {
+                // Opened as if empty: «Cancelar» asks before throwing the draft away.
+                openedState = fieldsState
+                restore(draft)
+                refreshMerchant(merchant)
+                amountFocused = amountText.isEmpty
+                return
+            }
             guard let prefill else {
                 refreshMerchant("")
                 openedState = fieldsState
@@ -1229,6 +1249,58 @@ struct ExpenseEditorView: View {
         // Anything set in «Más detalles» is shown, not hidden behind it.
         showsDetails = isRefund || !counts || repeatsMonthly || expense.isRepeat == true
             || (expense.latitude != nil && expense.longitude != nil)
+    }
+
+    /// What a draft held, back in the fields (`keepDraft`).
+    private func restore(_ draft: ExpenseDraft) {
+        amountText = draft.amountText
+        currency = draft.currency
+        merchant = draft.merchant
+        card = draft.card
+        category = draft.category
+        categoryAutofilled = draft.categoryAutofilled
+        if !draft.category.isEmpty { pinnedCategories = [draft.category] }
+        if let when = draft.date {
+            date = when
+            dateChosen = true
+            dateProposed = draft.dateProposed
+        }
+        isRefund = draft.isRefund
+        counts = draft.counts
+        reason = draft.uncountedReason
+        repeatsMonthly = draft.repeats
+        rule = draft.repeatRule
+        // Anything set in «Más detalles» is shown, as for an expense opened to correct.
+        showsDetails = draft.showsDetails || draft.isRefund || !draft.counts || draft.repeats
+    }
+
+    /// What the fields hold now, as a draft. A date left alone stays unpicked: it is the moment
+    /// of «Guardar», not of the day it was typed.
+    private var currentDraft: ExpenseDraft {
+        let picked: Date? = dateChosen ? date : nil
+        return ExpenseDraft(amountText: amountText, currency: currency, merchant: merchant, card: card,
+                            category: category, categoryAutofilled: categoryAutofilled, date: picked,
+                            dateProposed: dateProposed, isRefund: isRefund, counts: counts,
+                            reason: reason.rawValue, repeats: repeatsMonthly, rule: rule.stored,
+                            showsDetails: showsDetails)
+    }
+
+    /// The app goes away, or the sheet closes without «Guardar» nor «Descartar»: what was typed
+    /// is kept on this iPhone; with nothing typed, no draft is left.
+    private func keepDraft() {
+        guard keepsDraft, expense == nil, !draftDone else { return }
+        if hasChanges {
+            ExpenseDraftStore.keep(currentDraft)
+        } else {
+            ExpenseDraftStore.clear()
+        }
+    }
+
+    /// Saved, or let go by the person: the draft goes, and is not kept again.
+    private func finishDraft() {
+        guard keepsDraft, expense == nil else { return }
+        draftDone = true
+        ExpenseDraftStore.clear()
     }
 
     /// The history the sheet suggests from, read once it is up, off the main thread
@@ -1374,14 +1446,6 @@ struct ExpenseEditorView: View {
         }
     }
 
-    /// Turning it on starts counting from the expense's own month; turning it off stops it.
-    ///
-    /// - `dateUnchanged`: the date wasn't moved. A fixed expense already repeating by the same
-    ///   rule keeps the day asked for: rent «día 31» first charged on Nov 30 went to the 30th on
-    ///   any save, even one that only changed the amount (2026-11-18).
-    /// - Turned off on an original still repeating, it stops as «Dejar de repetir» does
-    ///   (`RecurringExpenses.stopRepeating`): with its fields only emptied, the rent became
-    ///   everyday spending and «Hoy puedes gastar» dropped at once (2026-11-18).
     /// The day of the month a fixed expense already repeating was asked for («31» charged on
     /// the 30th), while its date and rule stay: what `setRepeats` keeps, and what is said.
     private var askedDay: Int? {
@@ -1390,6 +1454,14 @@ struct ExpenseEditorView: View {
         return expense.repeatDay
     }
 
+    /// Turning it on starts counting from the expense's own month; turning it off stops it.
+    ///
+    /// - `dateUnchanged`: the date wasn't moved. A fixed expense already repeating by the same
+    ///   rule keeps the day asked for: rent «día 31» first charged on Nov 30 went to the 30th on
+    ///   any save, even one that only changed the amount (2026-11-18).
+    /// - Turned off on an original still repeating, it stops as «Dejar de repetir» does
+    ///   (`RecurringExpenses.stopRepeating`): with its fields only emptied, the rent became
+    ///   everyday spending and «Hoy puedes gastar» dropped at once (2026-11-18).
     static func setRepeats(_ expense: Expense, repeats: Bool, rule: RepeatRule, date: Date,
                            dateUnchanged: Bool = false) {
         guard repeats else {
@@ -1509,6 +1581,7 @@ struct ExpenseEditorView: View {
                 return
             }
             onSave?()
+            finishDraft()
             announceSaved(String(localized: "Anotado: \(summary)"))
             // Written down as it happens: where the iPhone is, if «Guardar dónde pagas» is on.
             // After it's saved, so waiting for the place never holds the expense.
