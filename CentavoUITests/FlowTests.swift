@@ -615,7 +615,8 @@ final class FlowTests: XCTestCase {
         for _ in 0..<6 where !catalog.isHittable { scrollForm(app) }
         require(catalog, "No está en «···»").tap()
         let link = app.buttons["lo-que-recuerdo"]
-        for _ in 0..<10 where !isClear(link, app) { scrollForm(app) }
+        // With accessibility sizes each category takes its own row (2026-11-18): a longer way down.
+        for _ in 0..<25 where !isClear(link, app) { scrollForm(app) }
         require(link, "No está «Lo que recuerdo» en «Pagos y categorías»").tap()
         let rule = require(app.buttons["recuerdo-clip*mx taq guero 02 cdmx"], "No aparece la regla")
         XCTAssertTrue(rule.label.contains("CLIP*MX TAQ GUERO 02 CDMX"), "Dice: \(rule.label)")

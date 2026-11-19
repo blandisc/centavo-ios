@@ -283,7 +283,7 @@ final class HomeModel {
 
     /// How a stored own name reads in the iPhone's language: a category or «Efectivo»
     /// (`BuiltInName`), or «Sin comercio» (`Expense.shownMerchant`).
-    static func shownOwnName(_ stored: String) -> String {
+    nonisolated static func shownOwnName(_ stored: String) -> String {
         stored == Expense.noMerchant ? Expense.shownMerchant(stored) : BuiltInName.localized(stored)
     }
 
