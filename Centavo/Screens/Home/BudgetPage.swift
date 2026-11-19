@@ -51,6 +51,18 @@ struct BudgetPage: View {
         formatMoney(amount, isoCode: spent.isoCode, label: spent.label)
     }
 
+    /// Money VoiceOver says: the screen's own in Spanish; in English with the currency's name,
+    /// since «$» alone is read «dollars» (2026-11-19).
+    private func said(_ amount: Decimal) -> String {
+        spokenMoney(amount, isoCode: spent.isoCode, label: spent.label)
+    }
+
+    /// `wholeMoney`, said.
+    private func saidWhole(_ amount: Decimal) -> String {
+        guard let isoCode = spent.isoCode else { return wholeMoney(amount) }
+        return spokenWholeMoney(amount, isoCode: isoCode)
+    }
+
     /// "$3,871": a rough mark, so no cents, but still money like every other figure.
     private func wholeMoney(_ amount: Decimal) -> String {
         if let isoCode = spent.isoCode {
@@ -153,18 +165,18 @@ struct BudgetPage: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("presupuesto-ticket")
             .accessibilityLabel(spokenTicket(pace, share: share, isOver: isOver,
-                                             remainingText: money(pace.remaining.magnitude)))
+                                             remainingText: said(pace.remaining.magnitude)))
     }
 
     /// What VoiceOver reads for the ticket, sentence by sentence (one expression was too much
     /// for the compiler). Each sentence is whole, for the catalog.
     private func spokenTicket(_ pace: BudgetPace, share: Double, isOver: Bool, remainingText: String) -> String {
-        let budgetText = money(pace.budget)
-        let spentText = money(pace.spent)
+        let budgetText = said(pace.budget)
+        let spentText = said(pace.spent)
         let shareText = share.formatted(.percent.precision(.fractionLength(0)))
         var parts = [String(localized: "Presupuesto de \(budgetText). Has gastado \(spentText), el \(shareText).")]
         if isOver {
-            let over = wholeMoney(pace.overspentShown)
+            let over = saidWhole(pace.overspentShown)
             parts.append(String(localized: "Te pasaste por \(over)."))
         } else if pace.remaining >= 0 {
             // Fixed expenses past the budget, charged: below zero without overspending; the
@@ -179,7 +191,7 @@ struct BudgetPage: View {
             parts.append(contentsOf: spokenToday(pace, isOver: isOver))
         }
         if outside != 0 {
-            let outsideText = money(outside)
+            let outsideText = said(outside)
             parts.append(String(localized: "Fuera del presupuesto, \(outsideText)."))
         }
         return parts.joined(separator: " ")
@@ -188,14 +200,14 @@ struct BudgetPage: View {
     /// The sentences only this month has: the pace, what is set apart, and today.
     private func spokenToday(_ pace: BudgetPace, isOver: Bool) -> [String] {
         var parts: [String] = []
-        let expected = wholeMoney(pace.expectedShown)
+        let expected = saidWhole(pace.expectedShown)
         if pace.isAheadOfPace {
             parts.append(String(localized: "A hoy deberías llevar \(expected)."))
         } else {
             parts.append(String(localized: "A hoy podrías llevar \(expected)."))
         }
         if pace.reserved > 0 {
-            let reserved = money(pace.reserved)
+            let reserved = said(pace.reserved)
             parts.append(String(localized: "Se apartan \(reserved) de gastos fijos por venir."))
         }
         if let start = pace.countsFrom {
@@ -203,7 +215,7 @@ struct BudgetPage: View {
             parts.append(String(localized: "Tu presupuesto cuenta desde el \(day)."))
         }
         if pace.rhythm != nil, case let rhythm = pace.gapShown, rhythm != 0 {
-            let gap = wholeMoney(rhythm.magnitude)
+            let gap = saidWhole(rhythm.magnitude)
             if rhythm > 0 {
                 parts.append(String(localized: "Vas \(gap) abajo del ritmo."))
             } else {
@@ -212,17 +224,17 @@ struct BudgetPage: View {
         }
         if !isOver, let excess = pace.fixedOverBudgetShown {
             if excess > 0 {
-                let excessText = wholeMoney(excess)
+                let excessText = saidWhole(excess)
                 parts.append(String(localized: "Tus fijos pasan el presupuesto por \(excessText)."))
             } else {
                 parts.append(String(localized: "Tus fijos se llevan todo el presupuesto."))
             }
         } else if !isOver {
             if pace.isOverToday {
-                let over = wholeMoney(pace.dailyAllowance.magnitude)
+                let over = saidWhole(pace.dailyAllowance.magnitude)
                 parts.append(String(localized: "Hoy te pasaste por \(over)."))
             } else {
-                let allowance = wholeMoney(pace.dailyAllowance)
+                let allowance = saidWhole(pace.dailyAllowance)
                 parts.append(String(localized: "Hoy puedes gastar \(allowance)."))
             }
         }

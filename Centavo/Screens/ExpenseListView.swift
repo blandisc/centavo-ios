@@ -905,9 +905,26 @@ private struct HomeLedger: View {
                             actions.askDelete(expense)
                         }
                     }
+                    // The menu's one-touch changes in VoiceOver's actions too: it doesn't reach
+                    // a long press (2026-11-19). The category is in the sheet a tap opens.
+                    .accessibilityActions { voiceOverActions(expense) }
                 }
             }
         }
+    }
+
+    /// The row menu's quick changes, as VoiceOver actions. Apart: in the chain above it was one
+    /// more closure for the CI's older type-checker.
+    @ViewBuilder private func voiceOverActions(_ expense: Expense) -> some View {
+        if expense.maybeRepeated == true {
+            Button("No es repetida") { actions.change(expense) { $0.maybeRepeated = nil } }
+        }
+        if expense.isUncounted {
+            Button("Sí cuenta") { actions.change(expense) { $0.markCounted() } }
+        } else {
+            Button("No cuenta") { actions.change(expense) { $0.markUncounted($0.reason ?? .reimbursed) } }
+        }
+        Button("Anotar otra vez") { actions.logAgain(expense) }
     }
 }
 
@@ -2081,6 +2098,8 @@ private struct LedgerRow: View {
 
     private var amountText: some View {
         let amount = ledgerAmount(for: expense, primary: primaryCurrency)
+        // Said with the currency's name in English: «$» alone is read «dollars» (2026-11-19).
+        let said = spokenLedgerAmount(for: expense, primary: primaryCurrency)
         return Text(amount)
             .font(.ticket(.body))
             .strikethrough(isUncounted, color: Theme.muted)
@@ -2090,7 +2109,7 @@ private struct LedgerRow: View {
             // (2026-11-18): «USD 1,234.50» at AX5 ran off an iPhone SE's right edge, uncut.
             .minimumScaleFactor(Theme.MinimumScale.figure)
             .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: true)
-            .accessibilityLabel(isUncounted ? String(localized: "\(amount), no cuenta para el presupuesto") : amount)
+            .accessibilityLabel(isUncounted ? String(localized: "\(said), no cuenta para el presupuesto") : said)
     }
 
     var body: some View {
@@ -2245,8 +2264,10 @@ private struct SearchHeaderRow: View {
     /// Puts an example in the search field.
     let tryExample: (String) -> Void
 
-    /// What the search understands, one tap each: it reads phrases, not just names.
-    private let examples = ["café", "uber de octubre", "más de 500"]
+    /// What the search understands, one tap each: it reads phrases, not just names, in Spanish
+    /// and in English (2026-11-19: an iPhone in English offered them in Spanish).
+    private let examples = [String(localized: "café"), String(localized: "uber de octubre"),
+                            String(localized: "más de 500")]
 
     /// «5,000», like every other figure of the app (2026-11-18: it said «5000»).
     private var countText: String { count.formatted(.number.locale(ExpenseListView.mexico)) }
@@ -2344,8 +2365,9 @@ struct DayGroup: Identifiable {
     }
 
     /// What went that day in the month's currency (refunds subtract, what doesn't count adds
-    /// nothing); others ride apart.
-    func total(in primary: String) -> String? {
+    /// nothing); others ride apart. `spoken`: for VoiceOver, the currency by its name in English
+    /// («230.00 Mexican pesos»), the same text in Spanish (2026-11-19).
+    func total(in primary: String, spoken: Bool = false) -> String? {
         let mine = items.filter { CurrencyResolver.isoCode(for: $0.currencyMarker, primary: primary) == primary }
         // A day only in other money still says how much: «USD 24.99».
         guard !mine.isEmpty else {
@@ -2355,11 +2377,17 @@ struct DayGroup: Identifiable {
             let sum = same.reduce(Decimal(0)) { $0 + $1.counted }
             let number = plainAmount(sum.magnitude)
             let label = String((code ?? first.currencyMarker ?? "").prefix(4))
-            return (sum < 0 ? "+" : "") + (label.isEmpty ? number : "\(label) \(number)")
+            let sign = sum < 0 ? "+" : ""
+            if spoken, !saysMoneyAsWritten, let code {
+                return sign + spokenMoney(sum.magnitude, isoCode: code, label: code)
+            }
+            return sign + (label.isEmpty ? number : "\(label) \(number)")
         }
         let sum = mine.reduce(Decimal(0)) { $0 + $1.counted }
         // Money that came back reads like the ledger's refunds: «+$230.00».
-        return (sum < 0 ? "+" : "") + formatMoney(sum.magnitude, isoCode: primary, label: primary)
+        let sign = sum < 0 ? "+" : ""
+        if spoken { return sign + spokenMoney(sum.magnitude, isoCode: primary, label: primary) }
+        return sign + formatMoney(sum.magnitude, isoCode: primary, label: primary)
     }
 }
 
@@ -2375,7 +2403,9 @@ private struct DayDivider: View {
     /// With one expense the day's total is that expense's amount, right under it: printed once,
     /// in its row (owner, 2026-11-11). VoiceOver still hears it with the day (`spoken`).
     private var showsTotal: Bool { group.items.count > 1 }
-    private var spoken: String { [spokenLabel, total].compactMap { $0 }.joined(separator: ", ") }
+    private var spoken: String {
+        [spokenLabel, group.total(in: primaryCurrency, spoken: true)].compactMap { $0 }.joined(separator: ", ")
+    }
 
     /// The day as VoiceOver says it: «Hoy, 23 oct», with a comma and not the drawn «·»
     /// (2026-11-18). Any other day is already words only.

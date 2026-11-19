@@ -26,9 +26,15 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     /// arrived. `date` stays the arrival, which orders the list and ages it out; the sheet
     /// starts on this day. Absent in what earlier versions kept.
     public var spentOn: Date?
+    /// A notice that read as a charge whose amount didn't make it (`unread(always: true)`):
+    /// money Wallet charged, kept until the person removes it, whatever its text looks like
+    /// («American Express México» has no figure). Absent (`nil`) in what earlier versions kept
+    /// (independent review, 2026-11-19).
+    public var isCharge: Bool?
 
     public init(id: UUID = UUID(), kind: Kind, text: String, date: Date,
-                amount: String? = nil, merchant: String? = nil, card: String? = nil, spentOn: Date? = nil) {
+                amount: String? = nil, merchant: String? = nil, card: String? = nil, spentOn: Date? = nil,
+                isCharge: Bool? = nil) {
         self.id = id
         self.kind = kind
         self.text = text
@@ -37,6 +43,7 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
         self.merchant = merchant
         self.card = card
         self.spentOn = spentOn
+        self.isCharge = isCharge
     }
 
     /// The longest text kept of a notice: a line of a notification, not a document.
@@ -52,7 +59,8 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
         let lines = clean(notice)
         guard let first = lines.first,
               always || (lines.count == 1 && !first.contains(where: \.isNumber)) else { return nil }
-        return PendingPayment(id: id, kind: .unread, text: String(first.prefix(maxText)), date: date)
+        return PendingPayment(id: id, kind: .unread, text: String(first.prefix(maxText)), date: date,
+                              isCharge: always ? true : nil)
     }
 
     /// A payment that read and couldn't be saved: «$319 en Google». `nil` with nothing to show.
@@ -98,6 +106,12 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     public var isNameOnly: Bool {
         kind == .unread && !text.contains(where: \.isNumber) && !WalletNotice.mentionsMoney(text)
     }
+
+    /// Whether it may age out of the list or make room in it: only a notice that brought just a
+    /// name and wasn't read as a charge. Anything else is something the capture received and
+    /// couldn't write down, and only the person removes it (CLAUDE.md; independent review,
+    /// 2026-11-19: a charge whose figure didn't read went after 30 days).
+    public var mayAgeOut: Bool { isNameOnly && isCharge != true }
 
     /// What the sheet of a new expense starts with for this payment: all that was read of one
     /// that couldn't be saved; of a notice with no amount, its text as the shop when it looks
@@ -150,12 +164,13 @@ public struct ExpensePrefill: Equatable, Sendable {
     }
 }
 
-/// The list of payments waiting to be written down, newest first. The notices that didn't read
-/// (`.unread`) last `keepDays` and make room past `limit`, oldest first, so they can't grow
-/// without end. A payment that couldn't be saved (`.unsaved`) is real money that Wallet
-/// charged: it never ages out and never makes room, only the person removes it («Anotar» or
-/// «Descartar»; 2026-11-18, «un pago nunca se pierde»: a week of a failing store, or a month
-/// without opening «Hoy», used to drop them with no warning).
+/// The list of payments waiting to be written down, newest first. Only the notices that brought
+/// just a name (`mayAgeOut`) last `keepDays` and make room past `limit`, oldest first. A
+/// payment that couldn't be saved (`.unsaved`), a notice with a figure or a currency, and a
+/// charge whose amount didn't read (`isCharge`) are real money that Wallet charged: they never
+/// age out and never make room, only the person removes them («Anotar» or «Descartar»;
+/// 2026-11-18, «un pago nunca se pierde»: a week of a failing store, or a month without opening
+/// «Hoy», used to drop them with no warning; 2026-11-19, the notices too).
 public enum PendingPayments {
     public static let limit = 20
     public static let keepDays = 30
@@ -165,14 +180,14 @@ public enum PendingPayments {
         let oldest = now.addingTimeInterval(-TimeInterval(keepDays) * 24 * 3600)
         var seen = Set<UUID>()
         let kept = list.filter { payment in
-            let fresh = payment.kind == .unsaved || payment.date >= oldest
+            let fresh = !payment.mayAgeOut || payment.date >= oldest
             return fresh && seen.insert(payment.id).inserted
         }
         // Stable: two that arrived in the same instant keep the order they came in.
         var sorted = kept.enumerated().sorted {
             $0.element.date != $1.element.date ? $0.element.date > $1.element.date : $0.offset < $1.offset
         }.map(\.element)
-        while sorted.count > limit, let notice = sorted.lastIndex(where: { $0.kind == .unread }) {
+        while sorted.count > limit, let notice = sorted.lastIndex(where: \.mayAgeOut) {
             sorted.remove(at: notice)
         }
         return sorted

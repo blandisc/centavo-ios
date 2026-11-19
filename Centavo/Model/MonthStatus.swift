@@ -30,8 +30,8 @@ enum MonthStatus {
         // Fixed expenses past the budget and already charged: what's left is below zero, but
         // nothing was overspent; that's all there is to say.
         if pace.remaining < 0, let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return excess }
-        let today = pace.dailyAllowance.magnitude.formatted(currencyStyle(summary.primary.isoCode ?? primary)
-                                                             .precision(.fractionLength(0)))
+        // Said, not shown: «290 Mexican pesos» in English, the screen's «$290» in Spanish.
+        let today = spokenWholeMoney(pace.dailyAllowance.magnitude, isoCode: summary.primary.isoCode ?? primary)
         // What is left never promises more than it has: with the fixed ones still to come
         // above it, both are said as they are (second audit, 2026-11-02).
         let left: String
@@ -54,7 +54,7 @@ enum MonthStatus {
     /// «Te pasaste del presupuesto por $231.»: whole and rounded up, the same figure as the
     /// screen and the widgets (independent review: Siri said «$0.40» where they said «$1»).
     static func overspentSentence(_ pace: BudgetPace, primary: String, total: MoneyTotal) -> String {
-        let figure = pace.overspentShown.formatted(currencyStyle(total.isoCode ?? primary).precision(.fractionLength(0)))
+        let figure = spokenWholeMoney(pace.overspentShown, isoCode: total.isoCode ?? primary)
         return String(localized: "Te pasaste del presupuesto por \(figure).")
     }
 
@@ -63,7 +63,7 @@ enum MonthStatus {
     static func fixedSentence(_ pace: BudgetPace, primary: String, total: MoneyTotal) -> String? {
         guard let excess = pace.fixedOverBudgetShown else { return nil }
         guard excess > 0 else { return String(localized: "Tus fijos se llevan todo el presupuesto.") }
-        let figure = excess.formatted(currencyStyle(total.isoCode ?? primary).precision(.fractionLength(0)))
+        let figure = spokenWholeMoney(excess, isoCode: total.isoCode ?? primary)
         return String(localized: "Tus fijos pasan el presupuesto por \(figure).")
     }
 
@@ -81,8 +81,8 @@ enum MonthStatus {
         }
         if pace.isOverspent { return overspentSentence(pace, primary: primary, total: summary.primary) }
         if let excess = fixedSentence(pace, primary: primary, total: summary.primary) { return excess }
-        let today = pace.dailyAllowance.magnitude.formatted(currencyStyle(summary.primary.isoCode ?? primary)
-                                                             .precision(.fractionLength(0)))
+        // Said, not shown: «290 Mexican pesos» in English, the screen's «$290» in Spanish.
+        let today = spokenWholeMoney(pace.dailyAllowance.magnitude, isoCode: summary.primary.isoCode ?? primary)
         return todayLine(today, isOver: pace.isOverToday)
     }
 
@@ -155,7 +155,9 @@ enum MonthStatus {
         ))
     }
 
+    /// Every figure here is said (Siri, the notice after a payment, VoiceOver): `spokenMoney`,
+    /// the screen's own in Spanish (2026-11-19).
     private static func money(_ amount: Decimal, _ total: MoneyTotal) -> String {
-        formatMoney(amount, isoCode: total.isoCode, label: total.label)
+        spokenMoney(amount, isoCode: total.isoCode, label: total.label)
     }
 }

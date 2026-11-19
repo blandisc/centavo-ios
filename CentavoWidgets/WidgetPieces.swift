@@ -51,13 +51,13 @@ enum DayState {
 
     /// The widget in one sentence, for VoiceOver: the lock screen and the home screen alike.
     func spoken(_ money: Money) -> String {
-        let amount = money.whole(figure)
+        let amount = money.said(figure)
         switch self {
         case .neverOpened:
             return String(localized: "Abre Al día una vez para ver cuánto puedes gastar hoy")
         case .noBudget(let spent, let today):
-            let month = money.whole(spent)
-            let day = money.whole(today)
+            let month = money.said(spent)
+            let day = money.said(today)
             return String(localized: "Llevas \(month) este mes, hoy \(day)")
         case .overBudget:
             return String(localized: "Te pasaste del presupuesto por \(amount)")
@@ -125,6 +125,13 @@ struct Money {
     func whole(_ amount: Decimal) -> String {
         if let isoCode { return amount.formatted(currencyStyle(isoCode).precision(.fractionLength(0))) }
         return label + amount.formatted(.number.precision(.fractionLength(0)))
+    }
+
+    /// `whole` for VoiceOver: the same in Spanish; in English with the currency's name, since
+    /// «$» alone is read «dollars» (2026-11-19).
+    func said(_ amount: Decimal) -> String {
+        guard let isoCode else { return whole(amount) }
+        return spokenWholeMoney(amount, isoCode: isoCode)
     }
 
     /// "$12K" for a round budget of thousands; otherwise `whole`.

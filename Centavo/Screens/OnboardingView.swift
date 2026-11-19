@@ -140,8 +140,16 @@ struct OnboardingView: View {
         }
         .interactiveDismissDisabled()
         .onChange(of: storedCurrency) { _, code in
-            if !pickedCurrency { currency = CurrencyPreference.resolve(code) }
+            if followsStoredCurrency { currency = CurrencyPreference.resolve(code) }
         }
+    }
+
+    /// Whether the currency shown still follows the saved one (iCloud's, while the welcome is
+    /// open). Not once a tile was tapped, and not once something was typed in it: a budget and a
+    /// rent written in pesos would be saved as dollars (independent review, 2026-11-19).
+    private var followsStoredCurrency: Bool {
+        guard !pickedCurrency, page < 2 else { return false }
+        return budgetText.isEmpty && fixed.isEmpty && draftAmount.isEmpty
     }
 
     /// The one wide button that moves on, and under it the other way. Wallet's page: set it up
@@ -523,7 +531,8 @@ struct OnboardingView: View {
         if ShortcutsVersion.isIOS27 {
             return String(localized: "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. El atajo ya viene armado: lo agregas una vez y lo enciendes.")
         }
-        return String(localized: "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos.")
+        // iOS 26's «Wallet» trigger fires only when paying contactless: said here too (2026-11-19).
+        return String(localized: "Cuando pagas acercando el iPhone, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos.")
     }
 
     /// The end: «Listo», and what each day gets — never «Hoy puedes gastar», which mid-month
@@ -586,7 +595,10 @@ struct OnboardingView: View {
         String(localized: "Lo que te sobre pasa a mañana."),
     ]
     static let noFigureLines: [String] = [String(localized: "Cada gasto que anotes aparece en tu lista, con el total del mes.")]
-    static let alwaysLines: [String] = [String(localized: "¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta».")]
+    /// The gesture said as it is done, without «pago» or a press nobody names (2026-11-19).
+    static let alwaysLines: [String] = [
+        String(localized: "Si un gasto no debe contar, mantén el dedo sobre él y toca «No cuenta»."),
+    ]
 
     @ViewBuilder private var doneFigure: some View {
         if let pace, let budget {
@@ -744,6 +756,15 @@ struct OnboardingView: View {
         saved = true
         // A fixed expense typed in but never «Agregar»-ed still counts.
         commitDraft()
+        // Someone's second phone, whose setup came from iCloud while the welcome was open: what
+        // is there stays (2026-11-19). The currency, budget and fixed expenses typed here would
+        // go up and replace the first phone's, and its fixed expenses may not have come down
+        // yet: a rent typed again would be charged twice. Only iCloud's setup says so: this
+        // month's rows alone can be this phone's own first Wallet payment.
+        if Store.syncsBudget && BudgetSync.hasSetupElsewhere {
+            finishSave()
+            return
+        }
         if let code = Self.currencyToSave(currency, picked: pickedCurrency, stored: storedCurrency) {
             storedCurrency = code
         }
@@ -786,6 +807,11 @@ struct OnboardingView: View {
         let current = FixedPlan.saved
         let fresh = Self.notSaved(plans, in: current)
         if !fresh.isEmpty { FixedPlan.save(current + fresh) }
+        finishSave()
+    }
+
+    /// Writes what the welcome left in the context, and only then marks it done.
+    private func finishSave() {
         do {
             try context.save()
             // Saved: closing the app now doesn't bring the welcome back from the start

@@ -51,6 +51,17 @@ final class PendingPaymentsStoreTests: XCTestCase {
         XCTAssertTrue(UnreadNotice.pending(now: now.addingTimeInterval(31 * 86_400), defaults: defaults).isEmpty)
     }
 
+    /// A charge whose figure didn't read is money: only the person removes it (CLAUDE.md, 2026-11-19).
+    func testUnCobroSinCifraLegibleNoCaducaNiHaceLugar() {
+        UnreadNotice.note("American Express México\nGoogle\nMXN 3I9.00", always: true, now: now, defaults: defaults)
+        for minute in 0..<25 {
+            let name = "Tienda " + String(Character(UnicodeScalar(UInt8(65 + minute))))
+            UnreadNotice.note(name, now: now.addingTimeInterval(Double(minute + 1) * 60), defaults: defaults)
+        }
+        let later = UnreadNotice.pending(now: now.addingTimeInterval(60 * 86_400), defaults: defaults)
+        XCTAssertEqual(later.map(\.text), ["American Express México"])
+    }
+
     // MARK: A name-only notice and the good payment it was
 
     func testUnAvisoConSoloElNombreSeQuitaConElPagoBuenoDeEseComercio() {

@@ -64,4 +64,31 @@ final class EditorRepeatsTests: XCTestCase {
         XCTAssertFalse(coffee.isFixed)
         XCTAssertNil(coffee.isRepeat)
     }
+
+    // MARK: «+» in a past month, then «Se repite» (2026-11-19)
+
+    /// The last second of September, as «+» proposes it from ‹ septiembre›.
+    private var septemberClose: Date {
+        calendar.date(from: DateComponents(year: 2026, month: 9, day: 30, hour: 23, minute: 59, second: 59))!
+    }
+
+    func testAProposedDateDoesNotGiveTheFixedExpenseTheLastDay() throws {
+        let now = at(11, 19)
+        let start = ExpenseEditorView.proposedFixedDate(in: septemberClose, now: now, calendar: calendar)
+        XCTAssertEqual(calendar.component(.month, from: start), 9, "Sigue en el mes que se ve")
+        XCTAssertEqual(calendar.component(.day, from: start), 19, "El día de hoy, no el 30 del cierre")
+        XCTAssertEqual(calendar.component(.hour, from: start), 12, "A mediodía, no a las 23:59")
+        let rent = Expense(amount: 8_000, currencyMarker: "MXN", merchant: "Renta", date: start)
+        context.insert(rent)
+        ExpenseEditorView.setRepeats(rent, repeats: true, rule: .monthly, date: start)
+        XCTAssertEqual(rent.repeatDay, 19)
+        XCTAssertNotEqual(rent.repeatDay, 30)
+    }
+
+    func testAProposedDateInAShortMonthTakesItsLastDay() throws {
+        let february = calendar.date(from: DateComponents(year: 2026, month: 2, day: 28, hour: 23, minute: 59, second: 59))!
+        let start = ExpenseEditorView.proposedFixedDate(in: february, now: at(3, 31), calendar: calendar)
+        XCTAssertEqual(calendar.component(.month, from: start), 2)
+        XCTAssertEqual(calendar.component(.day, from: start), 28)
+    }
 }

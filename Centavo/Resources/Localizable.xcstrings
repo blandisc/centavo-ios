@@ -1069,14 +1069,14 @@
         }
       }
     },
-    "A las 21:00 el iPhone suele estar despierto. Si un día no se respalda, aquí lo verás y «Hoy» te avisará." : {
+    "A las 21:00 el iPhone suele estar despierto. Si un día no se respalda, aquí lo verás y la app te avisará." : {
       "comment" : "Backup screen (BackupSettingsView): nightly automation footer.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "At 9:00 PM your iPhone is usually awake. If a day isn’t backed up, you’ll see it here and “Today” will let you know."
+            "value" : "At 9:00 PM your iPhone is usually awake. If a day isn’t backed up, you’ll see it here and the app will let you know."
           }
         }
       }
@@ -1569,6 +1569,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Al día remembers what you call each merchant and where you file it. These are saved on their own when you correct an expense or pick its category, including ones you add by hand and fixed ones. Tap one to change it; swipe to forget it."
+          }
+        }
+      }
+    },
+    "Al día recuerda cómo llamas y dónde pones cada comercio. Se anotan solas cuando corriges un gasto o le eliges categoría, también en los que escribes a mano y en los fijos. Toca una para cambiarla; para olvidarla, usa las acciones de VoiceOver." : {
+      "comment" : "What I remember: footer, with VoiceOver on (the swipe is in VoiceOver’s actions rotor)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día remembers what you call each merchant and where you file it. These are saved on their own when you correct an expense or pick its category, including ones you add by hand and fixed ones. Tap one to change it; to forget it, use VoiceOver’s actions."
           }
         }
       }
@@ -2228,7 +2240,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shortcuts tells"
+            "value" : "Shortcuts alerts"
           }
         }
       }
@@ -2253,18 +2265,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Shortcuts, the Apple app that comes with your iPhone, tells Al día. The shortcut comes ready-made: you add it once and turn it on."
-          }
-        }
-      }
-    },
-    "Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos." : {
-      "comment" : "Bienvenida (OnboardingView): texto de la página 4 en iOS 26.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shortcuts, the Apple app that comes with your iPhone, tells Al día. The guide walks you through it tap by tap, in about 5 minutes."
           }
         }
       }
@@ -2769,18 +2769,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Every expense you add shows up in your list, with the month’s total."
-          }
-        }
-      }
-    },
-    "Cada gasto que anotes aparece en «Hoy», con el total del mes." : {
-      "comment" : "Bienvenida (OnboardingView): renglón de la página final sin cifra. «Hoy» es la pantalla principal (verify: same English name as the main screen).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Every expense you add shows up in “Today”, with the month’s total."
           }
         }
       }
@@ -3633,6 +3621,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Any Card"
+          }
+        }
+      }
+    },
+    "Cuando pagas acercando el iPhone, Atajos, la app de Apple que ya viene en tu iPhone, le avisa a Al día. La guía te lleva toque por toque, en unos 5 minutos." : {
+      "comment" : "Bienvenida (OnboardingView), Wallet page on iOS 26, where only contactless payments reach the app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you pay by holding your iPhone near the reader, Shortcuts, the Apple app that comes with your iPhone, tells Al día. The guide walks you through it tap by tap, in about 5 minutes."
           }
         }
       }
@@ -6505,18 +6505,6 @@
         }
       }
     },
-    "La cifra en latón es lo que puedes gastar hoy." : {
-      "comment" : "Bienvenida (OnboardingView): renglón de la página final.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The brass number is what you can spend today."
-          }
-        }
-      }
-    },
     "La cifra grande es lo que puedes gastar hoy." : {
       "comment" : "Bienvenida (OnboardingView): renglón de la página final, con cifra.",
       "extractionState" : "manual",
@@ -8768,7 +8756,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You pay with Wallet, Shortcuts tells Al día, and Al día logs it."
+            "value" : "You pay with Wallet, Shortcuts alerts Al día, and Al día logs it."
           }
         }
       }
@@ -9230,7 +9218,7 @@
       }
     },
     "Prueba con un comercio, un mes o un monto:" : {
-      "comment" : "Hoy (main screen): search with no results; the examples after it stay in Spanish (the search reads Spanish)",
+      "comment" : "Hoy (main screen): search with no results; three examples to tap follow",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9308,7 +9296,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Half-month"
+            "value" : "Twice a month"
           }
         }
       }
@@ -10309,6 +10297,18 @@
         }
       }
     },
+    "Si un gasto no debe contar, mantén el dedo sobre él y toca «No cuenta»." : {
+      "comment" : "Bienvenida (OnboardingView): renglón de la página final: how to leave an expense out of the budget («No cuenta» is the list’s menu item)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If an expense shouldn’t count, touch and hold it and tap “Doesn’t count”."
+          }
+        }
+      }
+    },
     "Si ya pagaste acercando el iPhone, toca para revisarlo." : {
       "comment" : "Capture copy (CaptureCopy): nothing arrived days after the guide, iOS 26",
       "extractionState" : "manual",
@@ -11029,6 +11029,18 @@
         }
       }
     },
+    "Toca uno para cambiarlo. Para que deje de repetirse, usa las acciones de VoiceOver; lo ya anotado se queda." : {
+      "comment" : "Fixed expenses: footer of the list, with VoiceOver on (the swipe is in VoiceOver’s actions rotor)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap one to change it. To stop it from repeating, use VoiceOver’s actions; what’s already logged stays."
+          }
+        }
+      }
+    },
     "Toca «Agregar a Atajos» y, en la hoja que se abre, elige Atajos." : {
       "comment" : "Connect Wallet (iOS 27): add the ready-made shortcut. instruction 1.",
       "extractionState" : "manual",
@@ -11397,6 +11409,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Your backup"
+          }
+        }
+      }
+    },
+    "Tu «+» se abrirá al reintentar." : {
+      "comment" : "Screen shown when the app’s data can’t be opened: a widget’s or Control Center’s «+» (add expense) tapped meanwhile opens once «Intentar de nuevo» works",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your “+” will open when you try again."
           }
         }
       }
@@ -12265,6 +12289,18 @@
         }
       }
     },
+    "café" : {
+      "comment" : "Hoy, search with no results: an example of a merchant to search, tapped to try it (lowercase, as typed)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "coffee"
+          }
+        }
+      }
+    },
     "cuenta" : {
       "comment" : "Hoy · month line and breakdown under the boleto: tear line that opens the sum, lowercase",
       "extractionState" : "manual",
@@ -12493,6 +12529,18 @@
         }
       }
     },
+    "más de 500" : {
+      "comment" : "Hoy, search with no results: an example of an amount, tapped to try it (lowercase, as typed)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "over 500"
+          }
+        }
+      }
+    },
     "pesos" : {
       "comment" : "Currency name (CurrencyPreference): inside a sentence, lowercase: «Sumar en pesos».",
       "extractionState" : "manual",
@@ -12525,6 +12573,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saturday"
+          }
+        }
+      }
+    },
+    "uber de octubre" : {
+      "comment" : "Hoy, search with no results: an example of a merchant and a month, tapped to try it (lowercase, as typed)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "uber in october"
           }
         }
       }
@@ -12764,7 +12824,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "How much do you want to spend a month?"
+            "value" : "How much do you want to spend per month?"
           }
         }
       }
@@ -12969,18 +13029,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Missing any?"
-          }
-        }
-      }
-    },
-    "¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta»." : {
-      "comment" : "Bienvenida (OnboardingView): renglón de la página final.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A payment that isn’t spending? Touch and hold it and choose “Doesn’t count”."
           }
         }
       }

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 ### Changed
+- **Siri en inglés:** decir «dollars» guarda el gasto en dólares; Siri y VoiceOver dicen los montos con su moneda («89.00 Mexican pesos»); en español todo sigue igual.
+- **Pagos pendientes:** un cobro de Wallet cuya cifra no se leyó, o uno que no se pudo guardar, ya no desaparece a los 30 días ni al juntarse más de 20; solo lo quitas tú.
+- **Gastos sin comercio en inglés** se ven «No merchant»; la búsqueda entiende inglés y sus ejemplos salen en inglés.
+- **Segundo iPhone:** si la configuración llega de iCloud durante la bienvenida, no se sobrescriben tu presupuesto, moneda ni fijos; la moneda ya no cambia sola después de escribir tu presupuesto.
+- **Fijos desde un mes anterior:** encender «Se repite» empieza el fijo en el día de hoy de ese mes, no el último día a las 23:59.
+- **VoiceOver:** cada gasto ofrece «No cuenta», «Sí cuenta», «No es repetida» y «Anotar otra vez» en sus acciones.
+- **Almacén con error:** el «+» de un widget se abre al reintentar solo si llegó hace menos de 5 minutos.
+- **Más rápido:** la hoja del gasto lee tu historial fuera del hilo principal.
 - **Categorías en inglés:** en un iPhone en inglés, las categorías de la app y «Efectivo» se ven como Groceries, Food, Coffee, Transportation, Utilities, Subscriptions, Going out, Clothes, Health, Home, Shopping, Rent y Cash, en «Hoy», «En qué se va», la hoja del gasto, «Pagos y categorías», fijos, «Lo que recuerdo», Siri y los widgets. Se siguen guardando en español: respaldo, CSV e iCloud no cambian.
 - **Escribir «Groceries» o «Cash»** usa Despensa y Efectivo en vez de crear otra, y buscar «groceries» encuentra los gastos de Despensa.
 - **Letra de accesibilidad en «Hoy»:** la cabecera pone la fecha y el folio en dos líneas ordenadas; el encabezado de cada día ya no deja el «·» colgando; cada gasto muestra su monto junto al nombre o justo debajo, y el ícono de la tarjeta ya no queda solo.

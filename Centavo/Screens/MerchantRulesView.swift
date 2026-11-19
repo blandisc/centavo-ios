@@ -16,6 +16,8 @@ struct MerchantRulesView: View {
     @AppStorage(UserCatalog.sourceColorsKey) private var storedSourceColors = ""
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// With VoiceOver the swipe is in its actions: the footer says so (2026-11-19).
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @State private var editing: MerchantRule?
     /// A rule about to be forgotten, waiting for «Olvidar».
     @State private var forgetting: MerchantRule?
@@ -144,8 +146,12 @@ struct MerchantRulesView: View {
         return String(localized: "Muestra los comercios que solo tienen categoría")
     }
 
-    private var footer: some View {
-        HintText("Al día recuerda cómo llamas y dónde pones cada comercio. Se anotan solas cuando corriges un gasto o le eliges categoría, también en los que escribes a mano y en los fijos. Toca una para cambiarla; desliza para olvidarla.")
+    @ViewBuilder private var footer: some View {
+        if voiceOver {
+            HintText("Al día recuerda cómo llamas y dónde pones cada comercio. Se anotan solas cuando corriges un gasto o le eliges categoría, también en los que escribes a mano y en los fijos. Toca una para cambiarla; para olvidarla, usa las acciones de VoiceOver.")
+        } else {
+            HintText("Al día recuerda cómo llamas y dónde pones cada comercio. Se anotan solas cuando corriges un gasto o le eliges categoría, también en los que escribes a mano y en los fijos. Toca una para cambiarla; desliza para olvidarla.")
+        }
     }
 
     /// «Solo su categoría · 147».

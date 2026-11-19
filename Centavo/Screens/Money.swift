@@ -15,6 +15,17 @@ func ledgerAmount(for expense: Expense, primary: String) -> String {
     return sign + (code.isEmpty ? number : "\(code) \(number)")
 }
 
+/// The same amount for VoiceOver: in Spanish exactly `ledgerAmount`; in English with the
+/// currency's name («89.00 Mexican pesos»), since «$» alone is read «dollars» (2026-11-19).
+func spokenLedgerAmount(for expense: Expense, primary: String) -> String {
+    guard !saysMoneyAsWritten,
+          let iso = CurrencyResolver.isoCode(for: expense.currencyMarker, primary: primary) else {
+        return ledgerAmount(for: expense, primary: primary)
+    }
+    let sign = expense.amount < 0 ? "+" : ""
+    return sign + spokenMoney(expense.amount.magnitude, isoCode: iso, label: iso)
+}
+
 /// "1,234.50": an amount in another currency, beside its code («EUR 1,234.50»), written the
 /// Mexican way in any region, like the main currency's (2026-10-18). It followed the phone's
 /// region, and «$47.50» and «EUR 12,50» shared one screen (2026-11-18).

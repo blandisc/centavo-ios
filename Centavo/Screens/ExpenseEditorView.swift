@@ -50,6 +50,9 @@ struct ExpenseEditorView: View {
     /// moment of «Guardar»: opened at 23:58 on the 31st and saved after midnight, it landed in
     /// the month that had ended and seemed lost (2026-11-18).
     @State private var dateChosen = false
+    /// The date is only the one proposed for the month being browsed (its last second, from
+    /// «+» in a past month), not picked: «Se repite» doesn't take its day and hour (2026-11-19).
+    @State private var dateProposed = false
     @State private var repeatsMonthly = false
     /// How often it comes back, once «Se repite» is on.
     @State private var rule = RepeatRule.monthly
@@ -197,7 +200,7 @@ struct ExpenseEditorView: View {
         let amountChanged = (amountText != loadedAmountText && parsed?.value != expense.amount.magnitude)
             || isRefund != (expense.amount < 0)
         let kindChanged = counts == expense.isUncounted || (!counts && reason != (expense.reason ?? .reimbursed))
-        let namesChanged = merchant != expense.merchant || card != (expense.card ?? "")
+        let namesChanged = merchant != Expense.shownMerchant(expense.merchant) || card != (expense.card ?? "")
             || category != (expense.category ?? "")
         // The currency as `load` read it: changed alone, «Cancelar» closed without asking (2026-11-18).
         let loadedCurrency = CurrencyResolver.isoCode(for: expense.currencyMarker, primary: CurrencyPreference.current)
@@ -231,7 +234,12 @@ struct ExpenseEditorView: View {
             ? CurrencyPreference.offered : CurrencyPreference.offered + [currency]
     }
 
-    private var trimmedMerchant: String { merchant.trimmingCharacters(in: .whitespaces) }
+    /// What is typed, with «Sin comercio» as the field shows it in the iPhone's language
+    /// («No merchant») read back as the stored one: it is still no merchant (2026-11-19).
+    private var trimmedMerchant: String {
+        let typed = merchant.trimmingCharacters(in: .whitespaces)
+        return typed == Expense.shownMerchant(Expense.noMerchant) ? Expense.noMerchant : typed
+    }
     private var trimmedCategory: String { category.trimmingCharacters(in: .whitespaces) }
     /// The name it is saved with: the merchant, or with none typed, the category («Comida»), as
     /// the person reads it («Groceries» in English): it is a name, not the category (2026-11-18).
@@ -257,7 +265,7 @@ struct ExpenseEditorView: View {
         // never a bare «$» (2026-11-02, 2026-11-18).
         let money = formatMoney(parsed.value.magnitude, isoCode: currency, label: currency,
                                 main: CurrencyPreference.current)
-        var parts = [(isRefund ? "+" : "") + money, savedName]
+        var parts = [(isRefund ? "+" : "") + money, Expense.shownMerchant(savedName)]
         let cardName = card.trimmingCharacters(in: .whitespaces)
         if withCategory, !trimmedCategory.isEmpty, !trimmedMerchant.isEmpty {
             parts.append(CategoryStyle.shown(trimmedCategory))
@@ -634,7 +642,8 @@ struct ExpenseEditorView: View {
         } header: {
             Text("Comercio").ticketCaption()
         } footer: {
-            if let shown = expense?.displayName, shown != expense?.merchant, merchant == expense?.merchant {
+            if let expense, let shown = expense.displayName, shown != expense.merchant,
+               merchant == Expense.shownMerchant(expense.merchant) {
                 HintText("Se muestra como «\(shown)». Si cambias el nombre, se muestra el tuyo.")
             } else if trimmedMerchant.isEmpty, !trimmedCategory.isEmpty {
                 HintText("Sin comercio, se guarda como «\(savedName)».")
@@ -668,9 +677,9 @@ struct ExpenseEditorView: View {
                 HintText("Sugerida por Al día. Elige otra si no te queda; se recuerda.")
             } else if let rememberedCategory {
                 // Shown as the person reads it, stored in Spanish (`BuiltInName`, 2026-11-18).
-                HintText("La última vez en \(trimmedMerchant) fue \(CategoryStyle.shown(rememberedCategory)).")
+                HintText("La última vez en \(Expense.shownMerchant(trimmedMerchant)) fue \(CategoryStyle.shown(rememberedCategory)).")
             } else if let suggestedCategory {
-                HintText("Sugerida para \(trimmedMerchant): \(CategoryStyle.shown(suggestedCategory)). Cámbiala si no te queda.")
+                HintText("Sugerida para \(Expense.shownMerchant(trimmedMerchant)): \(CategoryStyle.shown(suggestedCategory)). Cámbiala si no te queda.")
             }
         }
         .listRowBackground(Theme.surface)
@@ -690,7 +699,7 @@ struct ExpenseEditorView: View {
                     .tint(Theme.brass)
                     .accessibilityIdentifier("cambiar-los-otros")
                 } footer: {
-                    HintText("Los que llegaron como «\(expense.merchant)» quedan como este. El que tenga otra categoría puesta por ti la conserva.")
+                    HintText("Los que llegaron como «\(Expense.shownMerchant(expense.merchant))» quedan como este. El que tenga otra categoría puesta por ti la conserva.")
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -756,7 +765,7 @@ struct ExpenseEditorView: View {
                 }
                 .accessibilityIdentifier("fecha")
                 if expense?.isRepeat != true {
-                    Toggle(isOn: $repeatsMonthly) {
+                    Toggle(isOn: repeatsChoice) {
                         SectionLabel("Se repite")
                     }
                     .tint(Theme.brass)
@@ -1036,7 +1045,30 @@ struct ExpenseEditorView: View {
         Binding(get: { date }, set: { new in
             date = new
             dateChosen = true
+            dateProposed = false
         })
+    }
+
+    /// «Se repite» as its toggle sets it. On a date only proposed, the fixed expense starts on
+    /// a day of its own (`proposedFixedDate`), shown in «Fecha» and in the line under it: from
+    /// September, rent was «cada mes, el día 30» at 23:59, a day nobody chose (2026-11-19).
+    private var repeatsChoice: Binding<Bool> {
+        Binding(get: { repeatsMonthly }, set: { on in
+            // Off again, the month's own proposal comes back (2026-10-13: its last day).
+            if dateProposed { date = on ? Self.proposedFixedDate(in: date) : (initialDate ?? date) }
+            repeatsMonthly = on
+        })
+    }
+
+    /// Today's day in the month of `proposed` (the last one in a shorter month), at noon, and
+    /// never after now.
+    static func proposedFixedDate(in proposed: Date, now: Date = AppClock.now,
+                                  calendar: Calendar = .current) -> Date {
+        let length = calendar.range(of: .day, in: .month, for: proposed)?.count ?? 28
+        var parts = calendar.dateComponents([.year, .month], from: proposed)
+        parts.day = min(calendar.component(.day, from: now), length)
+        parts.hour = 12
+        return min(calendar.date(from: parts) ?? proposed, now)
     }
 
     private func deleteExpense(_ expense: Expense) {
@@ -1128,7 +1160,10 @@ struct ExpenseEditorView: View {
     /// while it came up (2026-11-18).
     private func load() {
         guard let expense else {
-            if let initialDate { date = initialDate }
+            if let initialDate {
+                date = initialDate
+                dateProposed = true
+            }
             card = defaultSource
             dateChosen = initialDate != nil
             guard let prefill else {
@@ -1140,6 +1175,7 @@ struct ExpenseEditorView: View {
             if let when = prefill.date {
                 date = when
                 dateChosen = true
+                dateProposed = false
             }
             if let name = prefill.card?.trimmingCharacters(in: .whitespaces), !name.isEmpty { card = name }
             if let code = prefill.currency { currency = code }
@@ -1173,7 +1209,8 @@ struct ExpenseEditorView: View {
         amountText = AmountTyping.grouped(expense.amount.magnitude
             .formatted(.number.precision(.fractionLength(2)).grouping(.never).locale(AmountTyping.written)))
         loadedAmountText = amountText
-        merchant = expense.merchant
+        // As the person reads it: «No merchant» in English, kept as «Sin comercio» (`trimmedMerchant`).
+        merchant = Expense.shownMerchant(expense.merchant)
         repeatsMonthly = expense.repeatsMonthly == true
         rule = expense.rule
         card = expense.card ?? ""
@@ -1201,8 +1238,15 @@ struct ExpenseEditorView: View {
         if let expense, !expense.isFixed {
             texts = Set(MerchantRules.texts(for: expense.merchant, renames: UserCatalog.merchantRenames))
         }
-        let reader = ExpenseSheetHistory(modelContainer: context.container)
-        guard let read = try? await reader.read(siblingTexts: texts, excluding: expense?.persistentModelID) else { return }
+        let siblingTexts = texts
+        let container = context.container
+        let own = expense?.persistentModelID
+        // Made and asked inside a detached task: a `@ModelActor` made on the main thread may run
+        // its context there, and the sheet would hold again (independent review, 2026-11-19).
+        let reading = Task.detached(priority: .userInitiated) {
+            try await ExpenseSheetHistory(modelContainer: container).read(siblingTexts: siblingTexts, excluding: own)
+        }
+        guard let read = try? await reading.value else { return }
         // A new sheet nobody touched yet opens as it is after this, too: «Cancelar» just closes.
         let untouched = expense == nil && openedState == fieldsState
         pastExpenses = read.past
@@ -1311,6 +1355,7 @@ struct ExpenseEditorView: View {
         if entry.daySaid {
             date = min(entry.date, AppClock.now)
             dateChosen = true
+            dateProposed = false
         }
         if let source = entry.source { card = source }
         sentence = ""

@@ -995,7 +995,7 @@ final class FlowTests: XCTestCase {
                                "-centavo-empty", "-centavo-onboarding"]
         app.launch()
         require(app.buttons["bienvenida-omitir"], "No está «Omitir»", timeout: 20).tap()
-        require(app.staticTexts["¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta»."], "«Omitir» no pasó por «Listo»")
+        require(app.staticTexts["Si un gasto no debe contar, mantén el dedo sobre él y toca «No cuenta»."], "«Omitir» no pasó por «Listo»")
         require(app.buttons["bienvenida-siguiente"], "No ofrece «Ver mi día»").tap()
         require(app.buttons["Anotar gasto"], "No quedó «Hoy»")
     }
@@ -1646,7 +1646,7 @@ final class FlowTests: XCTestCase {
                                "-centavo-empty", "-centavo-onboarding", "-centavo-bienvenida-pagina", "3"]
         app.launch()
         require(app.buttons["bienvenida-configurar"], "No está «Configurar ahora» en la bienvenida", timeout: 20).tap()
-        require(app.staticTexts["¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta»."], "«Listo» no explica «Hoy»")
+        require(app.staticTexts["Si un gasto no debe contar, mantén el dedo sobre él y toca «No cuenta»."], "«Listo» no explica «Hoy»")
         snap("flujo-bienvenida-listo-guia")
         require(app.buttons["bienvenida-siguiente"], "«Listo» no lleva a la guía").tap()
         let guide = app.buttons.matching(NSPredicate(format: "identifier IN %@", ["guia-siguiente", "atajo-agregar"])).firstMatch

@@ -392,7 +392,7 @@ struct BackupSettingsView: View {
         } header: {
             Text("Cada día, solo").ticketCaption()
         } footer: {
-            HintText("A las 21:00 el iPhone suele estar despierto. Si un día no se respalda, aquí lo verás y «Hoy» te avisará.")
+            HintText("A las 21:00 el iPhone suele estar despierto. Si un día no se respalda, aquí lo verás y la app te avisará.")
         }
         .listRowBackground(Theme.surface)
     }

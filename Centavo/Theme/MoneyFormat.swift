@@ -39,8 +39,22 @@ func spokenMoney(_ amount: Decimal, isoCode: String?, label: String, main: Strin
     guard let isoCode, !saysMoneyAsWritten else {
         return formatMoney(amount, isoCode: isoCode, label: label, main: main)
     }
+    return amount.formatted(spokenStyle(isoCode))
+}
+
+/// A whole figure for a sentence that is said («Hoy puedes gastar $290.»): in Spanish exactly
+/// the screen's rounded figure; in English with the currency's name, «290 Mexican pesos»
+/// (2026-11-19: Siri said the pesos as «dollars»).
+func spokenWholeMoney(_ amount: Decimal, isoCode: String) -> String {
+    guard !saysMoneyAsWritten else {
+        return amount.formatted(currencyStyle(isoCode).precision(.fractionLength(0)))
+    }
+    return amount.formatted(spokenStyle(isoCode).precision(.fractionLength(0)))
+}
+
+/// The currency by its name, in English: the iPhone's own English, or the US one.
+private func spokenStyle(_ isoCode: String) -> Decimal.FormatStyle.Currency {
     let english = Locale.current.language.languageCode?.identifier == "en"
     let locale = english ? Locale.current : Locale(identifier: "en_US")
-    let style = Decimal.FormatStyle.Currency(code: isoCode, locale: locale).presentation(.fullName)
-    return amount.formatted(style)
+    return Decimal.FormatStyle.Currency(code: isoCode, locale: locale).presentation(.fullName)
 }

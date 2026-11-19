@@ -79,13 +79,15 @@ struct QuickExpenseIntent: AppIntent {
             if let day { return String(localized: "Anotado: \(amount) en \(name), \(day).") }
             return String(localized: "Anotado: \(amount) en \(name).")
         }
-        // Cash is said in lowercase, whatever its name in the list («Efectivo»).
-        if source.lowercased() == "efectivo" {
+        // Cash is said in lowercase, whatever its name in the list («Efectivo», or «Cash» in
+        // the iPhone's language: the same way of paying, `BuiltInName.paymentSource`).
+        if UserCatalog.same(BuiltInName.paymentSource(source), BuiltInName.cash) {
             if let day { return String(localized: "Anotado: \(amount) en \(name), \(day), con efectivo.") }
             return String(localized: "Anotado: \(amount) en \(name), con efectivo.")
         }
-        if let day { return String(localized: "Anotado: \(amount) en \(name), \(day), con \(source).") }
-        return String(localized: "Anotado: \(amount) en \(name), con \(source).")
+        let card = CategoryStyle.shown(source)
+        if let day { return String(localized: "Anotado: \(amount) en \(name), \(day), con \(card).") }
+        return String(localized: "Anotado: \(amount) en \(name), con \(card).")
     }
 
     /// `aloud`: for what Siri says (`spokenMoney`, 2026-11-18); what is kept pending stays as

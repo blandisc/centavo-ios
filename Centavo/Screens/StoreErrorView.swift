@@ -14,6 +14,8 @@ struct StoreErrorView: View {
     let trouble: StoreTrouble
     /// Opens the store again; `true` when it opened (and this screen goes away).
     let retry: () -> Bool
+    /// A «+» (widget or control) came while the store was down: it opens once it is back.
+    var opensLink = false
 
     /// «Intentar de nuevo» was tapped and it still doesn't open.
     @State private var stillShut = false
@@ -49,6 +51,9 @@ struct StoreErrorView: View {
                     if stillShut {
                         NoteText(Self.stillShutText, color: Theme.ink)
                             .accessibilityIdentifier("error-base-sigue")
+                    }
+                    if opensLink {
+                        HintText("Tu «+» se abrirá al reintentar.")
                     }
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {

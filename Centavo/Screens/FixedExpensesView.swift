@@ -7,6 +7,8 @@ import SwiftUI
 /// which «Hoy puedes gastar» already sets apart.
 struct FixedExpensesView: View {
     @Environment(\.dismiss) private var dismiss
+    /// With VoiceOver the swipe is in its actions: the footer says so (2026-11-19).
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<Expense> { $0.repeatsMonthly == true }) private var originals: [Expense]
     @Query(filter: #Predicate<Expense> { $0.isRepeat == true }) private var copies: [Expense]
@@ -136,7 +138,9 @@ struct FixedExpensesView: View {
                 } header: {
                     Text("Tus gastos fijos").ticketCaption()
                 } footer: {
-                    if !items.isEmpty {
+                    if !items.isEmpty, voiceOver {
+                        HintText("Toca uno para cambiarlo. Para que deje de repetirse, usa las acciones de VoiceOver; lo ya anotado se queda.")
+                    } else if !items.isEmpty {
                         HintText("Toca uno para cambiarlo. Desliza a la izquierda para que deje de repetirse; lo ya anotado se queda.")
                     }
                 }

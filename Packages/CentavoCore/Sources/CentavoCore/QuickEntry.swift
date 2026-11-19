@@ -453,7 +453,11 @@ public enum QuickEntryParser {
     }
 
     private static func takeSource(_ words: inout Words, among sources: [String]) -> String? {
-        let cash = sources.first { fold($0) == "efectivo" } ?? "Efectivo"
+        // Their own cash as they set it up: «Efectivo», or one named in the iPhone's language
+        // («Cash»), which is the same way of paying (`BuiltInName.paymentSource`, 2026-11-19).
+        let cash = sources.first { fold($0) == "efectivo" }
+            ?? sources.first { fold(BuiltInName.paymentSource($0)) == "efectivo" }
+            ?? BuiltInName.cash
         for index in words.folded.indices where words.free(index) {
             if words.folded[index] == "efectivo" || words.folded[index] == "cash" {
                 var start = index

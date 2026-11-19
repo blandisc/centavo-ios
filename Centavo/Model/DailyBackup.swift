@@ -953,6 +953,10 @@ enum DailyBackup {
     private static func restoreSettingAsideHiddenMoney(_ payload: BackupPayload, into container: ModelContainer,
                                                        now: Date) throws {
         _ = try payload.expenses.map { try Expense(backup: $0) }
+        // Once more first, like the other restore: a store busy a moment ago may open now, and
+        // set aside it would be left out of every backup after (independent review, 2026-11-19).
+        // `opened` keeps no failure, so this is a second try.
+        if case .success = MoneyStore.opened { return try restore(payload, into: container, money: nil) }
         let moved = try setAsideMoneyFiles(at: MoneyStore.url, now: now)
         MoneyStore.forget()
         do {

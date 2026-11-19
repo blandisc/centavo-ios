@@ -22,6 +22,9 @@ struct CentavoApp: App {
     /// A widget's «+» or the control's «Anotar gasto» that came while the store was down: kept,
     /// and opened again once «Intentar de nuevo» brings the app back (2026-11-18).
     @State private var pendingLink: URL?
+    /// When it came: one older than `linkLasts` is let go, not opened minutes later out of the
+    /// blue (2026-11-19).
+    @State private var pendingLinkAt: Date?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -31,9 +34,12 @@ struct CentavoApp: App {
                 case .success(let container):
                     RootView().modelContainer(container)
                 case .failure(let error):
-                    StoreErrorView(trouble: StoreFiles.trouble(of: error), retry: retryStore)
+                    StoreErrorView(trouble: StoreFiles.trouble(of: error), retry: retryStore,
+                                   opensLink: pendingLink != nil)
                         .onOpenURL { url in
-                            if url.scheme == "centavo" { pendingLink = url }
+                            guard url.scheme == "centavo" else { return }
+                            pendingLink = url
+                            pendingLinkAt = AppClock.now
                         }
                 }
             }
@@ -58,8 +64,10 @@ struct CentavoApp: App {
         store = Store.retry()
         guard case .success = store else { return false }
         WidgetBridge.refresh()
-        if let link = pendingLink {
-            pendingLink = nil
+        let fresh = freshLink
+        pendingLink = nil
+        pendingLinkAt = nil
+        if let link = fresh {
             // Once «Hoy» is up to take it (its `onOpenURL`), as `AddExpenseLink` opens it.
             Task { @MainActor in
                 try? await Task.sleep(for: Self.screenUp)
@@ -68,6 +76,16 @@ struct CentavoApp: App {
         }
         return true
     }
+
+    /// The link kept while the store was down, if it is recent enough to still be wanted.
+    private var freshLink: URL? {
+        guard let pendingLink, let pendingLinkAt,
+              AppClock.now.timeIntervalSince(pendingLinkAt) <= Self.linkLasts else { return nil }
+        return pendingLink
+    }
+
+    /// How long a «+» kept while the store was down is still opened: a few minutes.
+    private static let linkLasts: TimeInterval = 5 * 60
 
     /// A beat for the main screen to replace the error before the link is opened again.
     private static let screenUp = Duration.milliseconds(400)

@@ -120,7 +120,8 @@ struct CaptureHealthRow: View {
     /// first one, not the latest (a refund later that day read as the first payment). A first
     /// payment from before that was kept apart has no text: the title goes alone.
     private var firstTitle: String {
-        let text = UserDefaults.standard.string(forKey: CaptureArrival.firstTextKey) ?? ""
+        // Put together in the iPhone's language now (`firstText`), not as it was kept.
+        let text = CaptureArrival.firstText()
         if text.isEmpty { return String(localized: "Llegó tu primer pago solo") }
         return String(localized: "Llegó tu primer pago solo: \(text)")
     }
@@ -368,7 +369,7 @@ struct PendingPaymentsPanel: View {
     private func question(_ asked: Discard) -> TicketQuestion {
         switch asked {
         case .one(let payment):
-            TicketQuestion(title: String(localized: "¿Descartar este pago?"), name: payment.text,
+            TicketQuestion(title: String(localized: "¿Descartar este pago?"), name: payment.display,
                            detail: Self.detail(payment),
                            note: String(localized: "No se anotará en tus gastos. No se puede deshacer."),
                            verb: String(localized: "Descartar"))
@@ -381,7 +382,7 @@ struct PendingPaymentsPanel: View {
 
     /// A notice that didn't read is quoted, as it arrived; a payment that did is said plainly.
     static func name(_ payment: PendingPayment) -> String {
-        let text = payment.text
+        let text = payment.display
         if payment.kind == .unread { return String(localized: "«\(text)»", comment: "A Wallet notice quoted as it arrived") }
         return text
     }
@@ -396,7 +397,7 @@ struct PendingPaymentsPanel: View {
     /// The whole row in one sentence, for VoiceOver.
     static func spoken(_ payment: PendingPayment) -> String {
         let when = AppClock.relative(payment.date)
-        let text = payment.text
+        let text = payment.display
         if payment.kind == .unread { return String(localized: "Aviso de Wallet sin monto: \(text), \(when).") }
         return String(localized: "Pago que no se pudo guardar: \(text), \(when).")
     }

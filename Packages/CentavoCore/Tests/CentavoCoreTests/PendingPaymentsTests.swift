@@ -9,6 +9,11 @@ import Testing
         PendingPayment(kind: .unread, text: text, date: now.addingTimeInterval(-hoursAgo * 3600))
     }
 
+    /// A shop's name with no figure: «Tienda A», «Tienda B»… (`mayAgeOut`).
+    private func shop(_ index: Int) -> String {
+        "Tienda " + String(Character(UnicodeScalar(UInt8(65 + index))))
+    }
+
     private func unsaved(_ text: String, hoursAgo: Double = 0) -> PendingPayment {
         PendingPayment(kind: .unsaved, text: text, date: now.addingTimeInterval(-hoursAgo * 3600))
     }
@@ -31,7 +36,10 @@ import Testing
     @Test func aChargeWhoseAmountDidNotReadIsAlwaysKept() {
         let kept = PendingPayment.unread("American Express México\nGoogle\nMXN 3I9.00", always: true, date: now)
         #expect(kept?.text == "American Express México")
+        #expect(kept?.isCharge == true)
+        #expect(kept?.mayAgeOut == false)
         #expect(PendingPayment.unread("", always: true, date: now) == nil)
+        #expect(PendingPayment.unread("Google", date: now)?.isCharge == nil)
     }
 
     @Test func aLongNoticeIsCutToALine() {
@@ -60,26 +68,49 @@ import Testing
         #expect(list.map(\.text) == ["$89 en Oxxo", "Google"])
     }
 
-    @Test func newestFirstAndOnlyTheNewestTwenty() {
+    @Test func newestFirstAndOnlyTheNewestTwentyNamesOnly() {
         var list: [PendingPayment] = []
         for hour in (0..<25).reversed() {
-            list = PendingPayments.adding(unread("Pago \(hour)", hoursAgo: Double(hour)), to: list, now: now)
+            list = PendingPayments.adding(unread(shop(hour), hoursAgo: Double(hour)), to: list, now: now)
         }
         #expect(list.count == PendingPayments.limit)
-        #expect(list.first?.text == "Pago 0")
-        #expect(list.last?.text == "Pago 19")
+        #expect(list.first?.text == shop(0))
+        #expect(list.last?.text == shop(19))
     }
 
-    @Test func pastTheLimitTheUnreadGoFirstAndNeverAnUnsavedWhileOneIsLeft() {
-        // 19 old payments that couldn't be saved, then 5 newer notices that didn't read.
+    @Test func pastTheLimitNamesOnlyGoFirstAndNeverAnUnsavedWhileOneIsLeft() {
+        // 19 old payments that couldn't be saved, then 5 newer notices with only a name.
         var list = (0..<19).map { unsaved("Guardar \($0)", hoursAgo: 100 + Double($0)) }
-        list += (0..<5).map { unread("Leer \($0)", hoursAgo: Double($0)) }
+        list += (0..<5).map { unread(shop($0), hoursAgo: Double($0)) }
         let kept = PendingPayments.current(list, now: now)
         #expect(kept.count == PendingPayments.limit)
         #expect(kept.filter { $0.kind == .unsaved }.count == 19)
         // Of the notices only the newest stays, though all are newer than every unsaved one.
-        #expect(kept.filter { $0.kind == .unread }.map(\.text) == ["Leer 0"])
-        #expect(kept.first?.text == "Leer 0")
+        #expect(kept.filter { $0.kind == .unread }.map(\.text) == [shop(0)])
+        #expect(kept.first?.text == shop(0))
+    }
+
+    @Test func aNoticeWithAFigureOrAChargeIsNeverCutNorAgesOut() {
+        // Only the person removes what the capture received as money (CLAUDE.md, 2026-11-19).
+        let figure = unread("Oxxo 3I9", hoursAgo: 24 * 40)
+        let charge = PendingPayment.unread("American Express México", always: true,
+                                           date: now.addingTimeInterval(-24 * 40 * 3600))!
+        let names = (0..<25).map { unread(shop($0), hoursAgo: Double($0)) }
+        let kept = PendingPayments.current(names + [figure, charge], now: now)
+        #expect(kept.contains(figure))
+        #expect(kept.contains(charge))
+        #expect(kept.count == PendingPayments.limit)
+        #expect(kept.filter(\.mayAgeOut).count == PendingPayments.limit - 2)
+    }
+
+    @Test func aChargeKeptByAnEarlierVersionStillReads() throws {
+        // Earlier versions kept no `isCharge`: it reads as nil.
+        let old = #"[{"id":"0E8B5F1C-2C55-4E2B-9C1B-6B9C3E0C8A11","kind":"unread","text":"Oxxo","date":800000000}]"#
+        let read = PendingPayments.decode(old)
+        #expect(read.count == 1)
+        #expect(read.first?.isCharge == nil)
+        let charge = try #require(PendingPayment.unread("Amex", always: true, date: now))
+        #expect(PendingPayments.decode(PendingPayments.encode([charge])).first?.isCharge == true)
     }
 
     @Test func paymentsThatCouldNotBeSavedAreNeverCutByTheLimit() {

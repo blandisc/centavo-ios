@@ -640,7 +640,8 @@ struct CaptureCheck: View {
     // again on any change to the settings and when the app comes back to the front.
     @State private var session = UserDefaults.standard.double(forKey: CaptureArrival.sessionKey)
     @State private var arrived = UserDefaults.standard.double(forKey: CaptureArrival.dateKey)
-    @State private var arrivedText = UserDefaults.standard.string(forKey: CaptureArrival.textKey) ?? ""
+    /// In the iPhone's language now (`latestText`), not the one it was kept in.
+    @State private var arrivedText = CaptureArrival.latestText()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -740,7 +741,7 @@ struct CaptureCheck: View {
         let defaults = UserDefaults.standard
         let newSession = defaults.double(forKey: CaptureArrival.sessionKey)
         let newArrived = defaults.double(forKey: CaptureArrival.dateKey)
-        let newText = defaults.string(forKey: CaptureArrival.textKey) ?? ""
+        let newText = CaptureArrival.latestText(defaults: defaults)
         if newSession != session { session = newSession }
         if newText != arrivedText { arrivedText = newText }
         if newArrived != arrived { arrived = newArrived }
