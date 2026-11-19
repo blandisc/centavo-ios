@@ -14,8 +14,10 @@ struct SettingsView: View {
     let openGuide: () -> Void
     let importCSV: () -> Void
     /// Opens on «Respaldo diario», already asking to restore: the welcome's «¿Ya usabas Al día?
-    /// Restaurar un respaldo» (2026-11-19).
-    var opensRestore = false
+    /// Restaurar un respaldo» (2026-11-19). A binding, read when the sheet is up: a plain value
+    /// set with the sheet's own flag came in still `false` the first time it opened. Put back to
+    /// `false` once used, so it pushes once.
+    @Binding var opensRestore: Bool
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -26,9 +28,8 @@ struct SettingsView: View {
     @State private var locationDenied = PaymentPlace.isDenied
     /// The whole history as a CSV, read when the sheet opens and after each save (not on every redraw).
     @State private var csv: ExpensesCSVFile?
-    /// «Respaldo diario» pushed by itself (`opensRestore`), once per sheet.
+    /// «Respaldo diario» pushed by itself (`opensRestore`).
     @State private var showingRestore = false
-    @State private var openedRestore = false
 
     var body: some View {
         NavigationStack {
@@ -136,8 +137,8 @@ struct SettingsView: View {
             }
             .task {
                 readCSV()
-                if opensRestore, !openedRestore {
-                    openedRestore = true
+                if opensRestore {
+                    opensRestore = false
                     showingRestore = true
                 }
             }
@@ -232,6 +233,7 @@ enum WalletWatch {
 }
 
 #Preview {
-    SettingsView(currency: "MXN", setCurrency: { _ in }, health: .never, openGuide: {}, importCSV: {})
+    SettingsView(currency: "MXN", setCurrency: { _ in }, health: .never, openGuide: {}, importCSV: {},
+                 opensRestore: .constant(false))
         .ticketPreview()
 }

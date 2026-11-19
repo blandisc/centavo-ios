@@ -135,7 +135,13 @@ struct BackupSettingsView: View {
         .task {
             if startsRestoring, !askedToRestore {
                 askedToRestore = true
-                await startRestoring()
+                // Once Ajustes and this screen have finished coming in, and apart from the
+                // tidying below: asked mid-transition, with no passcode to ask first, UIKit
+                // dropped the file picker and its flag stayed on (independent review, 2026-11-19).
+                Task {
+                    try? await Task.sleep(for: .seconds(Theme.Motion.Restore.afterArrival))
+                    await startRestoring()
+                }
             }
             await Task.detached { _ = DailyBackup.tidyStrandedCopies() }.value
             copies = DailyBackup.strandedCopies()
@@ -538,6 +544,12 @@ struct BackupSettingsView: View {
     /// Restoring opens a backup with the saved password and replaces everything: the owner first.
     private func startRestoring() async {
         guard await OwnerCheck.confirm(reason: String(localized: "Para restaurar un respaldo.")) else { return }
+        // Left on by a picker that never came up: off first, a moment, then on again, or setting
+        // it would change nothing and the picker would never show.
+        if choosingFile {
+            choosingFile = false
+            try? await Task.sleep(for: .seconds(Theme.Motion.Restore.pickerReset))
+        }
         choosingFile = true
     }
 

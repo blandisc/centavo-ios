@@ -39,3 +39,14 @@ extension Theme.Motion {
     }
 }
 
+extension Theme.Motion {
+    /// «Restaurar un respaldo» asked by the welcome (Ajustes › Respaldo diario opened by itself).
+    enum Restore {
+        /// Seconds after «Respaldo diario» appears before the file picker is asked for: the
+        /// Ajustes sheet rising and the push into it are done by then. Asked during them, UIKit
+        /// dropped the picker (2026-11-19).
+        static let afterArrival: Double = 0.7
+        /// Seconds between turning a stuck picker flag off and on again, so SwiftUI sees both.
+        static let pickerReset: Double = 0.1
+    }
+}

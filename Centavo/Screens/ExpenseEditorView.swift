@@ -33,6 +33,10 @@ struct ExpenseEditorView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// Saved, or «Cancelar» / «Descartar» said: the draft is gone and nothing is kept again.
     @State private var draftDone = false
+    /// `keepsDraft` as it was when the sheet opened, kept for the sheet's whole life: the parent
+    /// works it out from the pending payment, which it clears as the sheet goes down, and a
+    /// payment's sheet closing read as «Hoy»'s and left a draft (independent review, 2026-11-19).
+    @State private var draftsAtOpen: Bool?
     @State private var amountText = ""
     /// The amount as the sheet showed it on opening: left as it was, the amount isn't rewritten
     /// (0.125 shown as «0.13» became 0.13 when only the category changed).
@@ -1173,6 +1177,8 @@ struct ExpenseEditorView: View {
     /// main thread (`readHistory`). Read here, 5,000 expenses held the sheet and its keyboard
     /// while it came up (2026-11-18).
     private func load() {
+        let drafts = draftsAtOpen ?? keepsDraft
+        draftsAtOpen = drafts
         guard let expense else {
             if let initialDate {
                 date = initialDate
@@ -1180,7 +1186,7 @@ struct ExpenseEditorView: View {
             }
             card = defaultSource
             dateChosen = initialDate != nil
-            if prefill == nil, keepsDraft, let draft = ExpenseDraftStore.saved {
+            if prefill == nil, drafts, let draft = ExpenseDraftStore.saved {
                 // Opened as if empty: «Cancelar» asks before throwing the draft away.
                 openedState = fieldsState
                 restore(draft)
@@ -1270,8 +1276,11 @@ struct ExpenseEditorView: View {
         reason = draft.uncountedReason
         repeatsMonthly = draft.repeats
         rule = draft.repeatRule
-        // Anything set in «Más detalles» is shown, as for an expense opened to correct.
-        showsDetails = draft.showsDetails || draft.isRefund || !draft.counts || draft.repeats
+        // Anything set in «Más detalles» is shown, as for an expense opened to correct; a date
+        // too, picked or proposed by a past month, which the reopened sheet would otherwise hide.
+        let dated = draft.date != nil || draft.dateProposed
+        let detailed = draft.isRefund || !draft.counts || draft.repeats
+        showsDetails = draft.showsDetails || detailed || dated
     }
 
     /// What the fields hold now, as a draft. A date left alone stays unpicked: it is the moment
@@ -1288,7 +1297,7 @@ struct ExpenseEditorView: View {
     /// The app goes away, or the sheet closes without «Guardar» nor «Descartar»: what was typed
     /// is kept on this iPhone; with nothing typed, no draft is left.
     private func keepDraft() {
-        guard keepsDraft, expense == nil, !draftDone else { return }
+        guard keepsDrafts, expense == nil, !draftDone else { return }
         if hasChanges {
             ExpenseDraftStore.keep(currentDraft)
         } else {
@@ -1297,11 +1306,15 @@ struct ExpenseEditorView: View {
     }
 
     /// Saved, or let go by the person: the draft goes, and is not kept again.
+    /// Done here whatever the sheet is: nothing is kept after it.
     private func finishDraft() {
-        guard keepsDraft, expense == nil else { return }
         draftDone = true
+        guard keepsDrafts, expense == nil else { return }
         ExpenseDraftStore.clear()
     }
+
+    /// Whether this sheet keeps a draft: as it was when it opened (`draftsAtOpen`).
+    private var keepsDrafts: Bool { draftsAtOpen ?? keepsDraft }
 
     /// The history the sheet suggests from, read once it is up, off the main thread
     /// (`ExpenseSheetHistory`). Until it comes, suggestions are the catalog's and «Cambiar

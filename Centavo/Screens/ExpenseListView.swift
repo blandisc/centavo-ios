@@ -374,7 +374,7 @@ struct ExpenseListView: View {
                              health: health,
                              openGuide: { afterSettings { showingSetup = true } },
                              importCSV: { afterSettings { importing = true } },
-                             opensRestore: settingsOpensRestore)
+                             opensRestore: $settingsOpensRestore)
             }
             .onChange(of: storedPlans) { _, value in
                 if Store.syncsBudget { BudgetSync.push(value, for: FixedPlan.key) }
@@ -408,10 +408,12 @@ struct ExpenseListView: View {
                 if GuideDebug.opensAtLaunch { showingSetup = true }
                 openRequestedSheet()
                 // A new expense half typed when iOS closed the app: its sheet again, once per
-                // launch (2026-11-19). Not under the welcome.
+                // launch (2026-11-19). Not under the welcome, nor over a sheet already up: SwiftUI
+                // can't show a second one, and «+» stayed stuck (independent review, 2026-11-19).
                 if !ExpenseDraftStore.checkedThisLaunch {
                     ExpenseDraftStore.checkedThisLaunch = true
-                    if !welcomes, ExpenseDraftStore.saved != nil { adding = true }
+                    let reopens = !welcomes && ExpenseDraftStore.saved != nil
+                    if reopens, !presentsSomething { adding = true }
                 }
                 // Done here before iCloud had the mark (2026-11-02): say so now, or a second phone
                 // with only the currency in iCloud would start the welcome over (independent
@@ -1362,7 +1364,8 @@ private extension ExpenseListView {
     }
 
     private func openAfterOnboarding() {
-        if welcomeFoundICloud {
+        let foundICloud = welcomeFoundICloud
+        if foundICloud {
             welcomeFoundICloud = false
             showingICloudNotice = true
         }
@@ -1371,8 +1374,11 @@ private extension ExpenseListView {
         switch exit {
         case .guide: showingSetup = true
         case .tutorial: showingTutorial = true
-        // Ajustes › Respaldo, already asking to restore (2026-11-19).
+        // Ajustes › Respaldo, already asking to restore (2026-11-19). Not when iCloud brought
+        // the setup meanwhile: the data is coming from there, and its notice is what shows (an
+        // alert and a sheet asked at once; independent review, 2026-11-19).
         case .restore:
+            guard !foundICloud else { break }
             settingsOpensRestore = true
             showingSettings = true
         case .home, nil: break
