@@ -117,6 +117,8 @@ struct ExpenseListView: View {
     @State private var showingSettings = false
     /// Ajustes opens on «Respaldo», straight into restoring: the welcome's «Restaurar un respaldo».
     @State private var settingsOpensRestore = false
+    /// The launch already decided whether the welcome shows (`.task`).
+    @State private var welcomeDecided = false
     /// When the welcome was left for «Restaurar un respaldo»: it counts as done only once a
     /// restore worked after this (`finishWelcomeRestore`, 2026-11-19).
     @State private var welcomeRestoreSince: Date?
@@ -140,6 +142,12 @@ struct ExpenseListView: View {
     @State private var listWidth: CGFloat?
 
     private var primaryCurrency: String { CurrencyPreference.resolve(storedCurrency) }
+
+    /// The welcome is up, or may come up at this launch and it isn't decided yet: «Hoy» waits
+    /// under it, undrawn, so its entrance isn't spent where nobody sees it (2026-11-19).
+    private var welcomeHides: Bool {
+        showingOnboarding || (!welcomeDecided && !onboarded && newestRows.isEmpty)
+    }
     /// Counts are written the Mexican way, like every figure of the app («5,000»). Months and
     /// days are written in the person's language (`Locale.current`).
     static let mexico = Locale(identifier: "es_MX")
@@ -200,7 +208,7 @@ struct ExpenseListView: View {
 
         NavigationStack {
             // In stages: as one chain, the CI's compiler gave up type-checking it in reasonable time.
-            let content = HomeContent(
+            let home = HomeContent(
                 model: model, viewed: viewed, now: now, isCurrent: isCurrent,
                 storeIsEmpty: newestRows.isEmpty,
                 stamp: StoreStamp(count: storeCount, newest: newestRows.first?.date),
@@ -217,6 +225,12 @@ struct ExpenseListView: View {
                 entrance: entrance, listWidth: listWidth, actions: actions
             )
             .equatable()
+            // Not drawn under the welcome (2026-11-19): mounted there, the figure counted up, the
+            // boleto printed and today breathed behind the cover, and «Ver mi día» found «Hoy»
+            // already done. Drawn as the welcome goes, its entrance plays where it is seen.
+            let content = Group {
+                if welcomeHides { Theme.background } else { home }
+            }
             // Scrolling closes a row left open by a swipe, as in a system list.
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting, model.openRow != nil { model.openRow = nil }
@@ -400,6 +414,8 @@ struct ExpenseListView: View {
                 // new phone: the expenses are still coming from iCloud.
                 let welcomes = !onboarded && newestRows.isEmpty && Onboarding.isAllowed
                     && !(Store.syncsBudget && BudgetSync.hasSetupElsewhere)
+                // In the same update as the cover below: «Hoy» is drawn only if it doesn't come.
+                welcomeDecided = true
                 // Never chosen: settle it once, from what the payments are in (pesos if none),
                 // so it cannot drift with the phone's settings. Not under the welcome: written
                 // now, it went up to iCloud and a welcome closed halfway never came back
@@ -1469,7 +1485,7 @@ private extension ExpenseListView {
         context.insert(copy)
         guard persist() else { return }
         // A tap in a menu is easy to make by mistake: it can be taken back (audit 2026-11-02).
-        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+        withAnimation(Self.undoMotion) {
             lastDeleted = nil
             lastCopy = CopiedExpense(expense: copy, name: copy.displayName ?? copy.merchant, dated: elsewhere)
         }
@@ -1479,14 +1495,14 @@ private extension ExpenseListView {
     private func undoCopy(_ copied: CopiedExpense) {
         // Already deleted another way (its row, a sync): only the bar goes.
         guard copied.expense.modelContext != nil, !copied.expense.isDeleted else {
-            withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastCopy = nil }
+            withAnimation(Self.undoMotion) { lastCopy = nil }
             return
         }
         context.delete(copied.expense)
         guard persist() else { return }
         countStore()
         model.storeSaved()
-        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastCopy = nil }
+        withAnimation(Self.undoMotion) { lastCopy = nil }
     }
 
     @ViewBuilder var undoOverlay: some View {
@@ -1518,7 +1534,7 @@ private extension ExpenseListView {
         countStore()
         // A search on screen is asked again, without the deleted expense.
         model.storeSaved()
-        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) {
+        withAnimation(Self.undoMotion) {
             lastCopy = nil
             lastDeleted = snapshot
         }
@@ -1530,7 +1546,7 @@ private extension ExpenseListView {
         guard persist() else { return }
         model.storeSaved()
         countStore()
-        withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { lastDeleted = nil }
+        withAnimation(Self.undoMotion) { lastDeleted = nil }
     }
 
     /// Reads the chosen file and says plainly what happened. `nil` when there's a question to
@@ -2323,7 +2339,7 @@ private struct UndoBarPlacement: ViewModifier {
                 AccessibilityNotification.Announcement(spoken).post()
                 try? await Task.sleep(for: .seconds(total - wait))
                 guard !Task.isCancelled else { return }
-                withAnimation(Theme.Motion.animation(Theme.Motion.quick, reduceMotion: reduceMotion)) { expire() }
+                withAnimation(Self.undoMotion) { expire() }
             }
     }
 }

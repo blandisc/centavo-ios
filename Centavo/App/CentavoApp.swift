@@ -36,11 +36,7 @@ struct CentavoApp: App {
                 case .failure(let error):
                     StoreErrorView(trouble: StoreFiles.trouble(of: error), retry: retryStore,
                                    opensLink: freshLink != nil)
-                        .onOpenURL { url in
-                            guard url.scheme == "centavo" else { return }
-                            pendingLink = url
-                            pendingLinkAt = AppClock.now
-                        }
+                        .onOpenURL { keep($0) }
                 }
             }
             .preferredColorScheme(.dark)
@@ -75,6 +71,23 @@ struct CentavoApp: App {
             }
         }
         return true
+    }
+
+    /// Keeps a «+» that came while the store was down (2026-11-19). Only the «+»: the screen
+    /// promises «Tu «+» se abrirá al reintentar», and «Fijar presupuesto» (`centavo://presupuesto`)
+    /// made it promise the wrong sheet; let go, that tap loses nothing. Let go too once it's
+    /// stale, so the promise goes from the screen instead of staying there for good.
+    private func keep(_ url: URL) {
+        guard url.scheme == AddExpenseLink.url.scheme, url.host() == AddExpenseLink.url.host() else { return }
+        let came = AppClock.now
+        pendingLink = url
+        pendingLinkAt = came
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.linkLasts))
+            guard pendingLinkAt == came else { return }
+            pendingLink = nil
+            pendingLinkAt = nil
+        }
     }
 
     /// The link kept while the store was down, if it is recent enough to still be wanted.
