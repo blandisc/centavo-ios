@@ -109,6 +109,30 @@
         }
       }
     },
+    "%@ en %@, de ayer" : {
+      "comment" : "Siri: the expense to delete, from yesterday (amount, merchant), e.g. «$89.00 en Oxxo, de ayer»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ at %2$@, yesterday"
+          }
+        }
+      }
+    },
+    "%@ en %@, del %@" : {
+      "comment" : "Siri: the expense to delete, from an earlier day (amount, merchant, day like “Friday, Oct 16”), e.g. «$89.00 en Oxxo, del viernes 16 de oct.»",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ at %2$@, on %3$@"
+          }
+        }
+      }
+    },
     "%@ gastos" : {
       "comment" : "Hoy (main screen): search results header; %@ is a count like «5,000»",
       "extractionState" : "manual",
@@ -416,7 +440,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld fixed"
+            "value" : "%lld fixed expenses"
           }
         }
       }
@@ -548,7 +572,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "(%1$@ − fixed) ÷ %2$lld days ="
+            "value" : "(%1$@ − fixed expenses) ÷ %2$lld days ="
           }
         }
       }
@@ -632,7 +656,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 fixed"
+            "value" : "1 fixed expense"
           }
         }
       }
@@ -968,7 +992,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "= Fixed go over by"
+            "value" : "= Fixed expenses go over by"
           }
         }
       }
@@ -1269,6 +1293,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open Shortcuts"
+          }
+        }
+      }
+    },
+    "Abrir la guía" : {
+      "comment" : "Bienvenida (OnboardingView): main button on the final «Listo» page after «Set Up Now»; opens the Wallet guide",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the guide"
           }
         }
       }
@@ -4789,6 +4825,18 @@
         }
       }
     },
+    "El último intento guardó solo tus gastos, en un respaldo que dice «solo-gastos»: una parte de tus datos no se pudo abrir. Si al volver a abrir Al día sigue igual, restaura el «solo-gastos» más reciente." : {
+      "comment" : "Backup screen (BackupSettingsView): Back up now footer, second line, when the last try kept only the expenses. «solo-gastos» is part of the file name and stays as is.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The last attempt saved only your expenses, in a backup with “solo-gastos” in its name: part of your data couldn’t be opened. If it’s the same after you open Al día again, restore the newest “solo-gastos” one."
+          }
+        }
+      }
+    },
     "El último intento no se pudo hacer." : {
       "comment" : "Backup screen (BackupSettingsView): Back up now footer, second line.",
       "extractionState" : "manual",
@@ -5613,6 +5661,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Export CSV"
+          }
+        }
+      }
+    },
+    "Falta conectar Wallet: la guía te lleva toque por toque." : {
+      "comment" : "Bienvenida (OnboardingView): first line on the final «Listo» page after «Set Up Now», before the guide opens",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet isn’t connected yet: the guide walks you through it tap by tap."
           }
         }
       }
@@ -6537,6 +6597,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The previous one hasn’t changed. Try again."
+          }
+        }
+      }
+    },
+    "La captura es de un iPhone en español: sigue el aro latón." : {
+      "comment" : "Floating guide (Picture in Picture): under a screenshot that is still the Spanish one while the app is in English.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This screenshot is from an iPhone set to Spanish: follow the brass ring."
           }
         }
       }
@@ -8017,6 +8089,18 @@
         }
       }
     },
+    "No pude leer el monto que pegaste: caben hasta 12 cifras y 2 decimales. Escríbelo con el teclado." : {
+      "comment" : "Expense sheet: note under the amount after a paste with figures that can’t be read as an amount (too many digits or odd separators); the field kept what it had",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I couldn’t read the amount you pasted: it can have up to 12 digits and 2 decimals. Type it with the keypad."
+          }
+        }
+      }
+    },
     "No reconocí la moneda de lo que pegaste. Elígela junto al monto." : {
       "comment" : "Expense sheet: note under the amount after a paste",
       "extractionState" : "manual",
@@ -8625,6 +8709,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hide Keyboard"
+          }
+        }
+      }
+    },
+    "Ojo: en esta pantalla no toques Al día en la lista de apps. Si lo haces, no se anota nada." : {
+      "comment" : "Floating guide (Picture in Picture), iOS 26 step 4: short warning shown before tapping “Create New Shortcut”.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Careful: on this screen, don’t tap Al día in the list of apps. If you do, nothing gets logged."
           }
         }
       }
@@ -10033,6 +10129,18 @@
         }
       }
     },
+    "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, en ··· › Ajustes › Respaldo diario restaura el respaldo más reciente que dice «solo-gastos»: regresa tus gastos como estaban al guardarse, y lo que no abría queda guardado aparte en este iPhone, sin borrarse. Un respaldo diario anterior regresaría tus gastos al día en que se hizo." : {
+      "comment" : "Backup error (DailyBackup.Failure.moneyUnreadable, «Mi dinero» hidden), shown in alerts and said by Siri: names the «solo-gastos» file to restore. «solo-gastos» is part of the file name and stays as is.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your expenses were saved, but not all of your data: part of it couldn’t be opened. Close Al día completely, open it again, and back up again. If it keeps happening, go to ··· › Settings › Daily backup and restore the newest backup with “solo-gastos” in its name: it brings your expenses back as they were when it was saved, and what wouldn’t open stays set aside on this iPhone, not deleted. An older daily backup would take your expenses back to the day it was made."
+          }
+        }
+      }
+    },
     "Se guardaron tus gastos, pero no todos tus datos: una parte no se pudo abrir. Cierra Al día por completo, vuelve a abrirla y respalda otra vez. Si sigue igual, restaura un respaldo en ··· › Ajustes › Respaldo diario: lo que no abría queda guardado aparte en este iPhone, sin borrarse. Restaurar también regresa tus gastos al día de ese respaldo." : {
       "comment" : "Backup error (DailyBackup.Failure), shown in alerts and said by Siri: ",
       "extractionState" : "manual",
@@ -11126,13 +11234,13 @@
       }
     },
     "Toca «Agregar atajo». Si ya tenías uno con ese nombre, elige «Reemplazar»." : {
-      "comment" : "Connect Wallet (iOS 27): add the ready-made shortcut. instruction 2; Shortcuts import sheet buttons (verify).",
+      "comment" : "iOS 27 ready-made shortcut, step 2. The imported .shortcut file keeps its Spanish name in every language, so the English names it exactly.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap “Add Shortcut”. If you already had one with that name, choose “Replace”."
+            "value" : "Tap “Add Shortcut”. It’s named “Registrar aviso de Wallet”: the name stays in Spanish, and that’s expected. If you already had one with that name, choose “Replace”."
           }
         }
       }
@@ -11505,6 +11613,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Your “+” will open when you try again."
+          }
+        }
+      }
+    },
+    "Tu último respaldo guardó solo tus gastos: una parte de tus datos no se pudo abrir. Revísalo en ··· › Ajustes › Respaldo diario." : {
+      "comment" : "Backup warning on «Hoy» (DailyBackup.notice): the last backup kept only the expenses",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your last backup saved only your expenses: part of your data couldn’t be opened. Check it in ··· › Settings › Daily backup."
           }
         }
       }

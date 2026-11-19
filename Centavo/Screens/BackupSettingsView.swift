@@ -117,6 +117,9 @@ struct BackupSettingsView: View {
         .foregroundStyle(Theme.ink)
         .navigationBarTitleDisplayMode(.inline)
         .ticketBarTitle("Respaldo")
+        // Not swiped away halfway through a restore: closing it then left the welcome unmarked
+        // (independent review, 2026-11-19).
+        .interactiveDismissDisabled(working)
         // The check before «Cambiar contraseña» is for who's holding the phone now: leaving the
         // app closes the form, so coming back asks again.
         .onChange(of: scenePhase) { _, phase in

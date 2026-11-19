@@ -54,7 +54,24 @@ struct SetupGuideView: View {
         Group { content }
             // Opening the guide starts the setup (or carries on with the one under way): only
             // a payment that arrives from here on makes it say «Ya funciona».
-            .onAppear { CaptureArrival.openGuide() }
+            .onAppear {
+                CaptureArrival.openGuide()
+                resumeStep()
+            }
+    }
+
+    /// Back on the step the person was on, when the guide reopens within the same setup: if
+    /// iOS closed Al día while they were in Atajos, it started over on step 1 (QA, 2026-11-18).
+    private func resumeStep() {
+        guard !GuideDebug.opensOnStep else { return }
+        let defaults = UserDefaults.standard
+        let saved = GuideResume.step(saved: defaults.object(forKey: GuideResume.stepKey) as? Int,
+                                     savedSession: defaults.double(forKey: GuideResume.sessionKey),
+                                     session: defaults.double(forKey: CaptureArrival.sessionKey),
+                                     count: steps.count)
+        guard let saved else { return }
+        step = saved
+        stepByStep = true
     }
 
     @ViewBuilder private var content: some View {
@@ -107,6 +124,7 @@ struct SetupGuideView: View {
                 let title = steps[value].title
                 AccessibilityNotification.Announcement(String(localized: "Paso \(number) de \(count). \(title)")).post()
             }
+            .onChange(of: step) { _, value in GuideResume.save(value) }
             .onChange(of: captured.first?.persistentModelID) { _, _ in
                 if companion.isFloating { companion.stop() }
             }
@@ -290,7 +308,10 @@ struct SetupGuideView: View {
 
     /// Every picture of the guide, in order, for the floating window.
     private var companionPages: [GuideCompanion.Page] {
-        steps.indices.flatMap { index -> [GuideCompanion.Page] in
+        // In English the screenshots may still be the Spanish ones: each says so in the
+        // window too, as the guide does above them (QA, 2026-11-18).
+        let spanishPhotos = !GuideFrame.photosMatchLanguage
+        return steps.indices.flatMap { index -> [GuideCompanion.Page] in
             let guide = steps[index]
             if case .frames(let frames) = guide.scene, !frames.isEmpty {
                 return frames.map { frame in
@@ -298,12 +319,20 @@ struct SetupGuideView: View {
                     if case .photo(let name) = frame.screen { photo = name }
                     return GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
                                                caption: frame.caption, photo: photo, focus: frame.focus,
-                                               isResult: frame.isResult)
+                                               isResult: frame.isResult, photoInSpanish: photo != nil && spanishPhotos)
                 }
             }
             let lines = guide.taps.isEmpty ? [guide.lead ?? guide.title] : guide.taps
-            return lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
-                                                 caption: $0) }
+            var pages = lines.map { GuideCompanion.Page(step: index, stepTitle: guide.title, symbol: guide.symbol,
+                                                      caption: $0) }
+            // The step's trap goes first, before its tap: whoever follows only the window never
+            // saw it, and that mistake fails without a word (QA, 2026-11-18).
+            if let warning = guide.floatingWarning {
+                let page = GuideCompanion.Page(step: index, stepTitle: guide.title,
+                                               symbol: "exclamationmark.triangle", caption: warning)
+                pages.insert(page, at: 0)
+            }
+            return pages
         }
     }
 
@@ -386,6 +415,26 @@ enum GuideLayout {
     }
 }
 
+/// The guide's step, kept for the setup under way (2026-11-18): reopened within the same
+/// session (`CaptureArrival.sessionKey`), it lands where the person was. Keys under
+/// «respaldo.» stay on this iPhone, out of the backup.
+enum GuideResume {
+    static let stepKey = "respaldo.esteIPhone.guiaPaso"
+    /// The session the step was saved in: a new setup starts on step 1.
+    static let sessionKey = "respaldo.esteIPhone.guiaPasoSesion"
+
+    /// The step to reopen on, or nil to start from the beginning.
+    static func step(saved: Int?, savedSession: Double, session: Double, count: Int) -> Int? {
+        guard let saved, session > 0, savedSession == session, saved >= 0, saved < count else { return nil }
+        return saved
+    }
+
+    static func save(_ step: Int, defaults: UserDefaults = .standard) {
+        defaults.set(step, forKey: stepKey)
+        defaults.set(defaults.double(forKey: CaptureArrival.sessionKey), forKey: sessionKey)
+    }
+}
+
 /// Debug only: `-centavo-guia-paso N` opens the guide on step N when the app starts, for
 /// screenshots of each step.
 enum GuideDebug {
@@ -437,6 +486,8 @@ private struct GuideStep {
     var lead: String? = nil
     let taps: [String]
     var warning: String? = nil
+    /// The warning, short enough for the floating window (2026-11-18).
+    var floatingWarning: String? = nil
     var note: String? = nil
     var opensShortcuts = false
     let scene: ShortcutsScene
@@ -481,6 +532,7 @@ private struct GuideStep {
             symbol: "plus.square",
             taps: [String(localized: "Arriba, en «Empezar», toca «Crear nuevo atajo».")],
             warning: String(localized: "Ojo: no toques Al día en la lista de apps. Así la automatización se crea sin el importe del pago y no anota nada. Si ya lo hiciste, ve a «Automatización», desliza esa automatización a la izquierda, bórrala y empieza de nuevo."),
+            floatingWarning: String(localized: "Ojo: en esta pantalla no toques Al día en la lista de apps. Si lo haces, no se anota nada."),
             opensShortcuts: true,
             scene: .newShortcut
         ),

@@ -1291,7 +1291,15 @@ struct ExpenseEditorView: View {
         if !draft.category.isEmpty { pinnedCategories = [draft.category] }
         // A date picked in the month on screen comes back; any other (one only proposed, or of
         // another month) leaves the sheet's own, for the month «+» was tapped in (2026-11-19).
-        if let when = draft.restoredDate(visible: initialDate ?? AppClock.now) {
+        // From «Hoy» of this month a date picked by hand comes back whatever its month: «ayer»
+        // chosen on the 1st is the 31st of the month before (independent review, 2026-11-19).
+        let when: Date?
+        if let initialDate {
+            when = draft.restoredDate(visible: initialDate)
+        } else {
+            when = draft.dateProposed ? nil : draft.date
+        }
+        if let when {
             date = when
             dateChosen = true
             dateProposed = false

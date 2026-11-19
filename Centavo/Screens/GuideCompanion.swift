@@ -36,6 +36,8 @@ final class GuideCompanion: NSObject {
         var focus: CGRect?
         /// «Así debe verse»: a result, not something to tap.
         var isResult = false
+        /// The screenshot is the Spanish one in an app shown in another language (2026-11-18).
+        var photoInSpanish = false
     }
 
     /// Picture in Picture runs on this device.
@@ -227,10 +229,17 @@ final class GuideCompanion: NSObject {
 
     // MARK: The video
 
+    /// What tells one picture from another for the cached video. The Spanish-photo mark only
+    /// when it is on, so a guide without it keeps its video (2026-11-18).
+    private static func cacheKey(_ page: Page) -> String {
+        let focus = page.focus.map { "\($0)" } ?? ""
+        let base = "\(page.step)|\(page.caption)|\(page.photo ?? "")|\(focus)"
+        return page.photoInSpanish ? base + "|es" : base
+    }
+
     /// Draws every picture and writes them as one video in the caches, once per guide.
     private func buildVideo() async {
-        let key = pages.map { "\($0.step)|\($0.caption)|\($0.photo ?? "")|\($0.focus.map { "\($0)" } ?? "")" }
-            .joined(separator: "#")
+        let key = pages.map(Self.cacheKey).joined(separator: "#")
         // A name that stays the same from one launch to the next (`hashValue` changes), so the
         // video is drawn once per guide; older ones are removed.
         let digest = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
@@ -523,6 +532,13 @@ struct CompanionCard: View {
             }
             .layoutPriority(1)
             stage
+            // The screenshot is in Spanish and the words aren't: say so under it (QA, 2026-11-18).
+            if page.photoInSpanish {
+                Text("La captura es de un iPhone en español: sigue el aro latón.")
+                    .font(Theme.Companion.tag)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             // The window waits on these (`watchHolds`): say how to go on.
             if !page.isResult && !isLast {
                 // A hint, not a button: in ink (brass is for what is touched; owner, 2026-11-11).
