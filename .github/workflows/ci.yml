@@ -14,6 +14,11 @@ on:
         description: "También las capturas en inglés (EnglishScreenshotTests)"
         type: boolean
         default: false
+      guia:
+        description: "Solo rehacer las capturas de Atajos de la guía, en este idioma (GuideScreenshotsTests)"
+        type: choice
+        options: [none, es, en]
+        default: none
 
 env:
   XCODEGEN_VERSION: "2.46.0"
@@ -139,7 +144,8 @@ jobs:
   # newer one waits its turn, so there is a whole result to look at every time.
   interfaz:
     name: Simulador · ${{ matrix.parte.nombre }}
-    if: github.event_name != 'pull_request'
+    # A run by hand for the guide's pictures only («guia») skips the two long machines.
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.guia == 'none' || inputs.guia == '')
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -324,5 +330,87 @@ jobs:
         if: always()
         with:
           name: capturas-ingles
+          path: build/capturas
+          retention-days: 14
+
+  # Las capturas de Atajos de la guía de Wallet (DECISIONS 2026-10-19): GuideScreenshotsTests
+  # recorre Atajos de verdad en un simulador recién borrado, oscuro y en el idioma pedido, y
+  # Tools/guia-aros.py les dibuja el aro y arma los imagesets (`imagesets/` dentro del artefacto,
+  # listos para copiar a Assets.xcassets). Solo a mano, con «guia» = es o en. Sin reintentos:
+  # la segunda vuelta encontraría la automatización ya hecha. Si falta una etiqueta, el
+  # artefacto trae «falta-…» y su «-arbol», que dice cómo se llama en esa versión de Atajos.
+  guia:
+    name: Guía de Atajos · ${{ inputs.guia }}
+    if: github.event_name == 'workflow_dispatch' && inputs.guia != 'none' && inputs.guia != ''
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Elegir el Xcode más nuevo
+        run: |
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Instalar xcodegen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      # Recién borrado, como alguien que acaba de estrenar el iPhone: sin «Novedades» vistas
+      # ni atajos de otra corrida. Oscuro y con el iPhone entero en el idioma (el teclado y sus
+      # avisos son del sistema, no de Atajos).
+      - name: Preparar un simulador recién borrado
+        id: sim
+        env:
+          IDIOMA: ${{ inputs.guia }}
+        run: |
+          udid="$(Tools/ci-simulador.sh)"
+          xcrun simctl shutdown "$udid" || true
+          xcrun simctl erase "$udid"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          if [ "$IDIOMA" = en ]; then lang=en-US; locale=en_US; else lang=es-MX; locale=es_MX; fi
+          xcrun simctl spawn "$udid" defaults write "Apple Global Domain" AppleLanguages -array "$lang"
+          xcrun simctl spawn "$udid" defaults write "Apple Global Domain" AppleLocale -string "$locale"
+          xcrun simctl shutdown "$udid"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl ui "$udid" appearance dark
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: Recorrer Atajos
+        env:
+          TEST_RUNNER_CENTAVO_GUIA: "1"
+          TEST_RUNNER_CENTAVO_GUIA_IDIOMA: ${{ inputs.guia }}
+        run: |
+          xcodebuild test -project Centavo.xcodeproj -scheme Centavo \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:CentavoUITests/GuideScreenshotsTests \
+            -resultBundlePath build/result.xcresult \
+            CODE_SIGNING_ALLOWED=NO -jobs 4
+
+      - name: Exportar las capturas
+        if: always()
+        run: |
+          mkdir -p build/capturas
+          xcrun xcresulttool export attachments --path build/result.xcresult --output-path build/capturas
+
+      # With part of the walk done the pictures it got are still worth having.
+      - name: Dibujar los aros y armar los imagesets
+        if: always()
+        run: python3 Tools/guia-aros.py build/capturas "${{ inputs.guia }}" --salida build/capturas/imagesets
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guia-atajos-${{ inputs.guia }}
           path: build/capturas
           retention-days: 14
