@@ -281,7 +281,8 @@ struct OnboardingView: View {
     /// Whoever already used Al día (a new iPhone without iCloud, a reinstall) goes straight to
     /// restoring their backup (2026-11-19). Nothing is saved: there is nothing typed on this
     /// page, and a budget, a currency or a fixed expense written now is what a restore would
-    /// then have to weigh against the backup's. The welcome is done, as with «Omitir».
+    /// then have to weigh against the backup's. The welcome counts as done only once the restore
+    /// works (`finishWelcomeRestore`); cancelled or failed, it comes back on the next launch.
     private var restoreLink: some View {
         Button {
             guard !moving else { return }

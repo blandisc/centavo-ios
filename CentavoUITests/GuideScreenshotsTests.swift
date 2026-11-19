@@ -301,12 +301,18 @@ final class GuideScreenshotsTests: XCTestCase {
         // Slide the row until the bell shows, as the guide says to.
         // «isHittable» is true off screen too (XCUITest scrolls on tap): go by the frame.
         let onScreen = { self.shortcuts.frame.contains(variable.frame) }
+        // A drag on the coordinates didn't move the row (local runs, 2026-11-19): a slow swipe
+        // on the row's own scroll view does, a step at a time.
         if selectVariable.exists && !onScreen() {
-            let rowY = selectVariable.frame.midY
-            for _ in 0..<4 where !onScreen() {
-                let from = shortcuts.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: shortcuts.frame.width * 0.85, dy: rowY))
-                let to = shortcuts.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: shortcuts.frame.width * 0.15, dy: rowY))
-                from.press(forDuration: 0.05, thenDragTo: to)
+            let row = shortcuts.scrollViews.containing(NSPredicate(format: "label IN %@", words.selectVariable)).firstMatch
+            let target = row.exists ? row : selectVariable
+            for _ in 0..<6 where !onScreen() {
+                target.swipeLeft(velocity: .slow)
+                sleep(1)
+            }
+            // Past it: back a little.
+            for _ in 0..<3 where variable.frame.maxX < 0 {
+                target.swipeRight(velocity: .slow)
                 sleep(1)
             }
         }
