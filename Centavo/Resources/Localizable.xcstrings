@@ -11317,6 +11317,18 @@
         }
       }
     },
+    "Tu configuración llegó de iCloud: se quedan el presupuesto y los gastos fijos de tu otro iPhone." : {
+      "comment" : "Welcome «Listo» when iCloud brought another iPhone's setup and what was typed was not saved",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your setup came from iCloud: your other iPhone’s budget and fixed expenses stay."
+          }
+        }
+      }
+    },
     "Tu mes" : {
       "comment" : "Bienvenida (OnboardingView): nombre del paso 2 en la barra de pasos.",
       "extractionState" : "manual",

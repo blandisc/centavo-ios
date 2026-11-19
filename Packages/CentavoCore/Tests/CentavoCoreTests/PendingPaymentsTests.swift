@@ -6,7 +6,7 @@ import Testing
     private let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
     private func unread(_ text: String, hoursAgo: Double = 0) -> PendingPayment {
-        PendingPayment(kind: .unread, text: text, date: now.addingTimeInterval(-hoursAgo * 3600))
+        PendingPayment(kind: .unread, text: text, date: now.addingTimeInterval(-hoursAgo * 3600), isCharge: false)
     }
 
     /// A shop's name with no figure: «Tienda A», «Tienda B»… (`mayAgeOut`).
@@ -39,7 +39,7 @@ import Testing
         #expect(kept?.isCharge == true)
         #expect(kept?.mayAgeOut == false)
         #expect(PendingPayment.unread("", always: true, date: now) == nil)
-        #expect(PendingPayment.unread("Google", date: now)?.isCharge == nil)
+        #expect(PendingPayment.unread("Google", date: now)?.isCharge == false)
     }
 
     @Test func aLongNoticeIsCutToALine() {

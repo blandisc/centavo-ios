@@ -60,7 +60,7 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
         guard let first = lines.first,
               always || (lines.count == 1 && !first.contains(where: \.isNumber)) else { return nil }
         return PendingPayment(id: id, kind: .unread, text: String(first.prefix(maxText)), date: date,
-                              isCharge: always ? true : nil)
+                              isCharge: always)
     }
 
     /// A payment that read and couldn't be saved: «$319 en Google». `nil` with nothing to show.
@@ -111,7 +111,9 @@ public struct PendingPayment: Codable, Equatable, Identifiable, Sendable {
     /// name and wasn't read as a charge. Anything else is something the capture received and
     /// couldn't write down, and only the person removes it (CLAUDE.md; independent review,
     /// 2026-11-19: a charge whose figure didn't read went after 30 days).
-    public var mayAgeOut: Bool { isNameOnly && isCharge != true }
+    /// Only what is known not to be a charge: one kept by an earlier version (`nil`) stays, as
+    /// a charge would (independent review, 2026-11-19).
+    public var mayAgeOut: Bool { isNameOnly && isCharge == false }
 
     /// What the sheet of a new expense starts with for this payment: all that was read of one
     /// that couldn't be saved; of a notice with no amount, its text as the shop when it looks
@@ -203,6 +205,8 @@ public enum PendingPayments {
 
     /// Whether a notice is the same payment as one already saved (see `settling`).
     public static func isSettled(_ payment: PendingPayment, by merchants: [String], at date: Date) -> Bool {
+        // Charges too (2026-11-19): every capture keeps its notices as charges, so leaving them
+        // out would undo this pairing and every Wallet notice would stay beside its payment.
         payment.isNameOnly
             && abs(payment.date.timeIntervalSince(date)) <= CaptureGuard.otherSourceWindow
             && merchants.contains { CaptureGuard.shopsAlike(payment.text, $0) }

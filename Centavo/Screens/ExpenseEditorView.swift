@@ -238,6 +238,8 @@ struct ExpenseEditorView: View {
     /// («No merchant») read back as the stored one: it is still no merchant (2026-11-19).
     private var trimmedMerchant: String {
         let typed = merchant.trimmingCharacters(in: .whitespaces)
+        // Only for one with no merchant, or a new one: a real shop called «No merchant» keeps it.
+        guard expense == nil || expense?.merchant == Expense.noMerchant else { return typed }
         return typed == Expense.shownMerchant(Expense.noMerchant) ? Expense.noMerchant : typed
     }
     private var trimmedCategory: String { category.trimmingCharacters(in: .whitespaces) }

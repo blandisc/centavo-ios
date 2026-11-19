@@ -47,6 +47,9 @@ struct OnboardingView: View {
     @State private var saved = false
     /// The save at the end didn't go through: said on the last page.
     @State private var saveFailed = false
+    /// iCloud brought another iPhone's setup while this welcome was open: nothing typed here
+    /// was saved over it (2026-11-19).
+    @State private var foundInICloud = false
     /// «Configurar ahora» on Wallet's page: «Listo» first, so everyone sees what «Hoy» will say,
     /// and then the guide (2026-11-18, owner).
     @State private var thenGuide = false
@@ -148,7 +151,7 @@ struct OnboardingView: View {
     /// open). Not once a tile was tapped, and not once something was typed in it: a budget and a
     /// rent written in pesos would be saved as dollars (independent review, 2026-11-19).
     private var followsStoredCurrency: Bool {
-        guard !pickedCurrency, page < 2 else { return false }
+        guard !pickedCurrency else { return false }
         return budgetText.isEmpty && fixed.isEmpty && draftAmount.isEmpty
     }
 
@@ -568,6 +571,10 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Theme.Space.m)
                 .ticketPanel()
+                // What was typed here wasn't saved: «Listo» says why instead of showing it.
+                if foundInICloud {
+                    HintText("Tu configuración llegó de iCloud: se quedan el presupuesto y los gastos fijos de tu otro iPhone.")
+                }
                 if saveFailed {
                     HintText("Al día no pudo guardar tus gastos fijos todavía. Revísalos en «··· › Gastos fijos».")
                 }
@@ -762,6 +769,7 @@ struct OnboardingView: View {
         // yet: a rent typed again would be charged twice. Only iCloud's setup says so: this
         // month's rows alone can be this phone's own first Wallet payment.
         if Store.syncsBudget && BudgetSync.hasSetupElsewhere {
+            foundInICloud = true
             finishSave()
             return
         }

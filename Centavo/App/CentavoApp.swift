@@ -35,7 +35,7 @@ struct CentavoApp: App {
                     RootView().modelContainer(container)
                 case .failure(let error):
                     StoreErrorView(trouble: StoreFiles.trouble(of: error), retry: retryStore,
-                                   opensLink: pendingLink != nil)
+                                   opensLink: freshLink != nil)
                         .onOpenURL { url in
                             guard url.scheme == "centavo" else { return }
                             pendingLink = url
