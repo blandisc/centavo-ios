@@ -203,7 +203,24 @@ final class GuideScreenshotsTests: XCTestCase {
             edit.tap()
             sleep(1)
         }
-        let automation = find(shortcuts.buttons, words.automation)
+        var automation = find(shortcuts.buttons, words.automation)
+        // In English the editor opened with the actions drawer up, covering the bottom where
+        // «Automation» sits (CI, 2026-11-19): pull the drawer down; failing that, back out to
+        // the app's own «Automation» tab.
+        if !automation.waitForExistence(timeout: 4) {
+            let search = shortcuts.searchFields.firstMatch
+            if search.exists {
+                search.press(forDuration: 0.1, thenDragTo: shortcuts.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+                sleep(1)
+            }
+            automation = find(shortcuts.buttons, words.automation)
+        }
+        if !automation.waitForExistence(timeout: 3) {
+            let back = find(shortcuts.buttons, words.back)
+            if back.exists { back.tap(); sleep(1) }
+            automation = find(shortcuts.buttons, words.automation)
+            if !automation.exists { automation = find(shortcuts.tabBars.buttons, words.automation) }
+        }
         require(automation, "Automatización")
         snap("02-nuevo-atajo", mark: automation)
 
