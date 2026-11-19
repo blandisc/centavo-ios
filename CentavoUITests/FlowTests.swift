@@ -1411,8 +1411,15 @@ final class FlowTests: XCTestCase {
     /// Brings the notice of pending payments out from under the bars.
     private func pendingNotice(_ app: XCUIApplication) -> XCUIElement {
         let notice = require(app.descendants(matching: .any)["pagos-pendientes"], "«Hoy» no dice que hay pagos sin anotar")
-        for _ in 0..<3 where !notice.isHittable || notice.frame.maxY > app.windows.firstMatch.frame.maxY - 120 {
-            app.swipeUp()
+        // Short drags both ways: a full swipe could carry it past the middle and under the top
+        // bar, where the tap lands on the bar (failed in CI on 2026-11-19: notice at y 48–126).
+        let window = app.windows.firstMatch
+        let middle = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        for _ in 0..<6 {
+            let frame = notice.frame, height = window.frame.height
+            let dy: CGFloat
+            if frame.minY < height * 0.25 { dy = 220 } else if frame.maxY > height * 0.8 { dy = -220 } else { break }
+            middle.press(forDuration: 0.05, thenDragTo: middle.withOffset(CGVector(dx: 0, dy: dy)))
         }
         return notice
     }
@@ -1424,11 +1431,6 @@ final class FlowTests: XCTestCase {
         let notice = pendingNotice(app)
         XCTAssertTrue(notice.label.contains("2 pagos sin anotar"), "Dice: \(notice.label)")
         notice.tap()
-        // On a slow runner the tap can land while «Hoy» is still scrolling and open nothing:
-        // once more, as a person would (failed in CI on 2026-11-19, twice).
-        if !app.buttons["pendientes-descartar-todos"].waitForExistence(timeout: 5) {
-            pendingNotice(app).tap()
-        }
         require(app.buttons["pendientes-descartar-todos"], "No ofrece descartar todos")
         require(app.buttons["pendientes-revisar-atajo"], "No ofrece revisar el atajo")
         XCTAssertEqual(app.buttons.matching(identifier: "pendiente-anotar").count, 2, "No ofrece anotar cada pago")
