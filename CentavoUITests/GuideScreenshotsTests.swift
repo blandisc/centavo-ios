@@ -210,7 +210,8 @@ final class GuideScreenshotsTests: XCTestCase {
         if !automation.waitForExistence(timeout: 4) {
             let search = shortcuts.searchFields.firstMatch
             if search.exists {
-                search.press(forDuration: 0.1, thenDragTo: shortcuts.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+                let from = search.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                from.press(forDuration: 0.1, thenDragTo: shortcuts.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
                 sleep(1)
             }
             automation = find(shortcuts.buttons, words.automation)
