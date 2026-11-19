@@ -24,14 +24,15 @@ struct AmountInputField: View {
     /// figure; the screen decides what to do with the rest (2026-11-18).
     var onPaste: ((ParsedAmount) -> Void)?
     /// A paste with no amount in it («Pedido 4521 total»): the field went back to what it held
-    /// (passed here), and the screen says why (2026-11-18).
-    var onUnreadablePaste: ((String) -> Void)?
+    /// (passed here), and the screen says why (2026-11-18). `isOneFigure`: it was a single figure
+    /// that doesn't read as an amount («1,234,567,890,123»: too many digits), not words.
+    var onUnreadablePaste: ((_ restored: String, _ isOneFigure: Bool) -> Void)?
 
     /// A literal title (what VoiceOver calls the field): looked up in the catalog. The prompt
     /// is a figure («0.00») and is shown as it is.
     init(_ title: LocalizedStringResource, text: Binding<String>, prompt: String = "0", size: Size = .regular,
          identifier: String? = nil, onPaste: ((ParsedAmount) -> Void)? = nil,
-         onUnreadablePaste: ((String) -> Void)? = nil) {
+         onUnreadablePaste: ((_ restored: String, _ isOneFigure: Bool) -> Void)? = nil) {
         self.init(String(localized: title), text: text, prompt: prompt, size: size,
                   identifier: identifier, onPaste: onPaste, onUnreadablePaste: onUnreadablePaste)
     }
@@ -40,7 +41,7 @@ struct AmountInputField: View {
     @_disfavoredOverload
     init<S: StringProtocol>(_ title: S, text: Binding<String>, prompt: String = "0", size: Size = .regular,
                             identifier: String? = nil, onPaste: ((ParsedAmount) -> Void)? = nil,
-                            onUnreadablePaste: ((String) -> Void)? = nil) {
+                            onUnreadablePaste: ((_ restored: String, _ isOneFigure: Bool) -> Void)? = nil) {
         self.title = String(title)
         self._text = text
         self.prompt = prompt
@@ -115,7 +116,7 @@ extension View {
 
     /// Puts the thousands in while an amount is typed ("8000" → "8,000").
     func groupsThousands(_ text: Binding<String>, onPaste: ((ParsedAmount) -> Void)? = nil,
-                         onUnreadablePaste: ((String) -> Void)? = nil) -> some View {
+                         onUnreadablePaste: ((_ restored: String, _ isOneFigure: Bool) -> Void)? = nil) -> some View {
         modifier(GroupsThousands(text: text, onPaste: onPaste, onUnreadablePaste: onUnreadablePaste))
     }
 }
@@ -123,7 +124,7 @@ extension View {
 private struct GroupsThousands: ViewModifier {
     @Binding var text: String
     let onPaste: ((ParsedAmount) -> Void)?
-    let onUnreadablePaste: ((String) -> Void)?
+    let onUnreadablePaste: ((_ restored: String, _ isOneFigure: Bool) -> Void)?
 
     func body(content: Content) -> some View {
         content.onChange(of: text) { old, new in
@@ -140,7 +141,7 @@ private struct GroupsThousands: ViewModifier {
                 // «Pedido 4521 total $230» became 4,521,230 with nothing said (2026-11-18): the
                 // field goes back to what it held, and the screen says why.
                 text = old
-                onUnreadablePaste?(old)
+                onUnreadablePaste?(old, AmountFieldEdit.isOneFigure(new))
             }
         }
     }
@@ -195,13 +196,40 @@ enum AmountFieldEdit: Equatable {
         // One key typed, or one run taken out (delete, cut).
         if after.count == before.count + 1, removesOneRun(from: after, leaving: before) { return false }
         if after.count < before.count, removesOneRun(from: before, leaving: after) { return false }
+        // One key over a selection: «234» of «1,234» selected and «5» typed left «1,5», read as
+        // a pasted decimal comma, 1.5 instead of 15 (2026-11-18). A one-digit paste is the same.
+        if replacesWithOneDigit(from: before, to: after) { return false }
         // Already written the field's way: its own rewrite, or a paste that reads the same.
         return AmountTyping.grouped(new) != new
+    }
+
+    /// Whether `text` is one figure: its digits with only separators and spaces between them,
+    /// and no more letters than a currency code («USD 1,234,567,890,123», «$12,34,5»), not
+    /// words with numbers («Pedido 4521 total $230»).
+    static func isOneFigure(_ text: String) -> Bool {
+        guard let first = text.firstIndex(where: \.isNumber),
+              let last = text.lastIndex(where: \.isNumber) else { return false }
+        let between = text[first...last].allSatisfy { $0.isNumber || $0 == "," || $0 == "." || $0.isWhitespace }
+        return between && text.filter(\.isLetter).count <= 3
     }
 
     /// What the field writes itself: digits, its thousands commas and the decimal point.
     private static func isWritten(_ character: Character) -> Bool {
         (character.isNumber && character.isASCII) || character == "," || character == "."
+    }
+
+    /// Whether `after` is `before` with one run (a selection) replaced by a single digit.
+    private static func replacesWithOneDigit(from before: [Character], to after: [Character]) -> Bool {
+        let shortest = min(before.count, after.count)
+        var start = 0
+        while start < shortest, before[start] == after[start] { start += 1 }
+        var tail = 0
+        while start + tail < shortest, before[before.count - 1 - tail] == after[after.count - 1 - tail] {
+            tail += 1
+        }
+        guard after.count - tail - start == 1 else { return false }
+        let key = after[start]
+        return key.isNumber && key.isASCII
     }
 
     /// Whether `shorter` is `longer` with one run of characters taken out.

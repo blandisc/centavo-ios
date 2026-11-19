@@ -96,9 +96,11 @@ enum FixedOutlook {
                 counted: plan.value,
                 currency: plan.currency,
                 ruleText: rule.describe(anchor: plan.firstDate, day: plan.day, calendar: calendar),
+                // With the day asked for, as `logDue` will: «el último día» from a 30th showed
+                // the 30th of May, not the 31st (2026-11-19).
                 next: plan.firstDate > now ? plan.firstDate
-                    : RecurringSchedule.next(rule: rule, anchor: plan.firstDate, after: plan.firstDate,
-                                             now: now, calendar: calendar),
+                    : RecurringSchedule.next(rule: rule, anchor: plan.firstDate, day: plan.day,
+                                             after: plan.firstDate, now: now, calendar: calendar),
                 coming: comingThisMonth(of: plan, now: now, calendar: calendar),
                 original: nil, plan: plan
             )
@@ -120,8 +122,9 @@ enum FixedOutlook {
         guard let end = calendar.dateInterval(of: .month, for: now)?.end else { return [] }
         let first = calendar.isDate(plan.firstDate, equalTo: now, toGranularity: .month) && plan.firstDate > now
             ? [plan.firstDate] : []
-        return first + RecurringSchedule.dates(rule: plan.repeatRule, anchor: plan.firstDate,
-                                               after: plan.firstDate, through: end.addingTimeInterval(-1),
-                                               calendar: calendar).filter { $0 > now }
+        let later = RecurringSchedule.dates(rule: plan.repeatRule, anchor: plan.firstDate, day: plan.day,
+                                            after: plan.firstDate, through: end.addingTimeInterval(-1),
+                                            calendar: calendar)
+        return first + later.filter { $0 > now }
     }
 }

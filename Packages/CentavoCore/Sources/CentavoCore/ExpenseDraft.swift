@@ -54,6 +54,16 @@ public struct ExpenseDraft: Codable, Equatable, Sendable {
     public var uncountedReason: UncountedReason { UncountedReason(rawValue: reason) ?? .reimbursed }
     public var repeatRule: RepeatRule { RepeatRule(stored: rule) }
 
+    /// The date the sheet opens with: only one picked, and only while it is in the month on
+    /// screen (`visible`, what «+» proposes for). One only proposed is never taken back: «+» in
+    /// October left the 31st at 23:59, the app reopened in November and «Guardar» sent the
+    /// expense to October, out of view (2026-11-19). `nil`: the sheet keeps its own.
+    public func restoredDate(visible: Date, calendar: Calendar = .current) -> Date? {
+        guard let date, !dateProposed else { return nil }
+        guard calendar.isDate(date, equalTo: visible, toGranularity: .month) else { return nil }
+        return date
+    }
+
     /// As kept in `UserDefaults`: JSON text.
     public var encoded: String? {
         guard let data = try? JSONEncoder().encode(self) else { return nil }

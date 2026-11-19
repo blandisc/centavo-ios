@@ -117,6 +117,9 @@ struct ExpenseListView: View {
     @State private var showingSettings = false
     /// Ajustes opens on «Respaldo», straight into restoring: the welcome's «Restaurar un respaldo».
     @State private var settingsOpensRestore = false
+    /// When the welcome was left for «Restaurar un respaldo»: it counts as done only once a
+    /// restore worked after this (`finishWelcomeRestore`, 2026-11-19).
+    @State private var welcomeRestoreSince: Date?
     @State private var backupWarning: String?
     /// «Cómo funciona», and where its «Pruébalo» goes once it has closed.
     @State private var showingTutorial = false
@@ -369,7 +372,10 @@ struct ExpenseListView: View {
             .modifier(CatalogsSheet(isPresented: $showingCatalogs))
             .sheet(isPresented: $showingFixed) { FixedExpensesView() }
             .modifier(BackupWatch(warning: $backupWarning, now: now, settingsShown: showingSettings))
-            .sheet(isPresented: $showingSettings, onDismiss: { settingsOpensRestore = false }) {
+            .sheet(isPresented: $showingSettings, onDismiss: {
+                settingsOpensRestore = false
+                finishWelcomeRestore()
+            }) {
                 SettingsView(currency: primaryCurrency, setCurrency: setPrimary,
                              health: health,
                              openGuide: { afterSettings { showingSetup = true } },
@@ -398,13 +404,7 @@ struct ExpenseListView: View {
                 // so it cannot drift with the phone's settings. Not under the welcome: written
                 // now, it went up to iCloud and a welcome closed halfway never came back
                 // (2026-11-18). Until it is chosen, `primaryCurrency` shows pesos all the same.
-                if !welcomes, !CurrencyPreference.offered.contains(storedCurrency) {
-                    let latest = (try? context.fetch(HomeModel.newest(100))) ?? []
-                    storedCurrency = CurrencySuggestion.dominant(
-                        markers: latest.map(\.currencyMarker),
-                        primary: CurrencyPreference.fallback,
-                        offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
-                }
+                if !welcomes { settleCurrency() }
                 if GuideDebug.opensAtLaunch { showingSetup = true }
                 openRequestedSheet()
                 // A new expense half typed when iOS closed the app: its sheet again, once per
@@ -434,8 +434,15 @@ struct ExpenseListView: View {
             .modifier(SetupArrival(noticeShown: $showingICloudNotice, arrived: welcomeFoundSetup))
             .fullScreenCover(isPresented: $showingOnboarding, onDismiss: openAfterOnboarding) {
                 OnboardingView { exit in
-                    onboarded = true
-                    if Store.syncsBudget { BudgetSync.markOnboarded() }
+                    // «Restaurar un respaldo» saved nothing: done only once the restore works
+                    // (2026-11-19). Marked now, a cancelled Face ID or file picker left an empty
+                    // «Hoy» with no way back to the welcome, and told iCloud this iPhone was set up.
+                    if exit == .restore {
+                        welcomeRestoreSince = AppClock.now
+                    } else {
+                        onboarded = true
+                        if Store.syncsBudget { BudgetSync.markOnboarded() }
+                    }
                     afterOnboarding = exit
                     showingOnboarding = false
                 }
@@ -1383,6 +1390,32 @@ private extension ExpenseListView {
             showingSettings = true
         case .home, nil: break
         }
+    }
+
+    /// Never chosen: settled once, from what the payments are in (pesos if none), so it cannot
+    /// drift with the phone's settings.
+    private func settleCurrency() {
+        guard !CurrencyPreference.offered.contains(storedCurrency) else { return }
+        let latest = (try? context.fetch(HomeModel.newest(100))) ?? []
+        storedCurrency = CurrencySuggestion.dominant(
+            markers: latest.map(\.currencyMarker),
+            primary: CurrencyPreference.fallback,
+            offered: CurrencyPreference.offered) ?? CurrencyPreference.fallback
+    }
+
+    /// Ajustes closed after the welcome's «Restaurar un respaldo» (2026-11-19). Restored: the
+    /// welcome is done and the currency comes from the restored payments, as at launch, without
+    /// waiting for the next one (the backup doesn't carry it). Not restored (Face ID, the file
+    /// picker or the backup cancelled, or it failed): nothing is marked, and an app still empty
+    /// shows the welcome again at the next launch.
+    private func finishWelcomeRestore() {
+        guard let since = welcomeRestoreSince else { return }
+        welcomeRestoreSince = nil
+        let restoredAt = UserDefaults.standard.object(forKey: DailyBackup.restoredKey) as? Date
+        guard let restoredAt, restoredAt >= since else { return }
+        onboarded = true
+        if Store.syncsBudget { BudgetSync.markOnboarded() }
+        settleCurrency()
     }
 
     /// A second iPhone whose iCloud came late (2026-11-18): the welcome opened because iCloud had

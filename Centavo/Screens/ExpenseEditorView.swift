@@ -135,6 +135,9 @@ struct ExpenseEditorView: View {
     /// and saving doesn't teach it as a choice («Uber» filled «Transporte», the name was fixed
     /// to «Oxxo» and Oxxo was learned as Transporte, 2026-11-18).
     @State private var categoryAutofilled = false
+    /// The person took the category off by hand: the merchant doesn't put it back until another
+    /// is picked or «Comercio» is emptied (2026-11-18: it came back by itself as typing went on).
+    @State private var categoryCleared = false
     /// What each merchant was last filed under, read once with the history: «Comercio» looks
     /// it up on every key instead of going over every expense again (2026-11-18).
     @State private var latestCategories: [String: String] = [:]
@@ -169,6 +172,7 @@ struct ExpenseEditorView: View {
 
     private var kind: Binding<Kind> {
         Binding(get: { !counts ? .uncounted : isRefund ? .refund : .expense }, set: { new in
+            let pastedRefund = refundFromPaste
             // Picked by hand: no longer the paste's to undo.
             refundFromPaste = false
             switch new {
@@ -180,8 +184,10 @@ struct ExpenseEditorView: View {
                 counts = true
             case .uncounted:
                 counts = false
-                // A stored refund that doesn't count keeps its sign; a new one is an expense.
-                isRefund = (expense?.amount ?? 0) < 0
+                // A stored refund that doesn't count keeps its sign; a new one is an expense,
+                // unless its minus was pasted: «-$50» then «No cuenta» saved +50 (2026-11-18).
+                let keepsPastedSign = expense == nil && pastedRefund && isRefund
+                isRefund = (expense?.amount ?? 0) < 0 || keepsPastedSign
             }
         })
     }
@@ -296,13 +302,22 @@ struct ExpenseEditorView: View {
         return !savedName.isEmpty
     }
 
+    /// The date the sheet shows. A new one left alone is the moment of «Guardar» (`save`), not
+    /// of opening: open across midnight, the row said «31 oct» and the expense went to the 1st
+    /// (2026-11-18). Picked, proposed or an expense's own, it is `date`.
+    private var shownDate: Date {
+        if expense != nil || dateChosen || dateProposed { return date }
+        return AppClock.now
+    }
+
     /// What «Más detalles» holds, said on its row while it is closed: «Hoy · Gasto».
     private var detailsParts: [String] {
         let day: String
-        if AppClock.isToday(date) {
+        let shown = shownDate
+        if AppClock.isToday(shown) {
             day = String(localized: "Hoy")
         } else {
-            day = date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
+            day = shown.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         }
         var parts = [day]
         parts.append(kind.wrappedValue.title)
@@ -465,6 +480,7 @@ struct ExpenseEditorView: View {
                     UserCatalog.markDeleted(saved.name, false)
                     category = saved.name
                     categoryAutofilled = false
+                    categoryCleared = false
                     pinnedCategories.append(saved.name)
                 }
             case .source:
@@ -487,11 +503,13 @@ struct ExpenseEditorView: View {
         .onDisappear(perform: keepDraft)
         .onChange(of: merchant) { _, new in
             refreshMerchant(new)
+            // «Comercio» emptied: a category taken off for the merchant before may come again.
+            if new.trimmingCharacters(in: .whitespaces).isEmpty { categoryCleared = false }
             // Change the merchant and the category you last used for it fills in, while the
             // field is empty or holds only what was filled in for the merchant before — never
             // overwrite a picked one. Only for a new expense: opening an uncategorized one must
             // not quietly file it.
-            guard expense == nil, trimmedCategory.isEmpty || categoryAutofilled else { return }
+            guard expense == nil, !categoryCleared, trimmedCategory.isEmpty || categoryAutofilled else { return }
             autofillCategory()
         }
         .onChange(of: amountText) { _, new in
@@ -552,7 +570,7 @@ struct ExpenseEditorView: View {
         pasteProblem = nil
         if pasted.value < 0 {
             isRefund = true
-            counts = true
+            // «No cuenta» already picked stays: the minus is the sign, not the type (2026-11-18).
             showsDetails = true
             refundFromPaste = true
         } else if refundFromPaste {
@@ -578,9 +596,13 @@ struct ExpenseEditorView: View {
     }
 
     /// A paste with no amount in it: the field kept what it held (`restored`), and says why.
-    private func pastedNoAmount(_ restored: String) {
-        pasteProblem = PasteNote(text: String(localized: "No encontré un monto en lo que pegaste. Escríbelo con el teclado."),
-                                 restored: restored)
+    /// A single figure that doesn't read (too many digits, odd separators) is said apart: «No
+    /// encontré un monto» over «1,234,567,890,123» misled (2026-11-18).
+    private func pastedNoAmount(_ restored: String, isOneFigure: Bool) {
+        let text = isOneFigure
+            ? String(localized: "No pude leer el monto que pegaste: caben hasta 12 cifras y 2 decimales. Escríbelo con el teclado.")
+            : String(localized: "No encontré un monto en lo que pegaste. Escríbelo con el teclado.")
+        pasteProblem = PasteNote(text: text, restored: restored)
     }
 
     /// «Siguiente», shown only while the amount is typed. Its room is always kept: put in and
@@ -805,7 +827,7 @@ struct ExpenseEditorView: View {
                         EmptyView()
                     }
                     if repeatsMonthly {
-                        HintText(FixedWording.howItRepeats(rule, from: date, day: askedDay))
+                        HintText(FixedWording.howItRepeats(rule, from: shownDate, day: askedDay))
                         if let started = expense, started.repeatsMonthly == true {
                             // The original is the first charge too: its amount is that charge's.
                             let firstCharge = started.date.formatted(.dateTime.day().month(.wide).locale(Locale.current))
@@ -924,6 +946,7 @@ struct ExpenseEditorView: View {
                      selected: category == name, tint: colors.category(name)) {
             category = category == name ? "" : name
             categoryAutofilled = false
+            categoryCleared = category.isEmpty
             if showsAllCategories, !category.isEmpty { pinnedCategories.append(name) }
         }
     }
@@ -1060,7 +1083,7 @@ struct ExpenseEditorView: View {
 
     /// The date as «Más detalles» changes it: picked, it is kept as it is on «Guardar».
     private var chosenDate: Binding<Date> {
-        Binding(get: { date }, set: { new in
+        Binding(get: { shownDate }, set: { new in
             date = new
             dateChosen = true
             dateProposed = false
@@ -1266,16 +1289,20 @@ struct ExpenseEditorView: View {
         category = draft.category
         categoryAutofilled = draft.categoryAutofilled
         if !draft.category.isEmpty { pinnedCategories = [draft.category] }
-        if let when = draft.date {
+        // A date picked in the month on screen comes back; any other (one only proposed, or of
+        // another month) leaves the sheet's own, for the month «+» was tapped in (2026-11-19).
+        if let when = draft.restoredDate(visible: initialDate ?? AppClock.now) {
             date = when
             dateChosen = true
-            dateProposed = draft.dateProposed
+            dateProposed = false
         }
         isRefund = draft.isRefund
         counts = draft.counts
         reason = draft.uncountedReason
         repeatsMonthly = draft.repeats
         rule = draft.repeatRule
+        // «Se repite» on a proposed date starts on a day of its own, as its toggle does.
+        if repeatsMonthly, dateProposed { date = Self.proposedFixedDate(in: date) }
         // Anything set in «Más detalles» is shown, as for an expense opened to correct; a date
         // too, picked or proposed by a past month, which the reopened sheet would otherwise hide.
         let dated = draft.date != nil || draft.dateProposed
@@ -1284,9 +1311,10 @@ struct ExpenseEditorView: View {
     }
 
     /// What the fields hold now, as a draft. A date left alone stays unpicked: it is the moment
-    /// of «Guardar», not of the day it was typed.
+    /// of «Guardar», not of the day it was typed. One only proposed by the month being browsed
+    /// is not kept either: the next «+» proposes for its own month (2026-11-19).
     private var currentDraft: ExpenseDraft {
-        let picked: Date? = dateChosen ? date : nil
+        let picked: Date? = dateChosen && !dateProposed ? date : nil
         return ExpenseDraft(amountText: amountText, currency: currency, merchant: merchant, card: card,
                             category: category, categoryAutofilled: categoryAutofilled, date: picked,
                             dateProposed: dateProposed, isRefund: isRefund, counts: counts,
@@ -1344,7 +1372,7 @@ struct ExpenseEditorView: View {
         siblings = read.siblings.compactMap { context.model(for: $0) as? Expense }
         refreshMerchant(merchant)
         // What the merchant fills in, now that what you chose for it before is known.
-        if expense == nil, trimmedCategory.isEmpty || categoryAutofilled {
+        if expense == nil, !categoryCleared, trimmedCategory.isEmpty || categoryAutofilled {
             autofillCategory()
         }
         if untouched { openedState = fieldsState }
@@ -1573,10 +1601,6 @@ struct ExpenseEditorView: View {
                 date: date,
                 category: categoryName.isEmpty ? nil : categoryName
             )
-            // Only a category picked is learned: one filled in from the merchant is not a choice.
-            if typedMerchant, !categoryName.isEmpty, !categoryAutofilled {
-                UserCatalog.learnCategory(categoryName, for: name)
-            }
             // A place picked from the suggestions reads as it did before.
             if typedMerchant {
                 var same = FetchDescriptor<Expense>(predicate: #Predicate { $0.merchant == name },
@@ -1592,6 +1616,12 @@ struct ExpenseEditorView: View {
                 // Not saved: «Guardar» can be tried again with what was typed.
                 savedOnce = false
                 return
+            }
+            // Only once it is saved, as on a correction: a failed save taught «Oxxo → Antojos»
+            // for an expense that never was (2026-11-18). Only a category picked is learned: one
+            // filled in from the merchant is not a choice.
+            if typedMerchant, !categoryName.isEmpty, !categoryAutofilled {
+                UserCatalog.learnCategory(categoryName, for: name)
             }
             onSave?()
             finishDraft()
