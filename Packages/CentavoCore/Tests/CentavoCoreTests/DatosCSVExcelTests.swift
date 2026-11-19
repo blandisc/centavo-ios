@@ -7,8 +7,18 @@ import Testing
 @Suite struct DatosCSVExcelTests {
     /// What Excel writes when it opened a file without the UTF-8 mark as Windows-1252 and
     /// saved it as «CSV UTF-8»: every accent doubled.
+    /// Byte by byte: Foundation refuses the five bytes Windows-1252 leaves unused (the «”» of
+    /// «Ópalo”» ends in 0x9D), which Excel shows as themselves (CI, 2026-11-19).
     private func doubled(_ text: String) -> String {
-        String(data: Data(text.utf8), encoding: .windowsCP1252)!
+        var out = ""
+        for byte in text.utf8 {
+            if let one = String(data: Data([byte]), encoding: .windowsCP1252) {
+                out += one
+            } else {
+                out.unicodeScalars.append(Unicode.Scalar(byte))
+            }
+        }
+        return out
     }
 
     @Test func doubledAccentsAreUndone() throws {
