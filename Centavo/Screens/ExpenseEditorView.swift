@@ -89,9 +89,19 @@ struct ExpenseEditorView: View {
     @State private var readingSentence = false
     /// Said when a sentence had no amount in it, instead of doing nothing.
     @State private var sentenceProblem: String?
-    /// Said when what was pasted in the amount named a currency this sheet doesn't offer.
-    /// Only emptying the amount clears it: the field's own rewrite of the paste is a change too.
-    @State private var pasteProblem: String?
+    /// Said when what was pasted in the amount had a currency that isn't one, or no amount at
+    /// all. It goes when the currency is picked, a sentence fills the sheet, or the amount is
+    /// typed again (`PasteNote.clears`; 2026-11-18: picking the currency left it in view).
+    @State private var pasteProblem: PasteNote?
+    /// «Devolución» was turned on by a paste with a minus: a paste without one turns it off.
+    @State private var refundFromPaste = false
+    /// The VoiceOver line for a category filled in from the merchant, waiting for typing to settle.
+    @State private var categoryAnnouncement: Task<Void, Never>?
+    /// How many other expenses «Cambiar también los otros» would change, worked out once typing
+    /// settles, not on every drawing of the sheet (2026-11-18: hundreds of them, every key).
+    @State private var pendingOthers = 0
+    /// «Dejar de repetir» done on a copy with changes still to save: the sheet stays open.
+    @State private var stoppedHere = false
 
     // Read once when the sheet opens, or when «Comercio» changes: rebuilding them from the
     // whole history on every key typed was felt with thousands of expenses (audit R10).
@@ -144,6 +154,8 @@ struct ExpenseEditorView: View {
 
     private var kind: Binding<Kind> {
         Binding(get: { !counts ? .uncounted : isRefund ? .refund : .expense }, set: { new in
+            // Picked by hand: no longer the paste's to undo.
+            refundFromPaste = false
             switch new {
             case .expense:
                 isRefund = false
@@ -228,7 +240,11 @@ struct ExpenseEditorView: View {
     }
 
     /// What «Guardar» will keep, or what is still missing: «$230 · Tacos · Efectivo».
-    private var saveSummary: String {
+    private var saveSummary: String { summaryLine(withCategory: false) }
+
+    /// The same with the category, for what VoiceOver says once it is saved: one filled in from
+    /// the merchant was never said (2026-11-18). The bar keeps its approved line.
+    private func summaryLine(withCategory: Bool) -> String {
         // What is wrong with the amount, said apart: «0» or an unreadable one said «Falta el
         // monto» with something typed in view (2026-11-18).
         guard let parsed else {
@@ -243,6 +259,9 @@ struct ExpenseEditorView: View {
                                 main: CurrencyPreference.current)
         var parts = [(isRefund ? "+" : "") + money, savedName]
         let cardName = card.trimmingCharacters(in: .whitespaces)
+        if withCategory, !trimmedCategory.isEmpty, !trimmedMerchant.isEmpty {
+            parts.append(CategoryStyle.shown(trimmedCategory))
+        }
         if !cardName.isEmpty { parts.append(CategoryStyle.shown(cardName)) }
         if !counts { parts.append(String(localized: "No cuenta")) }
         return parts.joined(separator: " · ")
@@ -256,7 +275,7 @@ struct ExpenseEditorView: View {
     }
 
     /// What «Más detalles» holds, said on its row while it is closed: «Hoy · Gasto».
-    private var detailsSummary: String {
+    private var detailsParts: [String] {
         let day: String
         if AppClock.isToday(date) {
             day = String(localized: "Hoy")
@@ -266,13 +285,16 @@ struct ExpenseEditorView: View {
         var parts = [day]
         parts.append(kind.wrappedValue.title)
         if repeatsMonthly || expense?.isRepeat == true { parts.append(String(localized: "Fijo")) }
-        return parts.joined(separator: " · ")
+        return parts
     }
 
-    /// What VoiceOver says of «Más detalles»: open, or what it holds while closed.
+    private var detailsSummary: String { detailsParts.joined(separator: " · ") }
+
+    /// What VoiceOver says of «Más detalles»: open, or what it holds while closed, with commas:
+    /// the row's own text is hidden from it, or the summary was said twice, «·» and all (2026-11-18).
     private var detailsValue: String {
         if showsDetails { return String(localized: "Abierto") }
-        return detailsSummary
+        return detailsParts.joined(separator: ", ")
     }
 
     private var detailsHint: String {
@@ -326,13 +348,18 @@ struct ExpenseEditorView: View {
                     .listRowBackground(Theme.surface)
                 }
 
-                if expense?.isRepeat == true, original != nil {
+                if expense?.isRepeat == true, original != nil || stoppedHere {
                     Section {
-                        Button { confirmingStop = true } label: { LinkActionLabel("Dejar de repetir") }
-                            .buttonStyle(.borderless)
-                            .accessibilityIdentifier("dejar-de-repetir")
+                        if stoppedHere {
+                            NoteText(Self.stoppedWithChanges)
+                                .accessibilityIdentifier("dejo-de-repetir")
+                        } else {
+                            Button { confirmingStop = true } label: { LinkActionLabel("Dejar de repetir") }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("dejar-de-repetir")
+                        }
                     } footer: {
-                        HintText("Lo ya anotado se queda; el siguiente ya no llega.")
+                        if !stoppedHere { HintText("Lo ya anotado se queda; el siguiente ya no llega.") }
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -392,7 +419,7 @@ struct ExpenseEditorView: View {
             }
             .confirmsRemoval(isPresented: $confirmingStop, question: {
                 TicketQuestion(title: String(localized: "¿Dejar de repetir este gasto fijo?"),
-                               name: expense?.displayName ?? expense?.merchant ?? "",
+                               name: expense?.shownName ?? "",
                                note: String(localized: "Lo ya anotado se queda; el siguiente ya no llega."),
                                verb: String(localized: "Dejar de repetir"))
             }, onConfirm: confirmStop)
@@ -402,6 +429,8 @@ struct ExpenseEditorView: View {
             }
         }
         .onAppear(perform: load)
+        // After `load`, once the sheet is up: the history it suggests from.
+        .task { await readHistory() }
         .sheet(item: $creating) { kind in
             switch kind {
             case .category:
@@ -437,13 +466,15 @@ struct ExpenseEditorView: View {
             // overwrite a picked one. Only for a new expense: opening an uncategorized one must
             // not quietly file it.
             guard expense == nil, trimmedCategory.isEmpty || categoryAutofilled else { return }
-            category = suggestedCategory ?? ""
-            categoryAutofilled = suggestedCategory != nil
+            autofillCategory()
         }
         .onChange(of: amountText) { _, new in
             sentenceProblem = nil
-            if new.isEmpty { pasteProblem = nil }
+            if let pasteProblem, pasteProblem.clears(with: new) { self.pasteProblem = nil }
         }
+        // The currency picked is the answer to «Elígela junto al monto» (2026-11-18).
+        .onChange(of: currency) { _, _ in pasteProblem = nil }
+        .task(id: othersKey) { await countOthers() }
     }
 
     // MARK: Sections
@@ -452,7 +483,7 @@ struct ExpenseEditorView: View {
         Section {
             AdaptiveStack {
                 AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "monto",
-                                 onPaste: takePasted)
+                                 onPaste: takePasted, onUnreadablePaste: pastedNoAmount)
                     .focused($amountFocused)
                     // The figure gives way, not «MXN ⌄» (2026-11-18).
                     .layoutPriority(1)
@@ -473,7 +504,7 @@ struct ExpenseEditorView: View {
                 NoteText(sentenceProblem)
                     .accessibilityIdentifier("frase-sin-monto")
             } else if let pasteProblem {
-                NoteText(pasteProblem)
+                NoteText(pasteProblem.text)
                     .accessibilityIdentifier("pegado-sin-moneda")
             }
         }
@@ -492,19 +523,38 @@ struct ExpenseEditorView: View {
     /// keeps the rest (2026-11-18: the currency and the sign were lost). A minus is money that
     /// came back, shown open so it is seen before saving. A bare «$» is the main currency.
     private func takePasted(_ pasted: ParsedAmount) {
+        pasteProblem = nil
         if pasted.value < 0 {
             isRefund = true
             counts = true
             showsDetails = true
+            refundFromPaste = true
+        } else if refundFromPaste {
+            // «-$50» pasted, then «$50» over it: the refund was only the first paste's (2026-11-18).
+            isRefund = false
+            refundFromPaste = false
         }
         guard let marker = pasted.currencyMarker, !CurrencyResolver.isAmbiguous(marker) else { return }
-        let code = CurrencyResolver.isoCode(for: marker, primary: CurrencyPreference.current)
-        if let code, currencies.contains(code) {
+        // A real currency is taken even when it isn't among the offered ones: the menu adds the
+        // expense's own (`currencies`), as for a payment from abroad. «EUR 20» said «No reconocí
+        // la moneda» and sent to a menu without EUR (2026-11-18).
+        if let code = CurrencyResolver.isoCode(for: marker, primary: CurrencyPreference.current),
+           Self.isRealCurrency(code) {
             currency = code
-            pasteProblem = nil
         } else {
-            pasteProblem = String(localized: "No reconocí la moneda de lo que pegaste. Elígela junto al monto.")
+            pasteProblem = PasteNote(text: String(localized: "No reconocí la moneda de lo que pegaste. Elígela junto al monto."))
         }
+    }
+
+    /// `isoCode` lets any three letters through («ABC»): only a currency that exists is taken.
+    static func isRealCurrency(_ code: String) -> Bool {
+        Locale.Currency.isoCurrencies.contains { $0.identifier == code }
+    }
+
+    /// A paste with no amount in it: the field kept what it held (`restored`), and says why.
+    private func pastedNoAmount(_ restored: String) {
+        pasteProblem = PasteNote(text: String(localized: "No encontré un monto en lo que pegaste. Escríbelo con el teclado."),
+                                 restored: restored)
     }
 
     /// «Siguiente», shown only while the amount is typed. Its room is always kept: put in and
@@ -617,9 +667,10 @@ struct ExpenseEditorView: View {
             if let expense, expense.hasSuggestedCategory, category == expense.category {
                 HintText("Sugerida por Al día. Elige otra si no te queda; se recuerda.")
             } else if let rememberedCategory {
-                HintText("La última vez en \(trimmedMerchant) fue \(rememberedCategory).")
+                // Shown as the person reads it, stored in Spanish (`BuiltInName`, 2026-11-18).
+                HintText("La última vez en \(trimmedMerchant) fue \(CategoryStyle.shown(rememberedCategory)).")
             } else if let suggestedCategory {
-                HintText("Sugerida para \(trimmedMerchant): \(suggestedCategory). Cámbiala si no te queda.")
+                HintText("Sugerida para \(trimmedMerchant): \(CategoryStyle.shown(suggestedCategory)). Cámbiala si no te queda.")
             }
         }
         .listRowBackground(Theme.surface)
@@ -629,8 +680,8 @@ struct ExpenseEditorView: View {
     /// category) would change other expenses that arrived with the same text. Nothing changes
     /// unless it is turned on, and all of it is saved with this expense, in one save.
     @ViewBuilder private var othersSection: some View {
-        if let backfill, let expense {
-            let count = backfill.pending(in: siblings).count
+        if backfill != nil, let expense {
+            let count = pendingOthers
             if count > 0 {
                 Section {
                     Toggle(isOn: $changesOthers) {
@@ -675,6 +726,7 @@ struct ExpenseEditorView: View {
                             .font(.ticket(.footnote))
                             .foregroundStyle(Theme.muted)
                             .multilineTextAlignment(.trailing)
+                            .accessibilityHidden(true)
                     }
                     RowChevron(.discloses(showsDetails))
                 }
@@ -766,12 +818,11 @@ struct ExpenseEditorView: View {
         }
     }
 
-    /// «28 oct 14:32», the day in the iPhone's language and the time on a 24-hour clock.
-    static func stamp(_ date: Date) -> String {
-        let day = date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
-        let time = date.formatted(Date.VerbatimFormatStyle(
-            format: "\(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits)",
-            timeZone: .current, calendar: .current))
+    /// «28 oct 14:32», the day in the iPhone's language and the time on the iPhone's own clock:
+    /// a 24-hour one forced «14:32» on a 12-hour iPhone, as if it were wrong (2026-11-18).
+    static func stamp(_ date: Date, locale: Locale = .current) -> String {
+        let day = date.formatted(.dateTime.day().month(.abbreviated).locale(locale))
+        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))
         return "\(day) \(time)"
     }
 
@@ -950,11 +1001,23 @@ struct ExpenseEditorView: View {
 
     // MARK: Reading and saving
 
+    /// Said where «Dejar de repetir» was, when the sheet stays open for changes still to save.
+    private static let stoppedWithChanges = String(localized: "Ya no se repite. Tus cambios a este gasto siguen sin guardar: toca «Guardar» para guardarlos.")
+
     private func stopRepeating() {
         guard let original else { return }
         // The original keeps counting as the fixed charge it was (`RecurringExpenses.stopRepeating`).
         RecurringExpenses.stopRepeating(original)
-        if persist() { dismiss() }
+        guard persist() else { return }
+        // Only the original was saved: with changes typed here, closing threw them away without
+        // the «¿Descartar cambios?» every other way out asks (2026-11-18). The sheet stays open.
+        guard hasChanges else {
+            dismiss()
+            return
+        }
+        self.original = nil
+        stoppedHere = true
+        if voiceOver { AccessibilityNotification.Announcement(Self.stoppedWithChanges).post() }
     }
 
     /// «Dejar de repetir» said yes to: on a copy, its original stops; on the original itself,
@@ -1060,14 +1123,10 @@ struct ExpenseEditorView: View {
             ?? CategoryMemory.suggestion(for: typed, rules: rules, history: [], hidden: notAutoAssigned)
     }
 
+    /// What the sheet opens with, at once: the history it suggests from comes after, off the
+    /// main thread (`readHistory`). Read here, 5,000 expenses held the sheet and its keyboard
+    /// while it came up (2026-11-18).
     private func load() {
-        // One read of the history when the sheet opens, not a live query redrawn on every key.
-        let history = (try? context.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-        pastExpenses = history.map(\.categorized)
-        merchantIndex = MerchantSuggestions.Index(pastExpenses)
-        latestCategories = CategoryMemory.latest(in: pastExpenses)
-        knownCategories = CategoryMemory.known(in: pastExpenses)
-        knownCards = PaymentChoices.mostUsedCards(history.prefix(300).map(\.card))
         guard let expense else {
             if let initialDate { date = initialDate }
             card = defaultSource
@@ -1088,6 +1147,7 @@ struct ExpenseEditorView: View {
             // «Tipo» is under «Más detalles»: open, so a refund is seen as one.
             showsDetails = prefill.isRefund
             merchant = prefill.merchant ?? ""
+            // The catalog's guess for now; `readHistory` puts in the one you chose, if any.
             refreshMerchant(merchant)
             // The category this shop usually gets, set here and not by `onChange(of: merchant)`
             // after: what the sheet opens with is not a change the person made.
@@ -1122,17 +1182,97 @@ struct ExpenseEditorView: View {
         date = expense.date
         original = originalOfCopy(expense)
         // A fixed expense and its copies are not a merchant's payments: they follow their plan.
+        // The others from the same merchant come with the history (`readHistory`).
         if !expense.isFixed {
             merchantTexts = MerchantRules.texts(for: expense.merchant, renames: UserCatalog.merchantRenames)
-            let texts = Set(merchantTexts)
-            siblings = history.filter {
-                $0 !== expense && !$0.isFixed && texts.contains(MerchantKey.normalized($0.merchant))
-            }
         }
         refreshMerchant(expense.merchant)
         // Anything set in «Más detalles» is shown, not hidden behind it.
         showsDetails = isRefund || !counts || repeatsMonthly || expense.isRepeat == true
             || (expense.latitude != nil && expense.longitude != nil)
+    }
+
+    /// The history the sheet suggests from, read once it is up, off the main thread
+    /// (`ExpenseSheetHistory`). Until it comes, suggestions are the catalog's and «Cambiar
+    /// también los otros» isn't offered: saving meanwhile changes only this expense.
+    private func readHistory() async {
+        // A fixed expense and its copies are not a merchant's payments: they follow their plan.
+        var texts: Set<String>?
+        if let expense, !expense.isFixed {
+            texts = Set(MerchantRules.texts(for: expense.merchant, renames: UserCatalog.merchantRenames))
+        }
+        let reader = ExpenseSheetHistory(modelContainer: context.container)
+        guard let read = try? await reader.read(siblingTexts: texts, excluding: expense?.persistentModelID) else { return }
+        // A new sheet nobody touched yet opens as it is after this, too: «Cancelar» just closes.
+        let untouched = expense == nil && openedState == fieldsState
+        pastExpenses = read.past
+        merchantIndex = read.index
+        latestCategories = read.latest
+        knownCategories = read.known
+        knownCards = read.cards
+        siblings = read.siblings.compactMap { context.model(for: $0) as? Expense }
+        refreshMerchant(merchant)
+        // What the merchant fills in, now that what you chose for it before is known.
+        if expense == nil, trimmedCategory.isEmpty || categoryAutofilled {
+            autofillCategory()
+        }
+        if untouched { openedState = fieldsState }
+    }
+
+    /// The category the merchant brings: yours, else the catalog's guess; none clears one that
+    /// was filled in. Said to VoiceOver once typing settles: it changed rows away, unsaid (2026-11-18).
+    private func autofillCategory() {
+        let before = category
+        category = suggestedCategory ?? ""
+        categoryAutofilled = suggestedCategory != nil
+        categoryAnnouncement?.cancel()
+        guard voiceOver, let suggestedCategory, category != before else { return }
+        let spoken = String(localized: "Categoría sugerida: \(CategoryStyle.shown(suggestedCategory)).")
+        categoryAnnouncement = Task { @MainActor in
+            try? await Task.sleep(for: Self.typingSettles)
+            guard !Task.isCancelled else { return }
+            AccessibilityNotification.Announcement(spoken).post()
+        }
+    }
+
+    /// How many others «Cambiar también los otros» would change, once typing settles.
+    private func countOthers() async {
+        try? await Task.sleep(for: Self.countSettles)
+        guard !Task.isCancelled else { return }
+        pendingOthers = backfill?.pending(in: siblings).count ?? 0
+    }
+
+    /// What `countOthers` is worked out again for.
+    private struct OthersKey: Equatable {
+        let name: String
+        let category: String
+        let siblings: Int
+    }
+
+    private var othersKey: OthersKey {
+        OthersKey(name: savedName, category: trimmedCategory, siblings: siblings.count)
+    }
+
+    /// A pause in typing: what is said for it waits this long, not every key (2026-11-18).
+    private static let typingSettles = Duration.milliseconds(600)
+    /// A shorter one for the count of others: the toggle comes soon after a name is fixed.
+    private static let countSettles = Duration.milliseconds(250)
+
+    /// The note under the amount after a paste (2026-11-18).
+    struct PasteNote: Equatable {
+        let text: String
+        /// For a paste with no amount in it: what the field went back to.
+        var restored: String?
+
+        /// Whether the amount now in the field (`amount`) answers it. A currency not read stays
+        /// until the amount is emptied: the field's own rewrite of the paste is a change too. A
+        /// paste not read stays while the field holds what it went back to, or the paste itself
+        /// on its way out (never an amount); anything else typed answers it.
+        func clears(with amount: String) -> Bool {
+            guard let restored else { return amount.isEmpty }
+            guard amount != restored else { return false }
+            return amount.isEmpty || AmountParser.parseTyped(amount) != nil
+        }
     }
 
     /// The fixed expense a copy came from, by its id (`RecurringExpenses.original(of:in:)`).
@@ -1157,9 +1297,14 @@ struct ExpenseEditorView: View {
         }
         // Written as the field writes it, whatever the region: «1.234,5» (Spain) read as 1.23.
         amountText = AmountTyping.text(for: parsed.value, decimals: 0...2)
-        currency = ExpenseRecorder.spokenCurrency(parsed.currencyMarker, primary: CurrencyPreference.current)
-        // After the amount: changing it clears the problem line.
+        // Only a currency said moves it: «20 de tacos» put back the main one over a currency
+        // already picked, and the expense was saved in pesos (2026-11-18).
+        if let marker = parsed.currencyMarker, !CurrencyResolver.isAmbiguous(marker) {
+            currency = ExpenseRecorder.spokenCurrency(marker, primary: CurrencyPreference.current)
+        }
+        // After the amount: changing it clears the problem lines.
         sentenceProblem = nil
+        pasteProblem = nil
         if let name = entry.merchant { merchant = name }
         // Only a day said moves it: «230 de tacos» keeps the month being browsed, or a date
         // already picked (2026-11-18).
@@ -1279,7 +1424,7 @@ struct ExpenseEditorView: View {
         } else {
             // Left alone, the date is the moment of «Guardar», not of opening the sheet.
             if !dateChosen { date = AppClock.now }
-            let summary = saveSummary
+            let summary = summaryLine(withCategory: true)
             let new = Expense(
                 amount: value,
                 currencyMarker: currency,
@@ -1360,6 +1505,40 @@ enum PaymentChoices {
         .ticketPreview()
 }
 
+/// What the expense sheet reads from the history once it is up, read off the main thread
+/// (2026-11-18): with 5,000 expenses, reading them as the sheet came up held it and its keyboard.
+/// Only values cross back; the others from the same merchant as their ids, found again in the
+/// sheet's own context.
+@ModelActor
+actor ExpenseSheetHistory {
+    struct Read: Sendable {
+        var past: [CategorizedExpense]
+        var index: MerchantSuggestions.Index
+        var latest: [String: String]
+        var known: [String]
+        var cards: [String]
+        var siblings: [PersistentIdentifier]
+    }
+
+    /// - `siblingTexts`: the texts the expense's merchant arrives as (`MerchantRules.texts`);
+    ///   `nil` for a new expense or a fixed one, which have no others to change.
+    func read(siblingTexts: Set<String>?, excluding own: PersistentIdentifier?) throws -> Read {
+        let history = try modelContext.fetch(FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)]))
+        let past = history.map(\.categorized)
+        var siblings: [PersistentIdentifier] = []
+        if let siblingTexts {
+            siblings = history.filter { other in
+                other.persistentModelID != own && !other.isFixed
+                    && siblingTexts.contains(MerchantKey.normalized(other.merchant))
+            }.map(\.persistentModelID)
+        }
+        return Read(past: past, index: MerchantSuggestions.Index(past),
+                    latest: CategoryMemory.latest(in: past), known: CategoryMemory.known(in: past),
+                    cards: PaymentChoices.mostUsedCards(history.prefix(300).map(\.card)),
+                    siblings: siblings)
+    }
+}
+
 /// The map under an expense, as Wallet shows it under a charge, with the place's name.
 private struct PlaceMap: View {
     let expense: Expense
@@ -1373,7 +1552,7 @@ private struct PlaceMap: View {
             Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 400,
                                                            longitudinalMeters: 400)),
                 interactionModes: []) {
-                Marker(expense.displayName ?? expense.merchant, coordinate: coordinate)
+                Marker(expense.shownName, coordinate: coordinate)
                     .tint(Theme.brass)
             }
             .frame(height: Theme.Size.mapPreview)

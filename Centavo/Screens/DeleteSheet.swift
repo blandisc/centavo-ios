@@ -128,7 +128,8 @@ private struct TicketQuestionSheet: View {
                             .monospacedDigit()
                     }
                     if let name = question.name {
-                        Text(question.quotesName ? "«\(name)»" : name)
+                        // The quotes through the catalog: «» in Spanish, “” in English (2026-11-18).
+                        Text(question.quotesName ? String(localized: "«\(name)»") : name)
                             .rowName()
                             .foregroundStyle(Theme.ink)
                             .lineLimit(2)

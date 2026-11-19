@@ -919,19 +919,42 @@ struct MoneyCurrencyCarousel: View {
 struct MoneyCountUp: View {
     let value: Decimal
     let currency: String
+    /// Waits for «Mi dinero»'s ring to mostly close before counting. The welcome's «Listo» has
+    /// no ring: waiting there showed «$0» for most of a second (2026-11-18).
+    let waitsForRing: Bool
     @State private var shown: Decimal = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    init(value: Decimal, currency: String, waitsForRing: Bool = true) {
+        self.value = value
+        self.currency = currency
+        self.waitsForRing = waitsForRing
+    }
+
     var body: some View {
-        Text(money(shown, currency))
+        // The final figure, unseen, holds the width, so the centered count doesn't shift with
+        // each new digit (2026-11-18).
+        Text(money(value, currency))
+            .hidden()
+            .overlay { counting }
             .font(.ticket(.display))
             .foregroundStyle(Theme.brass)
             .monospacedDigit()
+            .onAppear(perform: start)
+    }
+
+    private var counting: some View {
+        Text(money(shown, currency))
             .contentTransition(.numericText(value: NSDecimalNumber(decimal: shown).doubleValue))
-            .onAppear {
-                if MotionPolicy.isStill(reduceMotion: reduceMotion) { shown = value; return }
-                withAnimation(Theme.Motion.countUp.delay(Theme.Motion.Money.countUpDelay)) { shown = value }
-            }
             .accessibilityLabel(money(value, currency))
+    }
+
+    private func start() {
+        if MotionPolicy.isStill(reduceMotion: reduceMotion) { shown = value; return }
+        if waitsForRing {
+            withAnimation(Theme.Motion.countUp.delay(Theme.Motion.Money.countUpDelay)) { shown = value }
+        } else {
+            withAnimation(Theme.Motion.countUp) { shown = value }
+        }
     }
 }

@@ -211,8 +211,10 @@ final class HomeModel {
     /// `ExpenseSearch.matches` would keep. A word that can't be part of an amount must be in
     /// the merchant, its readable name, the category or the card, ignoring accents and
     /// capitals (`localizedStandardContains`); the longest one narrows the most. With only a
-    /// month, the month's days, or an expense named after it («Don Julio»). With only amounts,
-    /// everything (an amount's sign is not something the store compares).
+    /// month, the month's days, or an expense named after it («Don Julio»). With only a year,
+    /// its days, a name with it or an amount that big; with only «más de» or «menos de», the
+    /// amounts inside them, charges and refunds alike. With only figures to find («300»),
+    /// everything: «5» is in $1.25.
     static func searchCandidates(for query: SearchQuery) -> FetchDescriptor<Expense> {
         let newestFirst = [SortDescriptor(\Expense.date, order: .reverse)]
         guard query.category == nil else { return FetchDescriptor(sortBy: newestFirst) }
@@ -230,7 +232,48 @@ final class HomeModel {
                 (expense.date >= start && expense.date <= end) || named.evaluate(expense)
             }, sortBy: newestFirst)
         }
+        // «2026» or «más de 500» alone loaded every expense ever on the main thread, at each
+        // pause of the keyboard (2026-11-18).
+        if lettered.isEmpty, query.monthWord == nil, let year = query.year, let interval = query.interval {
+            return FetchDescriptor(predicate: within(year: year, interval), sortBy: newestFirst)
+        }
+        if lettered.isEmpty, query.interval == nil, query.minAmount != nil || query.maxAmount != nil {
+            return FetchDescriptor(predicate: amounts(over: query.minAmount, upTo: query.maxAmount),
+                                   sortBy: newestFirst)
+        }
         return FetchDescriptor(sortBy: newestFirst)
+    }
+
+    /// A year's days, a name with the year in it, or an amount the year is part of: `matches`
+    /// finds «2026» in $2,026.00 and in $12,026.00, never in a smaller one (amounts are kept to
+    /// cents, so its four figures can't be in the decimals). In pieces, for the CI's compiler.
+    private static func within(year: Int, _ interval: DateInterval) -> Predicate<Expense> {
+        let start = interval.start, end = interval.end
+        let figure = Decimal(year)
+        let refund = -figure
+        let named = names(containing: String(year))
+        let dated = #Predicate<Expense> { expense in expense.date >= start && expense.date <= end }
+        let priced = #Predicate<Expense> { expense in expense.amount >= figure || expense.amount <= refund }
+        return #Predicate<Expense> { expense in
+            dated.evaluate(expense) || priced.evaluate(expense) || named.evaluate(expense)
+        }
+    }
+
+    /// The amounts between the bounds, by their size: a refund of $600 is «más de 500» as a
+    /// charge is (`matches` compares the magnitude). Each bound counting itself, so «desde» and
+    /// «más de» both fit; `matches` then decides the exact edge.
+    private static func amounts(over low: Decimal?, upTo high: Decimal?) -> Predicate<Expense> {
+        let floor = low ?? 0
+        let negativeFloor = -floor
+        guard let high else {
+            return #Predicate<Expense> { expense in expense.amount >= floor || expense.amount <= negativeFloor }
+        }
+        let negativeHigh = -high
+        let charge = #Predicate<Expense> { expense in expense.amount >= floor && expense.amount <= high }
+        let refund = #Predicate<Expense> { expense in
+            expense.amount <= negativeFloor && expense.amount >= negativeHigh
+        }
+        return #Predicate<Expense> { expense in charge.evaluate(expense) || refund.evaluate(expense) }
     }
 
     /// An expense whose merchant, readable name, category or card holds `word`, ignoring

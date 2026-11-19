@@ -49,6 +49,15 @@ enum TutorialStory: Int, CaseIterable, Identifiable {
         }
     }
 
+    /// With VoiceOver there is no press-and-hold: «Lo que no es gasto» says the way through the
+    /// expense's own sheet, which a double tap opens (QA, 2026-11-18).
+    func text(hasBudget: Bool, voiceOver: Bool) -> String {
+        if voiceOver, self == .uncounted {
+            return String(localized: "Un pago a tu tarjeta o un traspaso: ábrelo, toca «Más detalles» y, en «Tipo», elige «No cuenta». Se queda en la lista, pero no cuenta en tu presupuesto.")
+        }
+        return text(hasBudget: hasBudget)
+    }
+
     /// Where «Pruébalo» goes, if the story has somewhere to try it.
     var destination: TutorialDestination? {
         switch self {
@@ -102,7 +111,7 @@ struct TutorialView: View {
     private var story: TutorialStory { stories[index] }
     private var isFirst: Bool { index == stories.startIndex }
     private var hasBudget: Bool { BudgetStore.amount(from: storedBudget) != nil }
-    private var text: String { story.text(hasBudget: hasBudget) }
+    private var text: String { story.text(hasBudget: hasBudget, voiceOver: voiceOver) }
     private var duration: Double { story.duration(hasBudget: hasBudget) }
 
     /// It moves on by itself only when the person can read at their pace anyway: never with
@@ -187,7 +196,7 @@ struct TutorialView: View {
                                         duration: duration, paused: heldSince != nil)
                             .id(storyStart)
                     } else {
-                        StoryBar(fill: item.rawValue <= index ? 1 : 0)
+                        StoryBar(fill: Self.barFill(item.rawValue, current: index, scrolls: scrolls))
                     }
                 }
             }
@@ -266,6 +275,15 @@ struct TutorialView: View {
     private var nextTitle: String {
         if index == stories.count - 1 { return String(localized: "Listo") }
         return String(localized: "Siguiente")
+    }
+
+    /// A story's part of the bar when it isn't running: full once gone by, and the current one
+    /// full too while it stays still (VoiceOver, still drawings). Empty for one that scrolls:
+    /// its first frame had a running bar, and it jumped to full (QA, 2026-11-18).
+    static func barFill(_ item: Int, current: Int, scrolls: Bool) -> Double {
+        if item < current { return 1 }
+        if item == current && !scrolls { return 1 }
+        return 0
     }
 
     // MARK: Moving

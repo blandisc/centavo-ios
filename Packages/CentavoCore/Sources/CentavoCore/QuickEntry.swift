@@ -401,7 +401,7 @@ public enum QuickEntryParser {
     }
 
     /// Words after a number that say what it counts is not: joiners, days, currencies.
-    private static let notCounted: Set<String> = leading.union(trailing).union(notMerchantWords)
+    private static let notCounted: Set<String> = leading.union(trailing).union(notMerchantWords).union(englishArticles)
         .union(currencyWords).union(multipliers.keys).union(["para", "del", "al", "a"])
 
     /// «4 personas», «3 tacos»: a number followed by the thing it counts.
@@ -493,8 +493,11 @@ public enum QuickEntryParser {
     ])
     /// «230 for tacos», «spent 80 on a coffee» (2026-11-18).
     private static let englishLeading: Set<String> = [
-        "for", "on", "at", "with", "in", "the", "an", "of", "my", "some", "spent", "paid", "bought", "i",
+        "for", "on", "at", "with", "in", "of", "spent", "paid", "bought", "i",
     ]
+    /// «for the tacos», «on a coffee»: an article goes only after one of those English words, so
+    /// a shop that starts with one («The Home Depot») keeps its name.
+    private static let englishArticles: Set<String> = ["the", "a", "an", "my", "some"]
     private static let trailing: Set<String> = [
         "de", "en", "con", "y", "por", "el", "la", "un", "una",
         "for", "on", "at", "with", "in", "the", "an", "of", "and",
@@ -507,8 +510,9 @@ public enum QuickEntryParser {
         while let first = left.first {
             let word = words.folded[first]
             // «for a burrito»: «a» goes only after English, «a» in Spanish is not an article.
-            guard leading.contains(word) || (english && word == "a") else { break }
-            english = englishLeading.contains(word)
+            let article = english && englishArticles.contains(word)
+            guard leading.contains(word) || article else { break }
+            english = englishLeading.contains(word) || article
             left.removeFirst()
         }
         while let last = left.last, trailing.contains(words.folded[last]) { left.removeLast() }

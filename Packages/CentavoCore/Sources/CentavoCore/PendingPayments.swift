@@ -150,10 +150,12 @@ public struct ExpensePrefill: Equatable, Sendable {
     }
 }
 
-/// The list of payments waiting to be written down: newest first, at most `limit`, none older
-/// than `keepDays`, so it can't grow without end. Past the limit the notices that didn't read
-/// go first, oldest first: a payment that couldn't be saved is real money, and none of those
-/// is dropped while a notice is left.
+/// The list of payments waiting to be written down, newest first. The notices that didn't read
+/// (`.unread`) last `keepDays` and make room past `limit`, oldest first, so they can't grow
+/// without end. A payment that couldn't be saved (`.unsaved`) is real money that Wallet
+/// charged: it never ages out and never makes room, only the person removes it («Anotar» or
+/// «Descartar»; 2026-11-18, «un pago nunca se pierde»: a week of a failing store, or a month
+/// without opening «Hoy», used to drop them with no warning).
 public enum PendingPayments {
     public static let limit = 20
     public static let keepDays = 30
@@ -162,13 +164,16 @@ public enum PendingPayments {
     public static func current(_ list: [PendingPayment], now: Date) -> [PendingPayment] {
         let oldest = now.addingTimeInterval(-TimeInterval(keepDays) * 24 * 3600)
         var seen = Set<UUID>()
-        let kept = list.filter { $0.date >= oldest && seen.insert($0.id).inserted }
+        let kept = list.filter { payment in
+            let fresh = payment.kind == .unsaved || payment.date >= oldest
+            return fresh && seen.insert(payment.id).inserted
+        }
         // Stable: two that arrived in the same instant keep the order they came in.
         var sorted = kept.enumerated().sorted {
             $0.element.date != $1.element.date ? $0.element.date > $1.element.date : $0.offset < $1.offset
         }.map(\.element)
-        while sorted.count > limit {
-            sorted.remove(at: sorted.lastIndex { $0.kind == .unread } ?? sorted.count - 1)
+        while sorted.count > limit, let notice = sorted.lastIndex(where: { $0.kind == .unread }) {
+            sorted.remove(at: notice)
         }
         return sorted
     }

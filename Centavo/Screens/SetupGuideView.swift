@@ -38,9 +38,11 @@ struct SetupGuideView: View {
     @ScaledMetric(relativeTo: .body) private var stepNumberWidth = Theme.Size.stepNumber
     @ScaledMetric(relativeTo: .body) private var thumbWidth = Theme.Size.companionThumbWidth
     @ScaledMetric(relativeTo: .body) private var thumbHeight = Theme.Size.companionThumbHeight
-    /// How tall the visible part of each step is, between the bars (the dock comes and goes
-    /// from step to step), by step number; missing until measured.
-    @State private var visibleHeights: [Int: CGFloat] = [:]
+    /// How tall the visible part of a step is between the bars, with the dock showing: one
+    /// value for the whole guide, taken once on a step that has the dock. Until 2026-11-18 each
+    /// page measured its own after its first frame, and with or without the dock: the taps
+    /// jumped over the picture on screen, and its loop started over (QA, 2026-11-18).
+    @State private var roomHeight: CGFloat?
 
     private let steps = ShortcutsVersion.isIOS27 ? GuideStep.ios27 : GuideStep.all
     private var isLast: Bool { step == steps.count - 1 }
@@ -155,15 +157,21 @@ struct SetupGuideView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                // The screenshots are of Atajos in Spanish: in another language, say so before
+                // them, so the ring is what the person follows (QA, 2026-11-18).
+                if case .frames(let frames) = guide.scene, !frames.isEmpty, !GuideFrame.photosMatchLanguage {
+                    noteRow(String(localized: "Las capturas son de un iPhone en español. Busca el mismo lugar en tu pantalla: el aro latón lo marca."))
+                }
+
                 // On a short screen the written taps go before the picture: under it, with the
                 // dock and the bar below, they started past the bottom edge with nothing saying
-                // so (iPhone SE and 13 mini, 2026-11-18). The picture peeks in under them.
-                if tapsFirst(number) {
-                    taps(guide)
-                    picture(guide, number: number)
-                } else {
-                    picture(guide, number: number)
-                    taps(guide)
+                // so (iPhone SE and 13 mini, 2026-11-18). The picture peeks in under them. One
+                // `ForEach` with stable ids: a new order moves the two, it doesn't remake them.
+                ForEach(GuideLayout.blocks(roomHeight: roomHeight), id: \.self) { block in
+                    switch block {
+                    case .taps: taps(guide)
+                    case .picture: picture(guide, number: number)
+                    }
                 }
 
                 if let warning = guide.warning {
@@ -183,20 +191,21 @@ struct SetupGuideView: View {
             .padding(.vertical, Theme.Space.xxl)
         }
         .onScrollGeometryChange(for: CGFloat.self, of: Self.heightBetweenBars) { _, height in
-            if visibleHeights[number] != height { visibleHeights[number] = height }
+            noteRoom(height)
         }
+    }
+
+    /// Keeps the first height measured with the dock on screen; later ones (another step, the
+    /// dock sliding in or out) don't move what the person is already reading.
+    private func noteRoom(_ height: CGFloat) {
+        guard roomHeight == nil, height > 0, steps[step].opensShortcuts else { return }
+        roomHeight = height
     }
 
     /// The height between the bars: the scroll view's, less what slides under them.
     nonisolated private static func heightBetweenBars(_ geometry: ScrollGeometry) -> CGFloat {
         let insets = geometry.contentInsets.top + geometry.contentInsets.bottom
         return geometry.containerSize.height - insets
-    }
-
-    /// Whether the written taps go before the picture: on a screen too short for both.
-    private func tapsFirst(_ number: Int) -> Bool {
-        guard let height = visibleHeights[number], height > 0 else { return false }
-        return height < Theme.Size.guideRoomyHeight
     }
 
     /// A picture of the step in Atajos.
@@ -359,6 +368,21 @@ struct SetupGuideView: View {
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ticketPanel()
+    }
+}
+
+/// The order of a step's picture and its written taps (2026-11-18).
+enum GuideLayout {
+    enum Block: Hashable {
+        case picture, taps
+    }
+
+    /// The taps go first on a screen too short for both; the picture first until measured.
+    static func blocks(roomHeight: CGFloat?) -> [Block] {
+        guard let roomHeight, roomHeight > 0, roomHeight < Theme.Size.guideRoomyHeight else {
+            return [.picture, .taps]
+        }
+        return [.taps, .picture]
     }
 }
 
@@ -594,7 +618,9 @@ private struct GuideStep {
         catches,
         String(localized: "Con algunos bancos el aviso de Wallet llega tarde y el atajo no alcanza a correr. Si un pago no aparece, anótalo tú."),
         String(localized: "Un pago rechazado también puede anotarse. Deslízalo hacia la izquierda y bórralo."),
-        String(localized: "Para el efectivo, di «Oye Siri, anotar gasto en Al día». También puedes ponerlo en el botón de Acción (Ajustes › Botón de Acción › Atajo) o en el Centro de control."),
+        // Only some iPhones have an Action button (15 Pro and later): said as an «if», with no
+        // model check (QA, 2026-11-18).
+        String(localized: "Para el efectivo, di «Oye Siri, anotar gasto en Al día». Si tu iPhone tiene botón de Acción, también puedes ponerlo ahí (Ajustes › Botón de Acción › Atajo). O agrégalo al Centro de control."),
     ]
 }
 
@@ -635,7 +661,10 @@ struct CaptureCheck: View {
         if ShortcutsVersion.isIOS27 {
             return String(localized: "¿Pagaste y no llega en un par de minutos? Revisa en Atajos que la automatización esté encendida y, en Ajustes › Notificaciones › Wallet, que las notificaciones estén permitidas.")
         }
-        return String(localized: "Si pagaste y no llega en un par de minutos, revisa los pasos 4, 6 y 7.")
+        // Steps 3 («Que corra sola»), 5 («Registrar gasto»), 6 and 7 (amount and merchant) of
+        // `GuideStep.all`: it left out 3 and 5, where a confirmation or no card stops it (QA,
+        // 2026-11-18). Reordering the guide means changing these numbers.
+        return String(localized: "Si pagaste y no llega en un par de minutos, revisa los pasos 3, 5, 6 y 7: que esté marcado «Ejecutar de inmediato», que estén elegidas tus tarjetas y que la acción tenga el importe y el comercio conectados.")
     }
 
     /// «Llegó $47.50 en Oxxo, hace 2 minutos.»

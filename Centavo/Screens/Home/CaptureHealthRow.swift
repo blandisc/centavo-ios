@@ -10,12 +10,20 @@ enum CaptureCopy {
 
     /// `.waiting`: the guide was opened and no payment came yet. Opening the guide is all it
     /// knows (iOS doesn't say whether the automation was made), so it offers a way back to it
-    /// for whoever stopped halfway (QA, 2026-11-18).
+    /// for whoever stopped halfway (QA, 2026-11-18). «Abrir la guía», not «seguir»: the guide
+    /// opens on its first step, it doesn't remember where the person was (QA, 2026-11-18).
     static var waiting: String {
         if catchesAll {
-            return String(localized: "Paga algo con Apple Pay y aparecerá aquí solo. ¿Te quedaste a medias? Toca para seguir.")
+            return String(localized: "Paga algo con Apple Pay y aparecerá aquí solo. ¿Te quedaste a medias? Toca para abrir la guía.")
         }
-        return String(localized: "Paga acercando el iPhone y aparecerá aquí solo. ¿Te quedaste a medias? Toca para seguir.")
+        return String(localized: "Paga acercando el iPhone y aparecerá aquí solo. ¿Te quedaste a medias? Toca para abrir la guía.")
+    }
+
+    /// `.quiet`: days without a Wallet payment. In iOS 26 days of online purchases look the
+    /// same, so it says those don't come in by themselves (QA, 2026-11-18).
+    static var quiet: String {
+        if catchesAll { return String(localized: "Si sí pagaste, toca para revisar el atajo.") }
+        return String(localized: "Si pagaste acercando el iPhone, toca para revisar el atajo. Las compras en línea no se anotan solas.")
     }
 
     /// The guide's check, when a payment from before the guide was opened is all there is.
@@ -96,7 +104,7 @@ struct CaptureHealthRow: View {
         switch health {
         case .quiet(let days):
             let title = String(localized: "Sin pagos de Wallet desde hace \(days) días")
-            return (title, String(localized: "Si sí pagaste, toca para revisar el atajo."), "exclamationmark.circle")
+            return (title, CaptureCopy.quiet, "exclamationmark.circle")
         case .waiting:
             return (String(localized: "Esperando tu primer pago"), CaptureCopy.waiting, "hourglass")
         case .silent:

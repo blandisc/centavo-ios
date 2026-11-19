@@ -82,11 +82,29 @@ import Testing
         #expect(kept.first?.text == "Leer 0")
     }
 
-    @Test func withOnlyUnsavedPastTheLimitTheOldestGoes() {
-        let list = (0..<22).map { unsaved("Guardar \($0)", hoursAgo: Double($0)) }
-        let kept = PendingPayments.current(list, now: now)
-        #expect(kept.count == PendingPayments.limit)
-        #expect(kept.last?.text == "Guardar 19")
+    @Test func paymentsThatCouldNotBeSavedAreNeverCutByTheLimit() {
+        // Only the person removes one (2026-11-18): 25 of them stay, all 25.
+        var list: [PendingPayment] = []
+        for hour in (0..<25).reversed() {
+            list = PendingPayments.adding(unsaved("Guardar \(hour)", hoursAgo: Double(hour)), to: list, now: now)
+        }
+        #expect(list.count == 25)
+        #expect(list.first?.text == "Guardar 0")
+        #expect(list.last?.text == "Guardar 24")
+    }
+
+    @Test func pastTheLimitOnlyNoticesMakeRoom() {
+        let saved = (0..<22).map { unsaved("Guardar \($0)", hoursAgo: Double($0)) }
+        let kept = PendingPayments.current(saved + [unread("Leer", hoursAgo: 1)], now: now)
+        #expect(kept.count == 22)
+        #expect(kept.allSatisfy { $0.kind == .unsaved })
+    }
+
+    @Test func aPaymentThatCouldNotBeSavedOutlivesThirtyDaysANoticeDoesNot() {
+        let old = unsaved("$89 en Oxxo", hoursAgo: 24 * 40)
+        let notice = unread("Google", hoursAgo: 24 * 40)
+        let list = PendingPayments.adding(unread("Nuevo"), to: [old, notice], now: now)
+        #expect(list.map(\.text) == ["Nuevo", "$89 en Oxxo"])
     }
 
     // MARK: A name-only notice and the good payment it was

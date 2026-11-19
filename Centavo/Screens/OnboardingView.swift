@@ -33,6 +33,10 @@ struct OnboardingView: View {
     /// Which way the last move went, so the pages slide the right way.
     @State private var forward = true
     @State private var currency = CurrencyPreference.current
+    /// A currency tile was tapped here. Until then the one shown follows what is saved, so a
+    /// currency iCloud brings while the welcome is open is kept, not overwritten with pesos
+    /// (2026-11-18: a second phone turned the first one's dollars into pesos).
+    @State private var pickedCurrency = false
     @State private var budgetText = ""
     @State private var fixed: [FixedDraft] = []
     @State private var draftName = ""
@@ -119,7 +123,13 @@ struct OnboardingView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if page < 3 {
-                        Button("Omitir") { save(); focused = nil; go(to: pages - 1) }
+                        // Not while a page slides in (2026-11-18): «go» would turn it down after
+                        // the save had already marked the welcome done, and what was typed
+                        // afterwards was never saved.
+                        Button("Omitir") {
+                            guard !moving else { return }
+                            save(); focused = nil; go(to: pages - 1)
+                        }
                             .font(.ticket(.footnote))
                             .accessibilityIdentifier("bienvenida-omitir")
                     }
@@ -129,6 +139,9 @@ struct OnboardingView: View {
             .sensoryFeedback(.success, trigger: added)
         }
         .interactiveDismissDisabled()
+        .onChange(of: storedCurrency) { _, code in
+            if !pickedCurrency { currency = CurrencyPreference.resolve(code) }
+        }
     }
 
     /// The one wide button that moves on, and under it the other way. Wallet's page: set it up
@@ -146,7 +159,10 @@ struct OnboardingView: View {
             .ticketProminent()
             .accessibilityIdentifier(page == 3 ? "bienvenida-configurar" : "bienvenida-siguiente")
             if page == 3 {
-                SecondaryButton("Después", identifier: "bienvenida-despues") { save(); go(to: pages - 1) }
+                SecondaryButton("Después", identifier: "bienvenida-despues") {
+                    guard !moving else { return }
+                    save(); go(to: pages - 1)
+                }
             } else if page == pages - 1 {
                 if thenGuide {
                     SecondaryButton("Después", identifier: "bienvenida-despues") { finish(.home) }
@@ -279,7 +295,7 @@ struct OnboardingView: View {
     private var currencyPills: some View {
         HStack(spacing: Theme.Space.xs) {
             ForEach(CurrencyPreference.offered, id: \.self) { code in
-                Button { currency = code } label: {
+                Button { currency = code; pickedCurrency = true } label: {
                     CurrencyTile(code: code, selected: currency == code, fills: true)
                 }
                 .buttonStyle(.plain)
@@ -550,6 +566,9 @@ struct OnboardingView: View {
             .padding(.horizontal, Theme.Space.screen)
             .padding(.vertical, Theme.Space.xxl)
         }
+        // Like every page (2026-11-18): with large text the panel and the save notice went on
+        // under the bar with nothing saying so.
+        .tellsMoreBelow(on: page, flagging: $moreBelow)
         .onAppear { save() }
     }
 
@@ -560,11 +579,13 @@ struct OnboardingView: View {
         return (figure ? Self.figureLines : Self.noFigureLines) + Self.alwaysLines
     }
 
+    // Without design names or a «Hoy» nobody sees (2026-11-18): with «Mi dinero» off there is
+    // no tab called «Hoy», and «latón» is the name of a color token.
     static let figureLines: [String] = [
-        String(localized: "La cifra en latón es lo que puedes gastar hoy."),
+        String(localized: "La cifra grande es lo que puedes gastar hoy."),
         String(localized: "Lo que te sobre pasa a mañana."),
     ]
-    static let noFigureLines: [String] = [String(localized: "Cada gasto que anotes aparece en «Hoy», con el total del mes.")]
+    static let noFigureLines: [String] = [String(localized: "Cada gasto que anotes aparece en tu lista, con el total del mes.")]
     static let alwaysLines: [String] = [String(localized: "¿Un pago que no es gasto? Mantenlo presionado y elige «No cuenta».")]
 
     @ViewBuilder private var doneFigure: some View {
@@ -572,7 +593,9 @@ struct OnboardingView: View {
             if pace.dailyBase > 0 {
                 VStack(spacing: Theme.Space.s) {
                     Text("Cada día tienes").ticketCaption(strong: true)
-                    MoneyCountUp(value: wholeDecimal(pace.dailyBase), currency: currency)
+                    // No ring to wait for here (2026-11-18): it counts as the page arrives, not
+                    // after showing «$0» for most of a second.
+                    MoneyCountUp(value: wholeDecimal(pace.dailyBase), currency: currency, waitsForRing: false)
                         .accessibilityIdentifier("bienvenida-cada-dia")
                     Text(doneSum(budget: budget))
                         .font(.ticket(.detail))
@@ -629,17 +652,7 @@ struct OnboardingView: View {
             .padding(.vertical, Theme.Space.xl)
         }
         .scrollDismissesKeyboard(.interactively)
-        // A page longer than the screen says so as it opens, with the scroll bar.
-        .scrollIndicatorsFlash(onAppear: true)
-        .onScrollGeometryChange(for: Bool.self, of: Self.goesOnBelow) { _, more in
-            if moreBelow[shown] != more { moreBelow[shown] = more }
-        }
-    }
-
-    /// Whether some of the page is still under the bottom bar.
-    nonisolated private static func goesOnBelow(_ geometry: ScrollGeometry) -> Bool {
-        let seen = geometry.contentOffset.y + geometry.containerSize.height - geometry.contentInsets.bottom
-        return seen.rounded() < geometry.contentSize.height.rounded()
+        .tellsMoreBelow(on: shown, flagging: $moreBelow)
     }
 
     private var pointDivider: some View {
@@ -731,7 +744,9 @@ struct OnboardingView: View {
         saved = true
         // A fixed expense typed in but never «Agregar»-ed still counts.
         commitDraft()
-        storedCurrency = currency
+        if let code = Self.currencyToSave(currency, picked: pickedCurrency, stored: storedCurrency) {
+            storedCurrency = code
+        }
         if let budget {
             // With its day, so «Hoy» counts from today and says the «Cada día tienes» shown here,
             // not every day of the month so far (`BudgetHistory`). Not when this is someone's
@@ -793,6 +808,14 @@ struct OnboardingView: View {
         return (running ?? []).map { ($0.merchant, $0.amount, $0.repeatDay) }
     }
 
+    /// The currency the save writes, or `nil` to keep the saved one: only one chosen here, or
+    /// pesos when nothing valid is saved yet. One that iCloud brought while the welcome was open
+    /// stays (2026-11-18); writing pesos over it went up to iCloud and changed the other phone.
+    static func currencyToSave(_ shown: String, picked: Bool, stored: String) -> String? {
+        if picked || !CurrencyPreference.offered.contains(stored) { return shown }
+        return nil
+    }
+
     /// Started by an earlier run of the welcome: same name, amount and day.
     static func isRunning(_ plan: FixedPlan, in running: [(merchant: String, amount: Decimal, day: Int?)]) -> Bool {
         running.contains { $0.merchant == plan.merchant && $0.amount == plan.value && $0.day == plan.day }
@@ -821,6 +844,23 @@ private struct FixedDraft: Identifiable {
     let name: String
     let amount: Decimal
     let day: Int
+}
+
+private extension View {
+    /// A page longer than the screen says so: the scroll bar flashes as it opens, and the
+    /// bottom bar shows its top edge while some of it is still under it (`flagging[shown]`).
+    func tellsMoreBelow(on shown: Int, flagging moreBelow: Binding<[Int: Bool]>) -> some View {
+        scrollIndicatorsFlash(onAppear: true)
+            .onScrollGeometryChange(for: Bool.self, of: goesOnBelow) { _, more in
+                if moreBelow.wrappedValue[shown] != more { moreBelow.wrappedValue[shown] = more }
+            }
+    }
+}
+
+/// Whether some of the page is still under the bottom bar.
+private func goesOnBelow(_ geometry: ScrollGeometry) -> Bool {
+    let seen = geometry.contentOffset.y + geometry.containerSize.height - geometry.contentInsets.bottom
+    return seen.rounded() < geometry.contentSize.height.rounded()
 }
 
 #Preview { OnboardingView { _ in }.ticketPreview() }

@@ -16,6 +16,12 @@ struct GuideFrame: Identifiable {
     /// Set by eye; retaking a screenshot means looking at its crop again.
     var focus: CGRect?
 
+    /// Whether the app shows in Spanish, the language of the screenshots. In English they
+    /// stay Spanish until they are retaken (DECISIONS 2026-11-18): the guide says so above them.
+    static var photosMatchLanguage: Bool {
+        Bundle.main.preferredLocalizations.first?.hasPrefix("es") ?? true
+    }
+
     enum Screen {
         /// A real screenshot of Atajos (iOS 27, es-MX), taken by `GuideScreenshotsTests`,
         /// with the ring already drawn on it.
