@@ -1424,6 +1424,11 @@ final class FlowTests: XCTestCase {
         let notice = pendingNotice(app)
         XCTAssertTrue(notice.label.contains("2 pagos sin anotar"), "Dice: \(notice.label)")
         notice.tap()
+        // On a slow runner the tap can land while «Hoy» is still scrolling and open nothing:
+        // once more, as a person would (failed in CI on 2026-11-19, twice).
+        if !app.buttons["pendientes-descartar-todos"].waitForExistence(timeout: 5) {
+            pendingNotice(app).tap()
+        }
         require(app.buttons["pendientes-descartar-todos"], "No ofrece descartar todos")
         require(app.buttons["pendientes-revisar-atajo"], "No ofrece revisar el atajo")
         XCTAssertEqual(app.buttons.matching(identifier: "pendiente-anotar").count, 2, "No ofrece anotar cada pago")
