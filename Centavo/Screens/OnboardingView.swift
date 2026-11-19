@@ -105,7 +105,7 @@ struct OnboardingView: View {
             .safeAreaInset(edge: .top, spacing: Theme.Space.none) {
                 let label: String = Self.labels[min(page, Self.labels.count - 1)]
                 let current: Int = min(page + 1, steps)
-                StepBar(step: current, of: steps, label: label)
+                StepBar(step: current, of: steps, label: label, done: page >= steps)
                     .padding(.horizontal, Theme.Space.screen)
                     .padding(.top, Theme.Space.xl)
                     .background(Theme.background)

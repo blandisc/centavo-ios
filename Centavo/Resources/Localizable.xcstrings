@@ -157,6 +157,18 @@
         }
       }
     },
+    "%@ gastos · %@" : {
+      "comment" : "Search results header: how many expenses and what they add up to («3 gastos · $234.50»)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ expenses · %2$@"
+          }
+        }
+      }
+    },
     "%@ llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono." : {
       "comment" : "Payments and categories: payment footer; %@ is a wave symbol",
       "extractionState" : "manual",
@@ -681,6 +693,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 expense has it"
+          }
+        }
+      }
+    },
+    "1 gasto · %@" : {
+      "comment" : "Search results header: one expense and what it adds up to («1 gasto · $47.50»)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 expense · %@"
           }
         }
       }

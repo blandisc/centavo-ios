@@ -38,6 +38,11 @@ struct BackupSettingsView: View {
     /// Only while the data is being replaced (not while opening a file or backing up, which
     /// read or write iCloud and could wait long): «‹» is hidden then.
     @State private var replacing = false
+    /// «Restaurar un respaldo» from the welcome, waiting for the screen to settle.
+    @State private var askingToRestore: Task<Void, Never>?
+    /// «Seguir respaldando aquí» under way (Face ID, the password, the folder): «‹» is hidden,
+    /// or leaving between its steps dropped the setup without a word (independent review).
+    @State private var settingUp = false
     @State private var problem: String?
     @State private var problemTitle = ""
 
@@ -126,7 +131,7 @@ struct BackupSettingsView: View {
         // Nor left by «‹» to Ajustes and its «Listo» while the data is replaced: its outcome
         // (where the copy went, «Seguir respaldando aquí») was lost (independent review,
         // 2026-11-19; fourth QA round).
-        .navigationBarBackButtonHidden(replacing)
+        .navigationBarBackButtonHidden(replacing || settingUp)
         // The check before «Cambiar contraseña» is for who's holding the phone now: leaving the
         // app closes the form, so coming back asks again.
         .onChange(of: scenePhase) { _, phase in
@@ -136,7 +141,10 @@ struct BackupSettingsView: View {
             if phase == .active { aside = DailyBackup.aside }
             if phase == .background, changingPassword { cancelChanging() }
         }
-        .onDisappear { shownPassword = nil }
+        .onDisappear {
+            shownPassword = nil
+            askingToRestore?.cancel()
+        }
         .onAppear {
             cloud = DailyBackup.cloudState()
             aside = DailyBackup.aside
@@ -148,8 +156,11 @@ struct BackupSettingsView: View {
                 // Once Ajustes and this screen have finished coming in, and apart from the
                 // tidying below: asked mid-transition, with no passcode to ask first, UIKit
                 // dropped the file picker and its flag stayed on (independent review, 2026-11-19).
-                Task {
+                // Left with «‹» before it starts: nothing is asked (Face ID came up over Ajustes
+                // or «Hoy» after the screen was gone; independent review, 2026-11-19).
+                askingToRestore = Task {
                     try? await Task.sleep(for: .seconds(Theme.Motion.Restore.afterArrival))
+                    guard !Task.isCancelled else { return }
                     await startRestoring()
                 }
             }
@@ -722,7 +733,9 @@ struct BackupSettingsView: View {
     /// password that opened the file goes to this phone's Keychain (never over one that's
     /// already there), and the folder is the file's own if it can be written to, or one picked.
     private func keepBackingUp() async {
-        guard !working else { return }
+        guard !working, !settingUp else { return }
+        settingUp = true
+        defer { settingUp = false }
         guard await OwnerCheck.confirm(reason: String(localized: "Para seguir respaldando en este iPhone.")) else { return }
         if BackupPassword.lookup() == .missing {
             guard let openedWith, BackupPassword.save(openedWith) else {

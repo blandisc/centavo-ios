@@ -669,7 +669,7 @@ private struct HomeContent: View, Equatable {
                         selectedDay: selectedDay, selectedCategory: selectedCategory),
             rows: monthRows, originals: originals)
         let searching = model.isSearching
-        let search = searching ? model.search(now: now, stamp: stamp, in: context) : nil
+        let search = searching ? model.search(now: now, stamp: stamp, currency: primary, in: context) : nil
         // The note is only on this month's carousel; past the budget, the plan above already says
         // where the month closes.
         let showsCarousel = !searching && !storeIsEmpty
@@ -686,7 +686,7 @@ private struct HomeContent: View, Equatable {
             // it. Only the days below are lazy.
             VStack(alignment: .leading, spacing: Theme.Space.none) {
                 HomeHeader(
-                    month: month, searchCount: search?.count, storeIsEmpty: storeIsEmpty,
+                    month: month, searchCount: search?.count, searchTotal: search?.total, storeIsEmpty: storeIsEmpty,
                     viewed: viewed, now: now, isCurrent: isCurrent, currency: primary, note: note,
                     selectedDay: selectedDay, selectedCategory: selectedCategory,
                     showsCapture: isCurrent && !settings.ignoresWallet,
@@ -727,6 +727,8 @@ private struct HomeHeader: View {
     let month: HomeMonth
     /// How many the search found; `nil` when not searching.
     let searchCount: Int?
+    /// What they add up to.
+    let searchTotal: String?
     let storeIsEmpty: Bool
     let viewed: Date
     let now: Date
@@ -780,7 +782,7 @@ private struct HomeHeader: View {
         // Inside a stack with no spacing, as the lines were before: the layout is the same.
         VStack(alignment: .leading, spacing: Theme.Space.none) {
             if let searchCount {
-                SearchHeaderRow(count: searchCount) { model.searchText = $0 }
+                SearchHeaderRow(count: searchCount, total: searchTotal) { model.searchText = $0 }
                     .ticketRow(bottom: Theme.Space.s)
             } else if !(storeIsEmpty && pace == nil) {
                 // With nothing spent and no budget, a giant «$0.00» says nothing: the empty
@@ -2402,6 +2404,8 @@ private struct UndoBar: View {
 /// «3 gastos», over the results while searching; says so when the words were read as a category.
 private struct SearchHeaderRow: View {
     let count: Int
+    /// What they add up to, «$234.50» (fourth QA round, 2026-11-19).
+    var total: String?
     /// Puts an example in the search field.
     let tryExample: (String) -> Void
 
@@ -2416,8 +2420,13 @@ private struct SearchHeaderRow: View {
     /// «Sin resultados», «1 gasto», «12 gastos»: each a whole sentence for the catalog.
     private var title: String {
         if count == 0 { return String(localized: "Sin resultados") }
+        let number = countText
+        if let total {
+            if count == 1 { return String(localized: "1 gasto · \(total)") }
+            return String(localized: "\(number) gastos · \(total)")
+        }
         if count == 1 { return String(localized: "1 gasto") }
-        return String(localized: "\(countText) gastos")
+        return String(localized: "\(number) gastos")
     }
 
     var body: some View {

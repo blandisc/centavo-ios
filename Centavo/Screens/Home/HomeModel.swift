@@ -152,18 +152,21 @@ final class HomeModel {
 
     /// Every expense the search asks for, from any month, newest first. Asked of the store
     /// only when the words, the store or `revision` change.
-    func search(now: Date, stamp: StoreStamp, in context: ModelContext) -> HomeSearch {
-        let key = SearchKey(query: query, now: now, stamp: stamp, revision: revision)
+    func search(now: Date, stamp: StoreStamp, currency: String, in context: ModelContext) -> HomeSearch {
+        let key = SearchKey(query: query, currency: currency, now: now, stamp: stamp, revision: revision)
         return searchMemo.value(for: key) {
             let parsed = ExpenseSearch.query(from: key.query, now: now)
             // Only words that ask for nothing («el», «de», on the way to «el palacio»): no
             // results, instead of every expense ever loaded on the main thread (2026-11-18).
-            guard !parsed.isEmpty else { return HomeSearch(count: 0, groups: []) }
+            guard !parsed.isEmpty else { return HomeSearch(count: 0, total: nil, groups: []) }
             // The store narrows it down first (audit 2026-11-02: every letter loaded every
             // expense); the exact rule (`ExpenseSearch.matches`) then decides, as before.
             let candidates = (try? context.fetch(Self.searchCandidates(for: parsed))) ?? []
             let found = candidates.filter { ExpenseSearch.matches($0.searchable, parsed) }
-            return HomeSearch(count: found.count, groups: DayGroup.split(found))
+            // What they add up to, like a tapped day or category («3 gastos · $234.50»; fourth
+            // QA round, 2026-11-19): in the month's currency, the others apart.
+            let total = DayGroup(day: now, items: found).total(in: key.currency)
+            return HomeSearch(count: found.count, total: total, groups: DayGroup.split(found))
         }
     }
 
@@ -428,6 +431,7 @@ private struct NoteKey: Equatable {
 
 private struct SearchKey: Equatable {
     let query: String
+    let currency: String
     let now: Date
     let stamp: StoreStamp
     let revision: Int
@@ -472,6 +476,8 @@ struct HomeMonth {
 /// A search's results, by day.
 struct HomeSearch {
     let count: Int
+    /// What the results add up to, «$234.50»; `nil` with none.
+    let total: String?
     let groups: [DayGroup]
 }
 

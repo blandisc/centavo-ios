@@ -192,6 +192,32 @@ final class FlowTests: XCTestCase {
         require(app.textFields["monto"], "El «+» no abrió la hoja")
     }
 
+    /// «Listo» is not a step: its bar says only «Listo», not «Paso 4 de 4» a second time
+    /// (fourth QA round, 2026-11-19).
+    func testListoNoRepiteElPaso() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-empty",
+                               "-centavo-onboarding", "-centavo-bienvenida-pagina", "4", "-centavo-dibujos-quietos"]
+        app.launch()
+        require(app.buttons["bienvenida-tutorial"], "No abrió «Listo»")
+        let step = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Paso'")).firstMatch
+        XCTAssertFalse(step.exists, "«Listo» dice: \(step.exists ? step.label : "")")
+    }
+
+    /// The search says what its results add up to, like a tapped day (fourth QA round, 2026-11-19).
+    func testLaBusquedaDiceCuantoSuma() {
+        let app = launch(demo: true)
+        require(app.buttons["Buscar"], "No está la lupa").tap()
+        let field = require(app.searchFields.firstMatch, "La lupa no abrió el campo")
+        field.typeText("oxxo")
+        let header = app.descendants(matching: .any)["resultados-busqueda"]
+        let sums = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "3 gastos", "$234.50"),
+            object: header)
+        XCTAssertEqual(XCTWaiter().wait(for: [sums], timeout: 10), .completed,
+                       "Dice: \(header.exists ? header.label : "nada")")
+    }
+
     /// The brass «+» beside the tabs and search up top (owner, 2026-11-14).
     func testElMasVaAbajoYLaBusquedaArriba() {
         let app = launch(demo: true, extra: ["-centavo-mi-dinero"])
@@ -387,22 +413,29 @@ final class FlowTests: XCTestCase {
         require(app.buttons["fuente-BBVA"], "No aparecen las tarjetas de los pagos")
 
         func create(_ add: String, _ name: String, icon: String) {
-            require(app.buttons[add], "No se puede agregar").tap()
+            let addButton = require(app.buttons[add], "No se puede agregar")
+            bringClear(addButton, app)
+            addButton.tap()
             let field = require(app.textFields["nombre-nuevo"], "No pide el nombre")
             field.tap()
             // «Listo» on the keyboard, as a person would, so the icons are not under it.
             field.typeText(name + "\n")
-            // The icon grid scrolls; the bottom «Guardar» bar leaves less of it in view.
+            // The icon grid scrolls; the bottom «Guardar» bar leaves less of it in view. On an
+            // iPhone SE the icon sat under that bar, still «hittable», and the tap saved the
+            // sheet instead (fourth QA round, 2026-11-19): brought clear of both bars first.
             let iconButton = app.buttons[icon]
-            for _ in 0..<4 where !iconButton.isHittable { scrollForm(app) }
+            bringClear(iconButton, app)
             iconButton.tap()
             app.buttons["guardar-nuevo"].tap()
         }
         create("agregar-fuente", "Nu", icon: "creditcard.fill")
         create("agregar-fuente", "Efectivo", icon: "banknote")
         create("agregar-categoria", "Mascotas", icon: "pawprint")
-        // Each card is a tile whose menu makes it the default (2026-10-29).
-        require(app.buttons["fuente-Efectivo"], "No aparece el efectivo").tap()
+        // Each card is a tile whose menu makes it the default (2026-10-29). On a small phone the
+        // list is down at the categories: back up to the cards (a form builds only what shows).
+        let cashTile = app.buttons["fuente-Efectivo"]
+        for _ in 0..<6 where !cashTile.isHittable { scrollFormBack(app) }
+        require(cashTile, "No aparece el efectivo").tap()
         require(app.buttons["Usar por defecto"], "No deja elegir la predeterminada").tap()
         require(app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS[c] %@",
                                                  "Efectivo", "por defecto")).firstMatch,
@@ -414,8 +447,13 @@ final class FlowTests: XCTestCase {
         let amount = require(app.textFields["monto"], "No abrió la hoja de gasto")
         amount.tap()
         amount.typeAmount("350")
-        app.textFields["comercio"].tap()
-        app.textFields["comercio"].typeText("Veterinaria")
+        // «→» beside the amount, as a person does: on an iPhone SE the number pad and «Guardar»
+        // cover «Comercio», and a tap there landed on the bar (fourth QA round, 2026-11-19).
+        app.buttons["Siguiente"].firstMatch.tap()
+        let merchant = app.textFields["comercio"]
+        let focused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: merchant)
+        XCTAssertEqual(XCTWaiter().wait(for: [focused], timeout: 5), .completed, "«→» no pasó al comercio")
+        merchant.typeText("Veterinaria")
         // Out of the way: on a smaller phone the keyboard covers the tiles.
         if app.keyboards.count > 0 { app.keyboards.buttons.element(boundBy: app.keyboards.buttons.count - 1).tap() }
         if app.keyboards.count > 0 { app.swipeDown() }

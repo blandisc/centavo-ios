@@ -7,22 +7,26 @@ struct StepBar: View {
     let step: Int
     let of: Int
     let label: String
+    /// Past the last step («Listo»): the bar full and only its name, no «Paso 4 de 4» a second
+    /// time (fourth QA round, 2026-11-19).
+    var done = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var sheen: CGFloat = -Theme.Size.moneySheenShare
 
     /// A literal step name: looked up in the catalog.
-    init(step: Int, of: Int, label: LocalizedStringResource) {
-        self.init(step: step, of: of, label: String(localized: label))
+    init(step: Int, of: Int, label: LocalizedStringResource, done: Bool = false) {
+        self.init(step: step, of: of, label: String(localized: label), done: done)
     }
 
     /// A step name made at run time, shown as it is.
     @_disfavoredOverload
-    init<S: StringProtocol>(step: Int, of: Int, label: S) {
+    init<S: StringProtocol>(step: Int, of: Int, label: S, done: Bool = false) {
         self.step = step
         self.of = of
         self.label = String(label)
+        self.done = done
     }
 
     var body: some View {
@@ -52,7 +56,7 @@ struct StepBar: View {
                 .foregroundStyle(Theme.muted)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Paso \(step) de \(of), \(label)")
+        .accessibilityLabel(spoken)
         .onAppear(perform: cross)
         .onChange(of: step) { cross() }
     }
@@ -60,9 +64,16 @@ struct StepBar: View {
     /// «Paso N de M» and the step's name, one under the other with accessibility text
     /// (2026-11-18): side by side each broke into two or three lines and the bar, which stays
     /// put over the page, took a third of the screen.
+    private var spoken: String {
+        if done { return label }
+        return String(localized: "Paso \(step) de \(of), \(label)")
+    }
+
     @ViewBuilder private var caption: some View {
         let number = Text("Paso \(Text("\(step) de \(of)").foregroundStyle(Theme.ink))")
-        if typeSize.isAccessibilitySize {
+        if done {
+            Text(label)
+        } else if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: Theme.Space.none) {
                 number
                 Text(label)
