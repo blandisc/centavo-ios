@@ -163,6 +163,9 @@ struct IconRow<Trailing: View>: View {
             Text(title)
                 .font(.ticket(.body))
                 .foregroundStyle(Theme.ink)
+                // Inside a `Menu` label the system centers wrapped lines («Moneda principal» on
+                // an iPhone SE, fourth QA round, 2026-11-19).
+                .multilineTextAlignment(.leading)
             Spacer(minLength: Theme.Space.none)
             trailing()
         }

@@ -1797,6 +1797,46 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(issues.isEmpty, "Zonas táctiles menores de 44 pt:\n" + issues.joined(separator: "\n"))
     }
 
+    /// `SecondaryButton` («Después», «Cómo funciona · 1 min», «No uso Wallet») answered only on
+    /// its 17 pt of text (fourth QA round, 2026-11-19): every quiet button reaches 44 pt.
+    func testZonasTactilesDeLosBotonesCallados() throws {
+        var issues: [String] = []
+        func check(_ app: XCUIApplication, _ screen: String) throws {
+            try app.performAccessibilityAudit(for: .hitRegion) { issue in
+                issues.append("\(screen): \(issue.compactDescription) — "
+                              + "\(issue.element?.debugDescription.prefix(220) ?? "sin elemento")")
+                return true
+            }
+        }
+        for (page, identifier) in [(3, "bienvenida-despues"), (4, "bienvenida-tutorial")] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-empty",
+                                   "-centavo-onboarding", "-centavo-bienvenida-pagina", "\(page)",
+                                   "-centavo-dibujos-quietos"]
+            app.launch()
+            XCTAssertTrue(app.buttons[identifier].waitForExistence(timeout: 20), "No está \(identifier)")
+            try check(app, identifier)
+            app.terminate()
+        }
+        let empty = launch(demo: false)
+        XCTAssertTrue(empty.buttons["vacio-no-uso-wallet"].waitForExistence(timeout: 10), "No está «No uso Wallet»")
+        try check(empty, "vacio")
+        XCTAssertTrue(issues.isEmpty, "Zonas táctiles menores de 44 pt:\n" + issues.joined(separator: "\n"))
+    }
+
+    /// A symbol inside a sentence was read by its name («Tres ondas de señal hacia la derecha
+    /// llegó en tus pagos…», fourth QA round, 2026-11-19): VoiceOver says what the mark means.
+    func testVoiceOverDiceQueSignificanLasMarcas() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-demo",
+                               "-monthlyBudget", "8000", "-centavo-abrir", "catalogos"]
+        app.launch()
+        let hint = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'pagos de Wallet'")).firstMatch
+        XCTAssertTrue(hint.waitForExistence(timeout: 20), "No está la nota de formas de pago")
+        XCTAssertTrue(hint.label.contains("Con ondas"), "VoiceOver lee: \(hint.label)")
+        XCTAssertFalse(hint.label.localizedCaseInsensitiveContains("señal"), "VoiceOver lee el símbolo: \(hint.label)")
+    }
+
     func testAuditarPrincipal() throws { try audit(launch(), "principal-presupuesto") }
 
     func testAuditarCalendario() throws {

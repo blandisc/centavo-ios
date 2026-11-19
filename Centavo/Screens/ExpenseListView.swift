@@ -1436,7 +1436,7 @@ private extension ExpenseListView {
         guard let since = welcomeRestoreSince else { return }
         welcomeRestoreSince = nil
         let restoredAt = UserDefaults.standard.object(forKey: DailyBackup.restoredKey) as? Date
-        guard let restoredAt, restoredAt >= since else { return }
+        guard WelcomeRestore.counts(since: since, restoredAt: restoredAt) else { return }
         onboarded = true
         if Store.syncsBudget { BudgetSync.markOnboarded() }
         settleCurrency()

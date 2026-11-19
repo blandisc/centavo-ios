@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 ### Changed
+- «Después», «Cómo funciona · 1 min», «No uso Wallet» y «Descartar» responden en todo su renglón, no solo sobre las letras.
+- En inglés, una categoría de dos palabras («Going out») ya no se queda solo con su ícono en el mosaico: su nombre va en dos líneas y se ve su monto.
+- Con letra grande, «Tu presupuesto» dice «Por día: $267» y debajo «Llevas $2,366 este mes», en vez de partir la frase en columnas.
+- Bienvenida con «Reducir movimiento» o letra grande: el ejemplo de «Hoy puedes gastar» ya no deja un hueco vacío arriba (con letra de accesibilidad llenaba la pantalla).
+- Guía de Wallet en inglés: el texto dice «When I receive a notification from», como Atajos.
+- Respaldo: mientras se restauran tus datos, «‹» se esconde, así no se pierde el aviso de cómo terminó.
+- VoiceOver dice qué significan la estrella y las ondas en «Pagos y categorías» en vez del nombre del símbolo.
+- En un iPhone chico, «Moneda principal» y los demás renglones que abren un menú se leen desde la izquierda, no centrados.
 - Guía de Wallet (iOS 27): «Conecta el comercio» enseña lo que Atajos muestra hoy, «Comercio» en la misma línea de la acción, sin flechita ni «Mostrar al ejecutar». Con capturas nuevas, también en inglés.
 - «‹» en el mes más antiguo ya no queda apagado: un toque abre la lista de meses.
 - El permiso de Face ID dice todo para lo que se usa: mostrar o cambiar la contraseña del respaldo, restaurarlo o copiar tus datos.

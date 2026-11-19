@@ -41,6 +41,8 @@ struct TicketMenuPicker<Value: Hashable, Label: View, Options: View>: View {
             row
                 .frame(minHeight: Theme.Size.tapTarget)
                 .contentShape(Rectangle())
+            // A `Menu` label centers wrapped lines: the title reads from the left like every row.
+            .multilineTextAlignment(.leading)
         }
     }
 

@@ -36,7 +36,7 @@ struct WelcomeDemo: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            noticeSlot
+            if !still || notice != nil { noticeSlot }
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 // It moves by itself: say it is an example, or it reads as something you did
                 // (user research, 2026-10-29).
@@ -108,6 +108,9 @@ struct WelcomeDemo: View {
     /// Room for the notice is always kept, so the ticket does not jump when it comes and goes.
     /// The room is the notice itself, hidden (2026-11-18): a row kept one line where the notice
     /// takes two, and the ticket jumped with each payment.
+    /// Still (Reducir movimiento, Bajo consumo), no notice ever comes: no room is kept. With
+    /// accessibility text that room filled the screen and the example read as an empty box
+    /// (fourth QA round, 2026-11-19).
     private var noticeSlot: some View {
         ZStack {
             noticeCard(Self.longest).hidden()

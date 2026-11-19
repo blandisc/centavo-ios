@@ -563,6 +563,28 @@ private struct MosaicTile: View {
         HStack(spacing: Theme.Space.tileItem) { icon; name }
     }
 
+    /// The name one word per line, the first beside its icon: «GOING OUT» did not fit across a block where
+    /// «SALIDAS» does, and the block fell to the bare icon and lost its amount (fourth QA round,
+    /// 2026-11-19). Only words, never a word cut, so each line is measured whole.
+    private var wordLines: some View {
+        let words = line.name.split(separator: " ").map(String.init)
+        return VStack(alignment: .leading, spacing: Theme.Space.none) {
+            HStack(spacing: Theme.Space.tileItem) { icon; word(words.first ?? "") }
+            ForEach(Array(words.dropFirst().enumerated()), id: \.offset) { _, rest in word(rest) }
+        }
+    }
+
+    private func word(_ text: String) -> some View {
+        Text(text)
+            .font(.ticket(.label))
+            .textCase(.uppercase)
+            .tracking(Theme.Tracking.detail)
+            .lineLimit(1)
+            .fixedSize()
+    }
+
+    private var hasSeveralWords: Bool { line.name.contains(" ") }
+
     var body: some View {
         ViewThatFits(in: [.horizontal, .vertical]) {
             // Icon and name on top, amount and share below.
@@ -580,6 +602,21 @@ private struct MosaicTile: View {
                     .opacity(Theme.Opacity.onTileSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            // A name of several words that is too wide on one line: a word per line, and the
+            // amount still below (the share gives way first).
+            if hasSeveralWords {
+                VStack(alignment: .leading, spacing: Theme.Space.tileLine) {
+                    wordLines
+                    Spacer(minLength: Theme.Space.xxs)
+                    Text(amount)
+                        .font(.ticket(.bodyStrong))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
 
             // Short and wide: all on one line.
             HStack(spacing: Theme.Space.tileItem) {

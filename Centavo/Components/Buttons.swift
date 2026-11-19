@@ -122,9 +122,10 @@ struct SecondaryButton: View {
             Text(title)
                 .font(.ticket(.footnoteStrong))
                 .foregroundStyle(Theme.ink)
-                .frame(minHeight: Theme.Size.tapTarget)
         }
-        .buttonStyle(.plain)
+        // 44 pt the finger and VoiceOver can reach: a `.frame` inside a `.plain` label grew the
+        // look but left only the 17 pt of text tappable (fourth QA round, 2026-11-19).
+        .buttonStyle(.tapTarget)
         .accessibilityIdentifier(identifier ?? "")
     }
 }

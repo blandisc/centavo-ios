@@ -139,16 +139,23 @@ struct BudgetSheet: View {
         // The day's amount is the same under both rules (budget less fixed, over the days of
         // the month); asked with «Se acumula» so «Se reparte» doesn't show today's share.
         if let amount, let pace = pace(amount, .carry) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
-                Text("Por día:")
-                    .foregroundStyle(Theme.muted)
-                Text(whole(max(pace.dailyBase, 0)))
-                    .foregroundStyle(Theme.brass)
-                    .contentTransition(.numericText())
-                    .accessibilityIdentifier("presupuesto-al-dia")
-                if pace.spent > 0 {
-                    Text("· llevas \(whole(pace.spent)) este mes")
-                        .foregroundStyle(Theme.muted)
+            // One line if it fits; if not, «llevas…» goes under the day's amount. Squeezed in
+            // one row, each piece wrapped in its own column (fourth QA round, 2026-11-19).
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                    perDay(pace)
+                    if pace.spent > 0 {
+                        Text("· llevas \(whole(pace.spent)) este mes")
+                            .foregroundStyle(Theme.muted)
+                    }
+                }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) { perDay(pace) }
+                    if pace.spent > 0 {
+                        Text("Llevas \(whole(pace.spent)) este mes")
+                            .foregroundStyle(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             .font(.ticket(.footnoteStrong))
@@ -158,6 +165,16 @@ struct BudgetSheet: View {
                 .font(.ticket(.detail))
                 .foregroundStyle(Theme.muted)
         }
+    }
+
+    /// «Por día: $267», the day's amount in brass.
+    @ViewBuilder private func perDay(_ pace: BudgetPace) -> some View {
+        Text("Por día:")
+            .foregroundStyle(Theme.muted)
+        Text(whole(max(pace.dailyBase, 0)))
+            .foregroundStyle(Theme.brass)
+            .contentTransition(.numericText())
+            .accessibilityIdentifier("presupuesto-al-dia")
     }
 
     private func save() {

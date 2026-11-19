@@ -15,7 +15,7 @@
 2. **Lo que se viste usa tokens.** Fondo, colores, tipografía, espacios, radios, trazos, opacidades y animaciones salen de `Theme` y `TicketStyle`.
 3. **Modo oscuro forzado.** La app ya lo fuerza en `CentavoApp`; no uses `.preferredColorScheme` ni colores del sistema (`.primary`, `.red`, `Color.gray`…).
 4. **Dynamic Type siempre.** Todo texto escala (los roles de `TicketStyle` ya lo hacen). Lo que mide junto al texto (íconos, columnas, alturas de barra) va con `@ScaledMetric`. Con letra de accesibilidad, las filas se apilan; el texto se envuelve, no se encoge.
-5. **Toque mínimo de 44 pt** (`Theme.Size.tapTarget`) en todo lo que se toca. El espacio va **dentro** del botón: un `.frame` por fuera de un `Button` le da lugar, pero el dedo solo responde sobre su etiqueta. Un botón de solo texto o de solo símbolo usa `.buttonStyle(.tapTarget)` (regla del 2026-11-11; el lint la revisa).
+5. **Toque mínimo de 44 pt** (`Theme.Size.tapTarget`) en todo lo que se toca. El espacio va **dentro** del botón: un `.frame` por fuera de un `Button` le da lugar, pero el dedo solo responde sobre su etiqueta. Un botón de solo texto o de solo símbolo usa `.buttonStyle(.tapTarget)` (regla del 2026-11-11; el lint la revisa). Un `.frame` dentro de la etiqueta de un botón `.plain` tampoco basta: sin `contentShape` solo responde el texto (17 pt en «Después», cuarta ronda de QA, 2026-11-19); usa `.tapTarget`, que pone las dos cosas.
 6. **Copy en es-MX**, sin suponer género. Identificadores de accesibilidad en español (`"hoja-guardar"`).
 7. **Minimalismo.** Antes de agregar una pantalla, pregunta si cabe en una que ya existe.
 

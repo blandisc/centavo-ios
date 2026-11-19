@@ -123,14 +123,21 @@ struct CatalogSettingsView: View {
         let hasDefault = sources.contains { UserCatalog.same($0.name, defaultSource) }
         let star = Text("\(Image(systemName: "star.fill")) ya viene elegida cuando anotas a mano.")
         let wave = Text("\(Image(systemName: "wave.3.right")) llegó en tus pagos de Wallet: tócala para usarla por defecto o darle ícono.")
+        // VoiceOver says what each mark means, not the symbol's name («Tres ondas de señal hacia
+        // la derecha llegó en tus pagos…», fourth QA round, 2026-11-19).
+        let starSpoken = String(localized: "Con estrella: ya viene elegida cuando anotas a mano.")
+        let waveSpoken = String(localized: "Con ondas: llegó en tus pagos de Wallet; tócala para usarla por defecto o darle ícono.")
         if sources.isEmpty && detectedCards.isEmpty {
             HintText("Agrega tus formas de pago (BBVA, Nu, efectivo…).")
         } else if hasDefault && !detectedCards.isEmpty {
             HintText(Text("\(star) \(wave)"))
+                .accessibilityLabel(starSpoken + " " + waveSpoken)
         } else if hasDefault {
             HintText(star)
+                .accessibilityLabel(starSpoken)
         } else if !detectedCards.isEmpty {
             HintText(wave)
+                .accessibilityLabel(waveSpoken)
         }
     }
 

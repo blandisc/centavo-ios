@@ -2252,7 +2252,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "It should look like this: “When I get a notification from Wallet”."
+            "value" : "It should look like this: “When I receive a notification from Wallet”."
           }
         }
       }
@@ -3393,6 +3393,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "With that, your fixed expenses take the whole budget."
+          }
+        }
+      }
+    },
+    "Con estrella: ya viene elegida cuando anotas a mano." : {
+      "comment" : "Payment methods footer, spoken by VoiceOver: what the star mark means",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With a star: already chosen when you add an expense yourself."
+          }
+        }
+      }
+    },
+    "Con ondas: llegó en tus pagos de Wallet; tócala para usarla por defecto o darle ícono." : {
+      "comment" : "Payment methods footer, spoken by VoiceOver: what the waves mark means",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With waves: it came in with your Wallet payments; tap it to use it by default or give it an icon."
           }
         }
       }
@@ -7053,6 +7077,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "You’ve spent %1$@ on %2$@ this month."
+          }
+        }
+      }
+    },
+    "Llevas %@ este mes" : {
+      "comment" : "Budget sheet («Tu presupuesto»), large text: under the day’s amount",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ spent this month"
           }
         }
       }
@@ -11228,7 +11264,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap the word “App”, in light blue, right below “When I get a notification from”."
+            "value" : "Tap the word “App”, in light blue, right below “When I receive a notification from”."
           }
         }
       }

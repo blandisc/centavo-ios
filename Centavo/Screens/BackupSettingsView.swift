@@ -35,6 +35,9 @@ struct BackupSettingsView: View {
     /// The folder picked is only on this phone: said once, when it's picked.
     @State private var localFolder = false
     @State private var working = false
+    /// Only while the data is being replaced (not while opening a file or backing up, which
+    /// read or write iCloud and could wait long): «‹» is hidden then.
+    @State private var replacing = false
     @State private var problem: String?
     @State private var problemTitle = ""
 
@@ -120,6 +123,10 @@ struct BackupSettingsView: View {
         // Not swiped away halfway through a restore: closing it then left the welcome unmarked
         // (independent review, 2026-11-19).
         .interactiveDismissDisabled(working)
+        // Nor left by «‹» to Ajustes and its «Listo» while the data is replaced: its outcome
+        // (where the copy went, «Seguir respaldando aquí») was lost (independent review,
+        // 2026-11-19; fourth QA round).
+        .navigationBarBackButtonHidden(replacing)
         // The check before «Cambiar contraseña» is for who's holding the phone now: leaving the
         // app closes the form, so coming back asks again.
         .onChange(of: scenePhase) { _, phase in
@@ -645,8 +652,9 @@ struct BackupSettingsView: View {
             return
         }
         working = true
+        replacing = true
         Task {
-            defer { working = false }
+            defer { working = false; replacing = false }
             do {
                 let copy = try await DailyBackup.restoreKeepingCopy(payload, in: context, password: password,
                                                                     copyInto: chosen)
