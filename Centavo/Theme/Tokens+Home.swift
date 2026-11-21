@@ -19,14 +19,15 @@ extension Theme.Size {
     static let shareIconColumn: CGFloat = 14
     /// Scaled. Least width of the share column under the bar.
     static let sharePercentColumn: CGFloat = 40
-    /// Scaled. Least height of a category line under the bar. 29 pt on purpose, not the 44 pt
-    /// of a row that is tapped (owner's decision, 2026-11-11): five lines fit without scrolling
-    /// and they sit flush against each other, so a touch near a line still lands on its category.
+    /// Scaled. Least height of a category line under the bar. Drawn at 29 pt on purpose, not the
+    /// 44 pt of a row (owner's decision, 2026-11-11): five lines fit without scrolling and they sit
+    /// flush against each other. Touched at 44 (X4-B, 2026-11-20): the first and the last reach
+    /// out by the rest, and a touch in between goes to the nearest line (`ShareBarChart`).
     static let shareRow: CGFloat = 29
     /// Scaled. Height of «En qué se va», the bar's and the mosaic's the same, so choosing one or the
-    /// other in «Más» moves nothing below it: the bar (10) and its gap (12) over five lines of 29.
-    /// As tall as the calendar page, so the space over the page dots is the same on both.
-    static let shareChartHeight: CGFloat = 167
+    /// other in «Más» moves nothing below it: the bar (10) and its gap (`Space.m`, 16 since X3-B) over
+    /// five lines of 29. As tall as the calendar page, so the space over the page dots is the same on both.
+    static let shareChartHeight: CGFloat = 171
     /// The tallest the chart may grow with Dynamic Type.
     static let shareChartMaxHeight: CGFloat = 260
     /// The gap between mosaic blocks.

@@ -278,10 +278,11 @@ struct TutorialView: View {
         }
     }
 
-    /// «Siguiente», and «Listo» on the last story.
+    /// «Ver la siguiente historia», and «Listo» on the last story. Never a bare «Siguiente»
+    /// (owner, X1-B, 2026-11-20: «Continuar» and «Siguiente» only with their object).
     private var nextTitle: String {
         if index == stories.count - 1 { return String(localized: "Listo") }
-        return String(localized: "Siguiente")
+        return String(localized: "Ver la siguiente historia")
     }
 
     /// A story's part of the bar when it isn't running: full once gone by, and the current one

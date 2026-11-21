@@ -94,7 +94,7 @@ struct SettingsView: View {
                 Section {
                     exportRow
                     Button(action: importCSV) {
-                        IconRow("Importar CSV", systemImage: "square.and.arrow.down") { EmptyView() }
+                        IconRow("Importar CSV", systemImage: "tray.and.arrow.down") { EmptyView() }
                     }
                     NavigationLink {
                         // Made when it is opened: its first state reads the keychain and the

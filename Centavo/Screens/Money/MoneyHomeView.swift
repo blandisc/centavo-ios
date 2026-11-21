@@ -74,7 +74,7 @@ struct MoneyHomeView: View {
                 ForEach(MoneyStore.suggestedMonths(latest: latest?.month), id: \.self) { month in
                     Button("Corte de \(MoneyHead.fullMonthName(month))") { startCut(for: month) }
                 }
-                Button("Cancelar", role: .cancel) {}
+                Button("Ahora no", role: .cancel) {}
             } message: {
                 Text("Si ese mes ya tiene corte, Al día pregunta antes de reemplazarlo.")
             }
@@ -188,7 +188,7 @@ struct MoneyHomeView: View {
     private func cutRow(_ month: String) -> some View {
         Button { startCut(suggesting: month) } label: {
             HStack(spacing: Theme.Space.s) {
-                LinkActionLabel("Hacer corte de \(MoneyHead.fullMonthName(month))", systemImage: "plus", alignment: .leading)
+                LinkActionLabel("Hacer corte de \(MoneyHead.fullMonthName(month))", systemImage: "checklist", alignment: .leading)
                 RowChevron()
             }
             .contentShape(Rectangle())
@@ -294,7 +294,7 @@ struct MoneyHomeView: View {
         account.archived = false
         do { try context.save() } catch {
             context.rollback()
-            problem = SaveProblem(title: "No se pudo regresar la cuenta")
+            problem = SaveProblem(title: "No se pudo regresar la cuenta", retry: { unarchive(account) })
         }
     }
 
@@ -308,7 +308,7 @@ struct MoneyHomeView: View {
                 choosingMonth = true
             }
         } catch {
-            problem = SaveProblem(title: "No se pudo empezar el corte")
+            problem = SaveProblem(title: "No se pudo empezar el corte", retry: startCut)
         }
     }
 
@@ -321,7 +321,7 @@ struct MoneyHomeView: View {
                 startCut(for: month)
             }
         } catch {
-            problem = SaveProblem(title: "No se pudo empezar el corte")
+            problem = SaveProblem(title: "No se pudo empezar el corte", retry: { startCut(suggesting: month) })
         }
     }
 
@@ -329,7 +329,7 @@ struct MoneyHomeView: View {
         do {
             cutting = try MoneyStore.draft(for: month, in: context, mainCurrency: latest?.mainCurrency ?? main)
         } catch {
-            problem = SaveProblem(title: "No se pudo empezar el corte")
+            problem = SaveProblem(title: "No se pudo empezar el corte", retry: { startCut(for: month) })
         }
     }
 }

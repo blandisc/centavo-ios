@@ -112,8 +112,6 @@ private struct TicketQuestionSheet: View {
             // Ink like every other sheet's title.
             Text(question.title)
                 .font(.ticket(.footnoteStrong))
-                .tracking(Theme.Tracking.title)
-                .textCase(.uppercase)
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)

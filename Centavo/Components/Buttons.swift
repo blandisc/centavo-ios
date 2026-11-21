@@ -58,7 +58,8 @@ extension ButtonStyle where Self == TapTargetButtonStyle {
     static var tapTarget: TapTargetButtonStyle { TapTargetButtonStyle() }
 }
 
-/// The label of a full-width main action: uppercase, spaced, dark on brass, at least 44 pt.
+/// The label of a full-width main action: dark on brass, at least 44 pt. As it is written, never in
+/// capitals: they are only for small labels (owner, X2-A, 2026-11-20).
 ///
 ///     Button(action: start) { PrimaryButtonLabel("Configurar ahora", systemImage: "wallet.pass") }
 ///         .ticketProminent()
@@ -89,8 +90,6 @@ struct PrimaryButtonLabel: View {
             }
         }
         .font(.ticket(.footnoteStrong))
-        .tracking(Theme.Tracking.action)
-        .textCase(.uppercase)
         // Explicit: inside a prominent button the hierarchical styles follow the tint.
         .foregroundStyle(kind == .primary ? Theme.onBrass : Theme.ink)
         .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
@@ -131,7 +130,7 @@ struct SecondaryButton: View {
 }
 
 /// A quiet action written in brass inside a screen («Ajustar presupuesto», «Agregar gasto
-/// fijo», «Deshacer»): uppercase and spaced like every action, optionally with a symbol,
+/// fijo», «Deshacer»): as it is written, like every action (X2-A), optionally with a symbol,
 /// at least 44 pt tall. Put it in a plain `Button`.
 ///
 ///     Button(action: onAdjust) { LinkActionLabel("Ajustar presupuesto", systemImage: "slider.horizontal.3") }
@@ -169,8 +168,6 @@ struct LinkActionLabel: View {
             }
         }
         .font(.ticket(.footnoteStrong))
-        .tracking(Theme.Tracking.action)
-        .textCase(.uppercase)
         .foregroundStyle(Theme.brass)
         .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: Theme.Size.tapTarget, alignment: alignment)
         .contentShape(Rectangle())
@@ -178,7 +175,7 @@ struct LinkActionLabel: View {
 }
 
 /// The one way to delete or take something away inside a sheet («Borrar gasto», «Quitar
-/// presupuesto»): red, uppercase and spaced, centered across its row, at least 44 pt. The
+/// presupuesto»): red, as it is written, centered across its row, at least 44 pt. The
 /// confirmation that follows (`DeleteSheet`, a dialog) has the prominent red button.
 struct DestructiveRowButton: View {
     let title: String
@@ -202,8 +199,6 @@ struct DestructiveRowButton: View {
         Button(role: .destructive, action: action) {
             Text(title)
                 .font(.ticket(.footnoteStrong))
-                .tracking(Theme.Tracking.action)
-                .textCase(.uppercase)
                 .foregroundStyle(Theme.danger)
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.tapTarget)
                 .contentShape(Rectangle())

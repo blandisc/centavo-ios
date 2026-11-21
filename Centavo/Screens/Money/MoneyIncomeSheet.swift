@@ -145,7 +145,7 @@ struct MoneyIncomeSheet: View {
             }
             dismiss()
         } catch {
-            problem = SaveProblem(title: "No se guardó el ingreso")
+            problem = SaveProblem(title: "No se guardó el ingreso", retry: save)
         }
     }
 
@@ -155,7 +155,7 @@ struct MoneyIncomeSheet: View {
             try MoneyStore.removeIncome(income, in: context)
             dismiss()
         } catch {
-            problem = SaveProblem(title: "No se quitó el ingreso")
+            problem = SaveProblem(title: "No se quitó el ingreso", retry: remove)
         }
     }
 }

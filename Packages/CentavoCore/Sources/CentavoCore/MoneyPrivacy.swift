@@ -63,7 +63,7 @@ public enum UnlockMethod: Equatable, Sendable {
         switch self {
         case .faceID: "Activar Face ID"
         case .touchID: "Activar Touch ID"
-        case .passcode: "Continuar"
+        case .passcode: "Activar el código"
         case .none: "Entendido"
         }
     }

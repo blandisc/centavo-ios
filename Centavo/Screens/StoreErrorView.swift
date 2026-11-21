@@ -58,7 +58,7 @@ struct StoreErrorView: View {
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Button { Task { await saveCopy() } } label: {
-                        LinkActionLabel("Guardar una copia de mis datos", systemImage: "square.and.arrow.down",
+                        LinkActionLabel("Guardar una copia de mis datos", systemImage: "externaldrive",
                                         alignment: .leading)
                     }
                     .buttonStyle(.plain)

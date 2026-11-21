@@ -7,6 +7,11 @@ prominent buttons, aggressive minimumScaleFactor, a menu `Picker` in the system'
 (use `TicketMenuPicker`), the system's keyboard toolbar (use `.keyboardBar`)… See
 docs/DESIGN_SYSTEM.md.
 
+Since the 2026-11-20 audit (CT-7) also: a bare «Aceptar», «OK», «Omitir», «Siguiente» or
+«Continuar» (here and in CentavoCore's sources), «Cancelar» in a question, capitals on a button,
+a touch area under 44 pt, «+» for anything but adding and the ambiguous ↓; and, in Centavo/Theme,
+a spacing of 12 or a step off the scale 4·8·16·24·32·48·64, and a letter under 12 pt.
+
 Usage: Tools/lint-design.sh [--quiet] [--summary] [files…]
 (no files = every .swift under Centavo/Screens, Centavo/Components, Centavo/App and CentavoWidgets)
 
@@ -23,6 +28,8 @@ APP = ROOT / "Centavo"
 
 # The code that draws views. Model/, Intents/ and the rest hold no layout.
 UI_DIRS = [APP / "Screens", APP / "Components", APP / "App", ROOT / "CentavoWidgets"]
+
+CORE_SOURCES = ROOT / "Packages" / "CentavoCore" / "Sources"
 
 # Where the tokens are defined: the only place allowed to write the raw values.
 TOKEN_DIRS = [APP / "Theme"]
@@ -106,6 +113,176 @@ RULE_EXEMPT = {
 }
 
 ALLOW_RE = re.compile(r"//\s*ds-allow\b:?\s*(.*)$")
+
+# Words a button never says alone (owner, X1-B, 2026-11-20; audit CT-2/CT-7): «Continuar» and
+# «Siguiente» only with their object («Ver el siguiente paso»), «Omitir» is «Ahora no», «Aceptar»
+# says nothing (in a problem alert, «Intentar otra vez»; in a notice, «Entendido, cerrar»).
+BARE_WORDS = ("Aceptar", "OK", "Ok", "Siguiente", "Continuar", "Omitir")
+BARE_RE = re.compile(r'"(' + "|".join(BARE_WORDS) + r')"')
+CANCEL_ROLE_RE = re.compile(r'Button\(\s*"Cancelar"\s*,\s*role:\s*\.cancel')
+FIELD_RE = re.compile(r"(?<![\w.])(?:SecureField|TextField)\(")
+DENY_RE = re.compile(r'denyLabel:\s*"Cancelar"')
+
+
+# One icon, one idea (audit CT-5, 2026-11-20): «+» only adds, and the down arrow said both
+# «Importar» and «Guardar una copia». A `TicketChip` with «+» names what it adds («Renta»).
+PLUS_RE = re.compile(r'(?:Label|LinkActionLabel|PrimaryButtonLabel|IconRow|Button)\(\s*"([^"]+)"[^)]*systemImage:\s*"plus"')
+PLUS_WORDS = ("Agregar", "Anotar", "Nueva", "Nuevo")
+AMBIGUOUS_SYMBOLS = ("square.and.arrow.down",)
+
+
+def copy_problems_raw(raw: str):
+    code = strip_comment(raw)
+    out = []
+    plus = PLUS_RE.search(code)
+    if plus and not plus.group(1).startswith(PLUS_WORDS):
+        out.append(("icon-one-idea",
+                    f"«+» en «{plus.group(1)}»: el «+» solo agrega; usa otro símbolo (un ícono, una idea)"))
+    if any(f'"{symbol}"' in code for symbol in AMBIGUOUS_SYMBOLS):
+        out.append(("icon-one-idea",
+                    "flecha ↓ de dos ideas: «Importar» es tray.and.arrow.down y «Guardar una copia», "
+                    "externaldrive"))
+    if BARE_RE.search(code):
+        word = BARE_RE.search(code).group(1)
+        out.append(("bare-button-word",
+                    f"«{word}» solo: un botón dice qué hace con su objeto («Ver el siguiente paso», "
+                    "«Ahora no», «Entendido, cerrar», «Intentar otra vez»)"))
+    if DENY_RE.search(code):
+        out.append(("cancel-in-question",
+                    "«Cancelar» al confirmar con Siri: di qué hace («Conservarlo»)"))
+    return out
+
+
+BUTTON_OPEN_RE = re.compile(r"(?<![\w.])(?:Button|Link)\b[^{]*\{\s*$|label:\s*\{\s*$|(?<![\w.])Button\s*\(")
+
+
+def in_button_label(codes, index):
+    """True when the modifier on this line styles a button's title: its statement is a `Button(…)`,
+    or it sits in the label block of one (a few lines up, inside the same block)."""
+    line = codes[index].strip()
+    if not line.startswith("."):
+        return bool(re.match(r"^(?:Button|Link)\s*\(", line))
+    if re.match(r"^(?:Button|Link)\s*\(", owner_of_chain(codes, index)):
+        return True
+    depth = 0
+    for j in range(index - 1, max(-1, index - 8), -1):
+        line = codes[j]
+        depth += line.count("}") - line.count("{")
+        if depth < 0:
+            return bool(BUTTON_OPEN_RE.search(line))
+    return False
+
+
+SIZE_TOKEN_RE = re.compile(r"static\s+let\s+(\w+)\s*:\s*CGFloat\s*=\s*(-?\d+(?:\.\d+)?)")
+
+
+def theme_sizes():
+    """`Theme.Size.<name>` → points, read from Centavo/Theme (every `extension Theme.Size` too)."""
+    sizes = {}
+    for f in sorted((APP / "Theme").glob("*.swift")):
+        inside = False
+        depth = 0
+        for line in f.read_text(encoding="utf-8").splitlines():
+            code = strip_comment(line)
+            if re.search(r"\benum\s+Size\b|extension\s+Theme\.Size\b", code):
+                inside, depth = True, 0
+            if inside:
+                m = SIZE_TOKEN_RE.search(code)
+                if m:
+                    sizes[m.group(1)] = float(m.group(2))
+                depth += code.count("{") - code.count("}")
+                if depth <= 0 and "}" in code:
+                    inside = False
+    return sizes
+
+
+SIZES = None
+TAP = 44.0
+
+
+def scaled_bases(codes):
+    """`@ScaledMetric … var name … = Theme.Size.token` in this file: name → token."""
+    bases = {}
+    for c in codes:
+        m = re.search(r"@ScaledMetric[^=]*\bvar\s+(\w+)[^=]*=\s*Theme\.Size\.(\w+)", c)
+        if m:
+            bases[m.group(1)] = m.group(2)
+    return bases
+
+
+def small_touch(codes, index, bases):
+    """The first size under 44 pt in the `.frame` just before a `.contentShape` (same chain)."""
+    global SIZES
+    if SIZES is None:
+        SIZES = theme_sizes()
+    for j in range(index - 1, max(-1, index - 4), -1):
+        line = codes[j].strip()
+        if not line.startswith("."):
+            return None
+        if line.startswith(".frame("):
+            for m in re.finditer(r"\b(width|height|minWidth|minHeight):\s*([\w.]+)", line):
+                value = m.group(2)
+                token = value.split("Theme.Size.", 1)[1] if value.startswith("Theme.Size.") else bases.get(value)
+                if token and token in SIZES and SIZES[token] < TAP:
+                    return (token, SIZES[token])
+            return None
+    return None
+
+
+# The type and the spacing scale, where they are defined (`Centavo/Theme/`), CT-7 (2026-11-20).
+SPACE_SCALE = {0, 4, 8, 16, 24, 32, 48, 64}
+# Named exceptions to the scale, each with its reason in Tokens.swift and docs/DESIGN_SYSTEM.md.
+SPACE_EXCEPTIONS = {"outset", "tileLine", "tileItem", "screen"}
+LETTER_FLOOR = 12
+
+
+def lint_theme():
+    """Spacing tokens on the scale 4·8·16·24·32·48·64 (never 12, X3-B) and no letter under 12 pt."""
+    problems = []
+    tokens = APP / "Theme" / "Tokens.swift"
+    for f in sorted((APP / "Theme").glob("*.swift")):
+        lines = f.read_text(encoding="utf-8").splitlines()
+        rel = f.relative_to(ROOT)
+        in_space = False
+        in_size_switch = False
+        depth = 0
+        for n, raw in enumerate(lines, 1):
+            code = strip_comment(raw)
+            if re.search(r"\benum\s+Space\b|extension\s+Theme\.Space\b", code):
+                in_space, depth = True, 0
+            if in_space:
+                m = SIZE_TOKEN_RE.search(code)
+                if m:
+                    name, value = m.group(1), float(m.group(2))
+                    if abs(value) == 12:
+                        problems.append((rel, n, "space-12",
+                                         "un espacio de 12: la escala es 4·8·16·24·32·48·64 (X3-B); usa 8 o 16",
+                                         raw.strip()))
+                    elif f == tokens and abs(value) not in SPACE_SCALE and name not in SPACE_EXCEPTIONS \
+                            and not ALLOW_RE.search(raw):
+                        problems.append((rel, n, "space-scale",
+                                         "un paso de espacio fuera de la escala 4·8·16·24·32·48·64",
+                                         raw.strip()))
+                depth += code.count("{") - code.count("}")
+                if depth <= 0 and "}" in code:
+                    in_space = False
+            if re.search(r"\bvar\s+size\s*:\s*CGFloat\s*\{", code):
+                in_size_switch = True
+                continue
+            if in_size_switch:
+                for m in re.finditer(r"case\s+[^:]+:\s*(\d+(?:\.\d+)?)\s*$", code):
+                    if float(m.group(1)) < LETTER_FLOOR:
+                        problems.append((rel, n, "letter-under-12",
+                                         "letra de menos de 12 pt: nada que se lee va abajo de 12 (CT-6)",
+                                         raw.strip()))
+                if code.strip() == "}" and raw.startswith("    }"):
+                    in_size_switch = False
+            m = re.search(r"static\s+let\s+smallest\s*:\s*CGFloat\s*=\s*(\d+(?:\.\d+)?)", code)
+            if m and float(m.group(1)) < LETTER_FLOOR:
+                problems.append((rel, n, "letter-under-12",
+                                 "letra de menos de 12 pt: nada que se lee va abajo de 12 (CT-6)", raw.strip()))
+    return problems
+
 
 
 def strip_comment(line: str) -> str:
@@ -304,6 +481,28 @@ def lint_file(path: Path):
                 and any(".textCase(.uppercase)" in c for c in codes[max(0, n - 3):n + 2]):
             found.append(("row-name",
                           "nombre en mayúsculas a mano: usa .rowName()"))
+        if not drawing:
+            found += copy_problems_raw(raw)
+        # «Cancelar» in a question: both buttons say what they do («Conservar…», CT-4). Only an
+        # alert that asks to type something (a password, a sentence) keeps «Cancelar».
+        if not drawing and CANCEL_ROLE_RE.search(strip_comment(raw)) \
+                and not any(FIELD_RE.search(c) for c in codes[max(0, n - 8):n - 1]):
+            found.append(("cancel-in-question",
+                          "«Cancelar» en una pregunta: el botón dice qué hace («Conservar el corte», "
+                          "«Ahora no»); solo una alerta que pide escribir algo lleva «Cancelar»"))
+        # Capitals are for small labels only, never on a button or a sentence (owner, X2-A).
+        if not drawing and ".textCase(.uppercase)" in code and in_button_label(codes, n - 1):
+            found.append(("caps-on-button",
+                          "mayúsculas en un botón: las mayúsculas del ticket son solo para etiquetas "
+                          "chicas; el botón va como se escribe"))
+        # A touch area under 44 pt (CT-7): a frame right before a `contentShape` with a size token
+        # under `Theme.Size.tapTarget`.
+        if not drawing and ".contentShape(" in code:
+            small = small_touch(codes, n - 1, scaled_bases(codes))
+            if small:
+                found.append(("tap-target-small",
+                              f"área de toque de {small[1]:g} pt (`{small[0]}`): todo lo que se toca mide "
+                              "44 (Theme.Size.tapTarget); lo chico se dibuja chico dentro de 44"))
         if not found:
             continue
         rel = path.relative_to(ROOT)
@@ -324,6 +523,7 @@ def main(argv):
     quiet = "--quiet" in argv
     summary = "--summary" in argv
     files = [Path(a).resolve() for a in argv if not a.startswith("--")]
+    explicit = bool(files)
     if not files:
         files = sorted(f for d in UI_DIRS for f in d.rglob("*.swift"))
     files = [f for f in files if not any(d in f.parents for d in TOKEN_DIRS)]
@@ -333,6 +533,15 @@ def main(argv):
         p, a = lint_file(f)
         problems += p
         allows += a
+    if not explicit:
+        problems += lint_theme()
+        # CentavoCore writes some of the buttons' words (`UnlockMethod.button`): the copy rules.
+        for f in sorted(CORE_SOURCES.rglob("*.swift")):
+            for n, raw in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                if raw.strip().startswith("//"):
+                    continue
+                for rule_id, message in copy_problems_raw(raw):
+                    problems.append((f.relative_to(ROOT), n, rule_id, message, raw.strip()))
 
     if summary:
         from collections import Counter

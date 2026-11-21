@@ -1357,18 +1357,6 @@
         }
       }
     },
-    "Aceptar" : {
-      "comment" : "Backup screen (BackupSettingsView): alert button.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
-          }
-        }
-      }
-    },
     "Acumular día a día" : {
       "comment" : "Daily allowance rule (AllowanceMode, budget sheet): title.",
       "extractionState" : "manual",
@@ -3565,6 +3553,42 @@
         }
       }
     },
+    "Conservar el respaldo" : {
+      "comment" : "Backup screen: «Back up from this iPhone?» dialog, the button that keeps the backup as it is.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the backup"
+          }
+        }
+      }
+    },
+    "Conservar lo de este iPhone" : {
+      "comment" : "Backup screen: «Restore this backup?» alert, the button that keeps what is on this iPhone.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep what’s on this iPhone"
+          }
+        }
+      }
+    },
+    "Conservarlo" : {
+      "comment" : "Siri, deleting the last expense by voice: the answer that keeps it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep it"
+          }
+        }
+      }
+    },
     "Continuar" : {
       "comment" : "Bienvenida (OnboardingView): botón principal entre páginas.",
       "extractionState" : "manual",
@@ -5197,6 +5221,18 @@
         }
       }
     },
+    "Entendido, cerrar" : {
+      "comment" : "Alert button that only closes a notice (no «Aceptar»: a button says what it does).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Got it, close"
+          }
+        }
+      }
+    },
     "Entrada de atajo" : {
       "comment" : "Drawing of the iOS Shortcuts app in the setup guide; must match the English Shortcuts UI: iOS 27 keyboard suggestion (crossed out).",
       "extractionState" : "manual",
@@ -6625,6 +6661,18 @@
         }
       }
     },
+    "Intentar otra vez" : {
+      "comment" : "Problem alert (problemAlert): tries the same change again, right there.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        }
+      }
+    },
     "Internet" : {
       "comment" : "Bienvenida (OnboardingView): gasto fijo sugerido (llena el nombre).",
       "extractionState" : "manual",
@@ -6637,6 +6685,18 @@
         }
       }
     },
+    "Ir al comercio" : {
+      "comment" : "VoiceOver name of the «→» beside the amount in the expense sheet: moves to the merchant field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to merchant"
+          }
+        }
+      }
+    },
     "Ir al mes" : {
       "comment" : "Hoy: nombre de la lista de meses al mantener presionado «Mes anterior»",
       "extractionState" : "manual",
@@ -6645,6 +6705,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Go to month"
+          }
+        }
+      }
+    },
+    "Ir al nombre" : {
+      "comment" : "VoiceOver name of the «→» beside an amount: moves to the name field (NextKey).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to name"
           }
         }
       }
@@ -8221,6 +8293,18 @@
         }
       }
     },
+    "No restaurar" : {
+      "comment" : "Backup screen: «No place to save the copy» alert, the button that restores nothing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don’t restore"
+          }
+        }
+      }
+    },
     "No se agregó ningún gasto." : {
       "comment" : "CSV import result (ExpenseImporter): first sentence.",
       "extractionState" : "manual",
@@ -8865,18 +8949,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Forget"
-          }
-        }
-      }
-    },
-    "Omitir" : {
-      "comment" : "Bienvenida (OnboardingView): botón arriba a la derecha.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skip"
           }
         }
       }
@@ -10377,6 +10449,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Resume"
+          }
+        }
+      }
+    },
+    "Seguir con el aviso" : {
+      "comment" : "«Don’t use Wallet?» alert: the button that keeps the reminder to connect it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the reminder"
           }
         }
       }
@@ -12121,6 +12205,18 @@
         }
       }
     },
+    "Ver el siguiente paso" : {
+      "comment" : "Welcome: the main button that goes to the next step.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See the next step"
+          }
+        }
+      }
+    },
     "Ver gastos fijos" : {
       "comment" : "Hoy (main screen): alert button",
       "extractionState" : "manual",
@@ -12129,6 +12225,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "See fixed expenses"
+          }
+        }
+      }
+    },
+    "Ver la siguiente historia" : {
+      "comment" : "«How it works» stories: the main button that goes to the next story.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See the next story"
           }
         }
       }

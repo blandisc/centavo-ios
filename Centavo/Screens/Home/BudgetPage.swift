@@ -137,13 +137,9 @@ struct BudgetPage: View {
             VStack(spacing: Theme.Space.xs) {
                 Text("Fijar presupuesto")
                     .font(.ticket(.footnoteStrong))
-                    .tracking(Theme.Tracking.action)
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
                 Text("Para ver cuánto te queda")
                     .font(.ticket(.caption))
-                    .tracking(Theme.Tracking.detail)
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
             }
             .frame(maxWidth: .infinity, minHeight: barHeight)

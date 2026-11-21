@@ -85,7 +85,7 @@ struct BackupSettingsView: View {
                                     keep: { Task { await keepBackingUp() } },
                                     later: { DailyBackup.sayLater() }))
             .alert("Respaldo configurado", isPresented: Self.shown($setUpMessage)) {
-                Button("Aceptar", role: .cancel) { setUpMessage = nil }
+                Button("Entendido, cerrar", role: .cancel) { setUpMessage = nil }
             } message: {
                 Text(setUpMessage ?? "")
             }
@@ -96,7 +96,7 @@ struct BackupSettingsView: View {
                 Text("Si pierdes el iPhone, el respaldo se pierde con él. Elige una carpeta dentro de iCloud Drive.")
             }
             .alert(problemTitle, isPresented: Self.shown($problem)) {
-                Button("Aceptar", role: .cancel) { problem = nil }
+                Button("Entendido, cerrar", role: .cancel) { problem = nil }
             } message: {
                 Text(problem ?? "")
             }
@@ -385,7 +385,7 @@ struct BackupSettingsView: View {
         .accessibilityIdentifier("respaldo-este-iphone")
         .confirmationDialog("¿Respaldar desde este iPhone?", isPresented: $confirmingTrust, titleVisibility: .visible) {
             Button("Este iPhone es el bueno") { Task { await trustThisPhone() } }
-            Button("Cancelar", role: .cancel) {}
+            Button("Conservar el respaldo", role: .cancel) {}
         } message: {
             Text(Self.trustQuestion(expenses: countNow, missingIsHidden: missingIsHidden))
         }
@@ -949,7 +949,7 @@ private struct RestoreAlerts: ViewModifier {
     func body(content: Content) -> some View {
         content
             .alert("¿Restaurar este respaldo?", isPresented: BackupSettingsView.shown($pending)) {
-                Button("Cancelar", role: .cancel) { pending = nil }
+                Button("Conservar lo de este iPhone", role: .cancel) { pending = nil }
                 Button("Restaurar", role: .destructive) { if let pending { restore(pending) } }
             } message: {
                 Text(question)
@@ -959,14 +959,14 @@ private struct RestoreAlerts: ViewModifier {
                     Button("Seguir respaldando aquí") { outcome = nil; keep() }
                     Button("Ahora no", role: .cancel) { later(); outcome = nil }
                 } else {
-                    Button("Aceptar", role: .cancel) { outcome = nil }
+                    Button("Entendido, cerrar", role: .cancel) { outcome = nil }
                 }
             } message: {
                 Text(done)
             }
             .alert("Falta dónde guardar la copia", isPresented: BackupSettingsView.shown($needsCopyFolder)) {
                 Button("Elegir carpeta") { if let needsCopyFolder { pickCopyFolder(needsCopyFolder) } }
-                Button("Cancelar", role: .cancel) { needsCopyFolder = nil }
+                Button("No restaurar", role: .cancel) { needsCopyFolder = nil }
             } message: {
                 Text("La copia de lo que hay en este iPhone no se pudo guardar en la carpeta del respaldo, así que no se restauró nada. Elige una carpeta para esa copia; al elegirla se restaura.")
             }

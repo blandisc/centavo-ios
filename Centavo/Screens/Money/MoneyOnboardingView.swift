@@ -275,8 +275,6 @@ struct MoneyOnboardingView: View {
             if let skip = page.skip, rows.isEmpty {
                 Button(skip, action: next)
                     .font(.ticket(.label))
-                    .tracking(Theme.Tracking.label)
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.brass)
                     .buttonStyle(.tapTarget)
                     .accessibilityIdentifier("recorrido-saltar")
@@ -298,8 +296,6 @@ struct MoneyOnboardingView: View {
             Button(action: next) {
                 Text("Paso \(page.following.rawValue)")
                     .font(.ticket(.button))
-                    .tracking(Theme.Tracking.action)
-                    .textCase(.uppercase)
                     .foregroundStyle(Theme.muted)
                     .padding(.horizontal, Theme.Space.xl)
                     .frame(minHeight: Theme.Size.tapTarget)
@@ -389,7 +385,7 @@ struct MoneyOnboardingView: View {
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
             return true
         } catch {
-            problem = SaveProblem(title: "No se guardó la cuenta")
+            problem = SaveProblem(title: "No se guardó la cuenta", retry: { _ = save(account) })
             return false
         }
     }
@@ -399,7 +395,7 @@ struct MoneyOnboardingView: View {
             try MoneyStore.remove(account, in: context)
             withAnimation(Theme.Motion.animation(Theme.Motion.Money.row, reduceMotion: reduceMotion)) { open = nil }
         } catch {
-            problem = SaveProblem(title: "No se quitó la cuenta")
+            problem = SaveProblem(title: "No se quitó la cuenta", retry: { remove(account) })
         }
     }
 
@@ -859,15 +855,11 @@ struct MoneyRowEditor: View {
                 Button(removeTitle ?? (isNew ? "Cancelar" : "Quitar"), role: isNew && removeTitle == nil ? .cancel : .destructive,
                        action: remove)
                     .font(.ticket(.label))
-                    .tracking(Theme.Tracking.label)
-                    .textCase(.uppercase)
                     .foregroundStyle(isNew && removeTitle == nil ? Theme.muted : Theme.danger)
                     .buttonStyle(.tapTarget)
                 Spacer()
                 Button("Listo", action: done)
                     .font(.ticket(.label))
-                    .tracking(Theme.Tracking.label)
-                    .textCase(.uppercase)
                     .foregroundStyle(complete ? Theme.brass : Theme.faint)
                     .disabled(!complete)
                     .buttonStyle(.tapTarget)

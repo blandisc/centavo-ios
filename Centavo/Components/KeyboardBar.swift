@@ -95,7 +95,7 @@ private struct KeyboardBarPlacement<Actions: View>: ViewModifier {
         .ticketForm()
         .keyboardBar {
             Button("Sin cambio") {}
-            Button("Siguiente") {}
+            Button("Siguiente cuenta") {}
         }
     }
     .ticketPreview()

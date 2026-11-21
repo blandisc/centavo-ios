@@ -289,7 +289,7 @@ struct MoneyAccountSheet: View {
             }
             dismiss()
         } catch {
-            problem = SaveProblem(title: "No se guardó la cuenta")
+            problem = SaveProblem(title: "No se guardó la cuenta", retry: save)
         }
     }
 
@@ -300,7 +300,7 @@ struct MoneyAccountSheet: View {
             dismiss()
         } catch {
             context.rollback()
-            problem = SaveProblem(title: "No se archivó la cuenta")
+            problem = SaveProblem(title: "No se archivó la cuenta", retry: archive)
         }
     }
 }

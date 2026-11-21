@@ -78,7 +78,8 @@ struct LockView: View {
         VStack(alignment: .leading, spacing: Theme.Space.widgetHair) {
             Caption(text: state.caption, color: ink.lockCaption, style: .captionSmall)
             if state.isNeverOpened {
-                Caption(text: String(localized: "Abre Al día una vez"), color: ink.primary, style: .captionSmall)
+                Caption(text: String(localized: "Abre Al día una vez"), color: ink.primary, style: .captionSmall,
+                        capitals: false)
                     .widgetAccentable()
             } else {
                 Text(state.pace == nil ? money.whole(state.figure) : signed)

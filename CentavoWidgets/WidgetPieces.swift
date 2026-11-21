@@ -143,17 +143,20 @@ struct Money {
     }
 }
 
-/// «HOY PUEDES GASTAR»: small tracked capitals, like the app's captions.
+/// «HOY PUEDES GASTAR»: small tracked capitals, like the app's captions. A sentence or what a tap
+/// does («Fijar presupuesto», «Abre Al día una vez») goes with `capitals: false`: capitals are only
+/// for small labels (owner, X2-A, 2026-11-20).
 struct Caption: View {
     let text: String
     var color: Color
     var style = WidgetTextStyle.caption
+    var capitals = true
 
     var body: some View {
         Text(text)
             .font(.widget(style))
-            .tracking(Theme.Tracking.widgetCaption)
-            .textCase(.uppercase)
+            .tracking(capitals ? Theme.Tracking.widgetCaption : Theme.Tracking.none)
+            .textCase(capitals ? .uppercase : nil)
             .foregroundStyle(color)
             .lineLimit(1)
             .minimumScaleFactor(Theme.MinimumScale.figure)
@@ -448,6 +451,8 @@ struct AddButton: View {
         }
     }
 
+    /// Drawn at its size, touched at 44 pt (CT-8, 2026-11-20): the circle sits on the edge of a
+    /// 44 pt square that takes the touch (beside the figure in the small one, in the medium's corner).
     private var circle: some View {
         let side = compact ? Theme.Size.widgetAddButtonSmall : Theme.Size.widgetAddButton
         return Image(systemName: "plus")
@@ -456,6 +461,9 @@ struct AddButton: View {
             .frame(width: side, height: side)
             .background(ink.addBackground, in: Circle())
             .widgetAccentable()
+            .frame(width: Theme.Size.tapTarget, height: Theme.Size.tapTarget,
+                   alignment: compact ? .trailing : .topTrailing)
+            .contentShape(Rectangle())
     }
 }
 
@@ -487,7 +495,7 @@ extension DayEntry {
     }
 }
 
-/// «ABRE AL DÍA UNA VEZ»: the widget before the app ever wrote to it. A tap opens the app.
+/// «Abre Al día una vez»: the widget before the app ever wrote to it. A tap opens the app.
 struct NeverOpenedBox: View {
     let ink: Ink
     var subtitle = false
@@ -498,7 +506,7 @@ struct NeverOpenedBox: View {
     }
 }
 
-/// «FIJAR PRESUPUESTO», dashed like the app's blank ticket. Opens the budget sheet.
+/// «Fijar presupuesto», dashed like the app's blank ticket. Opens the budget sheet.
 struct SetBudgetBox: View {
     let ink: Ink
     var subtitle = false
@@ -517,9 +525,9 @@ struct TicketBox: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.widgetCaptionGap) {
-            Caption(text: title, color: ink.brass, style: detail != nil ? .caption : .captionSmall)
+            Caption(text: title, color: ink.brass, style: detail != nil ? .caption : .captionSmall, capitals: false)
             if let detail {
-                Caption(text: detail, color: ink.muted, style: .captionTiny)
+                Caption(text: detail, color: ink.muted, style: .captionTiny, capitals: false)
             }
         }
         .padding(.horizontal, Theme.Space.xs)

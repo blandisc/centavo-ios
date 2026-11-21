@@ -1,0 +1,63 @@
+{
+  "_": "Lo propio de Centavo para el revisor común del sistema base (Tools/sistema-base/, copia de ~/code/interoperabilidad/sistema-base). Excepciones con su porqué; `heredado` es la cuenta de lo que ya había (trinquete): solo baja. La guardia propia de Centavo (Tools/lint-design.py) vigila además las MAYÚSCULAS (X2-A) y la escala sin 12 (X3-B).",
+  "fuentes": [
+    {
+      "tipo": "swift",
+      "rutas": [
+        "Centavo",
+        "CentavoWidgets",
+        "Packages/CentavoCore/Sources"
+      ]
+    }
+  ],
+  "excluir": [
+    "**/Tests/**",
+    "**/*Tests.swift",
+    "**/Preview*/**"
+  ],
+  "tokens": [
+    {
+      "regla": "SB-2",
+      "archivo": "Centavo/Theme/Tokens.swift",
+      "patron": "static let (?:none|xxxs|xxs|xs|s|sm|m|ml|l|lx|xl|xlx|xxl|xxxl|screen|tileLine|tileItem): CGFloat = (-?\\d+(?:\\.\\d+)?)"
+    },
+    {
+      "regla": "SB-3",
+      "archivo": "Centavo/Theme/Tokens+Widgets.swift",
+      "patron": "\\.system\\(size: (\\d+(?:\\.\\d+)?)"
+    }
+  ],
+  "excepciones": [
+    {
+      "regla": "SB-2",
+      "archivo": "Centavo/Screens/ShortcutsDrawing.swift",
+      "porque": "Dibuja en miniatura la app Atajos de Apple para la guía: copia sus medidas, no las de Centavo."
+    },
+    {
+      "regla": "SB-1",
+      "archivo": "Centavo/Screens/ShortcutsDrawing.swift",
+      "porque": "Reproduce los botones de la app Atajos de Apple tal como el iPhone los escribe, para que la guía coincida."
+    }
+  ],
+  "heredado": {
+    "SB-1": {
+      "Centavo/Components/DesignSystemCatalog.swift": 1,
+      "Centavo/Intents/DeleteLastExpenseIntent.swift": 1,
+      "Centavo/Screens/BackupSettingsView.swift": 2,
+      "Centavo/Screens/ExpenseEditorView.swift": 2,
+      "Centavo/Screens/FixedExpensesView.swift": 1,
+      "Centavo/Screens/Home/BudgetSheet.swift": 1,
+      "Centavo/Screens/LabeledIconSheet.swift": 1,
+      "Centavo/Screens/MerchantRulesView.swift": 1,
+      "Centavo/Screens/Money/MoneyAccountSheet.swift": 1,
+      "Centavo/Screens/Money/MoneyIncomeSheet.swift": 1,
+      "Centavo/Screens/Money/MoneyOnboardingView.swift": 1
+    },
+    "SB-2": {
+      "Centavo/Screens/GuideFrames.swift": 3,
+      "Centavo/Theme/Tokens.swift": 2
+    },
+    "SB-3": {},
+    "SB-4": {}
+  }
+}

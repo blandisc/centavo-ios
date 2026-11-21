@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 ### Changed
+- Cuando algo no se guarda, el aviso trae «Intentar otra vez» y lo reintenta ahí mismo; «Ahora no» lo cierra. Si reintentar no sirve (un archivo rechazado), dice «Entendido, cerrar».
+- Los botones dicen qué hacen: «Ver el siguiente paso» y «Ahora no» en la bienvenida, «Ver la siguiente historia» en «Cómo funciona», «Entendido, cerrar» en los avisos del respaldo; nunca «Aceptar», «Siguiente», «Continuar» ni «Omitir» solos.
+- En las preguntas, los dos botones dicen qué hacen: «¿Restaurar este respaldo?» ofrece «Conservar lo de este iPhone», «¿Reemplazar el corte?» «Conservar el otro corte», «¿No usas Wallet?» «Seguir con el aviso»; Siri, al borrar el último gasto, ofrece «Conservarlo».
+- Los botones ya no van en mayúsculas («Configurar ahora», «Fijar presupuesto», «Borrar»): las mayúsculas del ticket se quedan solo en las etiquetas chicas. Tampoco el título de una pregunta («¿Borrar este gasto?»).
+- Más aire: el espacio de 12 pt pasó a 16 en toda la app (escala 4·8·16·24·32·48·64).
+- «Importar CSV» y «Guardar una copia de mis datos» ya no usan la misma flecha, y «Hacer corte» ya no usa el «+».
+- Las filas de «En qué se va» se siguen viendo de 29 pt, pero se tocan como de 44: la primera y la última responden un poco más afuera y un toque entre dos filas va a la más cercana.
+- Widgets: ninguna letra mide menos de 12 pt, y el «+» se toca en 44 aunque el círculo se vea igual.
 - La búsqueda dice cuánto suman los gastos que encontró: «3 gastos · $234.50».
 - La última página de la bienvenida dice solo «Listo», sin repetir «Paso 4 de 4».
 - Respaldo: si sales de Respaldo antes de que empiece a restaurar, ya no aparece Face ID después; y mientras configuras «Seguir respaldando aquí», «‹» se esconde y la hoja no se puede bajar, para que no se pierda; en un iPhone sin código, «Seguir respaldando aquí» desde «Restaurado» ya abre siempre el selector de carpeta.

@@ -329,7 +329,7 @@ struct FixedExpensesView: View {
         RecurringExpenses.stopRepeating(original)
         do { try context.save() } catch {
             context.rollback()
-            saveProblem = SaveProblem(title: "No se dejó de repetir")
+            saveProblem = SaveProblem(title: "No se dejó de repetir", retry: { stop(original) })
         }
     }
 
@@ -484,7 +484,7 @@ struct FixedPlanSheet: View {
                     HStack(spacing: Theme.Space.s) {
                         AmountInputField("Monto", text: $amountText, prompt: "0.00", identifier: "fijo-monto")
                             .focused($amountFocused)
-                        NextKey(visible: amountFocused, identifier: "fijo-siguiente") { nameFocused = true }
+                        NextKey("Ir al nombre", visible: amountFocused, identifier: "fijo-siguiente") { nameFocused = true }
                     }
                 } header: {
                     Text("Monto (\(currency))").ticketCaption()
@@ -585,7 +585,8 @@ struct FixedPlanSheet: View {
         // plan, and saving would make a second one (independent review, 2026-11-02).
         if let editing, !FixedPlan.saved.contains(where: { $0.id == editing.id }) {
             problem = SaveProblem(title: "No se guardó el gasto fijo",
-                                  detail: String(localized: "Ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo."))
+                                  detail: String(localized: "Ya empezó mientras lo cambiabas. Ciérralo y ábrelo otra vez en «Gastos fijos» para cambiarlo."),
+                                  retry: nil)
             return
         }
         let categoryName = category.trimmingCharacters(in: .whitespaces)
@@ -615,7 +616,7 @@ struct FixedPlanSheet: View {
                 try context.save()
             } catch {
                 context.rollback()
-                problem = SaveProblem(title: "No se guardó el gasto fijo")
+                problem = SaveProblem(title: "No se guardó el gasto fijo", retry: save)
                 return
             }
             // It started: it is no longer a plan.

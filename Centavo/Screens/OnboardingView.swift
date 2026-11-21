@@ -133,7 +133,8 @@ struct OnboardingView: View {
                         // Not while a page slides in (2026-11-18): «go» would turn it down after
                         // the save had already marked the welcome done, and what was typed
                         // afterwards was never saved.
-                        Button("Omitir") {
+                        // «Ahora no», not «Omitir» (X1-B, 2026-11-20): it says what it does.
+                        Button("Ahora no") {
                             guard !moving else { return }
                             save(); focused = nil; go(to: pages - 1)
                         }
@@ -210,7 +211,8 @@ struct OnboardingView: View {
             // as if the first tap had done nothing.
             if thenGuide { return String(localized: "Abrir la guía") }
             return String(localized: "Ver mi día")
-        default: return String(localized: "Continuar")
+        // Never a bare «Continuar» (X1-B, 2026-11-20).
+        default: return String(localized: "Ver el siguiente paso")
         }
     }
 

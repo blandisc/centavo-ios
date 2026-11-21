@@ -200,6 +200,54 @@ private struct ShareBarChart: View {
 
     @ScaledMetric(relativeTo: .footnote) private var barHeight: CGFloat = Theme.Size.shareBar
     @ScaledMetric(relativeTo: .footnote) private var scaledHeight: CGFloat = Theme.Size.shareChartHeight
+    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = Theme.Size.shareRow
+    /// Where each line is, to give a touch to the nearest one.
+    @State private var lineFrames: [String: CGRect] = [:]
+
+    private nonisolated static let linesSpace = "lineas-en-que-se-va"
+
+    /// Drawn at 29 pt, touched at 44 (owner, X4-B, 2026-11-20): the lines sit flush, so the
+    /// first reaches up and the last down by the rest of 44, and a touch anywhere in between goes
+    /// to the line it is on or nearest to. One line never takes another's touch.
+    private var edgeReach: CGFloat { max(Theme.Size.tapTarget - rowHeight, Theme.Space.none) / 2 }
+
+    private var lineList: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.none) {
+            ForEach(lines) { line in
+                ShareBarLine(line: line, amount: money(line.share.amount))
+                    .opacity(selected == nil || isSelected(line) ? Theme.Opacity.visible : Theme.Opacity.unselected)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.linesSpace)) } action: {
+                        lineFrames[line.key] = $0
+                    }
+                    .accessibilityLabel(line.spoken(money))
+                    .accessibilityAddTraits(isSelected(line) ? [.isButton, .isSelected] : .isButton)
+                    .accessibilityHint(hint(line))
+                    .accessibilityAction { tap(line) }
+            }
+        }
+        .coordinateSpace(.named(Self.linesSpace))
+        .contentShape(Rectangle().inset(by: -edgeReach))
+        .onTapGesture(coordinateSpace: .named(Self.linesSpace)) { point in
+            if let line = nearestLine(to: point.y) { tap(line) }
+        }
+    }
+
+    private func tap(_ line: CategoryLine) {
+        let wasSelected = isSelected(line)
+        Theme.Motion.instantly { onSelect(wasSelected ? nil : line.share) }
+    }
+
+    /// The line under `y`, or the closest one: above the first and below the last too.
+    private func nearestLine(to y: CGFloat) -> CategoryLine? {
+        lines.min { distance(from: y, to: $0) < distance(from: y, to: $1) }
+    }
+
+    private func distance(from y: CGFloat, to line: CategoryLine) -> CGFloat {
+        guard let frame = lineFrames[line.key] else { return .infinity }
+        if y < frame.minY { return frame.minY - y }
+        if y > frame.maxY { return y - frame.maxY }
+        return .zero
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -218,19 +266,7 @@ private struct ShareBarChart: View {
             .frame(height: barHeight)
             .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: Theme.Space.none) {
-                ForEach(lines) { line in
-                    ShareBarLine(line: line, amount: money(line.share.amount))
-                        .opacity(selected == nil || isSelected(line) ? Theme.Opacity.visible : Theme.Opacity.unselected)
-                        .onTapGesture {
-                            let wasSelected = isSelected(line)
-                            Theme.Motion.instantly { onSelect(wasSelected ? nil : line.share) }
-                        }
-                        .accessibilityLabel(line.spoken(money))
-                        .accessibilityAddTraits(isSelected(line) ? [.isButton, .isSelected] : .isButton)
-                        .accessibilityHint(hint(line))
-                }
-            }
+            lineList
         }
         // As tall as the mosaic, however many categories there are.
         .frame(minHeight: max(min(scaledHeight, Theme.Size.shareChartMaxHeight) - reserved, Theme.Space.none),
@@ -320,9 +356,9 @@ private struct ShareBarLine: View {
         .font(.ticket(.detail))
         .textCase(.uppercase)
         .tracking(Theme.Tracking.detail)
-        // A line of 16 pt read as a target too small for the accessibility audit.
+        // A line of 16 pt read as a target too small for the accessibility audit. Drawn at 29;
+        // the touch is the chart's, 44 (`ShareBarChart.lineList`, X4-B).
         .frame(minHeight: rowHeight)
-        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("parte-\(line.key)")
     }

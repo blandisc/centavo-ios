@@ -155,25 +155,7 @@ struct LabeledIconSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .ticketBarTitle(title)
             .saveBar(saveSummary,
-                     enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo") {
-                let saved = stored
-                let item = LabeledIcon(name: saved, icon: icon.isEmpty ? (icons.first ?? "tag") : icon)
-                if let commit {
-                    guard commit(item) else {
-                        saveFailed = true
-                        return
-                    }
-                } else {
-                    onSave(item)
-                }
-                // A renamed one leaves its old name's color behind.
-                if let old = initial?.name, !UserCatalog.same(old, saved) {
-                    UserCatalog.setColor(nil, for: old, key: colorKind.key)
-                }
-                CatalogColors.set(color, for: saved, kind: colorKind)
-                onSetDefault?(saved, usesByDefault)
-                dismiss()
-            }
+                     enabled: !trimmed.isEmpty && !isTaken, identifier: "guardar-nuevo", action: save)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
@@ -182,7 +164,7 @@ struct LabeledIconSheet: View {
                     .font(.ticket(.footnote))
                 }
             }
-            .problemAlert("No se cambió el nombre", isPresented: $saveFailed)
+            .problemAlert("No se cambió el nombre", isPresented: $saveFailed, retry: save)
             .confirmsRemoval(isPresented: $confirmingDelete, question: {
                 deleteQuestion ?? plainDeleteQuestion
             }) {
@@ -215,6 +197,27 @@ struct LabeledIconSheet: View {
         }
         return TicketQuestion(title: title, name: initial.map { CategoryStyle.shown($0.name) } ?? "",
                               note: String(localized: "Los gastos que ya la tienen no cambian."))
+    }
+
+    /// Saves it and closes; a rename that fails stays open, with «Intentar otra vez».
+    private func save() {
+        let saved = stored
+        let item = LabeledIcon(name: saved, icon: icon.isEmpty ? (icons.first ?? "tag") : icon)
+        if let commit {
+            guard commit(item) else {
+                saveFailed = true
+                return
+            }
+        } else {
+            onSave(item)
+        }
+        // A renamed one leaves its old name's color behind.
+        if let old = initial?.name, !UserCatalog.same(old, saved) {
+            UserCatalog.setColor(nil, for: old, key: colorKind.key)
+        }
+        CatalogColors.set(color, for: saved, kind: colorKind)
+        onSetDefault?(saved, usesByDefault)
+        dismiss()
     }
 
     /// What can be changed here, as it is now.

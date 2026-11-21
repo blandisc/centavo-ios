@@ -24,7 +24,7 @@ struct DeleteLastExpenseIntent: AppIntent {
         // Always asked (no `conditions`): a delete by voice is never taken for granted.
         try await requestConfirmation(
             actionName: .custom(acceptLabel: "Borrar", acceptAlternatives: ["Sí", "Bórralo"],
-                                denyLabel: "Cancelar", denyAlternatives: ["No"], destructive: true),
+                                denyLabel: "Conservarlo", denyAlternatives: ["No", "Cancelar"], destructive: true),
             dialog: "¿Borro \(described)?"
         )
         context.delete(expense)

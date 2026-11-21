@@ -372,8 +372,7 @@ struct ExpenseEditorView: View {
                 if let expense, expense.maybeRepeated == true {
                     Section {
                         Button {
-                            expense.maybeRepeated = nil
-                            persist()
+                            markNotRepeated(expense)
                         } label: { LinkActionLabel("No es repetida, son dos") }
                             .buttonStyle(.borderless)
                             .accessibilityIdentifier("no-es-repetida")
@@ -608,7 +607,8 @@ struct ExpenseEditorView: View {
     /// «Siguiente», shown only while the amount is typed. Its room is always kept: put in and
     /// taken out, it pushed «MXN ⌄» aside each time the keyboard came and went (2026-11-18).
     private var nextKey: some View {
-        Button("Siguiente", systemImage: "arrow.right") { merchantFocused = true }
+        // Read by VoiceOver: what the arrow does, not a bare «Siguiente» (X1-B, 2026-11-20).
+        Button("Ir al comercio", systemImage: "arrow.right") { merchantFocused = true }
             .labelStyle(.iconOnly)
             .font(.ticket(.footnoteStrong))
             .foregroundStyle(Theme.brass)
@@ -1059,7 +1059,7 @@ struct ExpenseEditorView: View {
         guard let original else { return }
         // The original keeps counting as the fixed charge it was (`RecurringExpenses.stopRepeating`).
         RecurringExpenses.stopRepeating(original)
-        guard persist() else { return }
+        guard persist(retry: stopRepeating) else { return }
         // Only the original was saved: with changes typed here, closing threw them away without
         // the «¿Descartar cambios?» every other way out asks (2026-11-18). The sheet stays open.
         guard hasChanges else {
@@ -1119,7 +1119,7 @@ struct ExpenseEditorView: View {
             dismiss()
         } else {
             context.delete(expense)
-            if persist() { dismiss() }
+            if persist(retry: { deleteExpense(expense) }) { dismiss() }
         }
     }
 
@@ -1156,17 +1156,25 @@ struct ExpenseEditorView: View {
     }
 
     /// Every change someone makes is saved right then, not left to autosave: if it fails, it's
-    /// said and nothing half-done stays behind.
+    /// said and nothing half-done stays behind. `retry` does the whole change again (the rollback
+    /// undid it), from the alert's «Intentar otra vez».
     @discardableResult
-    private func persist() -> Bool {
+    private func persist(retry: @escaping @MainActor () -> Void) -> Bool {
         do {
             try context.save()
             return true
         } catch {
             context.rollback()
-            saveProblem = SaveProblem(title: "No se guardó el gasto", detail: SaveProblem.unchangedPersisting)
+            saveProblem = SaveProblem(title: "No se guardó el gasto", detail: SaveProblem.unchangedPersisting,
+                                      retry: retry)
             return false
         }
+    }
+
+    /// «No es repetida, son dos».
+    private func markNotRepeated(_ expense: Expense) {
+        expense.maybeRepeated = nil
+        persist(retry: { markNotRepeated(expense) })
     }
 
     /// The merchant's matches and remembered category, once per change of «Comercio».
@@ -1589,7 +1597,7 @@ struct ExpenseEditorView: View {
             }
             // The others asked for, in the same save: all of it is kept, or none of it.
             for other in others { MerchantBackfill.apply(other.change, to: other.expense) }
-            guard persist() else { return }
+            guard persist(retry: save) else { return }
             // Only once it is saved: what Wallet sends as the old name comes in with this one
             // from now on, under this category. The newest choice wins, even when this expense
             // is older than others from the same place (`MerchantRules.learn`).
@@ -1621,7 +1629,7 @@ struct ExpenseEditorView: View {
             Self.setRepeats(new, repeats: repeatsMonthly, rule: rule, date: date)
             savedOnce = true
             context.insert(new)
-            guard persist() else {
+            guard persist(retry: save) else {
                 // Not saved: «Guardar» can be tried again with what was typed.
                 savedOnce = false
                 return

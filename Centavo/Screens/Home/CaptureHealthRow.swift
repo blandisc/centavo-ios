@@ -207,8 +207,6 @@ struct CaptureHealthRow: View {
                     .accessibilityHidden(true)
                 Text(text)
                     .font(.ticket(.caption))
-                    .tracking(Theme.Tracking.label)
-                    .textCase(.uppercase)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: Theme.Space.none)
             }
@@ -236,7 +234,7 @@ private struct WalletOptOut: ViewModifier {
     func body(content: Content) -> some View {
         content.alert("¿No usas Wallet?", isPresented: $isAsking) {
             Button("No uso Wallet", action: confirm)
-            Button("Cancelar", role: .cancel) {}
+            Button("Seguir con el aviso", role: .cancel) {}
         } message: {
             // «Más › Ajustes» with VoiceOver (`MenuPath`): an alert can't show one and say another.
             Text(MenuPath.forAlert(String(localized: "«Hoy» dejará de pedirte que lo conectes. Para volver a verlo, enciende «Avisar si no llegan pagos» en «··· › Ajustes».")))

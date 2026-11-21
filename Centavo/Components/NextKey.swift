@@ -1,21 +1,33 @@
 import SwiftUI
 
-/// «Siguiente» beside an amount: the decimal pad has no return key, and a keyboard bar does
+/// The «→» beside an amount: the decimal pad has no return key, and a keyboard bar does
 /// not show inside a sheet, so while the amount is typed the arrow lives in its row and takes
 /// the cursor to the next field. Its room is always kept, so it does not push what is beside
 /// it each time the keyboard comes and goes. The fixed expense's sheet (2026-11-18) uses it;
 /// the same arrow as the expense sheet's.
 ///
-///     NextKey(visible: amountFocused) { nameFocused = true }
+///     NextKey("Ir al nombre", visible: amountFocused) { nameFocused = true }
+///
+/// Its title is what VoiceOver reads: where it goes («Ir al nombre»), never a bare «Siguiente»
+/// (owner, X1-B, 2026-11-20).
 struct NextKey: View {
+    let title: LocalizedStringResource
     let visible: Bool
     var identifier = "siguiente-teclado"
     let action: () -> Void
 
+    init(_ title: LocalizedStringResource, visible: Bool, identifier: String = "siguiente-teclado",
+         action: @escaping () -> Void) {
+        self.title = title
+        self.visible = visible
+        self.identifier = identifier
+        self.action = action
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Button("Siguiente", systemImage: "arrow.right", action: action)
+        Button(String(localized: title), systemImage: "arrow.right", action: action)
             .labelStyle(.iconOnly)
             .font(.ticket(.footnoteStrong))
             .foregroundStyle(Theme.brass)
@@ -32,12 +44,12 @@ struct NextKey: View {
     }
 }
 
-#Preview("Siguiente") {
+#Preview("Ir al siguiente campo") {
     Form {
         Section {
             HStack(spacing: Theme.Space.s) {
                 AmountInputField("Monto", text: .constant("1,200"), prompt: "0.00")
-                NextKey(visible: true) {}
+                NextKey("Ir al nombre", visible: true) {}
             }
         }
         .listRowBackground(Theme.surface)

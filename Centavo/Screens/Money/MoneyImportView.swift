@@ -75,12 +75,12 @@ struct MoneyImportView: View {
         .fileImporter(isPresented: $choosingFile,
                       allowedContentTypes: [.commaSeparatedText, .tabSeparatedText, .plainText, .utf8PlainText]) { result in
             guard case .success(let url) = result else { return }
-            guard let text = Self.read(url) else { problem = SaveProblem(title: "No se pudo abrir ese archivo"); return }
+            guard let text = Self.read(url) else { problem = SaveProblem(title: "No se pudo abrir ese archivo", retry: { choosingFile = true }); return }
             load(text)
         }
         .problemAlert(problem: $problem)
         .alert("¿Pegar otra respuesta?", isPresented: $confirmingRestart) {
-            Button("Cancelar", role: .cancel) {}
+            Button("Conservar las correcciones", role: .cancel) {}
             Button("Borrar y pegar otra", role: .destructive, action: restart)
         } message: {
             Text("Se borran las correcciones que hiciste en esta revisión.")
@@ -354,7 +354,7 @@ struct MoneyImportView: View {
 
     private func load(_ text: String) {
         let result = MoneyImport.parse(text, main: mainCurrency)
-        if let refusal = result.refusal { problem = SaveProblem(title: "No se pudo importar", detail: refusal); return }
+        if let refusal = result.refusal { problem = SaveProblem(title: "No se pudo importar", detail: refusal, retry: nil); return }
         withAnimation(motion) {
             notes = result.notes
             let accounts = (try? context.fetch(MoneyStore.activeAccounts)) ?? []
@@ -426,7 +426,7 @@ struct MoneyImportView: View {
             forgetPasted()
             finished()
         } catch {
-            problem = SaveProblem(title: "No se guardó nada")
+            problem = SaveProblem(title: "No se guardó nada", retry: save)
         }
     }
 

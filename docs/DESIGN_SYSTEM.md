@@ -15,9 +15,11 @@
 2. **Lo que se viste usa tokens.** Fondo, colores, tipografía, espacios, radios, trazos, opacidades y animaciones salen de `Theme` y `TicketStyle`.
 3. **Modo oscuro forzado.** La app ya lo fuerza en `CentavoApp`; no uses `.preferredColorScheme` ni colores del sistema (`.primary`, `.red`, `Color.gray`…).
 4. **Dynamic Type siempre.** Todo texto escala (los roles de `TicketStyle` ya lo hacen). Lo que mide junto al texto (íconos, columnas, alturas de barra) va con `@ScaledMetric`. Con letra de accesibilidad, las filas se apilan; el texto se envuelve, no se encoge.
-5. **Toque mínimo de 44 pt** (`Theme.Size.tapTarget`) en todo lo que se toca. El espacio va **dentro** del botón: un `.frame` por fuera de un `Button` le da lugar, pero el dedo solo responde sobre su etiqueta. Un botón de solo texto o de solo símbolo usa `.buttonStyle(.tapTarget)` (regla del 2026-11-11; el lint la revisa). Un `.frame` dentro de la etiqueta de un botón `.plain` tampoco basta: sin `contentShape` solo responde el texto (17 pt en «Después», cuarta ronda de QA, 2026-11-19); usa `.tapTarget`, que pone las dos cosas.
-6. **Copy en es-MX**, sin suponer género. Identificadores de accesibilidad en español (`"hoja-guardar"`).
+5. **Toque mínimo de 44 pt** (`Theme.Size.tapTarget`) en todo lo que se toca, también en los widgets. Lo que se ve chico se dibuja chico dentro de 44 (el «+» del widget: círculo de 36 o 26, toque de 44). Si unas filas se dibujan pegadas y más chicas que 44 (las de 29 pt de «En qué se va», X4-B), el toque es de la lista: la primera y la última se extienden hacia afuera hasta 44 y un toque entre filas va a la más cercana; una fila nunca le quita el toque a otra. El espacio va **dentro** del botón: un `.frame` por fuera de un `Button` le da lugar, pero el dedo solo responde sobre su etiqueta. Un botón de solo texto o de solo símbolo usa `.buttonStyle(.tapTarget)` (regla del 2026-11-11; el lint la revisa). Un `.frame` dentro de la etiqueta de un botón `.plain` tampoco basta: sin `contentShape` solo responde el texto (17 pt en «Después», cuarta ronda de QA, 2026-11-19); usa `.tapTarget`, que pone las dos cosas.
+6. **Copy en es-MX**, sin suponer género. **Un botón dice qué hace, con su objeto** (X1-B, 2026-11-20): nunca «Aceptar», «OK», «Omitir», ni «Siguiente» o «Continuar» solos («Ver el siguiente paso», «Ir al comercio», «Siguiente cuenta», «Ahora no», «Entendido, cerrar»). **En una pregunta, los dos botones dicen qué hacen**: «Conservar…» o «Ahora no», no «Cancelar» (CT-4); solo una alerta que pide escribir algo (una contraseña, una frase) lleva «Cancelar». Identificadores de accesibilidad en español (`"hoja-guardar"`).
 7. **Minimalismo.** Antes de agregar una pantalla, pregunta si cabe en una que ya existe.
+8. **Mayúsculas solo en etiquetas chicas** (X2-A, 2026-11-20): encabezados, llaves, nombres de fila, el título de la barra. Nunca en un botón ni en una frase: el botón va como se escribe.
+9. **Un ícono, una idea** (CT-5): un símbolo nombra una sola acción en toda la app. «Exportar» ↑ (`square.and.arrow.up`), «Importar» (`tray.and.arrow.down`), «Guardar una copia» (`externaldrive`), «Agregar» +, «Hacer corte» (`checklist`). Antes de usar un símbolo, búscalo: si ya dice otra cosa, elige otro.
 
 ---
 
@@ -69,7 +71,7 @@ Se usa así: `.font(.ticket(.body))`. Nunca `.ticket(15, …)` ni `.font(.system
 | `.callout` | 14 regular | callout | — | Párrafo que explica |
 | `.button` | 14 semibold | body | — | Título de botón cápsula («Guardar») |
 | `.footnote` | 13 regular | footnote | — | Líneas secundarias, botones de barra |
-| `.footnoteStrong` | 13 semibold | footnote | `Tracking.action` / `.title` | Títulos de barra, acciones en mayúsculas |
+| `.footnoteStrong` | 13 semibold | footnote | `Tracking.title` en el título de barra | Títulos de barra y botones (como se escriben, sin mayúsculas) |
 | `.detail` | 12 regular | footnote | — | Notas bajo un campo, resúmenes |
 | `.label` | 12 semibold | footnote | `Tracking.label` | Etiquetas y botones compactos |
 | `.caption` | 12 regular | caption | `Tracking.caption` | Encabezados de sección (`ticketCaption()`) |
@@ -86,7 +88,7 @@ Una sola altura de renglón, una sola separación entre secciones y una sola cur
 - **Renglón:** `Theme.Size.tapTarget` (44); `tallRow` (52) solo si el renglón lleva dos líneas.
 - **Separación entre bloques de una página:** `Theme.Space.xl` (24), siempre la misma.
 - **Curva:** 12 para todo lo que es tarjeta, campo, botón o ticket; 4 solo para barras y días; 28 para hojas.
-- **Espacios de 4 en 4:** 4, 8, 12, 16, 24, 32. No se agregan pasos intermedios.
+- **Escala de espacios: 4 · 8 · 16 · 24 · 32 · 48 · 64** (X3-B, 2026-11-20; el 12 pasó a 16). No se agregan pasos intermedios; el lint falla con un espacio de 12 o con un paso de `Theme.Space` fuera de la escala.
 - **Excepciones con nombre**, nunca números sueltos: si una pieza no cabe con la escala (como las tarjetas de «En qué se va»), se crea un token propio que diga por qué.
 
 ### Espaciado (`Theme.Space`)
@@ -98,8 +100,8 @@ Una sola altura de renglón, una sola separación entre secciones y una sola cur
 | `xxs` | 4 | Etiqueta y valor; filas apiladas con letra grande |
 | `xs` | 8 | Encabezado y su texto |
 | `s` | 8 | Elementos de una fila (el hueco chico por omisión) |
-| `sm` | 12 | Filas de una lista corta |
-| `m` | 12 | Ícono a texto; elementos de una tarjeta |
+| `sm` | 16 | Filas de una lista corta (12 hasta el 2026-11-20) |
+| `m` | 16 | Ícono a texto; elementos de una tarjeta (12 hasta el 2026-11-20) |
 | `ml` | 16 | Dentro de un ticket en blanco |
 | `l` | 16 | Dentro de una tarjeta o fila seleccionable |
 | `lx` | 16 | Alrededor del ticket de «Borrar» |
@@ -131,7 +133,7 @@ Una sola altura de renglón, una sola separación entre secciones y una sola cur
 
 Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.swift`, `Tokens+Sheets.swift`, `Tokens+Onboarding.swift`.
 
-**Widgets** (`CentavoWidgets/`, también los revisa el lint): su caja la fija el sistema, así que tienen roles de letra propios (`.font(.widget(.caption))`, `WidgetTextStyle`) y sus medidas en `Theme/Tokens+Widgets.swift`. Los colores salen de `Ink`, que usa los de `Theme` a todo color y el tono único del sistema cuando iOS tiñe el widget o lo pone en la pantalla bloqueada.
+**Widgets** (`CentavoWidgets/`, también los revisa el lint): su caja la fija el sistema, así que tienen roles de letra propios, **nunca de menos de 12 pt** (CT-6, 2026-11-20; antes de 8 a 11: el piso de la app es 12 desde el 2026-10-29 y el lint lo vigila en `TicketStyle` y `WidgetTextStyle`) (`.font(.widget(.caption))`, `WidgetTextStyle`) y sus medidas en `Theme/Tokens+Widgets.swift`. Los colores salen de `Ink`, que usa los de `Theme` a todo color y el tono único del sistema cuando iOS tiñe el widget o lo pone en la pantalla bloqueada.
 
 ### Trazos, guiones, opacidad, interletrado, encogimiento y movimiento
 
@@ -182,7 +184,7 @@ Más tokens de gráficas por zona en `Theme/Tokens+Home.swift`, `Tokens+Editor.s
 | `.heroFigure()` | La cifra grande (lo que puedes gastar, lo que tienes): tamaño, el aire del «$» hacia atrás, recorte y encogido. El color lo pone quien la usa | `Text(left).heroFigure().foregroundStyle(Theme.brass)` |
 | `.rowName()` | Un nombre como lo imprime el ticket: peso medio, su espaciado y mayúsculas | `Text(account.name).rowName().foregroundStyle(Theme.ink)` |
 | `CurrencyTile` | Una moneda como ficha: símbolo sobre su nombre corto, latón si se eligió (bienvenida y «Mi dinero»). Va dentro de un `Button` con `.currencyTileAccessibility(code:selected:)` | `CurrencyTile(code: code, selected: chosen, fills: true)` |
-| `.problemAlert(problem:)` + `SaveProblem` | **El único** aviso de que algo no se guardó: el título dice qué («No se guardó el corte»), abajo «Nada cambió. Intenta otra vez.» y «Aceptar» | `saveProblem = SaveProblem(title: "No se guardó el gasto")` |
+| `.problemAlert(problem:)` + `SaveProblem` | **El único** aviso de que algo no se guardó: el título dice qué («No se guardó el corte»), abajo «Nada cambió. Intenta otra vez.», y los botones «Intentar otra vez» (corre `retry`, que rehace todo el cambio: el `rollback` lo deshizo) y «Ahora no». `retry: nil` solo si reintentar no sirve (un archivo rechazado): entonces un solo «Entendido, cerrar». `retry` es obligatorio: quien avisa decide (CT-3, 2026-11-20) | `saveProblem = SaveProblem(title: "No se guardó el gasto", retry: save)` |
 | `RowChevron` | **La única** flecha de renglón: chica y gris tenue. `.opens` (›), `.discloses(Bool)` (› que gira a ⌄), `.folds(Bool)` (⌄ que gira a ⌃) | `RowChevron(.discloses(showsDetails))` |
 | `.ticketField(_:)` | Lo que hace a un campo del ticket: letra `.field` (o la que se pida), espaciado, tinta y la línea del renglón desde su borde | `TextField("Tasa", text: $rate, prompt: …).ticketField()` |
 | `.selectableCard(selected:)` | Opción como tarjeta con borde latón al elegirla | monedas en la bienvenida |
@@ -269,7 +271,13 @@ Para una pantalla que no es formulario (p. ej. una página de bienvenida): `Scro
 | `RoundedRectangle(…).strokeBorder(…, dash: Theme.Dash.ticket)` | `.ticketOutline()` |
 | `.background(Theme.surface, in: RoundedRectangle(…))` | `.ticketPanel()`, o `.selectableCard(selected:)` si se elige |
 | `.font(.ticket(.bodyMedium)).tracking(Theme.Tracking.name).textCase(.uppercase)` | `.rowName()`: un nombre de comercio, cuenta o ingreso |
-| `.alert(…, isPresented: Binding(get: { … != nil } …))` para un error | `.problemAlert(problem: $problem)` con `SaveProblem(title: "No se guardó el corte")`: el título dice qué; abajo, «Nada cambió. Intenta otra vez.» |
+| `.alert(…, isPresented: Binding(get: { … != nil } …))` para un error | `.problemAlert(problem: $problem)` con `SaveProblem(title: "No se guardó el corte", retry: save)`: el título dice qué; abajo, «Nada cambió. Intenta otra vez.» y el botón para reintentar ahí mismo |
+| `Button("Aceptar")`, `"OK"`, `"Omitir"`, `"Siguiente"` o `"Continuar"` solos | El verbo con su objeto: «Entendido, cerrar», «Ahora no», «Ver el siguiente paso», «Ir al comercio», «Siguiente cuenta» |
+| `Button("Cancelar", role: .cancel)` en una pregunta | Lo que hace: «Conservar lo de este iPhone», «Conservar el otro corte», «Seguir con el aviso», «Ahora no». En Siri, `denyLabel: "Conservarlo"` |
+| `.textCase(.uppercase)` en un botón o una frase | El texto como se escribe; las mayúsculas, solo en etiquetas chicas |
+| Un espacio de 12 (`Theme.Space` con 12, o un paso fuera de 4·8·16·24·32·48·64) | `Theme.Space.s` (8) o `Theme.Space.m` (16) |
+| Un `.frame` de menos de 44 antes de `.contentShape` (área de toque chica) | El dibujo chico dentro de un `.frame` de `Theme.Size.tapTarget` |
+| Un rol de letra de menos de 12 pt (app o widget) | 12 es el piso: `TicketStyle.detail`/`.micro`, `WidgetTextStyle.smallest` |
 | «Cancelar» en negritas | Letra normal (`.footnote`); solo lo que guarda va en negritas |
 | `LinkActionLabel` con `.ticketOutline()` | El enlace de agregar va solo dentro de una lista; el botón lleno, solo en una pantalla vacía; el cuadrito punteado, solo en una cuadrícula |
 | `Image(systemName: "chevron.right")` al final de un renglón | `RowChevron()`, `RowChevron(.discloses(abierto))` o `RowChevron(.folds(abierto))`: chica y gris tenue. La de una frase («Ver 6 más ⌄») va con su frase y `// ds-allow` |
@@ -297,6 +305,8 @@ Lo que el lint no ve pero también está prohibido: colores con opacidad para te
 **Excepción por línea:** solo si un valor de verdad no es de diseño (p. ej. una altura inicial antes de medir), termina la línea con `// ds-allow: <motivo>`. El lint las cuenta y las lista; cada una se justifica en el PR. Los dibujos de Atajos (`ShortcutsDrawing.swift`, `GuideFrames.swift`) imitan otra app y solo pasan por las reglas de color.
 
 ---
+
+**Sistema base común (D1-B · DB-A, 20 nov 2026).** Además de esta guardia, la CI corre el revisor común de todas las apps (`python3 Tools/sistema-base/revisar.py`, copia de `~/code/interoperabilidad/sistema-base`): botones que dicen qué hacen, la escala 4·8·16·24·32·48·64, letra de 12 o más y toque de 44. Falla solo con lo nuevo; lo que ya había se anota en `sistema-base.json` y solo baja (`--anotar` después de arreglar). No edites `Tools/sistema-base/` aquí: se cambia en la casa y se copia con `copiar.sh`.
 
 ## 6. Dynamic Type y accesibilidad
 

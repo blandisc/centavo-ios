@@ -449,7 +449,7 @@ final class FlowTests: XCTestCase {
         amount.typeAmount("350")
         // «→» beside the amount, as a person does: on an iPhone SE the number pad and «Guardar»
         // cover «Comercio», and a tap there landed on the bar (fourth QA round, 2026-11-19).
-        app.buttons["Siguiente"].firstMatch.tap()
+        app.buttons["Ir al comercio"].firstMatch.tap()
         let merchant = app.textFields["comercio"]
         let focused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: merchant)
         XCTAssertEqual(XCTWaiter().wait(for: [focused], timeout: 5), .completed, "«→» no pasó al comercio")
@@ -821,6 +821,42 @@ final class FlowTests: XCTestCase {
         require(row(app, containing: "Cinépolis"), "No regresó a todo el mes")
     }
 
+    /// The lines of «En qué se va» are drawn at 29 pt and touched at 44 (owner, X4-B, 2026-11-20):
+    /// a touch just over the first line, or just under the last, still picks it; one on the
+    /// border between two lines goes to the line it is on, never to the other.
+    func testLasFilasDeEnQueSeVaSeTocanEn44() {
+        let app = launch(demo: true, budget: true, extra: ["-whereItGoesStyle", "bar"])
+        require(app.descendants(matching: .any)["en-que-se-va"], "No dice en qué se va")
+        let parts = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'parte-'"))
+        XCTAssertTrue(parts.firstMatch.waitForExistence(timeout: 10), "No hay filas")
+        let lines = parts.allElementsBoundByIndex.filter { $0.isHittable }.sorted { $0.frame.minY < $1.frame.minY }
+        XCTAssertGreaterThanOrEqual(lines.count, 2, "Hacen falta dos filas")
+        guard let first = lines.first, let last = lines.last else { return }
+        XCTAssertLessThan(first.frame.height, 44, "La fila ya no se dibuja de 29")
+
+        // 6 pt over the first line: outside what it draws, inside its 44.
+        first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: -6)).tap()
+        require(app.buttons["ver-todo-el-mes"], "Arriba de la primera fila no la eligió")
+        XCTAssertTrue(first.isSelected, "Eligió otra fila, no la primera")
+        first.tap()
+        XCTAssertTrue(app.buttons["ver-todo-el-mes"].waitForNonExistence(timeout: 5), "No regresó a todo el mes")
+
+        // 6 pt under the last line.
+        last.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)).withOffset(CGVector(dx: 0, dy: 6)).tap()
+        require(app.buttons["ver-todo-el-mes"], "Abajo de la última fila no la eligió")
+        XCTAssertTrue(last.isSelected, "Eligió otra fila, no la última")
+        last.tap()
+        XCTAssertTrue(app.buttons["ver-todo-el-mes"].waitForNonExistence(timeout: 5), "No regresó a todo el mes")
+
+        // 2 pt inside the second line's top edge: the second, not the first.
+        let second = lines[1]
+        second.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: 2)).tap()
+        require(app.buttons["ver-todo-el-mes"], "El borde de la segunda fila no eligió nada")
+        XCTAssertTrue(second.isSelected, "Un toque en la segunda fila fue a otra")
+        XCTAssertFalse(first.isSelected, "La primera fila invadió a la segunda")
+        snap("flujo-en-que-se-va-toque-44")
+    }
+
     func testDeslizarUnGastoPideBorrarlo() {
         let app = launch(demo: true)
         let cinepolis = require(row(app, containing: "Cinépolis"), "No hay fila de Cinépolis")
@@ -1027,14 +1063,14 @@ final class FlowTests: XCTestCase {
         snap("bienvenida-listo")
     }
 
-    /// «Omitir» also passes by «Listo», so nobody lands on «Hoy» without knowing what it says.
+    /// «Ahora no» (was «Omitir») also passes by «Listo», so nobody lands on «Hoy» without knowing what it says.
     func testOmitirPasaPorListo() {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(es-MX)", "-AppleLocale", "es_MX", "-centavo-sin-animaciones",
                                "-centavo-empty", "-centavo-onboarding"]
         app.launch()
-        require(app.buttons["bienvenida-omitir"], "No está «Omitir»", timeout: 20).tap()
-        require(app.staticTexts["Si un gasto no debe contar, mantén el dedo sobre él y toca «No cuenta»."], "«Omitir» no pasó por «Listo»")
+        require(app.buttons["bienvenida-omitir"], "No está «Ahora no»", timeout: 20).tap()
+        require(app.staticTexts["Si un gasto no debe contar, mantén el dedo sobre él y toca «No cuenta»."], "«Ahora no» no pasó por «Listo»")
         require(app.buttons["bienvenida-siguiente"], "No ofrece «Ver mi día»").tap()
         require(app.buttons["Anotar gasto"], "No quedó «Hoy»")
     }
@@ -1730,14 +1766,14 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(title.label, "Cuánto puedes gastar hoy")
         snap("tutorial-1")
         app.buttons["tutorial-siguiente"].tap()
-        XCTAssertTrue(app.staticTexts["Tu mes en un boleto"].waitForExistence(timeout: 3), "«Siguiente» no avanzó")
+        XCTAssertTrue(app.staticTexts["Tu mes en un boleto"].waitForExistence(timeout: 3), "«Ver la siguiente historia» no avanzó")
         XCTAssertFalse(app.buttons["tutorial-pruebalo"].exists, "La barra no tiene dónde probarse")
         snap("tutorial-2")
         for story in 3...7 {
             app.buttons["tutorial-siguiente"].tap()
             snap("tutorial-\(story)")
         }
-        XCTAssertEqual(app.buttons["tutorial-siguiente"].label, "Siguiente", "El respaldo ya no es la última")
+        XCTAssertEqual(app.buttons["tutorial-siguiente"].label, "Ver la siguiente historia", "El respaldo ya no es la última")
         // A tap on the right of the last story goes to the closing one.
         app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.45)).tap()
         require(app.staticTexts["Ya sabes cómo funciona"], "Tocar a la derecha no llevó a la historia final")

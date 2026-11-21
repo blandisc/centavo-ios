@@ -16,19 +16,21 @@ enum WidgetTextStyle {
     case lockFigure
     /// 15 semibold. The figure inside the lock screen's ring.
     case ringFigure
+    // Nothing in a widget goes under 12 pt (audit CT-6, 2026-11-20; they were 8 to 11, the
+    // app's floor is 12 since 2026-10-29). The roles below keep their weights; they share a size.
     /// 12 medium. «Llevas $X» under the small widget's bar.
     case spent
-    /// 11 regular. «Vas $376 abajo» under the figure.
+    /// 12 regular. «Vas $376 abajo» under the figure.
     case verdict
-    /// 10 regular. A short note in place of a chart («Sin categorías este mes»).
+    /// 12 regular. A short note in place of a chart («Sin categorías este mes»).
     case note
-    /// 10 semibold. Captions in tracked capitals. Tracking `.widgetCaption`.
+    /// 12 semibold. Captions in tracked capitals. Tracking `.widgetCaption`.
     case caption
-    /// 9 semibold. A caption with less room (lock screen, «Fijar presupuesto»).
+    /// 12 semibold. A caption with less room (lock screen, «Fijar presupuesto»).
     case captionSmall
-    /// 8 semibold. The smallest caption (under «Fijar presupuesto», the ring's «hoy»).
+    /// 12 semibold. The smallest caption (under «Fijar presupuesto», the ring's «hoy»).
     case captionTiny
-    /// 9 regular. Keys under the bar and the rows of «En qué se va».
+    /// 12 regular. Keys under the bar and the rows of «En qué se va».
     case key
 
     var size: CGFloat {
@@ -38,13 +40,12 @@ enum WidgetTextStyle {
         case .figureCompact: 32
         case .lockFigure: 22
         case .ringFigure: 15
-        case .spent: 12
-        case .verdict: 11
-        case .note, .caption: 10
-        case .captionSmall, .key: 9
-        case .captionTiny: 8
+        case .spent, .verdict, .note, .caption, .captionSmall, .captionTiny, .key: Self.smallest
         }
     }
+
+    /// The least a widget's text may be drawn at: the app's floor too (`TicketStyle`).
+    static let smallest: CGFloat = 12
 
     var weight: Font.Weight {
         switch self {
@@ -81,9 +82,10 @@ extension Theme.Symbol {
 }
 
 extension Theme.Size {
-    /// The widget's «+» button.
+    /// The widget's «+» circle, as drawn. It is touched at `tapTarget` (44 pt, CT-8, 2026-11-20).
     static let widgetAddButton: CGFloat = 36
-    /// The small widget's «+», beside its figure: smaller, so the figure keeps its room.
+    /// The small widget's «+» circle beside its figure, as drawn: smaller, so the figure keeps its
+    /// look. Touched at `tapTarget` too.
     static let widgetAddButtonSmall: CGFloat = 26
     /// The month strip of the small widgets.
     static let widgetStrip: CGFloat = 8

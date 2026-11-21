@@ -137,7 +137,7 @@ struct MoneyCutSheet: View {
                     Button("Sin cambio") { keep(entry) }
                         .accessibilityIdentifier("corte-teclado-sin-cambio")
                 }
-                Button("Siguiente") { focus = nextPending(after: focus) }
+                Button("Siguiente cuenta") { focus = nextPending(after: focus) }
                     .accessibilityIdentifier("corte-teclado-siguiente")
             }
             // The one way to ask before something goes away (owner, 2026-11-11).
@@ -145,19 +145,10 @@ struct MoneyCutSheet: View {
                 TicketQuestion(title: "¿Descartar el corte?", name: "Corte de \(MoneyHead.fullMonthName(draft.month))",
                                note: "Se borra lo que escribiste en este corte. Tus cortes pasados no cambian.",
                                verb: "Descartar")
-            }) {
-                // A failure is said, and the sheet stays (second audit, 2026-11-02).
-                do {
-                    try MoneyStore.discard(draft, in: context)
-                    dismiss()
-                } catch {
-                    context.rollback()
-                    problem = SaveProblem(title: "No se descartó el corte")
-                }
-            }
+            }, onConfirm: discard)
             .alert("¿Reemplazar el corte de \(MoneyHead.fullMonthName(draft.month))?",
                    isPresented: Binding(get: { replacing != nil }, set: { if !$0 { replacing = nil } })) {
-                Button("Cancelar", role: .cancel) {}
+                Button("Conservar el otro corte", role: .cancel) {}
                 Button("Reemplazar", role: .destructive) { save(replacing: true) }
             } message: {
                 Text("Ese mes ya tiene un corte, hecho el \(replacing?.formatted(.dateTime.day().month(.wide).locale(MoneyHead.mexico)) ?? ""). Si lo reemplazas, cuenta este y el otro se quita.")
@@ -440,6 +431,17 @@ struct MoneyCutSheet: View {
 
     private func save() { save(replacing: false) }
 
+    /// A failure is said, and the sheet stays (second audit, 2026-11-02).
+    private func discard() {
+        do {
+            try MoneyStore.discard(draft, in: context)
+            dismiss()
+        } catch {
+            context.rollback()
+            problem = SaveProblem(title: "No se descartó el corte", retry: discard)
+        }
+    }
+
     private func save(replacing: Bool) {
         do {
             try MoneyStore.finish(draft, replacing: replacing, in: context)
@@ -449,7 +451,7 @@ struct MoneyCutSheet: View {
         } catch MoneyStore.CutProblem.monthHasCut(let date) {
             self.replacing = date
         } catch {
-            problem = SaveProblem(title: "No se guardó el corte")
+            problem = SaveProblem(title: "No se guardó el corte", retry: { save(replacing: replacing) })
         }
     }
 }

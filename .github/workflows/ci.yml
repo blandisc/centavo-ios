@@ -50,6 +50,11 @@ jobs:
       - name: Lint del sistema de diseño
         run: Tools/lint-design.sh
 
+      # Common rules of all the apps (sistema base, D1-B · DB-A): buttons that say what they do, the spacing
+      # scale, type of 12 or more and touch of 44. Fails only on new breaks (ratchet in sistema-base.json).
+      - name: Sistema base
+        run: python3 Tools/sistema-base/revisar.py
+
       # The pinned release binary instead of `brew install`: seconds instead of minutes.
       - name: Instalar xcodegen
         run: |

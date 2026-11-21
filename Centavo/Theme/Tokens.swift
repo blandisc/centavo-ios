@@ -22,10 +22,11 @@ extension Theme {
         static let xs: CGFloat = 8
         /// 8 pt. Items of a row; the default small gap.
         static let s: CGFloat = 8
-        /// 12 pt. Rows of a short list; a button bar's vertical padding.
-        static let sm: CGFloat = 12
-        /// 12 pt. Icon to text; elements of a card.
-        static let m: CGFloat = 12
+        /// 16 pt (12 until 2026-11-20, X3-B: the scale is 4·8·16·24·32·48·64). Rows of a short
+        /// list; a button bar's vertical padding.
+        static let sm: CGFloat = 16
+        /// 16 pt (12 until 2026-11-20, X3-B). Icon to text; elements of a card.
+        static let m: CGFloat = 16
         /// 16 pt. Inside a blank ticket; between a block and its note.
         static let ml: CGFloat = 16
         /// 16 pt. Inside a card or a selectable row.
@@ -212,6 +213,9 @@ extension Theme {
     /// Timings. Always go through `Theme.Motion.animation(_:reduceMotion:)` or check
     /// `accessibilityReduceMotion` yourself: with «Reducir movimiento» nothing slides.
     enum Motion {
+        /// How long a system alert takes to go: «Intentar otra vez» runs after it, so a second
+        /// failure can show its own alert (`problemAlert`).
+        static let alertHandoff: Duration = .milliseconds(400)
         /// A tap's answer: selection, a filter, a small figure rolling. No bounce (owner: every
         /// animation settles, nothing overshoots; audit 2026-11-02).
         static let quick: Animation = .smooth(duration: 0.3)

@@ -504,10 +504,7 @@ struct ExpenseListView: View {
             edit: { editing = $0 },
             askDelete: { pendingDelete = $0 },
             setCategory: { setCategory($0, of: $1) },
-            change: { expense, edit in
-                edit(expense)
-                persist()
-            },
+            change: { expense, edit in applyChange(edit, to: expense) },
             logAgain: { logAgain($0, elsewhere: shownOffset != 0 || model.isSearching) }
         )
     }
@@ -594,7 +591,7 @@ private struct HomeActions {
     let setCategory: (String, Expense) -> Void
     /// A change from the row's menu («No es repetida», «Sí cuenta», «No cuenta»), saved right
     /// then; if it fails, it's said (2026-11-02, second audit: it was saved with `try?`).
-    let change: (Expense, (Expense) -> Void) -> Void
+    let change: (Expense, @escaping (Expense) -> Void) -> Void
     /// «Anotar otra vez»: the copy is dated today, and says so when today is not on screen.
     let logAgain: (Expense) -> Void
 }
@@ -1322,16 +1319,24 @@ enum ViewedMonth {
 private extension ExpenseListView {
     // Pulled out of `body`: the CI's compiler gave up type-checking it all in one expression.
     /// Every change made here is saved right then, not left to autosave; if it fails, it's said.
+    /// `retry` does the whole change again (the rollback undid it), from «Intentar otra vez».
     @discardableResult
-    func persist() -> Bool {
+    func persist(retry: @escaping @MainActor () -> Void) -> Bool {
         do {
             try context.save()
             return true
         } catch {
             context.rollback()
-            saveProblem = SaveProblem(title: "No se guardó el cambio", detail: SaveProblem.unchangedPersisting)
+            saveProblem = SaveProblem(title: "No se guardó el cambio", detail: SaveProblem.unchangedPersisting,
+                                      retry: retry)
             return false
         }
+    }
+
+    /// A change made from a row's menu, saved right then.
+    func applyChange(_ edit: @escaping (Expense) -> Void, to expense: Expense) {
+        edit(expense)
+        persist(retry: { applyChange(edit, to: expense) })
     }
 
     var importAlertShown: Binding<Bool> {
@@ -1481,7 +1486,7 @@ private extension ExpenseListView {
         expense.categorySource = picked == nil ? Expense.clearedCategory : nil
         expense.category = picked
         UserCatalog.learnCategory(picked, for: expense.merchant)
-        persist()
+        persist(retry: { setCategory(name, of: expense) })
     }
 
     /// The same expense again, now: the coffee of every morning without opening the sheet.
@@ -1493,7 +1498,7 @@ private extension ExpenseListView {
                            category: expense.category)
         copy.displayName = expense.displayName
         context.insert(copy)
-        guard persist() else { return }
+        guard persist(retry: { logAgain(expense, elsewhere: elsewhere) }) else { return }
         // A tap in a menu is easy to make by mistake: it can be taken back (audit 2026-11-02).
         withAnimation(Theme.Motion.undo) {
             lastDeleted = nil
@@ -1509,7 +1514,7 @@ private extension ExpenseListView {
             return
         }
         context.delete(copied.expense)
-        guard persist() else { return }
+        guard persist(retry: { undoCopy(copied) }) else { return }
         countStore()
         model.storeSaved()
         withAnimation(Theme.Motion.undo) { lastCopy = nil }
@@ -1540,7 +1545,7 @@ private extension ExpenseListView {
         let viewed = viewedMonth(shownOffset)
         if shownOffset < 0, MonthNavigator.isSameMonth(expense.date, as: viewed) { keptMonth = viewed }
         context.delete(expense)
-        guard persist() else { return }
+        guard persist(retry: { delete(expense) }) else { return }
         countStore()
         // A search on screen is asked again, without the deleted expense.
         model.storeSaved()
@@ -1553,7 +1558,7 @@ private extension ExpenseListView {
     func restore(_ deleted: DeletedExpense) {
         guard let expense = deleted.make() else { return }
         context.insert(expense)
-        guard persist() else { return }
+        guard persist(retry: { restore(deleted) }) else { return }
         model.storeSaved()
         countStore()
         withAnimation(Theme.Motion.undo) { lastDeleted = nil }
