@@ -100,6 +100,8 @@ final class FlowTests: XCTestCase {
     private func pickKind(_ app: XCUIApplication, _ kind: String) {
         openDetails(app)
         let picker = app.buttons["tipo"]
+        // Held drags, not flings: with the rows of 16 (X3-B, 2026-11-20) a fling left «Tipo» under the save bar.
+        bringClear(picker, app)
         for _ in 0..<4 where !isClear(picker, app) { scrollForm(app) }
         picker.tap()
         require(app.buttons[kind], "«Tipo» no ofrece «\(kind)»").tap()

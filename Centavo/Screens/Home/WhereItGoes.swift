@@ -359,6 +359,9 @@ private struct ShareBarLine: View {
         // A line of 16 pt read as a target too small for the accessibility audit. Drawn at 29;
         // the touch is the chart's, 44 (`ShareBarChart.lineList`, X4-B).
         .frame(minHeight: rowHeight)
+        // Its whole 29 is the line, not only its text: without it the accessibility audit read a
+        // target of 16 (CI, 2026-11-20). The chart still takes the touch (`lineList`).
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("parte-\(line.key)")
     }
